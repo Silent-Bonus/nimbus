@@ -1,4 +1,4 @@
-import React, { useContext, useState, useMemo, useEffect } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -11,13 +11,9 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import Svg, { Circle } from "react-native-svg";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import { ScreenView } from "@/components/ui/Themed";
-import ToolScreenHeader from "@/features/tools/components/common/ToolScreenHeader";
-
-// import AppHeader from "@/components/common/AppHeader";
+import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import {
   getMealDashboard,
   MealDashboardData,
@@ -28,25 +24,56 @@ import {
 import { toApiDate } from "@/utils/date-time";
 import { ROUTES } from "@/constants/routes";
 import AppHeader from "@/components/layout/AppHeader";
+import {
+  MealCardSurface,
+  MealMacroProgressCard,
+  MealNutritionTileCard,
+  type MealMacroProgressMetric,
+  type MealNutritionMetric,
+} from "@/features/tools/components/meal-flow";
+import type { SvaColorSet, Spacing, Typography } from "@/theme/types";
 
 /* ---------- Mock Data ---------- */
+const MOCK_DAILY_CONSUMPTION = {
+  calories: { consumed: 1440, goal: 2000, color: "#90B47A" },
+  protein: { consumed: 82, goal: 150, color: "#4C8DFF" },
+  carbs: { consumed: 145, goal: 250, color: "#79A9F2" },
+  fats: { consumed: 35, goal: 70, color: "#FB923C" },
+  fiber: { consumed: 28, goal: 30, color: "#9DD2C5" },
+};
+
 const MOCK_DASHBOARD: MealDashboardData = {
   period: "Last 30 days",
   days_tracked: 12,
   total_calories_consumed: 15400,
   average_calories: 1283.33,
-  today_nutrition: {
-    calories: { consumed: 1020, goal: 2000, color: "#6DFF8C" },
-    protein: { consumed: 65, goal: 150, color: "#4C8DFF" },
-    carbs: { consumed: 110, goal: 250, color: "#FACC15" },
-    fats: { consumed: 35, goal: 70, color: "#FB923C" },
-    fiber: { consumed: 15, goal: 30, color: "#A78BFA" },
-  },
+  today_nutrition: MOCK_DAILY_CONSUMPTION,
 };
 
+const MOCK_EXPECTED_CONSUMPTION: MealNutritionMetric[] = [
+  {
+    key: "protein",
+    label: "Protein",
+    consumed: 34,
+  },
+  {
+    key: "carbs",
+    label: "Carbs",
+    consumed: 126,
+  },
+  {
+    key: "fiber",
+    label: "Fiber",
+    consumed: 18,
+  },
+];
+
 export const MealPlannerScreen = () => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(newTheme, spacing, typography);
+  const { svaColors, spacing, typography } = useContext(ThemeContext);
+  const styles = useMemo(
+    () => styling(svaColors, spacing, typography),
+    [svaColors, spacing, typography]
+  );
 
   const [selectedDate] = useState(new Date());
   const [dashboardData, setDashboardData] =
@@ -120,87 +147,42 @@ export const MealPlannerScreen = () => {
     router.push(ROUTES.AUTH.TOOLS_MEAL_WEEKLY);
   };
 
-  const renderNutrientRing = () => {
+  const macroProgressMetrics = useMemo<MealMacroProgressMetric[]>(() => {
     const nutrition = dashboardData.today_nutrition;
-    const size = 140;
-    const strokeWidth = 10;
-    const center = size / 2;
-    const radius = (size - strokeWidth) / 2;
-    const circumference = 2 * Math.PI * radius;
-    const progress = Math.min(
-      nutrition.calories.consumed / nutrition.calories.goal,
-      1
-    );
-    const offset = circumference * (1 - progress);
 
-    return (
-      <View style={styles.summaryCard}>
-        <View style={styles.ringWrapper}>
-          <Svg width={size} height={size}>
-            <Circle
-              cx={center}
-              cy={center}
-              r={radius}
-              stroke={newTheme.surfaceMuted}
-              strokeWidth={strokeWidth}
-              fill="none"
-            />
-            <Circle
-              cx={center}
-              cy={center}
-              r={radius}
-              stroke={nutrition.calories.color}
-              strokeWidth={strokeWidth}
-              strokeDasharray={circumference}
-              strokeDashoffset={offset}
-              strokeLinecap="round"
-              fill="none"
-              rotation="-90"
-              origin={`${center}, ${center}`}
-            />
-          </Svg>
-          <View style={styles.ringLabel}>
-            <Text style={styles.caloriesValue}>
-              {nutrition.calories.consumed}
-            </Text>
-            <Text style={styles.caloriesLabel}>kcal left</Text>
-          </View>
-        </View>
+    return [
+      {
+        key: "carbs",
+        label: "Carbs",
+        consumed: nutrition.carbs.consumed,
+        goal: nutrition.carbs.goal,
+        color: svaColors.chart.blue,
+        letter: "C",
+      },
+      {
+        key: "protein",
+        label: "Protein",
+        consumed: nutrition.protein.consumed,
+        goal: nutrition.protein.goal,
+        color: svaColors.chart.lavender,
+        letter: "P",
+      },
+      {
+        key: "fiber",
+        label: "Fiber",
+        consumed: nutrition.fiber.consumed,
+        goal: nutrition.fiber.goal,
+        color: svaColors.chart.seafoam,
+        letter: "F",
+      },
+    ];
+  }, [dashboardData.today_nutrition, svaColors]);
 
-        <View style={styles.macroCol}>
-          {["protein", "carbs", "fats", "fiber"].map((macro) => {
-            const data = (nutrition as any)[macro];
-            return (
-              <View key={macro} style={styles.macroItem}>
-                <View style={styles.macroHeader}>
-                  <Text style={styles.macroName}>
-                    {macro.charAt(0).toUpperCase() + macro.slice(1)}
-                  </Text>
-                  <Text style={styles.macroValue}>
-                    {data.consumed}/{data.goal}g
-                  </Text>
-                </View>
-                <View style={styles.progressBarBg}>
-                  <View
-                    style={[
-                      styles.progressBarFill,
-                      {
-                        width: `${Math.min(
-                          (data.consumed / data.goal) * 100,
-                          100
-                        )}%`,
-                        backgroundColor: data.color,
-                      },
-                    ]}
-                  />
-                </View>
-              </View>
-            );
-          })}
-        </View>
-      </View>
-    );
-  };
+  const macroProgressPercent = useMemo(() => {
+    const calories = dashboardData.today_nutrition.calories;
+    if (!calories.goal) return 0;
+    return Math.round((calories.consumed / calories.goal) * 100);
+  }, [dashboardData.today_nutrition.calories]);
 
   const renderMealCard = (type: string, data: Meal | undefined | null) => {
     const iconMap: any = {
@@ -221,17 +203,21 @@ export const MealPlannerScreen = () => {
             <MaterialCommunityIcons
               name={iconMap[type]}
               size={20}
-              color={newTheme.textSecondary}
+              color={svaColors.text.secondary}
             />
           </View>
-          <View style={styles.ghostCardBody}>
+          <MealCardSurface
+            tone="dashed"
+            radius={24}
+            style={styles.ghostCardBody}
+          >
             <Text style={styles.ghostText}>Plan your {type}</Text>
             <Ionicons
               name="add-circle-outline"
               size={24}
-              color={newTheme.accent}
+              color={svaColors.brand.primary}
             />
-          </View>
+          </MealCardSurface>
         </TouchableOpacity>
       );
     }
@@ -242,10 +228,10 @@ export const MealPlannerScreen = () => {
           <MaterialCommunityIcons
             name={iconMap[type]}
             size={20}
-            color={newTheme.background}
+            color={svaColors.bg.base}
           />
         </View>
-        <TouchableOpacity style={styles.mealCard} activeOpacity={0.9}>
+        <MealCardSurface tone="surface" radius={24} style={styles.mealCard}>
           <View style={styles.mealInfo}>
             <Text style={styles.mealType}>{type.toUpperCase()}</Text>
             <Text style={styles.mealTitle}>{data.name}</Text>
@@ -256,11 +242,11 @@ export const MealPlannerScreen = () => {
               <Ionicons
                 name="restaurant-outline"
                 size={24}
-                color={newTheme.textSecondary}
+                color={svaColors.text.secondary}
               />
             </View>
           )}
-        </TouchableOpacity>
+        </MealCardSurface>
       </View>
     );
   };
@@ -292,12 +278,22 @@ export const MealPlannerScreen = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.mainScroll}
         >
-          {renderNutrientRing()}
+          <MealNutritionTileCard
+            title="Expected Consumption"
+            eyebrow="Status"
+            metrics={MOCK_EXPECTED_CONSUMPTION}
+          />
+
+          <MealMacroProgressCard
+            title="Daily Consumption"
+            progressLabel={`${macroProgressPercent}% of goal`}
+            metrics={macroProgressMetrics}
+          />
 
           <View style={styles.timelineContainer}>
             <View style={styles.timelineVerticalLine} />
             {loading ? (
-              <ActivityIndicator color={newTheme.accent} />
+              <ActivityIndicator color={svaColors.chart.blue} />
             ) : (
               <>
                 {renderMealCard("breakfast", dayPlan?.meals?.breakfast)}
@@ -320,7 +316,11 @@ export const MealPlannerScreen = () => {
           activeOpacity={0.8}
           onPress={handlePlanAhead}
         >
-          <Ionicons name="add" size={32} color={newTheme.background} />
+          <Ionicons
+            name="add"
+            size={32}
+            color={svaColors.button.primary.text}
+          />
           <Text style={styles.fabLabel}>Plan Ahead</Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -328,70 +328,16 @@ export const MealPlannerScreen = () => {
   );
 };
 
-const styling = (theme: any, spacing: any, typography: any) =>
+const styling = (
+  theme: SvaColorSet,
+  spacing: Spacing,
+  typography: Typography
+) =>
   StyleSheet.create({
     mainScroll: {
       paddingHorizontal: 0,
       paddingBottom: 120,
       paddingTop: spacing.md,
-    },
-    summaryCard: {
-      flexDirection: "row",
-      backgroundColor: theme.surface,
-      borderRadius: 28,
-      padding: spacing.lg,
-      marginBottom: spacing.xl,
-      alignItems: "center",
-      borderWidth: 1,
-      borderColor: theme.divider,
-    },
-    ringWrapper: {
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    ringLabel: {
-      position: "absolute",
-      alignItems: "center",
-    },
-    caloriesValue: {
-      ...typography.h2,
-      fontSize: 24,
-      color: theme.textPrimary,
-    },
-    caloriesLabel: {
-      ...typography.caption,
-      color: theme.textSecondary,
-    },
-    macroCol: {
-      flex: 1,
-      marginLeft: spacing.lg,
-      gap: 12,
-    },
-    macroItem: {},
-    macroHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      marginBottom: 4,
-    },
-    macroName: {
-      ...typography.caption,
-      color: theme.textSecondary,
-      fontWeight: "600",
-    },
-    macroValue: {
-      ...typography.caption,
-      color: theme.textPrimary,
-      fontWeight: "700",
-    },
-    progressBarBg: {
-      height: 6,
-      backgroundColor: theme.surfaceMuted,
-      borderRadius: 3,
-      overflow: "hidden",
-    },
-    progressBarFill: {
-      height: "100%",
-      borderRadius: 3,
     },
     timelineContainer: {
       paddingLeft: 20,
@@ -403,7 +349,7 @@ const styling = (theme: any, spacing: any, typography: any) =>
       bottom: 0,
       width: 2,
       backgroundColor: theme.divider,
-      opacity: 0.5,
+      opacity: 0.6,
     },
     mealCardContainer: {
       marginBottom: spacing.xl,
@@ -414,7 +360,7 @@ const styling = (theme: any, spacing: any, typography: any) =>
       width: 40,
       height: 40,
       borderRadius: 20,
-      backgroundColor: theme.accent,
+      backgroundColor: theme.chart.blue,
       justifyContent: "center",
       alignItems: "center",
       zIndex: 2,
@@ -422,21 +368,17 @@ const styling = (theme: any, spacing: any, typography: any) =>
     },
     mealCard: {
       flex: 1,
-      backgroundColor: theme.surface,
-      borderRadius: 24,
       padding: spacing.md,
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      borderWidth: 1,
-      borderColor: theme.divider,
     },
     mealInfo: {
       flex: 1,
     },
     mealType: {
       ...typography.caption,
-      color: theme.accent,
+      color: theme.chart.blue,
       fontWeight: "800",
       letterSpacing: 1,
       marginBottom: 4,
@@ -444,18 +386,18 @@ const styling = (theme: any, spacing: any, typography: any) =>
     mealTitle: {
       ...typography.bodyStrong,
       fontSize: 16,
-      color: theme.textPrimary,
+      color: theme.text.primary,
     },
     mealMeta: {
       ...typography.caption,
-      color: theme.textSecondary,
+      color: theme.text.secondary,
       marginTop: 2,
     },
     mealImagePlaceholder: {
       width: 60,
       height: 60,
       borderRadius: 16,
-      backgroundColor: theme.surfaceElevated,
+      backgroundColor: theme.surface.raised,
       justifyContent: "center",
       alignItems: "center",
     },
@@ -468,9 +410,9 @@ const styling = (theme: any, spacing: any, typography: any) =>
       width: 40,
       height: 40,
       borderRadius: 20,
-      backgroundColor: theme.surfaceMuted,
-      borderWidth: 2,
-      borderColor: theme.divider,
+      backgroundColor: theme.bg.subtle,
+      borderWidth: 1,
+      borderColor: theme.border.default,
       justifyContent: "center",
       alignItems: "center",
       zIndex: 2,
@@ -479,10 +421,6 @@ const styling = (theme: any, spacing: any, typography: any) =>
     ghostCardBody: {
       flex: 1,
       height: 80,
-      borderRadius: 24,
-      borderWidth: 2,
-      borderStyle: "dashed",
-      borderColor: theme.divider,
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
@@ -490,21 +428,21 @@ const styling = (theme: any, spacing: any, typography: any) =>
     },
     ghostText: {
       ...typography.body,
-      color: theme.textSecondary,
+      color: theme.text.secondary,
       fontStyle: "italic",
     },
     fab: {
       position: "absolute",
       bottom: spacing.xl,
       alignSelf: "center",
-      backgroundColor: theme.accent,
+      backgroundColor: theme.button.primary.bg,
       paddingHorizontal: spacing.xl,
       paddingVertical: spacing.md,
       borderRadius: 32,
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
-      shadowColor: theme.accent,
+      shadowColor: theme.button.primary.bg,
       shadowOffset: { width: 0, height: 8 },
       shadowOpacity: 0.4,
       shadowRadius: 12,
@@ -512,6 +450,6 @@ const styling = (theme: any, spacing: any, typography: any) =>
     },
     fabLabel: {
       ...typography.bodyStrong,
-      color: theme.background,
+      color: theme.button.primary.text,
     },
   });

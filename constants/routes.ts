@@ -52,9 +52,9 @@ export const ROUTES = {
     TOOLS_SCRIBBLE_LIST: "/(auth)/tools/scribbleList",
     TOOLS_BODY_ARCHITECTURE: "/(auth)/tools/bodyArchitecture",
     TOOLS_CALORIE_CALC: "/(auth)/tools/calorieCalculator",
-    TOOLS_ROUTINE_TEMPLATE: "/(auth)/tools/routineTemplate",
     TOOLS_RECIPE: "/(auth)/tools/recipe",
-    TOOLS_CONTENT_DETAILS: "/(auth)/tools/contentDetails",
+    TOOLS_RECIPE_DETAIL: "/(auth)/tools/recipeDetail",
+    TOOLS_ARTICLE_DETAIL: "/(auth)/tools/articleDetail",
 
     // Self Care
     SELF_CARE_THINGS_TO_DO: "/(auth)/self-care/thingsToDo",

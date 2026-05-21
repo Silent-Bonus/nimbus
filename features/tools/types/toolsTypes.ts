@@ -76,28 +76,6 @@ export interface RecipeListResponse {
   error_code?: string;
 }
 
-export interface RoutineItem {
-  id: number;
-  name: string;
-  image: string | null;
-  category: string;
-  description: string;
-  blueprints?: any[];
-  sections?: any[];
-}
-
-export interface RoutineListResponse {
-  success: boolean;
-  message: string;
-  data: RoutineItem[];
-}
-
-export interface RoutineDataDetails {
-  success: boolean;
-  message: string;
-  data: RoutineItem;
-}
-
 export interface calorieCalculatorRequest {
   weight: string;
   height: string;
@@ -169,11 +147,6 @@ export type Meditations = {
   isLocked: boolean;
 };
 
-export type SectionData = {
-  title: string;
-  content: string;
-};
-
 type ArticleDetails = {
   id: number | string;
   title: string;
@@ -184,7 +157,10 @@ type ArticleDetails = {
     time: string;
   };
   author_info?: any;
-  section_data?: SectionData[];
+  section_data?: {
+    title: string;
+    content: string;
+  }[];
   instructions?: { step: string; instruction: string }[];
   nutrition?: any;
   action_button?: string | null;

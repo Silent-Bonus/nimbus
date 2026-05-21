@@ -33,6 +33,7 @@ export interface Typography {
   h3: FontSet;
   h4: FontSet;
   body: FontSet;
+  bodyStrong: FontSet;
   caption: FontSet;
   smallCaption: FontSet;
   button: FontSet;
@@ -168,6 +169,7 @@ export interface ColorSet {
   background: string;
   surface: string; // For cards, modals, etc.
   surfaceMuted: string; // list rows / chips
+  surfaceElevated: string; // lifted card variant
   card: string; // slightly lighter than background
   cardRaised: string; // for prominent cards
   divider: string;

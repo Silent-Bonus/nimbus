@@ -21,7 +21,6 @@ import type { ColorSet, Spacing } from "@/theme/types";
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>["name"];
 
 type ToolAction = {
-  levelLabel: string;
   label: string;
   icon: IconName;
   route: string;
@@ -46,25 +45,21 @@ const TOOL_SECTION: ToolSection = {
   chipIcon: "toolbox-outline",
   actions: [
     {
-      levelLabel: "SVA LEVEL 01",
       label: "Protocol Template",
       icon: "clipboard-text-outline",
       route: ROUTES.AUTH.TOOLS_CURATED_MANIFESTS,
     },
     {
-      levelLabel: "SVA LEVEL 02",
       label: "Articles",
       icon: "newspaper-variant-outline",
       route: ROUTES.AUTH.TOOLS_ARTICLE_LIST,
     },
     {
-      levelLabel: "SVA LEVEL 03",
       label: "Recipe",
       icon: "silverware-fork-knife",
       route: ROUTES.AUTH.TOOLS_RECIPE,
     },
     {
-      levelLabel: "SVA LEVEL 04",
       label: "Meal Planner",
       icon: "calendar-heart",
       route: ROUTES.AUTH.TOOLS_MEAL_PLANNER,
@@ -93,12 +88,6 @@ const ToolActionTile = ({
         pressed && styles.actionTilePressed,
       ]}
     >
-      <View style={styles.actionEyebrowWrap}>
-        <Text style={styles.actionEyebrow} numberOfLines={1}>
-          {action.levelLabel}
-        </Text>
-      </View>
-
       <View style={styles.actionIconWrap}>
         <MaterialCommunityIcons
           name={action.icon}
@@ -325,20 +314,6 @@ const makeStyles = (
       backgroundColor: theme.surface,
       borderColor: theme.accent,
       transform: [{ scale: 0.98 }],
-    },
-    actionEyebrowWrap: {
-      width: "100%",
-      alignItems: "center",
-      marginBottom: 10,
-    },
-    actionEyebrow: {
-      fontFamily: fonts.mono,
-      fontSize: 9.3,
-      lineHeight: 12,
-      letterSpacing: 2.4,
-      textTransform: "uppercase",
-      color: theme.textSecondary,
-      opacity: 0.92,
     },
     actionIconWrap: {
       width: 30,

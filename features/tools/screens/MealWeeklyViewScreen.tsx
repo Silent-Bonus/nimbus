@@ -1,82 +1,357 @@
-import React, { useContext, useState, useMemo, useEffect } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  SafeAreaView,
-  Platform,
-  LayoutAnimation,
-  Share,
   ActivityIndicator,
+  LayoutAnimation,
+  Platform,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 import { router } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import { addDays } from "date-fns";
+import { addDays, format, isBefore, startOfDay, startOfWeek } from "date-fns";
+import * as FileSystem from "expo-file-system";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import { ScreenView } from "@/components/ui/Themed";
-import ToolScreenHeader from "@/features/tools/components/common/ToolScreenHeader";
-import { formatDay, toApiDate } from "@/utils/date-time";
-// =======
-// import ThemeContext from "@/context/ThemeContext";
-// import { ScreenView } from "@/components/Themed";
-// import AppHeader from "@/components/common/AppHeader";
-// import { formatDay, toApiDate, toFriendlyDate } from "@/utils/dateTime";
-import * as FileSystem from "expo-file-system";
-import {
-  getMealPlanRange,
-  DayPlan,
-  getMealPlanPdfUrl,
-} from "@/features/tools/services/mealService";
-import { FilterPill } from "@/features/self-care/components/workout/FilterPill";
-import StyledButton from "@/components/ui/theme-components/StyledButton";
-import { useAuth } from "@/contexts/AuthContext";
-import { ROUTES } from "@/constants/routes";
+import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import AppHeader from "@/components/layout/AppHeader";
+import { PillFilters } from "@/components/ui/PillFilters";
+import { ROUTES } from "@/constants/routes";
+import { toApiDate } from "@/utils/date-time";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  getMealPlanPdfUrl,
+  getMealPlanRange,
+  type DayPlan,
+  type Meal,
+} from "@/features/tools/services/mealService";
+import {
+  MealPlanDayCard,
+  type MealPlanMealRow,
+  type MealPlanMealType,
+} from "@/features/tools/components/meal-flow";
+import type { Spacing, Typography, SvaColorSet } from "@/theme/types";
+
+type WeekRangeId = "previous" | "current" | "next";
+
+type WeekRange = {
+  value: WeekRangeId;
+  label: string;
+  startDate: Date;
+  endDate: Date;
+};
+
+type DisplayDay = {
+  id: string;
+  title: string;
+  date: Date;
+  mealRows: MealPlanMealRow[];
+  sourcePlan: DayPlan | null;
+};
+
+const MEAL_TYPES: MealPlanMealType[] = ["breakfast", "lunch", "dinner"];
+
+const MEAL_LABELS: Record<MealPlanMealType, string> = {
+  breakfast: "Breakfast",
+  lunch: "Lunch",
+  dinner: "Dinner",
+};
+
+const FALLBACK_MEAL_IMAGE = require("@/assets/images/mt.jpg");
+
+type MockWeekTemplate = {
+  breakfast?: string;
+  lunch?: string;
+  dinner?: string;
+  calories: number;
+};
+
+const MOCK_WEEK_TEMPLATES: MockWeekTemplate[] = [
+  {
+    breakfast: "Zesty Quinoa & Citrus Bowl",
+    lunch: "Mediterranean Buddha Bowl",
+    dinner: "Golden Tofu Stir-fry",
+    calories: 1580,
+  },
+  {
+    lunch: "Herbed Grain Bowl with Roasted Vegetables",
+    calories: 840,
+  },
+  {
+    breakfast: "Berry Overnight Oats",
+    dinner: "Lemon Herb Salmon Plate",
+    calories: 1120,
+  },
+  {
+    breakfast: "Avocado Toast Stack",
+    lunch: "Crunchy Chickpea Salad",
+    dinner: "Miso Ginger Noodle Bowl",
+    calories: 1495,
+  },
+  {
+    breakfast: "Coconut Chia Pudding",
+    calories: 610,
+  },
+  {
+    lunch: "Sesame Veggie Wrap",
+    dinner: "Spiced Paneer Skillet",
+    calories: 1170,
+  },
+  {
+    breakfast: "Banana Almond Pancakes",
+    lunch: "Rainbow Pesto Pasta Salad",
+    dinner: "Charred Veg Bowl",
+    calories: 1625,
+  },
+];
+
+const createMockMeal = (
+  id: number,
+  name: string,
+  mealType: MealPlanMealType,
+  planId: number
+): Meal => ({
+  id,
+  name,
+  calories: 0,
+  image: null,
+  is_consumed: false,
+  plan: planId,
+  meal_type: mealType,
+  recipe: id * 10,
+});
+
+const getMockStatusLabel = (template: MockWeekTemplate) => {
+  const filledSlots = [template.breakfast, template.lunch, template.dinner].filter(
+    Boolean
+  ).length;
+  const emptySlots = 3 - filledSlots;
+  return emptySlots === 0
+    ? "Fully planned"
+    : `${emptySlots} empty slot${emptySlots === 1 ? "" : "s"}`;
+};
+
+const buildMockWeeklyPlans = (weekStart: Date): DayPlan[] =>
+  MOCK_WEEK_TEMPLATES.map((template, index) => {
+    const date = addDays(weekStart, index);
+    const planId = 9000 + index;
+
+    return {
+      id: planId,
+      date: toApiDate(date),
+      status: getMockStatusLabel(template),
+      meals: {
+        breakfast: template.breakfast
+          ? createMockMeal(planId * 10 + 1, template.breakfast, "breakfast", planId)
+          : null,
+        lunch: template.lunch
+          ? createMockMeal(planId * 10 + 2, template.lunch, "lunch", planId)
+          : null,
+        dinner: template.dinner
+          ? createMockMeal(planId * 10 + 3, template.dinner, "dinner", planId)
+          : null,
+        snacks: null,
+      },
+      total_calories: template.calories,
+      total_protein: 0,
+      total_carbs: 0,
+      total_fats: 0,
+    };
+  });
+
+const MOCK_DAY_LAYOUT: Array<Array<{ mealType: MealPlanMealType; recipeName: string }>> =
+  [
+    [
+      {
+        mealType: "breakfast",
+        recipeName: "Zesty Quinoa & Citrus Bowl",
+      },
+      {
+        mealType: "lunch",
+        recipeName: "Mediterranean Buddha Bowl",
+      },
+      {
+        mealType: "dinner",
+        recipeName: "Golden Tofu Stir-fry",
+      },
+    ],
+    [
+      {
+        mealType: "lunch",
+        recipeName: "Herbed Grain Bowl with Roasted Vegetables",
+      },
+    ],
+    [
+      {
+        mealType: "breakfast",
+        recipeName: "Berry Overnight Oats",
+      },
+      {
+        mealType: "dinner",
+        recipeName: "Lemon Herb Salmon Plate",
+      },
+    ],
+    [
+      {
+        mealType: "breakfast",
+        recipeName: "Avocado Toast Stack",
+      },
+      {
+        mealType: "lunch",
+        recipeName: "Crunchy Chickpea Salad",
+      },
+      {
+        mealType: "dinner",
+        recipeName: "Miso Ginger Noodle Bowl",
+      },
+    ],
+    [
+      {
+        mealType: "breakfast",
+        recipeName: "Coconut Chia Pudding",
+      },
+      {
+        mealType: "dinner",
+        recipeName: "Spiced Paneer Skillet",
+      },
+    ],
+    [
+      {
+        mealType: "lunch",
+        recipeName: "Sesame Veggie Wrap",
+      },
+    ],
+    [
+      {
+        mealType: "breakfast",
+        recipeName: "Banana Almond Pancakes",
+      },
+      {
+        mealType: "lunch",
+        recipeName: "Rainbow Pesto Pasta Salad",
+      },
+      {
+        mealType: "dinner",
+        recipeName: "Charred Veg Bowl",
+      },
+    ],
+  ];
+
+const normalizeMealRow = (
+  mealType: MealPlanMealType,
+  meal: Meal | null | undefined
+): MealPlanMealRow | null => {
+  if (!meal) return null;
+
+  return {
+    mealType,
+    recipeName: meal.name || "Untitled recipe",
+    image: meal.image || FALLBACK_MEAL_IMAGE,
+  };
+};
+
+const buildLiveMealRows = (plan: DayPlan): MealPlanMealRow[] =>
+  MEAL_TYPES.map((mealType) =>
+    normalizeMealRow(mealType, plan.meals?.[mealType] ?? null)
+  ).filter((row): row is MealPlanMealRow => Boolean(row));
+
+const buildMockMealRows = (dayIndex: number): MealPlanMealRow[] =>
+  MOCK_DAY_LAYOUT[dayIndex % MOCK_DAY_LAYOUT.length].map((entry) => ({
+    mealType: entry.mealType,
+    recipeName: entry.recipeName,
+    image: FALLBACK_MEAL_IMAGE,
+  }));
+
+const buildDisplayDays = (
+  weekStart: Date,
+  plans: DayPlan[]
+): DisplayDay[] => {
+  const planMap = new Map(
+    plans.map((plan) => [toApiDate(new Date(plan.date)), plan])
+  );
+  const hasLiveData = plans.length > 0;
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = addDays(weekStart, index);
+    const key = toApiDate(date);
+    const livePlan = planMap.get(key) ?? null;
+    const title = format(date, "EEEE, MMM d");
+
+    return {
+      id: key,
+      title,
+      date,
+      mealRows: livePlan
+        ? buildLiveMealRows(livePlan)
+        : hasLiveData
+          ? []
+          : buildMockMealRows(index),
+      sourcePlan: livePlan,
+    };
+  });
+};
 
 export const MealWeeklyViewScreen = () => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(newTheme, spacing, typography);
+  const { svaColors, spacing, typography } = useContext(ThemeContext);
+  const styles = useMemo(
+    () => styling(svaColors, spacing, typography),
+    [svaColors, spacing, typography]
+  );
   const { authState } = useAuth();
 
-  const [selectedWeek, setSelectedWeek] = useState<number>(0);
+  const [selectedWeek, setSelectedWeek] = useState<WeekRangeId>("current");
   const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
-  const [weeklyPlan, setWeeklyPlan] = useState<DayPlan[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [weeklyPlanData, setWeeklyPlanData] = useState<DayPlan[]>([]);
+  const [loading, setLoading] = useState(!__DEV__);
 
-  const weekRanges = useMemo(() => {
+  const weekRanges = useMemo<WeekRange[]>(() => {
     const today = new Date();
+    const currentWeekStart = startOfWeek(today, { weekStartsOn: 1 });
+
     return [
       {
-        label: "This Week",
-        start: toApiDate(today),
-        end: toApiDate(addDays(today, 6)),
+        value: "previous",
+        label: "Previous",
+        startDate: addDays(currentWeekStart, -7),
+        endDate: addDays(currentWeekStart, -1),
       },
       {
-        label: "Next Week",
-        start: toApiDate(addDays(today, 7)),
-        end: toApiDate(addDays(today, 13)),
+        value: "current",
+        label: "Current",
+        startDate: currentWeekStart,
+        endDate: addDays(currentWeekStart, 6),
       },
       {
-        label: "Following",
-        start: toApiDate(addDays(today, 14)),
-        end: toApiDate(addDays(today, 20)),
+        value: "next",
+        label: "Future",
+        startDate: addDays(currentWeekStart, 7),
+        endDate: addDays(currentWeekStart, 13),
       },
     ];
   }, []);
 
-  const fetchPlan = async (weekIdx: number) => {
+  const activeWeekRange =
+    weekRanges.find((range) => range.value === selectedWeek) ?? weekRanges[1];
+
+  const planSource = useMemo(
+    () => (__DEV__ ? buildMockWeeklyPlans(activeWeekRange.startDate) : weeklyPlanData),
+    [activeWeekRange.startDate, weeklyPlanData]
+  );
+
+  const displayDays = useMemo(
+    () => buildDisplayDays(activeWeekRange.startDate, planSource),
+    [activeWeekRange.startDate, planSource]
+  );
+
+  const fetchPlan = async (weekId: WeekRangeId) => {
     try {
       setLoading(true);
-      const range = weekRanges[weekIdx];
-      const res: any = await getMealPlanRange(
-        new Date(range.start),
-        new Date(range.end)
-      );
+      const range =
+        weekRanges.find((item) => item.value === weekId) ?? weekRanges[1];
+      const res: any = await getMealPlanRange(range.startDate, range.endDate);
 
-      let data = [];
+      let data: DayPlan[] = [];
       if (res?.success) {
         if (Array.isArray(res.data)) {
           data = res.data;
@@ -84,22 +359,45 @@ export const MealWeeklyViewScreen = () => {
           data = [res.data];
         }
       }
-      setWeeklyPlan(data);
+
+      setWeeklyPlanData(data);
     } catch (error) {
       console.error("Error fetching meal plan range:", error);
-      setWeeklyPlan([]);
+      setWeeklyPlanData([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    if (__DEV__) {
+      // Mock data should render immediately in dev so the future-plan states are easy to test.
+      setWeeklyPlanData([]);
+      setLoading(false);
+      return;
+    }
+
     fetchPlan(selectedWeek);
   }, [selectedWeek]);
 
   const toggleAccordion = (index: number) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpandedIndex(expandedIndex === index ? null : index);
+  };
+
+  const handleEditMeal = (
+    mealType: MealPlanMealType,
+    date: Date,
+    recipeName: string
+  ) => {
+    router.push({
+      pathname: ROUTES.AUTH.TOOLS_MEAL_CREATION,
+      params: {
+        type: MEAL_LABELS[mealType],
+        date: toApiDate(date),
+        foodName: recipeName,
+      },
+    });
   };
 
   const onSharePlan = async (data: DayPlan) => {
@@ -129,14 +427,14 @@ export const MealWeeklyViewScreen = () => {
       }
     } catch (error) {
       console.error("Error sharing PDF:", error);
-      const getMealName = (m: any) => {
-        if (!m) return "Not planned";
-        if (Array.isArray(m)) {
-          return m.length > 0
-            ? m.map((s: any) => s.name).join(", ")
+      const getMealName = (meal: any) => {
+        if (!meal) return "Not planned";
+        if (Array.isArray(meal)) {
+          return meal.length > 0
+            ? meal.map((item: any) => item.name).join(", ")
             : "Not planned";
         }
-        return m.name || "Not planned";
+        return meal.name || "Not planned";
       };
 
       const message =
@@ -153,396 +451,126 @@ export const MealWeeklyViewScreen = () => {
     }
   };
 
-  const getStatusInfo = (status: string) => {
-    const s = status?.toLowerCase() || "";
-    if (s.includes("fully"))
-      return { icon: "checkmark-circle", color: "#6DFF8C" };
-    if (s.includes("not"))
-      return { icon: "help-circle-outline", color: newTheme.textSecondary };
-    return { icon: "alert-circle-outline", color: "#FACC15" };
-  };
-
-  const renderAccordionItem = (data: DayPlan, index: number) => {
-    const isExpanded = expandedIndex === index;
-    const statusInfo = getStatusInfo(data.status || "Not Planned");
-    const dateObj = new Date(data.date);
-
-    return (
-      <View
-        key={data.id || index}
-        style={[styles.accordionCard, isExpanded && styles.accordionCardActive]}
-      >
-        <TouchableOpacity
-          onPress={() => toggleAccordion(index)}
-          style={styles.accordionHeader}
-          activeOpacity={0.7}
-        >
-          <View style={styles.headerDateBox}>
-            <Text style={styles.headerDay}>{formatDay(dateObj)}</Text>
-            <Text style={styles.headerDate}>
-              {`${dateObj.getDate()} ${dateObj.toLocaleString("default", {
-                month: "short",
-              })}`}
-            </Text>
-          </View>
-
-          <View style={styles.headerInfo}>
-            <Text style={styles.headerCalories}>
-              {`${data.total_calories || 0} kcal`}
-            </Text>
-            <View style={styles.statusRow}>
-              <Ionicons
-                name={statusInfo.icon as any}
-                size={14}
-                color={statusInfo.color}
-              />
-              <Text style={[styles.headerStatus, { color: statusInfo.color }]}>
-                {data.status || "Not Planned"}
-              </Text>
-            </View>
-          </View>
-
-          <Ionicons
-            name={isExpanded ? "chevron-up" : "chevron-down"}
-            size={20}
-            color={newTheme.textSecondary}
-          />
-        </TouchableOpacity>
-
-        {isExpanded && (
-          <View style={styles.accordionContent}>
-            <View style={styles.divider} />
-
-            <View style={styles.mealsList}>
-              {["breakfast", "lunch", "dinner", "snacks"].map((type) => {
-                const mealData = data.meals ? (data.meals as any)[type] : null;
-                const isSnack = type === "snacks";
-
-                let displayName = "";
-                if (mealData) {
-                  if (Array.isArray(mealData)) {
-                    displayName = mealData.map((m: any) => m.name).join(", ");
-                  } else {
-                    displayName = mealData.name;
-                  }
-                }
-
-                return (
-                  <View key={type} style={styles.mealRow}>
-                    <View style={styles.mealTypeLabel}>
-                      <Text style={styles.mealTypeText}>
-                        {type.charAt(0).toUpperCase()}
-                      </Text>
-                    </View>
-                    <Text
-                      style={[
-                        styles.mealTitle,
-                        !displayName && styles.mealPlaceholder,
-                      ]}
-                    >
-                      {displayName || `No ${type} planned`}
-                    </Text>
-                    {!isSnack && (
-                      <TouchableOpacity
-                        onPress={() =>
-                          router.push({
-                            pathname: ROUTES.AUTH.TOOLS_MEAL_CREATION,
-                            params: {
-                              type:
-                                type.charAt(0).toUpperCase() + type.slice(1),
-                              date: data.date,
-                              foodName: displayName || "",
-                            },
-                          })
-                        }
-                      >
-                        <Ionicons
-                          name="create-outline"
-                          size={18}
-                          color={newTheme.accent}
-                        />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                );
-              })}
-            </View>
-
-            <View style={styles.actionRow}>
-              <TouchableOpacity
-                style={styles.fullWidthShareBtn}
-                onPress={() => onSharePlan(data)}
-              >
-                <Ionicons
-                  name="share-social-outline"
-                  size={18}
-                  color={newTheme.textPrimary}
-                />
-                <Text style={styles.shareBtnText}>Share Plan</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-      </View>
-    );
-  };
-
-  const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <View style={styles.emptyIconCircle}>
-        <Ionicons name="restaurant-outline" size={48} color={newTheme.accent} />
-      </View>
-      <Text style={styles.emptyTitle}>Fridge is Empty!</Text>
-      <Text style={styles.emptySubtitle}>
-        You haven't scheduled any meals for this period. A well-planned week is
-        the foundation of mindful nourishment.
-      </Text>
-      <StyledButton
-        label="Start Planning"
-        onPress={() => router.push(ROUTES.AUTH.TOOLS_MEAL_CREATION)}
-        style={styles.emptyButton}
-      />
-    </View>
-  );
-
   return (
-    <ScreenView
-      style={{
-        paddingTop:
-          Platform.OS === "ios"
-            ? spacing["xxl"] + spacing["xxl"] * 0.2
-            : spacing.xl,
-        paddingHorizontal: spacing.md,
-      }}
-    >
-      <SafeAreaView style={{ flex: 1 }}>
+    <ScreenView bgColor={svaColors.bg.base} style={styles.screen}>
+      <View style={styles.container}>
         <AppHeader
-          title="Future Plan"
-          subtitle="Visualize your upcoming nourishment."
+          title="Nourish Horizon"
+          subtitle="Design your week"
           onBack={() => router.back()}
+          subtitleStyle={styles.headerSubtitle}
         />
 
-        <View style={styles.chipContainer}>
-          {weekRanges.map((range, idx) => (
-            <FilterPill
-              key={idx}
-              label={range.label}
-              isActive={selectedWeek === idx}
-              onPress={() => {
-                setSelectedWeek(idx);
-                setExpandedIndex(0);
-              }}
-              style={styles.weekChip}
-            />
-          ))}
+        <View style={styles.filterBlock}>
+          <Text style={styles.filterLabel}>Weekly filter</Text>
+          <PillFilters
+            options={weekRanges.map(({ value, label }) => ({ value, label }))}
+            selectedValue={selectedWeek}
+            onChange={(value) => {
+              setSelectedWeek(value);
+              setExpandedIndex(0);
+            }}
+            uppercase={false}
+            scrollable={false}
+            style={styles.chipContainer}
+          />
         </View>
 
         {loading ? (
           <View style={styles.center}>
-            <ActivityIndicator size="large" color={newTheme.accent} />
+            <ActivityIndicator size="large" color={svaColors.brand.primary} />
           </View>
         ) : (
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
           >
-            <View style={styles.monthHeader}>
-              <Text style={styles.monthText}>
-                {new Date().toLocaleString("default", {
-                  month: "long",
-                  year: "numeric",
-                })}
-              </Text>
-            </View>
-            {weeklyPlan.length > 0
-              ? weeklyPlan.map((day, index) => renderAccordionItem(day, index))
-              : renderEmptyState()}
+            {displayDays.map((day, index) => {
+              const emptySlots = MEAL_TYPES.length - day.mealRows.length;
+              const statusLabel =
+                emptySlots === 0
+                  ? "Fully planned"
+                  : `${emptySlots} empty slot${emptySlots === 1 ? "" : "s"}`;
+              const statusColor =
+                emptySlots === 0
+                  ? svaColors.state.success
+                  : svaColors.state.warning;
+              const isPast = isBefore(day.date, startOfDay(new Date()));
+              const isExpanded = expandedIndex === index;
+
+              return (
+                <MealPlanDayCard
+                  key={day.id}
+                  title={day.title}
+                  statusLabel={statusLabel}
+                  statusColor={statusColor}
+                  mealRows={day.mealRows}
+                  isExpanded={isExpanded}
+                  isPast={isPast}
+                  onToggle={() => toggleAccordion(index)}
+                  onEditMeal={(mealType) => {
+                    const meal = day.mealRows.find(
+                      (row) => row.mealType === mealType
+                    );
+                    handleEditMeal(
+                      mealType,
+                      day.date,
+                      meal?.recipeName || ""
+                    );
+                  }}
+                  onSharePlan={
+                    day.sourcePlan ? () => onSharePlan(day.sourcePlan!) : undefined
+                  }
+                />
+              );
+            })}
           </ScrollView>
         )}
-      </SafeAreaView>
+      </View>
     </ScreenView>
   );
 };
 
-const styling = (theme: any, spacing: any, typography: any) =>
+const styling = (
+  theme: SvaColorSet,
+  spacing: Spacing,
+  typography: Typography
+) =>
   StyleSheet.create({
+    screen: {
+      flex: 1,
+      paddingBottom: spacing.lg,
+    },
+    container: {
+      flex: 1,
+    },
+    headerSubtitle: {
+      ...typography.caption,
+      color: theme.text.secondary,
+      marginTop: spacing.xs,
+      letterSpacing: 0.2,
+    },
+    filterBlock: {
+      marginBottom: spacing.lg,
+    },
+    filterLabel: {
+      ...typography.caption,
+      color: theme.text.secondary,
+      marginBottom: spacing.sm,
+      letterSpacing: 0.8,
+      textTransform: "uppercase",
+    },
+    chipContainer: {
+      marginBottom: 0,
+    },
+    scrollContent: {
+      paddingBottom: spacing.xxl,
+      flexGrow: 1,
+    },
     center: {
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
-    },
-    chipContainer: {
-      flexDirection: "row",
-      marginBottom: spacing.lg,
-      gap: 8,
-    },
-    weekChip: {
-      flex: 1,
-    },
-    scrollContent: {
-      paddingHorizontal: 0,
-      paddingBottom: spacing.xxl,
-      flexGrow: 1,
-    },
-    monthHeader: {
-      marginBottom: spacing.md,
-      paddingLeft: 0,
-    },
-    monthText: {
-      ...typography.bodyStrong,
-      color: theme.textSecondary,
-      textTransform: "uppercase",
-      letterSpacing: 1,
-    },
-    accordionCard: {
-      backgroundColor: theme.surface,
-      borderRadius: 24,
-      marginBottom: spacing.md,
-      borderWidth: 1,
-      borderColor: theme.divider,
-      overflow: "hidden",
-    },
-    accordionCardActive: {
-      borderColor: theme.accent,
-      elevation: 4,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.1,
-      shadowRadius: 12,
-    },
-    accordionHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      padding: spacing.md,
-    },
-    headerDateBox: {
-      width: 80,
-    },
-    headerDay: {
-      ...typography.caption,
-      color: theme.textSecondary,
-      textTransform: "uppercase",
-    },
-    headerDate: {
-      ...typography.bodyStrong,
-      color: theme.textPrimary,
-      fontSize: 16,
-    },
-    headerInfo: {
-      flex: 1,
-      alignItems: "center",
-    },
-    headerCalories: {
-      ...typography.bodyStrong,
-      color: theme.textPrimary,
-    },
-    statusRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 4,
-      marginTop: 2,
-    },
-    headerStatus: {
-      ...typography.caption,
-      fontSize: 11,
-      fontWeight: "700",
-    },
-    accordionContent: {
-      paddingHorizontal: spacing.md,
-      paddingBottom: spacing.md,
-    },
-    divider: {
-      height: 1,
-      backgroundColor: theme.divider,
-      marginBottom: spacing.md,
-    },
-    mealsList: {
-      gap: 12,
-      marginBottom: spacing.lg,
-    },
-    mealRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: theme.surfaceMuted,
-      padding: spacing.sm,
-      borderRadius: 16,
-    },
-    mealTypeLabel: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      backgroundColor: theme.accent,
-      justifyContent: "center",
-      alignItems: "center",
-      marginRight: 12,
-    },
-    mealTypeText: {
-      fontSize: 12,
-      fontWeight: "900",
-      color: theme.background,
-    },
-    mealTitle: {
-      ...typography.body,
-      flex: 1,
-      color: theme.textPrimary,
-      fontSize: 14,
-    },
-    mealPlaceholder: {
-      color: theme.textSecondary,
-      fontStyle: "italic",
-    },
-    actionRow: {
-      flexDirection: "row",
-      marginTop: spacing.sm,
-    },
-    fullWidthShareBtn: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 8,
-      height: 48,
-      borderRadius: 16,
-      backgroundColor: theme.surfaceMuted,
-      borderWidth: 1,
-      borderColor: theme.divider,
-    },
-    shareBtnText: {
-      ...typography.bodyStrong,
-      color: theme.textPrimary,
-      fontSize: 14,
-    },
-    emptyContainer: {
-      flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
       paddingVertical: spacing.xxl,
-      paddingHorizontal: spacing.lg,
-    },
-    emptyIconCircle: {
-      width: 100,
-      height: 100,
-      borderRadius: 50,
-      backgroundColor: theme.accent + "15",
-      justifyContent: "center",
-      alignItems: "center",
-      marginBottom: spacing.lg,
-    },
-    emptyTitle: {
-      ...typography.h3,
-      color: theme.textPrimary,
-      marginBottom: spacing.sm,
-      textAlign: "center",
-    },
-    emptySubtitle: {
-      ...typography.body,
-      color: theme.textSecondary,
-      textAlign: "center",
-      lineHeight: 22,
-      marginBottom: spacing.xl,
-    },
-    emptyButton: {
-      width: "100%",
-      maxWidth: 240,
     },
   });

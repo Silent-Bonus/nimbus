@@ -1,48 +1,50 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
-  View,
-  StyleSheet,
   FlatList,
   Platform,
-  SafeAreaView,
-  ScrollView,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { router, useNavigation } from "expo-router";
 
+import { ScreenView } from "@/components/ui/theme-components/ScreenView";
+import PillFilters, {
+  type PillFilterOption,
+} from "@/components/ui/PillFilters";
 import ThemeContext from "@/contexts/ThemeContext";
-import { ScreenView } from "@/components/ui/Themed";
-
-import ToolScreenHeader from "@/features/tools/components/common/ToolScreenHeader";
-import AnimatedChip from "@/features/tools/components/common/AnimatedChips";
-import { RoutineSkeletonGrid } from "@/features/tools/components/common/RoutineSkeletonGrid";
-import ContentPosterCard from "@/features/tools/components/common/ContentPosterCard";
-// import AppHeader from "@/components/common/AppHeader";
-// import AnimatedChip from "@/components/tools/common/AnimatedChips";
-// import { RoutineSkeletonGrid } from "@/components/tools/common/RoutineSkeletonGrid";
-// import ContentPosterCard from "@/components/tools/common/ContentPosterCard";
-
-import { getArticleList } from "@/features/tools/services/toolService";
+import ScreenHeader from "@/components/layout/ScreenHeader";
 import EmptyState from "@/features/tools/components/common/EmptyState";
+import ProtocolTemplateCard from "@/features/tools/components/common/ProtocolTemplateCard";
+import { RoutineSkeletonGrid } from "@/features/tools/components/common/RoutineSkeletonGrid";
 import { ROUTES } from "@/constants/routes";
-import AppHeader from "@/components/layout/AppHeader";
+import { getArticleList } from "@/features/tools/services/toolService";
+import {
+  MOCK_ARTICLE_ITEMS,
+  type ArticleCardItem,
+  buildArticleCardItem,
+} from "@/features/tools/data/articleLibrary";
+import type { Spacing, SvaColorSet } from "@/theme/types";
 
-// ──────────────────────────────────────────────
-// Filters
-// ──────────────────────────────────────────────
+const FILTER_OPTIONS = [
+  { label: "All", value: "all" },
+  { label: "Favorites", value: "favorites" },
+  { label: "Herbs", value: "Herbs" },
+  { label: "Mindfulness", value: "Mindfulness" },
+  { label: "Meditation", value: "Meditation" },
+  { label: "Epigenetics", value: "Epigenetics" },
+  { label: "Neuroplasticity", value: "Neuroplasticity" },
+] as const satisfies readonly PillFilterOption<string>[];
 
-const FILTERS = [
-  "All",
-  "Herbs",
-  "Mindfulness",
-  "Meditation",
-  "Epigenetics",
-  "Neuroplasticity",
-] as const;
+type FilterLabel = (typeof FILTER_OPTIONS)[number]["value"];
 
-type FilterLabel = (typeof FILTERS)[number];
-type FilterCategory = Exclude<FilterLabel, "All">;
-
-const FILTER_MAP: Record<FilterCategory, string> = {
+const FILTER_MAP: Record<
+  Exclude<FilterLabel, "favorites">,
+  string | undefined
+> = {
+  all: undefined,
   Herbs: "healingHerbs",
   Mindfulness: "mindfullness",
   Meditation: "meditation",
@@ -50,47 +52,45 @@ const FILTER_MAP: Record<FilterCategory, string> = {
   Neuroplasticity: "neuroplasticity",
 };
 
-// ──────────────────────────────────────────────
-// Screen
-// ──────────────────────────────────────────────
+const normalize = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+const getFilterLabel = (value: FilterLabel) =>
+  FILTER_OPTIONS.find((option) => option.value === value)?.label ?? "Articles";
 
 export const ArticleListScreen: React.FC = () => {
   const navigation = useNavigation();
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(newTheme, spacing, typography);
+  const { svaColors, spacing } = useContext(ThemeContext);
+  const styles = styling(svaColors, spacing);
+  const searchInputRef = useRef<TextInput>(null);
 
-  const [selectedFilter, setSelectedFilter] = useState<FilterLabel>("All");
-  const [articles, setArticles] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [query, setQuery] = useState("");
+  const [selectedFilter, setSelectedFilter] = useState<FilterLabel>("all");
+  const [articles, setArticles] = useState<ArticleCardItem[]>(
+    __DEV__ ? MOCK_ARTICLE_ITEMS : []
+  );
+  const [isLoading, setIsLoading] = useState(!__DEV__);
 
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
-  const fetchArticles = async (filterKey: FilterLabel) => {
+  const fetchArticles = async (filter: Exclude<FilterLabel, "favorites">) => {
     try {
       setIsLoading(true);
-
-      const backendCategory =
-        filterKey === "All" ? undefined : FILTER_MAP[filterKey];
-
-      const result: any = await getArticleList(backendCategory);
-      // Backend returns { success, message, data: [...] }
+      const categorySlug = FILTER_MAP[filter];
+      const result: any = await getArticleList(categorySlug);
       const data = result?.data || (Array.isArray(result) ? result : []);
 
       if (Array.isArray(data)) {
-        const heights = [250, 280, 220, 270, 230, 240];
-
-        const processed = data.map((item: any) => ({
-          ...item,
-          height: heights[Math.floor(Math.random() * heights.length)],
-          // Fallback if image is null
-          image: item.image
-            ? { uri: item.image }
-            : require("@/assets/images/mt.jpg"),
-        }));
-
-        setArticles(processed);
+        setArticles(
+          data.map((item: Record<string, any>) =>
+            buildArticleCardItem(item, filter === "all" ? "Article" : filter)
+          )
+        );
       } else {
         console.error("Article API did not return data array:", result);
         setArticles([]);
@@ -104,124 +104,219 @@ export const ArticleListScreen: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchArticles("All");
+    if (__DEV__) {
+      setIsLoading(false);
+      setArticles(MOCK_ARTICLE_ITEMS);
+      return;
+    }
+
+    fetchArticles("all");
   }, []);
 
   const handleFilterPress = (label: FilterLabel) => {
     setSelectedFilter(label);
+
+    if (__DEV__ || label === "favorites") {
+      return;
+    }
+
     fetchArticles(label);
   };
 
-  const handleItemClick = (item: any) => {
+  const handleItemClick = (item: ArticleCardItem) => {
     router.push({
-      pathname: ROUTES.AUTH.TOOLS_CONTENT_DETAILS,
-      params: { id: item.id, type: "article" },
+      pathname: ROUTES.AUTH.TOOLS_ARTICLE_DETAIL,
+      params: { id: item.id },
     });
   };
 
-  /** ── Header *inside* FlatList so everything scrolls together ── */
-  const renderListHeader = () => (
-    <View>
-      <AppHeader
+  const filteredArticles = useMemo(() => {
+    const normalizedQuery = normalize(query);
+    const categoryFilteredArticles =
+      __DEV__ && selectedFilter !== "all" && selectedFilter !== "favorites"
+        ? articles.filter(
+            (item) =>
+              item.raw.filterKey === selectedFilter ||
+              item.raw.category === selectedFilter
+          )
+        : selectedFilter === "favorites"
+        ? articles.filter((item) => item.favorite)
+        : articles;
+
+    if (!normalizedQuery) return categoryFilteredArticles;
+
+    return categoryFilteredArticles.filter((item) => {
+      const searchBlob = normalize(
+        [item.title, ...item.tags, item.raw.category, item.raw.description]
+          .filter(Boolean)
+          .join(" ")
+      );
+
+      return searchBlob.includes(normalizedQuery);
+    });
+  }, [articles, query, selectedFilter]);
+
+  const renderHeader = () => (
+    <View style={styles.headerBlock}>
+      <ScreenHeader
         title="Article Library"
         subtitle="Deep dives into healing, neuroscience, and mindful living."
         onBack={() => navigation.goBack()}
-        // =======
         rightActions={[
           {
             icon: "search-outline",
-            onPress: () => console.log("Search pressed"),
+            accessibilityLabel: "Focus search",
+            onPress: () => searchInputRef.current?.focus(),
           },
           {
             icon: "bookmark-outline",
-            onPress: () => console.log("Bookmark pressed"),
+            accessibilityLabel: "Saved articles",
+            onPress: () => console.log("[ArticleList] bookmark pressed"),
           },
         ]}
+        containerStyle={styles.headerContainer}
       />
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chipsContainer}
-      >
-        {FILTERS.map((label) => (
-          <AnimatedChip
-            key={label}
-            label={label}
-            selected={selectedFilter === label}
-            onPress={() => handleFilterPress(label)}
-          />
-        ))}
-      </ScrollView>
+      <View style={styles.searchBar}>
+        <Ionicons
+          name="search-outline"
+          size={18}
+          color={svaColors.text.secondary}
+        />
+        <TextInput
+          ref={searchInputRef}
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Search articles, topics, tags"
+          placeholderTextColor={svaColors.text.secondary}
+          autoCapitalize="none"
+          autoCorrect={false}
+          returnKeyType="search"
+          style={styles.searchInput}
+        />
+        {!!query && (
+          <TouchableOpacity
+            onPress={() => setQuery("")}
+            style={styles.clearButton}
+            accessibilityRole="button"
+            accessibilityLabel="Clear search"
+          >
+            <Ionicons
+              name="close-circle"
+              size={18}
+              color={svaColors.text.secondary}
+            />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <PillFilters
+        options={FILTER_OPTIONS}
+        selectedValue={selectedFilter}
+        onChange={handleFilterPress}
+        contentContainerStyle={styles.filtersRow}
+      />
     </View>
   );
 
   const renderEmpty = () =>
-    !isLoading ? (
-      <EmptyState
-        title={`No ${selectedFilter.toLowerCase()} items found.`}
-        subtitle="Try switching filters or check back later."
-        color={newTheme.textSecondary}
+    isLoading ? (
+      <RoutineSkeletonGrid
+        spacing={spacing}
+        theme={{
+          surfaceMuted: svaColors.surface.base,
+          surface: svaColors.surface.base,
+          divider: svaColors.border.default,
+        }}
       />
     ) : (
-      <RoutineSkeletonGrid spacing={spacing} theme={newTheme} />
+      <EmptyState
+        title={
+          selectedFilter === "all"
+            ? "No articles found."
+            : selectedFilter === "favorites"
+            ? "No favorite articles found."
+            : `No ${getFilterLabel(selectedFilter).toLowerCase()} articles found.`
+        }
+        subtitle="Try switching filters or checking back later for new reads."
+        color={svaColors.text.secondary}
+      />
     );
 
   return (
-    <ScreenView
-      style={{
-        paddingTop:
-          Platform.OS === "ios"
-            ? spacing["xxl"] + spacing["xxl"] * 0.2
-            : spacing.xl,
-        paddingHorizontal: spacing.md,
-      }}
-    >
-      <SafeAreaView style={{ flex: 1 }}>
-        <FlatList
-          data={articles}
-          numColumns={2}
-          keyExtractor={(item) => String(item.id)}
-          showsVerticalScrollIndicator={false}
-          ListHeaderComponent={renderListHeader}
-          ListHeaderComponentStyle={{ marginBottom: spacing.md }}
-          ListEmptyComponent={renderEmpty}
-          contentContainerStyle={styles.listContent}
-          columnWrapperStyle={styles.columnWrapper}
-          renderItem={({ item }) => (
-            <ContentPosterCard
-              title={item.title}
-              image={item.image}
-              tag={item.tag}
-              height={item.height}
-              onPress={() => handleItemClick(item)}
-            />
-          )}
-        />
-      </SafeAreaView>
+    <ScreenView bgColor={svaColors.bg.base} padding={0} style={styles.screen}>
+      <FlatList
+        data={filteredArticles}
+        keyExtractor={(item) => item.id}
+        numColumns={2}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
+        columnWrapperStyle={styles.columnWrapper}
+        ListHeaderComponent={renderHeader}
+        ListHeaderComponentStyle={styles.listHeaderComponent}
+        ListEmptyComponent={renderEmpty}
+        renderItem={({ item }) => (
+          <ProtocolTemplateCard
+            item={item}
+            style={styles.cardCell}
+            onPress={() => handleItemClick(item)}
+          />
+        )}
+      />
     </ScreenView>
   );
 };
 
-const styling = (theme: any, spacing: any, typography: any) =>
+const styling = (colors: SvaColorSet, spacing: Spacing) =>
   StyleSheet.create({
-    chipsRow: {
-      flexDirection: "row",
-      flexWrap: "nowrap",
-      paddingTop: spacing.md,
-      paddingBottom: spacing.sm,
-    },
-    chipsContainer: {
-      paddingTop: spacing.md,
-      paddingBottom: spacing.sm,
+    screen: {
+      flex: 1,
+      backgroundColor: colors.bg.base,
     },
     listContent: {
-      paddingBottom: spacing.xl * 2,
-      paddingTop: spacing.md,
+      paddingHorizontal: spacing.md,
+      paddingBottom: Platform.OS === "ios" ? 120 : 140,
+    },
+    listHeaderComponent: {
+      marginBottom: spacing.md,
+    },
+    headerBlock: {},
+    headerContainer: {
+      marginBottom: spacing.md,
+    },
+    searchBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.surface.base,
+      borderWidth: 1,
+      borderColor: colors.border.default,
+      borderRadius: 18,
+      height: 54,
+      paddingHorizontal: spacing.md,
+      marginBottom: spacing.md,
+    },
+    searchInput: {
+      flex: 1,
+      marginLeft: spacing.sm,
+      color: colors.text.primary,
+      fontSize: 15,
+      fontFamily: "Outfit_400Regular",
+    },
+    clearButton: {
+      marginLeft: spacing.xs,
+    },
+    filtersRow: {
+      paddingBottom: spacing.xs,
     },
     columnWrapper: {
       justifyContent: "space-between",
-      paddingHorizontal: 0,
       marginBottom: spacing.md,
     },
+    cardCell: {
+      width: "48%",
+    },
   });
+
+export default ArticleListScreen;
