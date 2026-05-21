@@ -54,7 +54,6 @@ export const API_ENDPOINTS = {
   getRecipeList: `${BASE_URL}/api/v1/media/media-assets/?type=recipe`,
   searchRecipes: (query: string) =>
     `${BASE_URL}/api/v1/media/media-assets/recipes/?search=${query}`,
-  getRoutineTemplate: `${BASE_URL}/api/habit-templates/`,
   //TODO: category Data fix
   getShortVideoList: `${BASE_URL}/api/v1/media/media-assets/?type=shortVideo`,
   getAudioBookList: `${BASE_URL}/api/v1/media/media-assets/?type=meditation&category=audioBook`,

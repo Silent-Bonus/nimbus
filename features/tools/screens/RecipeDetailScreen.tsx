@@ -1,608 +1,395 @@
-// app/(auth)/toolsScreen/RecipeDetailScreen.tsx
-import React, { useEffect, useRef, useState, useContext } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
+import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import {
-  Animated,
-  ScrollView,
-  View,
-  Text,
-  StyleSheet,
-  Image,
-  TouchableOpacity,
   ActivityIndicator,
+  ScrollView,
   Share,
-  SafeAreaView,
-  Platform,
-  Dimensions,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
-import { useLocalSearchParams, useNavigation, router } from "expo-router";
-import {
-  Ionicons,
-  MaterialCommunityIcons,
-  FontAwesome5,
-} from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import AppHeader from "@/components/layout/AppHeader";
 import ThemeContext from "@/contexts/ThemeContext";
-import { getArticleDetails } from "../services/toolService";
+import { ROUTES } from "@/constants/routes";
+import { getArticleDetails } from "@/features/tools/services/toolService";
+import {
+  RecipeDetailHero,
+  RecipeDetailSection,
+  RecipeIngredientList,
+  RecipeMealPlanButton,
+  RecipeProcessList,
+  RecipeTipCards,
+  RecipeWisdomCard,
+  type RecipeNutritionStat,
+} from "@/features/tools/components/recipe-detail";
+import {
+  DEFAULT_RECIPE_PLAN,
+  type RecipePlanDetail,
+  getRecipePlanById,
+} from "@/features/tools/data/recipePlans";
+import { ScreenView } from "@/components/ui/theme-components/ScreenView";
+import type { Spacing, SvaColorSet, TypographyTokens } from "@/theme/types";
 
-// import { ScreenView } from "@/components/Themed";
-// import ThemeContext from "@/context/ThemeContext";
-// import AppHeader from "@/components/common/AppHeader";
-// import NutritionInfo from "@/components/tools/contentDetails/NutritionInfo";
-// import ArticleSection from "@/components/tools/contentDetails/ArticleSection";
+const getStringParam = (value: unknown): string | null => {
+  if (!value) return null;
+  if (Array.isArray(value)) return String(value[0]);
+  return String(value);
+};
 
-// import { getArticleDetails } from "@/services/toolService";
+const normalizeFilterKey = (
+  category: string | undefined,
+  fallback: RecipePlanDetail["filterKey"]
+): RecipePlanDetail["filterKey"] => {
+  const normalized = (category ?? "").toLowerCase().replace(/[^a-z]+/g, "");
 
-const { width } = Dimensions.get("window");
-const HERO_HEIGHT = 300;
+  switch (normalized) {
+    case "breakfast":
+      return "Breakfast";
+    case "lunch":
+      return "Lunch";
+    case "dinner":
+      return "Dinner";
+    case "beverages":
+    case "drink":
+      return "Beverages";
+    case "snacks":
+    case "snack":
+      return "Snacks";
+    case "soup":
+      return "Soup";
+    case "dessert":
+      return "Dessert";
+    case "sauce":
+      return "Sauce";
+    case "nonveg":
+      return "NonVeg";
+    default:
+      return fallback;
+  }
+};
+
+const resolveImageSource = (
+  image: unknown,
+  fallback: RecipePlanDetail["image"]
+) => {
+  if (!image) return fallback;
+  if (typeof image === "string") {
+    return { uri: image };
+  }
+  if (typeof image === "object") {
+    const candidate = image as { uri?: string; url?: string; path?: string };
+    if (typeof candidate.uri === "string") return { uri: candidate.uri };
+    if (typeof candidate.url === "string") return { uri: candidate.url };
+    if (typeof candidate.path === "string") return { uri: candidate.path };
+  }
+  return fallback;
+};
+
+const normalizeRecipeFromApi = (
+  apiArticle: Record<string, any>,
+  fallback: RecipePlanDetail
+): RecipePlanDetail => {
+  const nutrition = apiArticle?.nutrition;
+  const ingredientSource = apiArticle?.ingredients;
+  const instructionSource = apiArticle?.instructions;
+  const tipsSource = apiArticle?.tips;
+
+  return {
+    ...fallback,
+    id: String(apiArticle?.id ?? fallback.id),
+    title: apiArticle?.title || apiArticle?.name || fallback.title,
+    subtitle:
+      apiArticle?.subtitle ||
+      apiArticle?.tagline ||
+      apiArticle?.category ||
+      fallback.subtitle,
+    category: apiArticle?.category || fallback.category,
+    filterKey: normalizeFilterKey(apiArticle?.category, fallback.filterKey),
+    image: resolveImageSource(
+      apiArticle?.image || apiArticle?.imageUri,
+      fallback.image
+    ),
+    imageFit: apiArticle?.imageFit || fallback.imageFit,
+    prepTime:
+      apiArticle?.prep_time || apiArticle?.prepTime || fallback.prepTime,
+    calories: Number(apiArticle?.calories ?? fallback.calories),
+    favorite: Boolean(
+      apiArticle?.favorite ?? apiArticle?.is_favorite ?? fallback.favorite
+    ),
+    nutrition:
+      nutrition && typeof nutrition === "object"
+        ? {
+            calories: String(nutrition.calories ?? fallback.nutrition.calories),
+            protein: String(nutrition.protein ?? fallback.nutrition.protein),
+            carbs: String(nutrition.carbs ?? fallback.nutrition.carbs),
+            fats: String(nutrition.fats ?? fallback.nutrition.fats),
+          }
+        : fallback.nutrition,
+    description:
+      apiArticle?.description || apiArticle?.context || fallback.description,
+    ingredients: Array.isArray(ingredientSource)
+      ? ingredientSource.map((item: any) => String(item))
+      : fallback.ingredients,
+    process: Array.isArray(instructionSource)
+      ? instructionSource.map((item: any) =>
+          String(item?.instruction ?? item?.step ?? item)
+        )
+      : fallback.process,
+    tips: Array.isArray(tipsSource)
+      ? tipsSource.map((item: any, index: number) => ({
+          key: String(item?.key ?? item?.title ?? index),
+          title: String(item?.title ?? item?.label ?? "Tip"),
+          description: String(item?.description ?? item?.body ?? ""),
+          icon: String(item?.icon ?? "leaf-outline"),
+        }))
+      : fallback.tips,
+    wisdomTitle: apiArticle?.wisdomTitle || fallback.wisdomTitle,
+    wisdom:
+      apiArticle?.wisdom || apiArticle?.nutrition_wisdom || fallback.wisdom,
+    ctaLabel:
+      apiArticle?.ctaLabel || apiArticle?.action_button || fallback.ctaLabel,
+  };
+};
 
 const RecipeDetailScreen: React.FC = () => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(newTheme, spacing, typography);
-
-  const params = useLocalSearchParams();
-  const rawId = (params as any)?.id;
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
+  const { svaColors, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = styling(svaColors, spacing, svaTypography);
 
-  const [details, setDetails] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [isFavorite, setIsFavorite] = useState(false);
+  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const idParam = getStringParam(params.id);
 
-  const scrollY = useRef(new Animated.Value(0)).current;
+  const fallbackDetail = useMemo(
+    () => getRecipePlanById(idParam) ?? DEFAULT_RECIPE_PLAN,
+    [idParam]
+  );
 
-  const getIdFromParam = (p: unknown): string | null => {
-    if (!p) return null;
-    if (Array.isArray(p)) return String(p[0]);
-    return String(p);
-  };
-  const idParam = getIdFromParam(rawId);
-
-  const resolveImageUri = (img: any): string | null => {
-    if (!img) return null;
-    if (typeof img === "string") return img;
-    if (typeof img === "object") {
-      if (typeof img.url === "string") return img.url;
-      if (typeof img.uri === "string") return img.uri;
-      if (typeof img.path === "string") return img.path;
-    }
-    return null;
-  };
+  const [detail, setDetail] = useState<RecipePlanDetail>(fallbackDetail);
+  const [isFavorite, setIsFavorite] = useState(fallbackDetail.favorite);
+  const [loading, setLoading] = useState(!__DEV__);
 
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
-    if (idParam) {
-      fetchDetails();
-    }
-  }, [idParam]);
+  }, [navigation]);
 
-  const fetchDetails = async () => {
-    try {
-      setLoading(true);
-      if (!idParam) return;
-      const numericId = parseInt(idParam, 10);
-      if (Number.isNaN(numericId)) return;
+  useEffect(() => {
+    let active = true;
 
-      const res = await getArticleDetails(numericId);
-      const apiArticle: any =
-        res && typeof res === "object" && "data" in res ? res.data : res;
+    const load = async () => {
+      const mockDetail = fallbackDetail;
 
-      if (!apiArticle || typeof apiArticle !== "object") {
-        throw new Error("Invalid API response");
+      if (__DEV__) {
+        if (!active) return;
+        setDetail(mockDetail);
+        setIsFavorite(mockDetail.favorite);
+        setLoading(false);
+        return;
       }
 
-      const imageUri = resolveImageUri(apiArticle.image);
+      if (!idParam) {
+        if (!active) return;
+        setDetail(mockDetail);
+        setIsFavorite(mockDetail.favorite);
+        setLoading(false);
+        return;
+      }
 
-      // Transform backend data to match template needs
-      const transformed = {
-        ...apiArticle,
-        imageUri,
-        ingredients: apiArticle.ingredients || [
-          "2 cups organic kale",
-          "1 cup wild blueberries",
-          "1 tbsp chia seeds",
-          "1/2 avocado",
-          "1 cup almond milk",
-        ],
-        instructions: apiArticle.instructions || [
-          { step: "1", instruction: "Wash all greens and fruits thoroughly." },
-          {
-            step: "2",
-            instruction: "Place all ingredients into a high-speed blender.",
-          },
-          { step: "3", instruction: "Blend until smooth and creamy." },
-        ],
-        nutrition: apiArticle.nutrition || {
-          calories: "245 kcal",
-          protein: "8g",
-          carbs: "32g",
-          fats: "12g",
-        },
-        prepTime: apiArticle.prep_time || "10 min",
-        servings: apiArticle.servings || "1 Person",
-        difficulty: apiArticle.difficulty || "Easy",
-      };
+      setLoading(true);
+      try {
+        const numericId = Number(idParam);
+        if (!Number.isNaN(numericId)) {
+          const res = await getArticleDetails(numericId);
+          const apiArticle: any =
+            res && typeof res === "object" && "data" in res ? res.data : res;
 
-      setDetails(transformed);
-    } catch (error) {
-      console.error("Failed to fetch recipe details:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+          if (apiArticle && typeof apiArticle === "object") {
+            const normalized = normalizeRecipeFromApi(apiArticle, mockDetail);
+            if (!active) return;
+            setDetail(normalized);
+            setIsFavorite(normalized.favorite);
+            return;
+          }
+        }
+
+        if (!active) return;
+        setDetail(mockDetail);
+        setIsFavorite(mockDetail.favorite);
+      } catch (error) {
+        console.warn("[RecipeDetail] load failed", error);
+        if (!active) return;
+        setDetail(mockDetail);
+        setIsFavorite(mockDetail.favorite);
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
+    load();
+
+    return () => {
+      active = false;
+    };
+  }, [fallbackDetail, idParam]);
+
+  const stats = useMemo<RecipeNutritionStat[]>(
+    () => [
+      { label: "Calories", value: detail.nutrition.calories },
+      { label: "Protein", value: detail.nutrition.protein },
+      { label: "Carbs", value: detail.nutrition.carbs },
+      { label: "Fats", value: detail.nutrition.fats },
+    ],
+    [detail]
+  );
 
   const onShare = async () => {
     try {
       await Share.share({
-        message: `Check out this recipe: ${details?.title}`,
+        title: detail.title,
+        message: `${detail.title}\n\n${detail.subtitle}\n\nNimbus recipe plan`,
       });
     } catch (error) {
-      console.error("Share error:", error);
+      console.warn("[RecipeDetail] share failed", error);
     }
   };
 
-  const headerOpacity = scrollY.interpolate({
-    inputRange: [0, 150],
-    outputRange: [0, 1],
-    extrapolate: "clamp",
-  });
+  const onToggleFavorite = () => {
+    setIsFavorite((current) => !current);
+  };
 
-  if (loading) {
-    return (
-      <View style={[styles.center, { backgroundColor: newTheme.background }]}>
-        <ActivityIndicator size="large" color={newTheme.accent} />
-      </View>
-    );
-  }
+  const onAddToMealPlan = () => {
+    router.push({
+      pathname: ROUTES.AUTH.TOOLS_MEAL_CREATION,
+      params: {
+        recipeId: detail.id,
+        recipeTitle: detail.title,
+      },
+    });
+  };
 
   return (
-    <View style={styles.container}>
-      {/* Sticky Header */}
-      <Animated.View
-        style={[
-          styles.header,
-          { opacity: headerOpacity, backgroundColor: newTheme.background },
-        ]}
-      >
-        <AppHeader
-          title={details?.title || "Recipe"}
-          onBack={() => router.back()}
-          rightActions={[
-            {
-              icon: isFavorite ? "heart" : "heart-outline",
-              onPress: () => setIsFavorite(!isFavorite),
-            },
-            {
-              icon: "share-social-outline",
-              onPress: onShare,
-            },
-          ]}
-        />
-      </Animated.View>
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: false }
-        )}
-        scrollEventThrottle={16}
-      >
-        {/* Hero Section */}
-        <View style={styles.heroContainer}>
-          <Image
-            source={
-              details?.imageUri
-                ? { uri: details.imageUri }
-                : require("@/assets/images/mt.jpg")
-            }
-            style={styles.heroImage}
-          />
-          <LinearGradient
-            colors={["rgba(0,0,0,0.5)", "transparent", "rgba(0,0,0,0.8)"]}
-            style={styles.heroGradient}
-          />
-
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Ionicons name="chevron-back" size={24} color="#FFF" />
-          </TouchableOpacity>
-
-          <View style={styles.heroContent}>
-            <View style={styles.tagWrapper}>
-              <Text style={styles.tagText}>
-                {details?.category || "HEALTHY"}
-              </Text>
-            </View>
-            <Text style={styles.heroTitle}>{details?.title}</Text>
-
-            <View style={styles.quickInfoRow}>
-              <View style={styles.quickInfoItem}>
-                <Ionicons name="time-outline" size={14} color="#FFF" />
-                <Text style={styles.quickInfoText}>{details?.prepTime}</Text>
-              </View>
-              <View style={styles.separator} />
-              <View style={styles.quickInfoItem}>
-                <Ionicons name="people-outline" size={14} color="#FFF" />
-                <Text style={styles.quickInfoText}>{details?.servings}</Text>
-              </View>
-              <View style={styles.separator} />
-              <View style={styles.quickInfoItem}>
-                <Ionicons name="stats-chart-outline" size={14} color="#FFF" />
-                <Text style={styles.quickInfoText}>{details?.difficulty}</Text>
-              </View>
-            </View>
+    <ScreenView bgColor={svaColors.bg.base} style={styles.screen}>
+      <View style={styles.root}>
+        {loading ? (
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator size="large" color={svaColors.brand.primary} />
           </View>
+        ) : (
+          <>
+            <AppHeader
+              title={detail.title}
+              subtitle={detail.subtitle}
+              onBack={() => router.back()}
+              rightActions={[
+                {
+                  icon: isFavorite ? "heart" : "heart-outline",
+                  accessibilityLabel: "Toggle favorite",
+                  onPress: onToggleFavorite,
+                },
+                {
+                  icon: "share-outline",
+                  accessibilityLabel: "Share recipe",
+                  onPress: onShare,
+                },
+              ]}
+              titleStyle={styles.headerTitle}
+              subtitleStyle={styles.headerSubtitle}
+              containerStyle={styles.header}
+            />
 
-          {/* Nutrients Overlay on Image Bottom */}
-          <View style={styles.nutrientsBar}>
-            <View style={styles.nutrientItem}>
-              <Text style={styles.nutrientValue}>
-                {details?.nutrition?.fiber || "5g"}
-              </Text>
-              <Text style={styles.nutrientLabel}>FIBER</Text>
-            </View>
-            <View style={styles.nutrientDivider} />
-            <View style={styles.nutrientItem}>
-              <Text style={styles.nutrientValue}>
-                {details?.nutrition?.carbs || "32g"}
-              </Text>
-              <Text style={styles.nutrientLabel}>CARBS</Text>
-            </View>
-            <View style={styles.nutrientDivider} />
-            <View style={styles.nutrientItem}>
-              <Text style={styles.nutrientValue}>
-                {details?.nutrition?.protein || "8g"}
-              </Text>
-              <Text style={styles.nutrientLabel}>PROTEIN</Text>
-            </View>
-            <View style={styles.nutrientDivider} />
-            <View style={styles.nutrientItem}>
-              <Text style={styles.nutrientValue}>
-                {details?.nutrition?.fats || "12g"}
-              </Text>
-              <Text style={styles.nutrientLabel}>FATS</Text>
-            </View>
-          </View>
-        </View>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={[
+                styles.content,
+                { paddingBottom: insets.bottom + spacing.xl * 2 },
+              ]}
+            >
+              <RecipeDetailHero image={detail.image} stats={stats} />
 
-        <View style={styles.content}>
-          {/* About Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>About this recipe</Text>
-            <Text style={styles.descriptionText}>
-              {details?.description ||
-                "A nutrient-dense blend designed to optimize your cognitive function and provide sustained energy throughout your morning routine. This recipe combines antioxidant-rich ingredients with healthy fats for peak performance."}
-            </Text>
-          </View>
+              <RecipeDetailSection eyebrow="The Alchemy">
+                <Text style={styles.description}>{detail.description}</Text>
+              </RecipeDetailSection>
 
-          {/* Elements Section (formerly Ingredients) */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>Elements</Text>
-              <Text style={styles.itemCount}>
-                {details?.ingredients?.length || 5} ITEMS
-              </Text>
-            </View>
-            {details?.ingredients?.map((item: any, index: number) => (
-              <View key={index} style={styles.ingredientItem}>
-                <View
-                  style={[styles.bullet, { backgroundColor: newTheme.accent }]}
-                />
-                <Text style={styles.ingredientText}>
-                  {typeof item === "object"
-                    ? `${item.quantity || ""} ${item.item || ""}`.trim()
-                    : String(item)}
-                </Text>
-              </View>
-            ))}
-          </View>
+              <RecipeDetailSection eyebrow="Elements">
+                <RecipeIngredientList items={detail.ingredients} />
+              </RecipeDetailSection>
 
-          {/* The Process Section (formerly Instructions) */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>The Process</Text>
-            {details?.instructions?.map((item: any, index: number) => (
-              <View key={index} style={styles.instructionItem}>
-                <View
-                  style={[
-                    styles.stepNumber,
-                    { backgroundColor: newTheme.surfaceMuted },
-                  ]}
-                >
-                  <Text style={styles.stepNumberText}>{item.step}</Text>
-                </View>
-                <Text style={styles.instructionText}>{item.instruction}</Text>
-              </View>
-            ))}
-          </View>
+              <RecipeDetailSection eyebrow="The Process">
+                <RecipeProcessList steps={detail.process} />
+              </RecipeDetailSection>
 
-          {/* Notes Section */}
-          <View style={[styles.section, styles.notesSection]}>
-            <Text style={styles.sectionTitle}>Chef's Notes</Text>
-            <View style={styles.notesContainer}>
-              <Ionicons
-                name="bulb-outline"
-                size={20}
-                color={newTheme.accent}
-                style={{ marginTop: 2 }}
+              <RecipeDetailSection eyebrow="Tips">
+                <RecipeTipCards tips={detail.tips} />
+              </RecipeDetailSection>
+
+              <RecipeWisdomCard
+                title={detail.wisdomTitle}
+                body={detail.wisdom}
               />
-              <Text style={styles.notesText}>
-                For the best texture, ensure your blender is at high speed. You
-                can also substitute almond milk with coconut water for a more
-                refreshing, electrolyte-rich profile.
-              </Text>
-            </View>
-          </View>
-        </View>
-      </ScrollView>
 
-      {/* Action Button */}
-      {/* <View style={styles.footer}>
-        <TouchableOpacity style={[styles.primaryButton, { backgroundColor: newTheme.accent }]}>
-          <Text style={[styles.primaryButtonText, { color: newTheme.background }]}>Add to Meal Plan</Text>
-        </TouchableOpacity>
-      </View> */}
-    </View>
+              <RecipeMealPlanButton
+                label={detail.ctaLabel}
+                onPress={onAddToMealPlan}
+              />
+            </ScrollView>
+          </>
+        )}
+      </View>
+    </ScreenView>
   );
 };
 
-const styling = (theme: any, spacing: any, typography: any) =>
+const styling = (
+  colors: SvaColorSet,
+  spacing: Spacing,
+  typography?: TypographyTokens
+) =>
   StyleSheet.create({
-    container: {
+    screen: {
       flex: 1,
-      backgroundColor: theme.background,
+      backgroundColor: colors.bg.base,
     },
-    center: {
+    root: {
       flex: 1,
-      justifyContent: "center",
+    },
+    loadingWrap: {
+      flex: 1,
       alignItems: "center",
+      justifyContent: "center",
     },
     header: {
-      position: "absolute",
-      top: 0,
-      left: 0,
-      right: 0,
-      zIndex: 10,
-      paddingTop: Platform.OS === "ios" ? 50 : 20,
-      paddingHorizontal: spacing.md,
-    },
-    heroContainer: {
-      height: 420, // Increased to accommodate nutrients bar
-      width: "100%",
-    },
-    heroImage: {
-      ...StyleSheet.absoluteFillObject,
-      width: "100%",
-      height: 420,
-    },
-    heroGradient: {
-      ...StyleSheet.absoluteFillObject,
-    },
-    backButton: {
-      position: "absolute",
-      top: Platform.OS === "ios" ? 50 : 20,
-      left: spacing.md,
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: "rgba(0,0,0,0.3)",
-      justifyContent: "center",
-      alignItems: "center",
-      zIndex: 20,
-    },
-    heroContent: {
-      position: "absolute",
-      bottom: 100, // Shifted up to make room for nutrients bar
-      left: spacing.md,
-      right: spacing.md,
-    },
-    tagWrapper: {
-      backgroundColor: theme.accent,
-      alignSelf: "flex-start",
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      borderRadius: 6,
-      marginBottom: spacing.sm,
-    },
-    tagText: {
-      ...typography.smallCaption,
-      color: theme.background,
-      fontWeight: "900",
-      letterSpacing: 1,
-    },
-    heroTitle: {
-      ...typography.h1,
-      color: "#FFF",
-      fontSize: 32,
-      fontWeight: "800",
-      marginBottom: spacing.xs,
-    },
-    quickInfoRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 12,
-    },
-    quickInfoItem: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-    },
-    quickInfoText: {
-      ...typography.caption,
-      color: "rgba(255,255,255,0.9)",
-      fontWeight: "600",
-    },
-    separator: {
-      width: 3,
-      height: 3,
-      borderRadius: 1.5,
-      backgroundColor: "rgba(255,255,255,0.4)",
-    },
-    nutrientsBar: {
-      position: "absolute",
-      bottom: 20,
-      left: spacing.md,
-      right: spacing.md,
-      flexDirection: "row",
-      backgroundColor: "rgba(255,255,255,0.15)",
-      borderRadius: 20,
-      paddingVertical: 15,
-      paddingHorizontal: 10,
-      borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.2)",
-      backdropFilter: "blur(10px)", // Note: for iOS mainly
-      justifyContent: "space-around",
-      alignItems: "center",
-    },
-    nutrientItem: {
-      alignItems: "center",
-      flex: 1,
-    },
-    nutrientValue: {
-      color: "#FFF",
-      fontSize: 16,
-      fontWeight: "800",
-    },
-    nutrientLabel: {
-      color: "rgba(255,255,255,0.7)",
-      fontSize: 9,
-      fontWeight: "700",
-      letterSpacing: 0.5,
-      marginTop: 2,
-    },
-    nutrientDivider: {
-      width: 1,
-      height: 24,
-      backgroundColor: "rgba(255,255,255,0.2)",
-    },
-    content: {
-      paddingTop: spacing.xl,
-      paddingBottom: 120,
-      paddingHorizontal: spacing.md,
-      backgroundColor: theme.background,
-      borderTopLeftRadius: 32,
-      borderTopRightRadius: 32,
-      marginTop: -20, // Pull up over the hero image bottom
-    },
-    section: {
-      marginBottom: spacing.xl,
-    },
-    sectionHeaderRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginBottom: spacing.md,
-    },
-    sectionTitle: {
-      ...typography.h3,
-      color: theme.textPrimary,
-      fontWeight: "800",
-      fontSize: 20,
-    },
-    itemCount: {
-      ...typography.smallCaption,
-      color: theme.accent,
-      fontWeight: "800",
-      letterSpacing: 0.5,
-    },
-    descriptionText: {
-      ...typography.body,
-      color: theme.textSecondary,
-      lineHeight: 24,
-      fontSize: 15,
-    },
-    ingredientItem: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: spacing.xs,
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.divider,
-    },
-    bullet: {
-      width: 6,
-      height: 6,
-      borderRadius: 3,
-      marginRight: 16,
-    },
-    ingredientText: {
-      ...typography.body,
-      color: theme.textPrimary,
-      fontSize: 16,
-      fontWeight: "500",
-    },
-    instructionItem: {
-      flexDirection: "row",
       marginBottom: spacing.lg,
     },
-    stepNumber: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      justifyContent: "center",
-      alignItems: "center",
-      marginRight: 16,
-      borderWidth: 1,
-      borderColor: theme.divider,
+    headerTitle: {
+      fontFamily:
+        typography?.textStyle?.authTitle?.fontFamily ??
+        "CormorantGaramond_600SemiBold",
+      fontSize: 24,
+      lineHeight: 28,
+      letterSpacing: -0.4,
     },
-    stepNumberText: {
-      ...typography.smallCaption,
-      color: theme.accent,
-      fontWeight: "900",
+    headerSubtitle: {
+      color: colors.brand.primary,
+      textTransform: "uppercase",
+      letterSpacing: 2,
+      fontSize: 10.5,
+      lineHeight: 12,
+      fontWeight: "700",
     },
-    instructionText: {
-      ...typography.body,
-      color: theme.textPrimary,
-      flex: 1,
-      lineHeight: 24,
+    content: {
+      paddingHorizontal: spacing.lg,
+      gap: spacing.xl,
+    },
+    description: {
+      color: colors.text.secondary,
       fontSize: 15,
-    },
-    notesSection: {
-      backgroundColor: theme.surfaceMuted,
-      padding: spacing.md,
-      borderRadius: 24,
-      marginTop: spacing.sm,
-    },
-    notesContainer: {
-      flexDirection: "row",
-      gap: 12,
-    },
-    notesText: {
-      ...typography.body,
-      color: theme.textSecondary,
-      flex: 1,
-      fontSize: 14,
-      lineHeight: 20,
-      fontStyle: "italic",
-    },
-    footer: {
-      position: "absolute",
-      bottom: 0,
-      left: 0,
-      right: 0,
-      padding: spacing.md,
-      paddingBottom: Platform.OS === "ios" ? 34 : spacing.md,
-      backgroundColor: theme.background,
-      borderTopWidth: 1,
-      borderTopColor: theme.divider,
-    },
-    primaryButton: {
-      height: 58,
-      borderRadius: 20,
-      justifyContent: "center",
-      alignItems: "center",
-      shadowColor: theme.accent,
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.3,
-      shadowRadius: 12,
-      elevation: 8,
-    },
-    primaryButtonText: {
-      ...typography.button,
-      fontWeight: "900",
-      fontSize: 16,
-      letterSpacing: 1,
+      lineHeight: 24,
+      fontFamily:
+        typography?.textStyle?.authBody?.fontFamily ?? "Outfit_400Regular",
     },
   });
 

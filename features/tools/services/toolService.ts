@@ -5,8 +5,6 @@ import {
   ArticleListResponse,
   AudioBookListResponse,
   RecipeListResponse,
-  RoutineDataDetails,
-  RoutineListResponse,
   ShortVideoListResponse,
   SoundscapeListResponse,
   bodyShapeCalculatorRequest,
@@ -104,36 +102,6 @@ export const searchRecipes = async (
   try {
     const response: AxiosResponse<RecipeListResponse> = await axios.get(
       API_ENDPOINTS.searchRecipes(query)
-    );
-    return response.data;
-  } catch (error: any) {
-    throw error.response ? error.response.data : error.message;
-  }
-};
-
-export const getRoutineList = async (
-  category?: string
-): Promise<RoutineListResponse> => {
-  try {
-    const endpoint = category
-      ? `${API_ENDPOINTS.getRoutineTemplate}?category=${category}`
-      : API_ENDPOINTS.getRoutineTemplate;
-
-    const response: AxiosResponse<RoutineListResponse> = await axios.get(
-      endpoint
-    );
-    return response.data; // Return the list data
-  } catch (error: any) {
-    throw error.response ? error.response.data : error.message;
-  }
-};
-
-export const getRoutineDetails = async (
-  id: number
-): Promise<RoutineDataDetails> => {
-  try {
-    const response: AxiosResponse<RoutineDataDetails> = await axios.get(
-      `${API_ENDPOINTS.getRoutineTemplate}${id}/`
     );
     return response.data;
   } catch (error: any) {

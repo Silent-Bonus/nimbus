@@ -14,19 +14,13 @@ import {
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 
-// <<<<<<<
 import ThemeContext from "@/contexts/ThemeContext";
 import { ScreenView } from "@/components/ui/Themed";
 import StyledButton from "@/components/ui/theme-components/StyledButton";
-import ToolScreenHeader from "@/features/tools/components/common/ToolScreenHeader";
 import DateInput from "@/components/ui/picker/DateInput";
 import DatePickerSheet from "@/components/ui/picker/DatePickerSheet";
 import { FilterPill } from "@/features/self-care/components/workout/FilterPill";
 import { searchRecipes } from "@/features/tools/services/toolService";
-// =======
-
-// import AppHeader from "@/components/common/AppHeader";
-
 import {
   addMealItem,
   bulkUpdateMealPlan,
@@ -41,6 +35,11 @@ import {
 import { useNimbusToast } from "@/components/ui/toast/useNimbusToast";
 import { addDays } from "date-fns";
 import AppHeader from "@/components/layout/AppHeader";
+import {
+  MealCardSurface,
+  MealFlowSection,
+} from "@/features/tools/components/meal-flow";
+import type { ColorSet, Spacing, Typography } from "@/theme/types";
 
 type MealType = "Breakfast" | "Lunch" | "Dinner" | "Snacks";
 
@@ -336,7 +335,7 @@ export const MealCreationScreen = () => {
 
     if (recipeResults.length === 0 && query.trim().length >= 3) {
       return (
-        <View style={styles.searchDropdown}>
+        <MealCardSurface tone="surface" radius={16} style={styles.searchDropdown}>
           <TouchableOpacity
             style={styles.searchResultItem}
             onPress={() => handleSelectRecipe({ id: 0, title: query })}
@@ -348,14 +347,14 @@ export const MealCreationScreen = () => {
             />
             <Text style={styles.searchResultText}>Use "{query}"</Text>
           </TouchableOpacity>
-        </View>
+        </MealCardSurface>
       );
     }
 
     if (recipeResults.length === 0) return null;
 
     return (
-      <View style={styles.searchDropdown}>
+      <MealCardSurface tone="surface" radius={16} style={styles.searchDropdown}>
         {recipeResults.map((item) => (
           <TouchableOpacity
             key={item.id}
@@ -370,7 +369,7 @@ export const MealCreationScreen = () => {
             <Text style={styles.searchResultText}>{item.title}</Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </MealCardSurface>
     );
   };
 
@@ -379,8 +378,7 @@ export const MealCreationScreen = () => {
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.formPadding}
     >
-      <View style={styles.inputGroup}>
-        <Text style={styles.stepLabel}>When?</Text>
+      <MealFlowSection title="When?">
         <DateInput
           value={dayDate}
           onChange={setDayDate}
@@ -389,10 +387,9 @@ export const MealCreationScreen = () => {
           minimumDate={tomorrowAtMidnight}
           maximumDate={tenDaysLater}
         />
-      </View>
+      </MealFlowSection>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.stepLabel}>Meal Type</Text>
+      <MealFlowSection title="Meal Type">
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -410,10 +407,9 @@ export const MealCreationScreen = () => {
             )
           )}
         </ScrollView>
-      </View>
+      </MealFlowSection>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.stepLabel}>What are you eating?</Text>
+      <MealFlowSection title="What are you eating?">
         <View
           style={[
             styles.searchBar,
@@ -449,7 +445,7 @@ export const MealCreationScreen = () => {
           />
         </View>
         {renderSearchDropdown()}
-      </View>
+      </MealFlowSection>
     </ScrollView>
   );
 
@@ -458,12 +454,8 @@ export const MealCreationScreen = () => {
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.formPadding}
     >
-      <View style={styles.inputGroup}>
-        <Text style={styles.stepLabel}>
-          Step 1: Which days are we planning for?
-        </Text>
-
-        <View style={styles.infoBanner}>
+      <MealFlowSection title="Step 1: Which days are we planning for?">
+        <MealCardSurface tone="accent" radius={12} style={styles.infoBanner}>
           <Ionicons
             name="information-circle"
             size={18}
@@ -472,33 +464,31 @@ export const MealCreationScreen = () => {
           <Text style={styles.infoBannerText}>
             You can set your plan's start date up to 10 days in advance.
           </Text>
-        </View>
+        </MealCardSurface>
 
-        <TouchableOpacity
-          style={styles.rangePanel}
-          activeOpacity={0.8}
-          onPress={() => setIsRangePickerVisible(true)}
-        >
-          <View style={styles.rangePanelHeader}>
-            <View style={styles.rangeIconCircle}>
-              <Ionicons name="calendar" size={20} color={newTheme.accent} />
+        <TouchableOpacity activeOpacity={0.8} onPress={() => setIsRangePickerVisible(true)}>
+          <MealCardSurface tone="surface" radius={24} style={styles.rangePanel}>
+            <View style={styles.rangePanelHeader}>
+              <View style={styles.rangeIconCircle}>
+                <Ionicons name="calendar" size={20} color={newTheme.accent} />
+              </View>
+              <View style={styles.rangeTextCol}>
+                <Text style={styles.rangeLabel}>Active Window</Text>
+                <Text style={styles.rangeValue}>{rangeString}</Text>
+              </View>
+              <View style={styles.rangeEditBadge}>
+                <Text style={styles.rangeEditText}>Change</Text>
+              </View>
             </View>
-            <View style={styles.rangeTextCol}>
-              <Text style={styles.rangeLabel}>Active Window</Text>
-              <Text style={styles.rangeValue}>{rangeString}</Text>
-            </View>
-            <View style={styles.rangeEditBadge}>
-              <Text style={styles.rangeEditText}>Change</Text>
-            </View>
-          </View>
-          <Text style={styles.rangeHint}>
-            Plan your entire week starting from{" "}
-            {startDate.toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-            })}
-            .
-          </Text>
+            <Text style={styles.rangeHint}>
+              Plan your entire week starting from{" "}
+              {startDate.toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+              })}
+              .
+            </Text>
+          </MealCardSurface>
         </TouchableOpacity>
 
         <DatePickerSheet
@@ -558,10 +548,9 @@ export const MealCreationScreen = () => {
             );
           })}
         </View>
-      </View>
+      </MealFlowSection>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.stepLabel}>Step 2: Which meal is this?</Text>
+      <MealFlowSection title="Step 2: Which meal is this?">
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -591,10 +580,9 @@ export const MealCreationScreen = () => {
             }
           )}
         </ScrollView>
-      </View>
+      </MealFlowSection>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.stepLabel}>Step 3: What are you eating?</Text>
+      <MealFlowSection title="Step 3: What are you eating?">
         <View
           style={[
             styles.searchBar,
@@ -630,20 +618,27 @@ export const MealCreationScreen = () => {
           />
         </View>
         {renderSearchDropdown()}
-      </View>
+      </MealFlowSection>
 
       {selectedWeekdays.length > 0 && bulkFoodSearch !== "" && (
-        <TouchableOpacity style={styles.summaryCard} onPress={handleAddToPlan}>
-          <View style={styles.summaryInfo}>
-            <Text style={styles.summaryTitle}>📝 Ready to Add</Text>
-            <Text style={styles.summaryText}>
-              {bulkFoodSearch} for {bulkMealType} on {selectedWeekdays.length}{" "}
-              days.
-            </Text>
-          </View>
-          <View style={styles.addButtonCircle}>
-            <Ionicons name="add" size={24} color={newTheme.background} />
-          </View>
+        <TouchableOpacity onPress={handleAddToPlan}>
+          <MealCardSurface
+            tone="raised"
+            radius={24}
+            borderColor={`${newTheme.accent}40`}
+            style={styles.summaryCard}
+          >
+            <View style={styles.summaryInfo}>
+              <Text style={styles.summaryTitle}>📝 Ready to Add</Text>
+              <Text style={styles.summaryText}>
+                {bulkFoodSearch} for {bulkMealType} on {selectedWeekdays.length}{" "}
+                days.
+              </Text>
+            </View>
+            <View style={styles.addButtonCircle}>
+              <Ionicons name="add" size={24} color={newTheme.background} />
+            </View>
+          </MealCardSurface>
         </TouchableOpacity>
       )}
     </ScrollView>
@@ -659,7 +654,12 @@ export const MealCreationScreen = () => {
         const dateStr = toApiDate(date);
         const dayPlan = weeklyPlan[dateStr] || {};
         return (
-          <View key={dateStr} style={styles.reviewDayCard}>
+          <MealCardSurface
+            key={dateStr}
+            tone="surface"
+            radius={20}
+            style={styles.reviewDayCard}
+          >
             <View style={styles.reviewDayHeader}>
               <Text style={styles.reviewDayDate}>{toFriendlyDate(date)}</Text>
               <Text style={styles.reviewDayStatus}>
@@ -684,7 +684,7 @@ export const MealCreationScreen = () => {
                 </Text>
               </View>
             ))}
-          </View>
+          </MealCardSurface>
         );
       })}
     </ScrollView>
@@ -771,7 +771,7 @@ export const MealCreationScreen = () => {
   );
 };
 
-const styling = (theme: any, spacing: any, typography: any) =>
+const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
   StyleSheet.create({
     tabContainer: {
       flexDirection: "row",
@@ -806,25 +806,12 @@ const styling = (theme: any, spacing: any, typography: any) =>
       paddingHorizontal: 0,
       paddingBottom: 40,
     },
-    inputGroup: {
-      marginBottom: spacing.xl,
-    },
-    stepLabel: {
-      ...typography.bodyStrong,
-      color: theme.textPrimary,
-      marginBottom: spacing.md,
-      fontSize: 15,
-    },
     infoBanner: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: theme.accent + "10",
       padding: spacing.sm,
-      borderRadius: 12,
       marginBottom: spacing.md,
       gap: 8,
-      borderWidth: 1,
-      borderColor: theme.accent + "20",
     },
     infoBannerText: {
       ...typography.caption,
@@ -838,16 +825,6 @@ const styling = (theme: any, spacing: any, typography: any) =>
     },
     chip: {
       marginRight: spacing.sm,
-    },
-    textInput: {
-      backgroundColor: theme.surface,
-      borderRadius: 16,
-      padding: spacing.md,
-      color: theme.textPrimary,
-      fontSize: 16,
-      borderWidth: 1,
-      borderColor: theme.divider,
-      marginTop: spacing.xs,
     },
     searchBar: {
       flexDirection: "row",
@@ -869,27 +846,8 @@ const styling = (theme: any, spacing: any, typography: any) =>
       borderColor: theme.accent,
       backgroundColor: theme.accent + "05",
     },
-    recipeBadge: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginTop: 8,
-      backgroundColor: theme.accent + "15",
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 8,
-      alignSelf: "flex-start",
-    },
-    recipeBadgeText: {
-      ...typography.caption,
-      color: theme.accent,
-      fontWeight: "700",
-    },
     searchDropdown: {
-      backgroundColor: theme.surface,
-      borderRadius: 16,
       marginTop: 8,
-      borderWidth: 1,
-      borderColor: theme.divider,
       padding: spacing.xs,
     },
     searchResultItem: {
@@ -904,26 +862,6 @@ const styling = (theme: any, spacing: any, typography: any) =>
       ...typography.body,
       color: theme.textPrimary,
     },
-    row: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    unitDropdown: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: theme.surfaceMuted,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.md,
-      borderRadius: 16,
-      marginLeft: spacing.sm,
-      borderWidth: 1,
-      borderColor: theme.divider,
-    },
-    unitText: {
-      ...typography.body,
-      color: theme.textPrimary,
-      marginRight: 4,
-    },
     footer: {
       paddingVertical: spacing.md,
       backgroundColor: theme.background,
@@ -931,11 +869,7 @@ const styling = (theme: any, spacing: any, typography: any) =>
       borderTopColor: theme.divider,
     },
     rangePanel: {
-      backgroundColor: theme.surface,
-      borderRadius: 24,
       padding: spacing.md,
-      borderWidth: 1,
-      borderColor: theme.divider,
       marginBottom: spacing.md,
       shadowColor: "#000",
       shadowOffset: { width: 0, height: 4 },
@@ -1050,13 +984,9 @@ const styling = (theme: any, spacing: any, typography: any) =>
       alignItems: "center",
     },
     summaryCard: {
-      backgroundColor: theme.surfaceElevated,
-      borderRadius: 24,
       padding: spacing.lg,
       flexDirection: "row",
       alignItems: "center",
-      borderWidth: 1,
-      borderColor: theme.accent + "40",
       marginTop: spacing.sm,
     },
     summaryInfo: {
@@ -1078,12 +1008,8 @@ const styling = (theme: any, spacing: any, typography: any) =>
       marginBottom: spacing.lg,
     },
     reviewDayCard: {
-      backgroundColor: theme.surface,
-      borderRadius: 20,
       padding: spacing.md,
       marginBottom: spacing.md,
-      borderWidth: 1,
-      borderColor: theme.divider,
     },
     reviewDayHeader: {
       flexDirection: "row",

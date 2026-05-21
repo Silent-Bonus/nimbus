@@ -46,6 +46,12 @@ const typography: Typography = {
     fontWeight: "400",
     lineHeight: 24,
   },
+  bodyStrong: {
+    fontFamily: "Outfit_600SemiBold",
+    fontSize: 16,
+    fontWeight: "600",
+    lineHeight: 24,
+  },
   caption: {
     fontFamily: "Outfit_400Regular",
     fontSize: 12,
@@ -81,6 +87,7 @@ function createLegacyColors(source: typeof svaColors): ColorSet {
     background: source.bg.base,
     surface: source.surface.base,
     surfaceMuted: source.bg.subtle,
+    surfaceElevated: source.surface.raised,
     card: source.surface.base,
     cardRaised: source.surface.raised,
     divider: source.divider,
