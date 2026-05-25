@@ -1,36 +1,57 @@
-// components/ReminderDetail.tsx
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Switch,
-  Modal,
+  ActivityIndicator,
+  Alert,
   Platform,
   Pressable,
-  Alert,
-  ActivityIndicator,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
 } from "react-native";
-import { format } from "date-fns";
+import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { format } from "date-fns";
+
 import ThemeContext from "@/contexts/ThemeContext";
-import type { ReminderSettings } from "@/services/remiderStorageService";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNimbusToast } from "@/components/ui/toast/useNimbusToast";
+import SettingsBottomSheet from "./SettingsBottomSheet";
+import {
+  arraysEqual,
+  deriveHHmmss,
+} from "@/utils/helper";
 import {
   daysShortToNums,
   formatToAmPm,
   inferRepeatFromWeekdays,
   numsToDaysShort,
+  repeatLabelFromDays,
   timeStringToISO,
 } from "@/utils/notificationHelper";
-import { arraysEqual, deriveHHmmss } from "@/utils/helper";
-import StyledSwitch from "@/components/ui/theme-components/StyledSwitch";
-import StyledButton from "@/components/ui/theme-components/StyledButton";
-import { useNimbusToast } from "@/components/ui/toast/useNimbusToast";
+import type { SvaColorSet, Spacing } from "@/theme/types";
+import type {
+  NotificationReminderItem,
+  ReminderDraft,
+  ReminderPatch,
+} from "./notificationModalTypes";
+
+type NotificationDetailTypography = {
+  bodyFamily: string;
+  bodyStrongFamily: string;
+  monoFamily: string;
+};
+
+type NotificationDetailStyles = ReturnType<typeof createStyles>;
 
 type Props = {
-  detail: any;
+  detail: NotificationReminderItem;
   categoryKey: string;
   title?: string;
   description?: string;
@@ -38,6 +59,147 @@ type Props = {
   onSaved?: () => void;
   onClose?: () => void;
 };
+
+const RECOMMENDED_TIMES = ["05:00", "06:00", "07:00", "08:00", "09:00"];
+
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function buildDraft(detail: NotificationReminderItem): ReminderDraft {
+  const weekdays = daysShortToNums(detail.days_of_week ?? []);
+  const repeat = detail.repeat || inferRepeatFromWeekdays(weekdays);
+  const time = detail.time ?? null;
+  const timeISO = timeStringToISO(time);
+  const displayTime = time
+    ? formatToAmPm(time, formatTime(timeISO))
+    : formatTime(timeISO);
+
+  return {
+    enabled: !!detail.enabled,
+    time,
+    timeISO,
+    weekdays,
+    days_of_week: detail.days_of_week ?? [],
+    repeat,
+    displayTime,
+  };
+}
+
+function normalizeTime(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  const [hh = "0", mm = "0"] = trimmed.split(":");
+  return `${String(Number(hh)).padStart(2, "0")}:${String(Number(mm)).padStart(2, "0")}`;
+}
+
+function normalizeWeekdaySet(value: number[]) {
+  return [...new Set(value)].sort((a, b) => a - b);
+}
+
+function buildPayload(
+  categoryKey: string,
+  original: ReminderDraft,
+  draft: ReminderDraft
+): ReminderPatch | null {
+  const patch: Record<string, unknown> = {};
+
+  if (original.enabled !== draft.enabled) {
+    patch.enabled = draft.enabled;
+  }
+
+  const originalTime = deriveHHmmss(original);
+  const nextTime = deriveHHmmss(draft);
+  if (originalTime !== nextTime) {
+    patch.time = nextTime;
+  }
+
+  if (!arraysEqual(original.weekdays ?? [], draft.weekdays ?? [])) {
+    patch.days_of_week = numsToDaysShort(draft.weekdays);
+  }
+
+  if (!Object.keys(patch).length) return null;
+
+  return {
+    notifications: [
+      {
+        notification_type: categoryKey,
+        ...(patch as {
+          enabled?: boolean;
+          time?: string;
+          days_of_week?: NonNullable<ReminderPatch["notifications"]>[number]["days_of_week"];
+        }),
+      },
+    ],
+  };
+}
+
+function RepeatChip({
+  label,
+  active,
+  colors,
+  styles,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  colors: SvaColorSet;
+  styles: NotificationDetailStyles;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.repeatChip,
+        active && styles.repeatChipActive,
+        pressed && styles.repeatChipPressed,
+      ]}
+    >
+      <Text style={[styles.repeatChipText, active && styles.repeatChipTextActive]}>
+        {label}
+      </Text>
+      {active ? <Ionicons name="checkmark" size={14} color={colors.bg.base} /> : null}
+    </Pressable>
+  );
+}
+
+function DayChip({
+  label,
+  active,
+  colors,
+  styles,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  colors: SvaColorSet;
+  styles: NotificationDetailStyles;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.dayChip,
+        active && styles.dayChipActive,
+        pressed && styles.dayChipPressed,
+      ]}
+    >
+      <Text style={[styles.dayChipText, active && styles.dayChipTextActive]}>
+        {label}
+      </Text>
+      {active ? <Ionicons name="checkmark" size={12} color={colors.bg.base} /> : null}
+    </Pressable>
+  );
+}
 
 export default function ReminderDetail({
   detail,
@@ -48,76 +210,76 @@ export default function ReminderDetail({
   onSaved,
   onClose,
 }: Props) {
-  const { newTheme } = useContext(ThemeContext);
-  const styles = styling(newTheme);
-
-  const [notif, setNotif] = useState<any>();
-  const [original, setOriginal] = useState<any | null>(null);
-  const [showPicker, setShowPicker] = useState(false);
-  const [notification, setNotification] = useState<any>();
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  const { loadUserFromStorage, updateProfile } = useAuth();
-
+  const { svaColors, svaTypography, typography, spacing } =
+    useContext(ThemeContext);
+  const { updateProfile } = useAuth();
   const toast = useNimbusToast();
 
-  useEffect(() => {
-    console.log(detail, "details");
-    const weekdaysNums = daysShortToNums(detail.days_of_week ?? []);
-    const computedRepeat =
-      detail.repeat || inferRepeatFromWeekdays(weekdaysNums);
-    setLoading(true);
-    const displayTime = detail.time
-      ? formatToAmPm(detail.time, formatTime(detail.timeISO))
-      : formatTime(detail.timeISO);
-    const normalized = {
-      notification_type: categoryKey,
-      enabled: !!detail.enabled,
-      time: detail.time ?? null,
-      timeISO: timeStringToISO(detail.time),
-      days_of_week: detail.days_of_week ?? [],
-      weekdays: daysShortToNums(detail.days_of_week ?? []),
-      // repeat: detail.repeat || null,
-      displayTime: displayTime,
-      repeat: computedRepeat,
-      // snoozeIfMissed: false,
-    };
-    setNotif(normalized);
-    setOriginal(normalized);
-    console.log(normalized, "normalized");
-  }, [visible]);
+  const [draft, setDraft] = useState<ReminderDraft | null>(() => buildDraft(detail));
+  const [original, setOriginal] = useState<ReminderDraft | null>(() => buildDraft(detail));
+  const [showPicker, setShowPicker] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const fonts = useMemo<NotificationDetailTypography>(
+    () => ({
+      bodyFamily:
+        svaTypography?.textStyle.body.fontFamily ??
+        typography.body.fontFamily ??
+        "Outfit_400Regular",
+      bodyStrongFamily:
+        svaTypography?.textStyle.bodyMedium.fontFamily ??
+        typography.bodyStrong.fontFamily ??
+        "Outfit_600SemiBold",
+      monoFamily:
+        svaTypography?.textStyle.authMonoLabel.fontFamily ??
+        "SpaceMono-Regular",
+    }),
+    [svaTypography, typography]
+  );
+
+  const styles: NotificationDetailStyles = useMemo(
+    () => createStyles(svaColors, fonts, spacing),
+    [svaColors, fonts, spacing]
+  );
 
   useEffect(() => {
-    if (notif?.notification_type) {
-      console.log("notification useeffect", notif);
-      setLoading(false);
+    if (!visible) {
+      setShowPicker(false);
+      return;
     }
-  }, [notif]);
 
-  // Dirty check
+    const nextDraft = buildDraft(detail);
+    setDraft(nextDraft);
+    setOriginal(nextDraft);
+  }, [detail, visible]);
+
   const dirty = useMemo(() => {
-    if (!original || !notif) return false;
-    if (original.enabled !== notif.enabled) return true;
-
-    const origTime = deriveHHmmss(original);
-    const nextTime = deriveHHmmss(notif);
-    if (origTime !== nextTime) return true;
-
-    if (!arraysEqual(original.weekdays ?? [], notif.weekdays ?? []))
-      return true;
+    if (!original || !draft) return false;
+    if (original.enabled !== draft.enabled) return true;
+    if (deriveHHmmss(original) !== deriveHHmmss(draft)) return true;
+    if (!arraysEqual(original.weekdays ?? [], draft.weekdays ?? [])) return true;
     return false;
-  }, [original, notif]);
+  }, [draft, original]);
 
-  const formatTime = (iso: string) =>
-    new Date(iso).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  const previewText = useMemo(() => {
+    if (!draft) return "Loading...";
+    if (!draft.enabled) return "Reminders are off";
+    return `${draft.displayTime} · ${repeatLabelFromDays({
+      days_of_week: numsToDaysShort(draft.weekdays),
+    })}`;
+  }, [draft]);
 
-  const normalizeToTodayTime = (picked: Date) => {
+  const saveDisabled = !draft || !original || saving || !dirty;
+
+  const onChangeTime = useCallback((event: any, picked?: Date) => {
+    if (Platform.OS === "android") {
+      if (event?.type !== "set") return;
+    }
+
+    if (!picked) return;
+
     const now = new Date();
-    return new Date(
+    const next = new Date(
       now.getFullYear(),
       now.getMonth(),
       now.getDate(),
@@ -126,119 +288,122 @@ export default function ReminderDetail({
       0,
       0
     );
-  };
 
-  // Handlers
-  const toggleEnabled = (val: boolean) =>
-    setNotif((s: any) => ({ ...s, enabled: val }));
-  const setRepeat = (r: ReminderSettings["repeat"]) => {
-    if (r === "weekdays")
-      setNotif((s: any) => ({ ...s, repeat: r, weekdays: [1, 2, 3, 4, 5] }));
-    else if (r === "weekends")
-      setNotif((s: any) => ({ ...s, repeat: r, weekdays: [0, 6] }));
-    else
-      setNotif((s: any) => ({
-        ...s,
-        repeat: r,
-        weekdays: [0, 1, 2, 3, 4, 5, 6],
-      }));
-  };
-  const toggleWeekday = (d: number) => {
-    setNotif((s: any) => {
-      const set = new Set(s.weekdays ?? []);
-      if (set.has(d)) set.delete(d);
-      else set.add(d);
-      return { ...s, repeat: "custom", weekdays: Array.from(set).sort() };
+    const hh = String(next.getHours()).padStart(2, "0");
+    const mm = String(next.getMinutes()).padStart(2, "0");
+    const nextTime = `${hh}:${mm}:00`;
+
+    setDraft((current) =>
+      current
+        ? {
+            ...current,
+            timeISO: next.toISOString(),
+            time: nextTime,
+            displayTime: format(next, "h:mm a"),
+          }
+        : current
+    );
+  }, []);
+
+  const setRepeat = useCallback((nextRepeat: ReminderDraft["repeat"]) => {
+    setDraft((current) => {
+      if (!current) return current;
+
+      if (nextRepeat === "daily") {
+        return {
+          ...current,
+          repeat: nextRepeat,
+          weekdays: [0, 1, 2, 3, 4, 5, 6],
+          days_of_week: numsToDaysShort([0, 1, 2, 3, 4, 5, 6]),
+        };
+      }
+
+      if (nextRepeat === "weekdays") {
+        return {
+          ...current,
+          repeat: nextRepeat,
+          weekdays: [1, 2, 3, 4, 5],
+          days_of_week: numsToDaysShort([1, 2, 3, 4, 5]),
+        };
+      }
+
+      if (nextRepeat === "weekends") {
+        return {
+          ...current,
+          repeat: nextRepeat,
+          weekdays: [0, 6],
+          days_of_week: numsToDaysShort([0, 6]),
+        };
+      }
+
+      return current;
     });
-  };
+  }, []);
 
-  const onChangeTime = (e: any, picked?: Date) => {
-    if (Platform.OS === "android") {
-      if (e?.type !== "set") return;
-      setShowPicker(false);
+  const toggleWeekday = useCallback((day: number) => {
+    setDraft((current) => {
+      if (!current) return current;
+
+      const next = new Set(current.weekdays ?? []);
+      if (next.has(day)) next.delete(day);
+      else next.add(day);
+
+      return {
+        ...current,
+        repeat: "custom",
+        weekdays: normalizeWeekdaySet(Array.from(next)),
+        days_of_week: numsToDaysShort(normalizeWeekdaySet(Array.from(next))),
+      };
+    });
+  }, []);
+
+  const cancel = useCallback(() => {
+    if (!dirty) {
+      onClose?.();
+      return;
     }
-    if (!picked) return;
 
-    const nd = normalizeToTodayTime(picked);
-    const hh = String(nd.getHours()).padStart(2, "0");
-    const mm = String(nd.getMinutes()).padStart(2, "0");
-    setNotif((s: any) => ({
-      ...s,
-      timeISO: nd.toISOString(),
-      time: `${hh}:${mm}:00`,
-    }));
-  };
+    Alert.alert("Discard changes?", "You have unsaved changes. Discard?", [
+      { text: "Keep editing", style: "cancel" },
+      { text: "Discard", style: "destructive", onPress: () => onClose?.() },
+    ]);
+  }, [dirty, onClose]);
 
-  // Build backend payload and save
-  const doSave = async () => {
+  const doSave = useCallback(async () => {
+    if (!draft || !original) return;
+
+    const payload = buildPayload(categoryKey, original, draft);
+    if (!payload) {
+      toast.show({
+        variant: "info",
+        title: "No changes to save",
+        message: "No changes to save",
+      });
+      return;
+    }
+
     setSaving(true);
     try {
-      // compute field-level diff
-      const patch: Record<string, any> = {};
+      const saved = await updateProfile?.(payload);
 
-      if (original?.enabled !== notif?.enabled) {
-        patch.enabled = !!notif.enabled;
-      }
-
-      // compare canonical times (HH:mm:ss)
-      const origTime = deriveHHmmss(original);
-      const nextTime = deriveHHmmss(notif);
-      if (origTime !== nextTime) {
-        patch.time = nextTime;
-      }
-
-      // compare weekdays -> send days_of_week only if changed
-      const origWeekdays = original?.weekdays ?? [];
-      const nextWeekdays = notif?.weekdays ?? [];
-      if (!arraysEqual(origWeekdays, nextWeekdays)) {
-        patch.days_of_week = numsToDaysShort(nextWeekdays); // e.g. ["mon","thu"]
-      }
-
-      // nothing changed? bail early
-      if (Object.keys(patch).length === 0) {
-        toast.show({
-          variant: "info",
-          title: "No changes to save",
-          message: "No changes to save",
-        });
-        setSaving(false);
-        return;
-      }
-
-      // final payload: only the changed fields + identifier
-      const backendPayload = {
-        notifications: [
-          {
-            notification_type: categoryKey,
-            ...patch,
-          },
-        ],
-      };
-
-      const saved = await updateProfile?.(backendPayload);
-      const { success, data } = saved;
-
-      if (success) {
-        onSaved?.();
+      if (saved?.success) {
         toast.show({
           variant: "success",
           title: "Reminder updated",
           message: "Reminder updated",
         });
-
-        // update originals so dirty check resets
-        const nextOriginal = {
-          ...original,
-          ...notif,
-          enabled: patch.enabled ?? original.enabled,
-          time: patch.time ?? original.time,
-          weekdays: nextWeekdays, // keep nums in local state
-          days_of_week: patch.days_of_week ?? original.days_of_week,
-        };
-        setOriginal(nextOriginal);
+        onSaved?.();
+        onClose?.();
+        return;
       }
-    } catch (e) {
-      console.warn("save error", e);
+
+      toast.show({
+        variant: "error",
+        title: "Could not save reminder",
+        message: saved?.message ?? "Could not save reminder",
+      });
+    } catch (error) {
+      console.warn("save reminder failed", error);
       toast.show({
         variant: "error",
         title: "Could not save reminder",
@@ -246,337 +411,574 @@ export default function ReminderDetail({
       });
     } finally {
       setSaving(false);
-      onClose?.();
     }
-  };
+  }, [categoryKey, draft, onClose, onSaved, original, toast, updateProfile]);
 
-  const cancel = () => {
-    if (dirty) {
-      Alert.alert("Discard changes?", "You have unsaved changes. Discard?", [
-        { text: "Keep editing", style: "cancel" },
-        { text: "Discard", style: "destructive", onPress: () => onClose?.() },
-      ]);
-    } else onClose?.();
-  };
-
-  if (!visible) return null;
-
-  const displayTime = useMemo(() => {
-    const iso = notif?.timeISO ?? new Date().toISOString();
-    return format(new Date(iso), "h:mm a");
-  }, [notif?.timeISO]);
+  const timePickerTitle = draft?.displayTime ?? "Select time";
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
-      <View style={[styles.screen]}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity onPress={cancel} style={styles.back}>
-            <Text style={styles.backText}>←</Text>
-          </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>{title}</Text>
-            {dirty ? <Text style={styles.unsavedPill}>UNSAVED</Text> : null}
-          </View>
-        </View>
-
-        {!notif ? (
-          <ActivityIndicator size="large" color={newTheme.accent} />
-        ) : (
-          <View style={styles.body}>
-            <Text style={styles.desc}>
-              {description || "Get a gentle nudge to log this."}
-            </Text>
-
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>Reminder</Text>
-              <StyledSwitch
-                value={!!notif.enabled}
-                onValueChange={toggleEnabled}
-                size="medium"
-              />
-            </View>
-
-            <TouchableOpacity
-              style={styles.timeCard}
-              onPress={() => setShowPicker(true)}
+    <>
+      <SettingsBottomSheet
+        visible={visible}
+        onClose={cancel}
+        eyebrow="Notification detail"
+        title={title}
+        subtitle={
+          description || "Adjust the reminder timing, cadence, and active days."
+        }
+        badgeLabel={draft?.enabled ? "Active" : "Off"}
+        badgeIcon="alarm-outline"
+        closeLabel={`Close ${title}`}
+        footer={
+          <View style={styles.footerRow}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Cancel changes"
+              onPress={cancel}
+              style={({ pressed }) => [
+                styles.footerButton,
+                styles.footerButtonSecondary,
+                pressed && styles.footerButtonPressed,
+              ]}
             >
-              <View>
-                <Text style={styles.timeLabel}>Select time</Text>
-                <Text style={styles.timeValue}>{displayTime}</Text>
-              </View>
-              <Text style={[styles.smallMuted, { marginTop: 4 }]}>
-                {notif?.enabled ? "Active" : "Inactive"}
-              </Text>
-            </TouchableOpacity>
+              <Text style={styles.footerSecondaryLabel}>Cancel</Text>
+            </Pressable>
 
-            <View style={{ marginTop: 25 }}>
-              <Text style={styles.rowLabel}>Repeat</Text>
-              <View style={styles.repeatRow}>
-                <TouchableOpacity
-                  onPress={() => setRepeat("daily")}
-                  style={[
-                    styles.repeatButton,
-                    notif.repeat === "daily" && {
-                      borderColor: newTheme.accent,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.repeatText,
-                      notif.repeat === "daily" && { color: newTheme.accent },
-                    ]}
-                  >
-                    Every day
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setRepeat("weekdays")}
-                  style={[
-                    styles.repeatButton,
-                    notif.repeat === "weekdays" && {
-                      borderColor: newTheme.accent,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.repeatText,
-                      notif.repeat === "weekdays" && { color: newTheme.accent },
-                    ]}
-                  >
-                    Weekdays
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => setRepeat("weekends")}
-                  style={[
-                    styles.repeatButton,
-                    notif.repeat === "weekends" && {
-                      borderColor: newTheme.accent,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.repeatText,
-                      notif.repeat === "weekends" && { color: newTheme.accent },
-                    ]}
-                  >
-                    Weekends
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={{ marginTop: 8 }}>
-                <Text style={styles.smallMuted}>Or choose days</Text>
-                <View style={styles.weekdaysRow}>
-                  {["S", "M", "T", "W", "T", "F", "S"].map((l, idx) => {
-                    const active = (notif.weekdays ?? []).includes(idx);
-                    return (
-                      <TouchableOpacity
-                        key={idx}
-                        onPress={() => toggleWeekday(idx)}
-                        style={[
-                          styles.weekdayButton,
-                          active
-                            ? { backgroundColor: newTheme.accent }
-                            : { backgroundColor: newTheme.surface },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.weekdayText,
-                            active
-                              ? { color: newTheme.background }
-                              : { color: newTheme.textPrimary },
-                          ]}
-                        >
-                          {l}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-            </View>
-
-            <View style={[styles.previewCard]}>
-              <Text style={styles.smallMuted}>Preview</Text>
-              <Text style={styles.previewText}>
-                {notif.enabled
-                  ? `${formatTime(notif.timeISO)} · ${notif.repeat}`
-                  : "Reminders are off"}
-              </Text>
-            </View>
-
-            {/* bottom actions */}
-            <View style={styles.ctaRow}>
-              <StyledButton
-                label="Cancel"
-                variant="secondary"
-                fullWidth
-                onPress={cancel}
-              />
-
-              <StyledButton
-                label={saving ? "Saving..." : "Save"}
-                variant="primary"
-                fullWidth
-                loading={saving}
-                onPress={doSave}
-                style={{ marginTop: 12 }}
-              />
-            </View>
-          </View>
-        )}
-
-        <Modal
-          visible={showPicker}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowPicker(false)}
-        >
-          <Pressable
-            style={styles.pickerOverlay}
-            onPress={() => setShowPicker(false)}
-          >
-            <View style={styles.pickerContainer}>
-              {notif ? (
-                <DateTimePicker
-                  mode="time"
-                  value={new Date(notif.timeISO ?? new Date().toISOString())}
-                  // display={Platform.OS === "ios" ? "spinner" : "clock"}
-                  display={Platform.OS === "ios" ? "spinner" : "default"}
-                  onChange={onChangeTime}
-                />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Save reminder"
+              onPress={doSave}
+              disabled={saveDisabled}
+              style={({ pressed }) => [
+                styles.footerButton,
+                styles.footerButtonPrimary,
+                pressed && !saveDisabled && styles.footerButtonPressed,
+                saveDisabled && styles.footerButtonDisabled,
+              ]}
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color={svaColors.bg.base} />
               ) : (
-                <ActivityIndicator size="small" color={newTheme.accent} />
+                <Text style={styles.footerPrimaryLabel}>Save changes</Text>
               )}
-              <View style={styles.pickerButtons}>
-                <TouchableOpacity
-                  onPress={() => setShowPicker(false)}
-                  style={styles.pickerBtn}
-                >
-                  <Text style={styles.pickerBtnText}>Done</Text>
-                </TouchableOpacity>
+            </Pressable>
+          </View>
+        }
+      >
+        {!draft ? (
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator size="small" color={svaColors.brand.primary} />
+          </View>
+        ) : (
+          <>
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryIconWrap}>
+                <Ionicons
+                  name={draft.enabled ? "notifications-outline" : "notifications-off-outline"}
+                  size={18}
+                  color={svaColors.brand.primary}
+                />
+              </View>
+
+              <View style={styles.summaryCopy}>
+                <Text style={styles.summaryTitle}>Current selection</Text>
+                <Text style={styles.summaryValue}>{draft.displayTime}</Text>
+                <Text style={styles.summaryText}>{previewText}</Text>
+              </View>
+
+              <Switch
+                value={draft.enabled}
+                onValueChange={(next) =>
+                  setDraft((current) => (current ? { ...current, enabled: next } : current))
+                }
+                trackColor={{
+                  false: svaColors.border.default,
+                  true: svaColors.brand.primary,
+                }}
+                thumbColor={svaColors.bg.base}
+                ios_backgroundColor={svaColors.border.default}
+              />
+            </View>
+
+            <View style={styles.sectionBlock}>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionTitle}>Reminder time</Text>
+                <Text style={styles.sectionMeta}>Schedule</Text>
+              </View>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Choose reminder time"
+                onPress={() => setShowPicker(true)}
+                style={({ pressed }) => [
+                  styles.timeCard,
+                  pressed && styles.cardPressed,
+                ]}
+              >
+                <View style={styles.timeCopy}>
+                  <Text style={styles.timeLabel}>Select time</Text>
+                  <Text style={styles.timeValue}>{draft.displayTime}</Text>
+                </View>
+                <View style={styles.timeMeta}>
+                  <Ionicons
+                    name="time-outline"
+                    size={18}
+                    color={svaColors.text.secondary}
+                  />
+                  <Text style={styles.timeMetaText}>
+                    {draft.enabled ? "Active" : "Paused"}
+                  </Text>
+                </View>
+              </Pressable>
+            </View>
+
+            <View style={styles.sectionBlock}>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionTitle}>Repeat pattern</Text>
+                <Text style={styles.sectionMeta}>{draft.repeat}</Text>
+              </View>
+
+              <View style={styles.repeatRow}>
+                {(["daily", "weekdays", "weekends"] as const).map((item) => (
+                  <RepeatChip
+                    key={item}
+                    label={item === "daily" ? "Every day" : item === "weekdays" ? "Weekdays" : "Weekends"}
+                    active={draft.repeat === item}
+                    colors={svaColors}
+                    styles={styles}
+                    onPress={() => setRepeat(item)}
+                  />
+                ))}
               </View>
             </View>
-          </Pressable>
-        </Modal>
-      </View>
-    </Modal>
+
+            <View style={styles.sectionBlock}>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionTitle}>Weekdays</Text>
+                <Text style={styles.sectionMeta}>Custom</Text>
+              </View>
+
+              <View style={styles.dayRow}>
+                {["S", "M", "T", "W", "T", "F", "S"].map((label, index) => {
+                  const active = (draft.weekdays ?? []).includes(index);
+                  return (
+                    <DayChip
+                      key={`${label}-${index}`}
+                      label={label}
+                      active={active}
+                      colors={svaColors}
+                      styles={styles}
+                      onPress={() => toggleWeekday(index)}
+                    />
+                  );
+                })}
+              </View>
+            </View>
+
+            <View style={styles.previewCard}>
+              <Text style={styles.previewLabel}>Preview</Text>
+              <Text style={styles.previewText}>{previewText}</Text>
+            </View>
+          </>
+        )}
+      </SettingsBottomSheet>
+
+      <SettingsBottomSheet
+        visible={showPicker}
+        onClose={() => setShowPicker(false)}
+        eyebrow="Reminder time"
+        title={timePickerTitle}
+        subtitle="Adjust the notification time with the picker below."
+        badgeLabel="Time picker"
+        badgeIcon="time-outline"
+        closeLabel={`Close time picker for ${title}`}
+        footer={
+          <View style={styles.footerRow}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Cancel time selection"
+              onPress={() => setShowPicker(false)}
+              style={({ pressed }) => [
+                styles.footerButton,
+                styles.footerButtonSecondary,
+                pressed && styles.footerButtonPressed,
+              ]}
+            >
+              <Text style={styles.footerSecondaryLabel}>Cancel</Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Done"
+              onPress={() => setShowPicker(false)}
+              style={({ pressed }) => [
+                styles.footerButton,
+                styles.footerButtonPrimary,
+                pressed && styles.footerButtonPressed,
+              ]}
+            >
+              <Text style={styles.footerPrimaryLabel}>Done</Text>
+            </Pressable>
+          </View>
+        }
+      >
+        <View style={styles.pickerCard}>
+          <View style={styles.quickPickRow}>
+            {RECOMMENDED_TIMES.map((option) => {
+              const active = normalizeTime(option) === normalizeTime(draft?.time ?? "");
+              return (
+                <Pressable
+                  key={option}
+                  accessibilityRole="button"
+                  accessibilityLabel={option}
+                  onPress={() =>
+                    setDraft((current) => {
+                      if (!current) return current;
+                      const nextTime = `${normalizeTime(option)}:00`;
+                      const [hh, mm] = normalizeTime(option).split(":");
+                      const nextDate = new Date();
+                      nextDate.setHours(Number(hh), Number(mm), 0, 0);
+                      return {
+                        ...current,
+                        timeISO: nextDate.toISOString(),
+                        time: nextTime,
+                        displayTime: format(nextDate, "h:mm a"),
+                      };
+                    })
+                  }
+                  style={({ pressed }) => [
+                    styles.quickPickChip,
+                    active && styles.quickPickChipActive,
+                    pressed && styles.quickPickChipPressed,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.quickPickText,
+                      active && styles.quickPickTextActive,
+                    ]}
+                  >
+                    {option}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <DateTimePicker
+            mode="time"
+            value={new Date(draft?.timeISO ?? new Date().toISOString())}
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            onChange={onChangeTime}
+          />
+          <Text style={styles.pickerHint}>
+            The selected time is shown using your local device timezone.
+          </Text>
+        </View>
+      </SettingsBottomSheet>
+    </>
   );
 }
 
-const styling = (newTheme: any) =>
-  StyleSheet.create({
-    screen: { flex: 1, backgroundColor: newTheme.background, paddingTop: 90 },
-    headerRow: {
-      height: 72,
-      paddingHorizontal: 16,
-      alignItems: "center",
-      flexDirection: "row",
-    },
-    back: { padding: 8, marginRight: 8 },
-    backText: { fontSize: 22, color: newTheme.textPrimary },
-    headerTitle: {
-      fontSize: 20,
-      fontWeight: "700",
-      color: newTheme.textPrimary,
-    },
-    unsavedPill: {
-      marginTop: 4,
-      color: newTheme.background,
-      backgroundColor: newTheme.error,
-      alignSelf: "flex-start",
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 8,
-      fontWeight: "700",
-    },
-    body: { padding: 16 },
-    desc: { color: newTheme.textSecondary, marginBottom: 12 },
-    row: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginVertical: 15,
-    },
-    rowLabel: { color: newTheme.textPrimary, fontSize: 16 },
-    timeCard: {
-      marginTop: 12,
-      padding: 14,
-      borderRadius: 12,
-      backgroundColor: newTheme.surface,
-      borderWidth: 1,
-      borderColor: newTheme.divider,
-    },
-    timeLabel: { color: newTheme.textSecondary },
-    timeValue: {
-      marginVertical: 10,
-      fontSize: 20,
-      fontWeight: "700",
-      color: newTheme.textPrimary,
-    },
-    repeatRow: { flexDirection: "row", marginVertical: 15 },
-    repeatButton: {
-      paddingVertical: 8,
-      paddingHorizontal: 12,
-      borderRadius: 10,
-      borderWidth: 1,
-      borderColor: "transparent",
-      marginRight: 8,
-    },
-    repeatText: { color: newTheme.textSecondary, fontWeight: "600" },
-    weekdaysRow: { flexDirection: "row", marginTop: 8 },
-    weekdayButton: {
-      width: 38,
-      height: 38,
-      borderRadius: 8,
+function createStyles(
+  colors: SvaColorSet,
+  fonts: NotificationDetailTypography,
+  spacing: Spacing
+) {
+  return StyleSheet.create({
+    loadingWrap: {
+      minHeight: 140,
       alignItems: "center",
       justifyContent: "center",
-      marginRight: 8,
     },
-    weekdayText: { fontWeight: "700" },
-    smallMuted: { color: newTheme.textSecondary, fontSize: 13 },
-    previewCard: {
-      marginTop: 25,
-      padding: 12,
-      backgroundColor: newTheme.surface,
-      borderRadius: 10,
+    summaryCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.md,
+      borderRadius: 24,
       borderWidth: 1,
-      borderColor: newTheme.divider,
+      borderColor: colors.border.default,
+      backgroundColor: colors.surface.raised,
+      padding: spacing.md,
+      marginBottom: spacing.md,
+    },
+    summaryIconWrap: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.bg.subtle,
+      borderWidth: 1,
+      borderColor: colors.border.muted,
+    },
+    summaryCopy: {
+      flex: 1,
+    },
+    summaryTitle: {
+      fontFamily: fonts.monoFamily,
+      color: colors.text.secondary,
+      fontSize: 10,
+      lineHeight: 12,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
+    },
+    summaryValue: {
+      marginTop: 4,
+      fontFamily: fonts.bodyStrongFamily,
+      color: colors.text.primary,
+      fontSize: 18,
+      lineHeight: 22,
+    },
+    summaryText: {
+      marginTop: 4,
+      fontFamily: fonts.bodyFamily,
+      color: colors.text.secondary,
+      fontSize: 12.5,
+      lineHeight: 17,
+    },
+    sectionBlock: {
+      marginBottom: spacing.md,
+    },
+    sectionHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: spacing.sm,
+    },
+    sectionTitle: {
+      fontFamily: fonts.bodyStrongFamily,
+      color: colors.text.primary,
+      fontSize: 16,
+      lineHeight: 20,
+    },
+    sectionMeta: {
+      fontFamily: fonts.monoFamily,
+      color: colors.text.secondary,
+      fontSize: 10,
+      lineHeight: 12,
+      letterSpacing: 1.3,
+      textTransform: "uppercase",
+    },
+    timeCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: spacing.md,
+      padding: 14,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: colors.border.default,
+      backgroundColor: colors.surface.raised,
+    },
+    cardPressed: {
+      backgroundColor: colors.bg.subtle,
+      borderColor: colors.brand.primary,
+    },
+    timeCopy: {
+      flex: 1,
+    },
+    timeLabel: {
+      fontFamily: fonts.monoFamily,
+      color: colors.text.secondary,
+      fontSize: 10,
+      lineHeight: 12,
+      letterSpacing: 1.2,
+      textTransform: "uppercase",
+    },
+    timeValue: {
+      marginTop: 4,
+      fontFamily: fonts.bodyStrongFamily,
+      color: colors.text.primary,
+      fontSize: 18,
+      lineHeight: 22,
+    },
+    timeMeta: {
+      alignItems: "flex-end",
+      gap: 4,
+    },
+    timeMetaText: {
+      fontFamily: fonts.monoFamily,
+      color: colors.text.secondary,
+      fontSize: 9.5,
+      lineHeight: 12,
+      letterSpacing: 1.1,
+      textTransform: "uppercase",
+    },
+    repeatRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+    },
+    repeatChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.border.default,
+      backgroundColor: colors.surface.raised,
+    },
+    repeatChipActive: {
+      backgroundColor: colors.brand.primary,
+      borderColor: colors.brand.primary,
+    },
+    repeatChipPressed: {
+      opacity: 0.94,
+      transform: [{ scale: 0.98 }],
+    },
+    repeatChipText: {
+      fontFamily: fonts.monoFamily,
+      color: colors.text.primary,
+      fontSize: 10.5,
+      lineHeight: 12,
+      letterSpacing: 1.1,
+    },
+    repeatChipTextActive: {
+      color: colors.bg.base,
+    },
+    dayRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+    },
+    dayChip: {
+      width: 38,
+      height: 38,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border.default,
+      backgroundColor: colors.surface.raised,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    dayChipActive: {
+      backgroundColor: colors.brand.primary,
+      borderColor: colors.brand.primary,
+    },
+    dayChipPressed: {
+      opacity: 0.94,
+      transform: [{ scale: 0.98 }],
+    },
+    dayChipText: {
+      fontFamily: fonts.bodyStrongFamily,
+      color: colors.text.primary,
+      fontSize: 13,
+      lineHeight: 16,
+    },
+    dayChipTextActive: {
+      color: colors.bg.base,
+    },
+    previewCard: {
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: colors.border.default,
+      backgroundColor: colors.surface.raised,
+      padding: 14,
+    },
+    previewLabel: {
+      fontFamily: fonts.monoFamily,
+      color: colors.text.secondary,
+      fontSize: 10,
+      lineHeight: 12,
+      letterSpacing: 1.2,
+      textTransform: "uppercase",
     },
     previewText: {
-      marginTop: 8,
-      color: newTheme.textPrimary,
-      fontWeight: "700",
+      marginTop: 4,
+      fontFamily: fonts.bodyStrongFamily,
+      color: colors.text.primary,
+      fontSize: 14.5,
+      lineHeight: 18,
     },
-    ctaRow: {
-      marginTop: 24,
-      flexDirection: "column",
-      gap: 10,
-      alignItems: "stretch",
+    pickerCard: {
+      padding: spacing.md,
+      gap: spacing.sm,
+      alignItems: "center",
+      justifyContent: "center",
     },
-    pickerOverlay: {
-      flex: 1,
-      backgroundColor: "rgba(0,0,0,0.55)",
-      justifyContent: "flex-end",
-    },
-    pickerContainer: {
-      backgroundColor: newTheme.surface,
-      borderTopLeftRadius: 12,
-      borderTopRightRadius: 12,
-      paddingBottom: Platform.OS === "ios" ? 32 : 12,
-      paddingTop: 8,
-    },
-    pickerButtons: {
+    quickPickRow: {
+      width: "100%",
       flexDirection: "row",
-      justifyContent: "flex-end",
+      flexWrap: "wrap",
+      gap: 8,
+      justifyContent: "center",
+    },
+    quickPickChip: {
       paddingHorizontal: 12,
       paddingVertical: 8,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.border.default,
+      backgroundColor: colors.surface.raised,
     },
-    pickerBtn: { paddingVertical: 10, paddingHorizontal: 18 },
-    pickerBtnText: { color: newTheme.accent, fontWeight: "700", fontSize: 16 },
+    quickPickChipActive: {
+      borderColor: colors.brand.primary,
+      backgroundColor: colors.brand.primary,
+    },
+    quickPickChipPressed: {
+      opacity: 0.94,
+      transform: [{ scale: 0.98 }],
+    },
+    quickPickText: {
+      fontFamily: fonts.monoFamily,
+      color: colors.text.primary,
+      fontSize: 10.5,
+      lineHeight: 12,
+      letterSpacing: 1,
+    },
+    quickPickTextActive: {
+      color: colors.bg.base,
+    },
+    pickerHint: {
+      marginTop: 4,
+      textAlign: "center",
+      fontFamily: fonts.bodyFamily,
+      color: colors.text.secondary,
+      fontSize: 12,
+      lineHeight: 16,
+    },
+    footerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+      paddingBottom: spacing.xs,
+    },
+    footerButton: {
+      flex: 1,
+      height: 48,
+      borderRadius: 999,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: spacing.md,
+    },
+    footerButtonSecondary: {
+      borderWidth: 1,
+      borderColor: colors.border.default,
+      backgroundColor: colors.surface.raised,
+    },
+    footerButtonPrimary: {
+      backgroundColor: colors.brand.primary,
+    },
+    footerButtonPressed: {
+      opacity: 0.92,
+    },
+    footerButtonDisabled: {
+      opacity: 0.5,
+    },
+    footerSecondaryLabel: {
+      fontFamily: fonts.bodyStrongFamily,
+      color: colors.text.primary,
+      fontSize: 14.5,
+      lineHeight: 18,
+    },
+    footerPrimaryLabel: {
+      fontFamily: fonts.bodyStrongFamily,
+      color: colors.bg.base,
+      fontSize: 14.5,
+      lineHeight: 18,
+    },
   });
+}

@@ -1,17 +1,22 @@
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import { Image } from "expo-image";
-import React, { useContext, useEffect, useState } from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { ScrollView, Switch } from "react-native-gesture-handler";
+import React, { useContext, useEffect, useMemo, useState } from "react";
+import { router } from "expo-router";
 import * as Location from "expo-location";
+import { StatusBar } from "expo-status-bar";
+import { ScrollView, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useAuth } from "@/contexts/AuthContext";
-import { Section } from "@/constants/data/settingsList";
 import ThemeContext from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { ROUTES } from "@/constants/routes";
+import { SETTINGS_SECTIONS } from "@/constants/data/settingsList";
+import { SETTINGS_LAYOUT } from "@/features/settings/settingsLayout";
+import SettingsScreenHeader from "@/features/settings/components/SettingsScreenHeader";
+import ProfileHeader from "@/features/settings/components/ProfileHeader";
+import SettingsSectionCard from "@/features/settings/components/SettingsSectionCard";
+import SettingsRow from "@/features/settings/components/SettingsRow";
+import SettingsToggle from "@/features/settings/components/SettingsToggle";
+import SettingsFooter from "@/features/settings/components/SettingsFooter";
 
-import NotificationListModal from "@/features/settings/components/modal/NotificationListModal";
-// import RoutineSettingModal from "@/features/settings/components/RoutineSetting";
 import ContactUsModal from "@/features/settings/components/modal/ContactUsModal";
 import FeedbackModal from "@/features/settings/components/modal/Feeback";
 import PrivacyPolicyModal from "@/features/settings/components/modal/PrivacyPoilcy";
@@ -20,165 +25,62 @@ import FAQModal from "@/features/settings/components/modal/HelpCenter";
 import ChangePasswordModal from "@/features/settings/components/modal/ChangePassword";
 import LogoutModal from "@/features/settings/components/modal/LogoutModal";
 import SocialActionModal from "@/features/settings/components/modal/SocialActionModal";
-import AdvancedSettingsModal from "@/features/settings/components/modal/AdvanceSettingModal";
 import EditProfileModal from "@/features/settings/components/modal/EditProfileModal";
-import UpgradeBanner from "@/components/ui/UpgradeBanner";
-import { router } from "expo-router";
-import ProfileHeader from "@/features/settings/components/ProfileHeader";
-import StyledSwitch from "@/components/ui/theme-components/StyledSwitch";
-import { SvgUri } from "react-native-svg";
-import { ROUTES } from "@/constants/routes";
 
-type FormState = {
-  darkMode: boolean;
-  wifi: boolean;
-  showCollaborators: boolean;
+type ToggleKey = "soundEffect" | "navigation";
+
+type ToggleState = Record<ToggleKey, boolean>;
+
+const INITIAL_TOGGLE_STATE: ToggleState = {
+  soundEffect: true,
+  navigation: false,
 };
 
-export function Avatar({ uri, size = 82 }: { uri?: string; size?: number }) {
-  if (!uri)
-    return (
-      <View
-        style={[
-          stylesf.fallback,
-          { width: size, height: size, borderRadius: size / 2 },
-        ]}
-      />
-    );
+const SVA_SOCIAL_DEEP_LINK = "instagram://user?username=sva_app";
+const SVA_SOCIAL_WEB_URL = "https://instagram.com/sva_app";
 
-  const isSvg = uri.toLowerCase().includes(".svg");
+export default function SettingsScreen() {
+  const { toggleTheme, newTheme } = useContext(ThemeContext);
+  const { onLogout, userProfile } = useAuth();
+  const insets = useSafeAreaInsets();
 
-  if (isSvg) {
-    return <SvgUri uri={uri} width={size} height={size} />;
-  }
-
-  return (
-    <Image
-      source={{ uri }}
-      style={{ width: size, height: size, borderRadius: size / 2 }}
-      contentFit="cover"
-      transition={200}
-    />
+  const [toggleState, setToggleState] = useState<ToggleState>(
+    INITIAL_TOGGLE_STATE
   );
-}
-
-const stylesf = StyleSheet.create({
-  fallback: { backgroundColor: "rgba(255,255,255,0.08)" },
-});
-
-const styles = StyleSheet.create({
-  avatar: { width: 82, height: 82, borderRadius: 9999 },
-  fallback: {
-    width: 82,
-    height: 82,
-    borderRadius: 9999,
-    backgroundColor: "#333",
-  },
-});
-
-export default function profile() {
-  // modal states
-  const [showNotificationModal, setShowNotificationModal] = useState(false);
-  const [showAdvanceSettingModal, setShowAdvanceSettingModal] = useState(false);
-  const [showReportBugModal, setShowReportBugModal] = useState(false);
-  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [showSocialModal, setShowSocialModal] = useState(false);
   const [loc, setLoc] = useState<Location.LocationObject | null>(null);
 
-  const [showPrivatePolicyModal, setShowPrivatePrivacyModal] = useState(false);
+  const [showReportBugModal, setShowReportBugModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] =
+    useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showSocialModal, setShowSocialModal] = useState(false);
+  const [showPrivatePolicyModal, setShowPrivatePrivacyModal] =
+    useState(false);
   const [showTermsAndServiceModal, setShowTermsAndServiceModal] =
     useState(false);
   const [showFAQModal, setShowFAQModal] = useState(false);
   const [showEditProfile, setEditProfile] = useState(false);
 
-  // Instagram deep link: instagram://user?username=your_username
-  // webUrl: https://instagram.com/your_username
-  const instagramDeep = "instagram://user?username=nimbus_app";
-  const instagramWeb = "https://instagram.com/nimbus_app";
+  const displayName = useMemo(() => {
+    const first = userProfile?.first_name?.trim() ?? "";
+    const last = userProfile?.last_name?.trim() ?? "";
+    const full = `${first} ${last}`.trim();
+    return (
+      userProfile?.full_name?.trim() ||
+      full ||
+      userProfile?.username ||
+      "Nimbus Member"
+    );
+  }, [userProfile]);
 
-  // others
-  const { newTheme, toggleTheme } = useContext(ThemeContext);
-
-  const { onLogout, userProfile } = useAuth();
-
-  const styles = styling(newTheme);
-
-  const [formState, setFormState] = useState<FormState>({
-    darkMode: true,
-    wifi: false,
-    showCollaborators: false,
-  });
-
-  const onLogoutClick = async () => {
-    if (onLogout) {
-      const result = await onLogout();
-    } else {
-    }
-  };
-
-  const onToggle = async (id: string, value: boolean, label: string) => {
-    console.log(id, value, label, "on toggle");
-    // handle side-effects per id
-    if (value) {
-      await switchEnableHandler(id);
-    } else {
-      await switchDisableHandler(id);
-    }
-    // value ? switchEnableHandler(id) : switchdisableHandler(id);
-    setFormState({ ...formState, [id]: value });
-    value ? toggleTheme("dark") : toggleTheme("light");
-  };
-
-  const switchEnableHandler = async (id: string) => {
-    try {
-      if (id === "navigation") {
-        await requestLocation();
-      } else if (id === "soundEffect") {
-        // enable sound effects: call your audio manager / update prefs
-        console.log("Enable sound effects");
-      } else {
-        // generic enable handler
-        console.log("Enable:", id);
-      }
-    } catch (err) {
-      console.warn("switchEnableHandler error", err);
-      // optional: revert UI if side-effect failed
-      setFormState({ ...formState, [id]: false });
-    }
-  };
-
-  // called when switch turned OFF
-  const switchDisableHandler = async (id: string) => {
-    try {
-      if (id === "navigation") {
-        // optionally clear or stop location usage
-        setLoc(null);
-        console.log("Navigation/location disabled");
-      } else if (id === "soundEffect") {
-        console.log("Disable sound effects");
-      } else {
-        console.log("Disable:", id);
-      }
-    } catch (err) {
-      console.warn("switchDisableHandler error", err);
-      // revert UI if necessary
-      setFormState({ ...formState, [id]: true });
-    }
-  };
+  const statusLine = useMemo(() => {
+    const handle = userProfile?.username?.trim();
+    return `#${handle || "321be4"} glow active`;
+  }, [userProfile]);
 
   useEffect(() => {
-    if (!loc) {
-      console.log("loc not found useEffect");
-      return;
-    }
-
-    console.log(
-      "loc detail useEffect",
-      loc.coords.latitude,
-      loc.coords.longitude
-    );
+    if (!loc) return;
 
     const fetchAddress = async () => {
       try {
@@ -189,8 +91,6 @@ export default function profile() {
 
         if (reverseGeocode.length > 0) {
           const place = reverseGeocode[0];
-          console.log("Place details:", place);
-
           console.log(
             `${place.name}, ${place.city}, ${place.region}, ${place.country}`
           );
@@ -202,16 +102,6 @@ export default function profile() {
 
     fetchAddress();
   }, [loc]);
-
-  const onSettingPanelClick = (type: string, label: string) => {
-    if (type === "modal") {
-      handleModalVisibilty(label);
-    }
-    if (type === "screen") {
-      if (label === "Overview") router.push("/(auth)/statistics/details");
-      if (label === "Badges") router.push("/(auth)/rewards");
-    }
-  };
 
   async function requestLocation() {
     const { status } = await Location.requestForegroundPermissionsAsync();
@@ -226,257 +116,237 @@ export default function profile() {
     setLoc(location);
   }
 
-  const handleModalVisibilty = (label: string) => {
-    switch (label) {
-      case "Notification":
-        setShowNotificationModal(true);
+  const onLogoutClick = async () => {
+    if (onLogout) {
+      await onLogout();
+    }
+  };
+
+  const switchEnableHandler = async (id: ToggleKey) => {
+    try {
+      if (id === "navigation") {
+        await requestLocation();
+      } else if (id === "soundEffect") {
+        console.log("Enable sound effects");
+      }
+    } catch (err) {
+      console.warn("switchEnableHandler error", err);
+      setToggleState((prev) => ({ ...prev, [id]: false }));
+    }
+  };
+
+  const switchDisableHandler = async (id: ToggleKey) => {
+    try {
+      if (id === "navigation") {
+        setLoc(null);
+      } else if (id === "soundEffect") {
+        console.log("Disable sound effects");
+      }
+    } catch (err) {
+      console.warn("switchDisableHandler error", err);
+      setToggleState((prev) => ({ ...prev, [id]: true }));
+    }
+  };
+
+  const onToggle = async (id: ToggleKey, value: boolean) => {
+    await (value ? switchEnableHandler(id) : switchDisableHandler(id));
+    setToggleState((prev) => ({ ...prev, [id]: value }));
+    toggleTheme(value ? "dark" : "light");
+  };
+
+  const handleAction = (id: string) => {
+    switch (id) {
+      case "overview":
+        router.push("/(auth)/statistics/details");
         break;
-      case "Advance Setting":
-        setShowAdvanceSettingModal(true);
+      case "badges":
+        router.push("/(auth)/rewards");
         break;
-      case "Profile Info":
+      case "notification":
+        router.push(ROUTES.AUTH.NOTIFICATIONS);
+        break;
+      case "advanceSetting":
+        router.push(ROUTES.AUTH.ADVANCED_SETTINGS);
+        break;
+      case "edit":
         setEditProfile(true);
         break;
-      case "Contact Us":
-        setShowReportBugModal(true);
-        break;
-      // case "Feedback":
-      //   setShowFeedbackModal(true);
-      //   break;
-      case "Privacy Policy":
-        setShowPrivatePrivacyModal(true);
-        break;
-      case "Terms and Services":
-        setShowTermsAndServiceModal(true);
-        break;
-      case "Change Password":
+      case "chngPass":
         setShowChangePasswordModal(true);
         break;
-      case "Logout":
+      case "logout":
         setShowLogoutModal(true);
         break;
-      case "Facebook":
-      case "Instagram":
-      case "Discord":
-        console.log("coming here social");
+      case "discord":
+      case "instagram":
+      case "facebook":
         setShowSocialModal(true);
         break;
-
-      case "Help Center":
+      case "helpCenter":
         setShowFAQModal(true);
+        break;
+      case "contactUs":
+        setShowReportBugModal(true);
+        break;
+      case "privacyPolicy":
+        setShowPrivatePrivacyModal(true);
+        break;
+      case "terms":
+        setShowTermsAndServiceModal(true);
+        break;
+      default:
         break;
     }
   };
 
   return (
-    <View style={styles.gestureContainer}>
-      <SafeAreaView style={styles.gestureContainer}>
-        <ScrollView contentContainerStyle={{ paddingBottom: 130 }}>
-          <ProfileHeader
-            username={userProfile?.username || "Nimbus Explorer"}
-            emailOrTagline={
-              userProfile?.email || "Grow a calmer, healthier you 🌿"
-            }
-            planLabel={"Nimbus Free"}
-            avatarUrl={userProfile?.avatar || null} // ✅ URL string
-            onPressManagePlan={() => router.push(ROUTES.AUTH.BILLING_UPGRADE)}
-          />
-          <View style={{ paddingVertical: 20 }}>
-            <UpgradeBanner onPress={() => router.push(ROUTES.AUTH.BILLING_UPGRADE)} />
-          </View>
+    <View style={[styles.screen, { backgroundColor: newTheme.background }]}>
+      <StatusBar style="light" translucent backgroundColor="transparent" />
 
-          {Section.map(({ header, items }) => (
-            <View style={styles.section} key={header}>
-              <Text style={styles.sectionHeader}>{header}</Text>
+      <SettingsScreenHeader
+        title="Nimbus You"
+        onBack={() => router.back()}
+      />
 
-              {items.map(
-                ({
-                  id,
-                  label,
-                  type,
-                  icon,
-                  color,
-                }: {
-                  id: keyof FormState;
-                  label: string;
-                  type: string;
-                  icon: any;
-                  color: string;
-                }) => (
-                  <TouchableOpacity
-                    key={icon}
-                    onPress={() => onSettingPanelClick(type, label)}
-                  >
-                    <View style={styles.row}>
-                      <View
-                        style={[
-                          styles.rowIcon,
-                          { backgroundColor: newTheme.accent },
-                        ]}
-                      >
-                        {/* icon */}
-                        <Ionicons
-                          name={icon}
-                          size={18}
-                          color={newTheme.background}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 126 },
+        ]}
+      >
+        <ProfileHeader
+          username={userProfile?.username || "321be4"}
+          displayName={displayName}
+          avatarUrl={userProfile?.avatar || null}
+          planLabel="PREMIUM MEMBER"
+          badgeLabel="PREMIUM MEMBER"
+          statusLine={statusLine}
+          onPressManagePlan={() => router.push(ROUTES.AUTH.BILLING_UPGRADE)}
+        />
+
+        <View style={styles.sectionStack}>
+          {SETTINGS_SECTIONS.map((section) => (
+            <SettingsSectionCard
+              key={section.header}
+              title={section.header}
+              icon={section.icon}
+              style={styles.sectionCard}
+            >
+              {section.items.map((item, index) => {
+                const isToggle = item.action === "toggle";
+                const isLast = index === section.items.length - 1;
+                const rowStyle = isLast ? undefined : styles.rowSpacing;
+
+                if (isToggle) {
+                  const toggleKey = item.id as ToggleKey;
+
+                  return (
+                    <SettingsRow
+                      key={item.id}
+                      icon={item.icon}
+                      label={item.label}
+                      style={rowStyle}
+                      rightSlot={
+                        <SettingsToggle
+                          value={toggleState[toggleKey]}
+                          onValueChange={(next) => onToggle(toggleKey, next)}
                         />
-                      </View>
-                      <Text style={styles.rowLabel}>{label}</Text>
+                      }
+                    />
+                  );
+                }
 
-                      <View style={{ flex: 1 }} />
-
-                      {type === "toogle" && (
-                        <StyledSwitch
-                          value={formState[id]}
-                          onValueChange={(value) => onToggle(id, value, label)}
-                          size="medium"
-                        />
-                      )}
-
-                      {type === "modal" && (
-                        <Ionicons
-                          name="chevron-forward"
-                          color={newTheme.textSecondary}
-                          size={22}
-                        />
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                )
-              )}
-            </View>
+                return (
+                  <SettingsRow
+                    key={item.id}
+                    icon={item.icon}
+                    label={item.label}
+                    danger={item.danger}
+                    showChevron={item.showChevron}
+                    showExternal={item.showExternal}
+                    showDot={item.showDot}
+                    style={rowStyle}
+                    onPress={() => handleAction(item.id)}
+                  />
+                );
+              })}
+            </SettingsSectionCard>
           ))}
+        </View>
 
-          <NotificationListModal
-            visible={showNotificationModal}
-            onClose={() => setShowNotificationModal(false)}
-          />
+        <SettingsFooter />
+      </ScrollView>
 
-          <AdvancedSettingsModal
-            visible={showAdvanceSettingModal}
-            onClose={() => setShowAdvanceSettingModal(false)}
-          />
+      <EditProfileModal
+        visible={showEditProfile}
+        onClose={() => setEditProfile(false)}
+        onSaved={() => setEditProfile(false)}
+      />
 
-          {/* The modal */}
-          <EditProfileModal
-            visible={showEditProfile}
-            onClose={() => setEditProfile(false)}
-            onSaved={(user) => {
-              console.log("Profile saved:", user);
-              setEditProfile(false);
-            }}
-          />
+      <ContactUsModal
+        visible={showReportBugModal}
+        onClose={() => setShowReportBugModal(false)}
+      />
 
-          <ContactUsModal
-            visible={showReportBugModal}
-            onClose={() => setShowReportBugModal(false)}
-          />
-          <FeedbackModal
-            visible={showFeedbackModal}
-            onClose={() => setShowFeedbackModal(false)}
-          />
-          <PrivacyPolicyModal
-            visible={showPrivatePolicyModal}
-            onClose={() => setShowPrivatePrivacyModal(false)}
-          />
-          <TermsModal
-            visible={showTermsAndServiceModal}
-            onClose={() => setShowTermsAndServiceModal(false)}
-          />
-          <FAQModal
-            visible={showFAQModal}
-            onClose={() => setShowFAQModal(false)}
-          />
+      <FeedbackModal
+        visible={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+      />
 
-          <ChangePasswordModal
-            visible={showChangePasswordModal}
-            onClose={() => setShowChangePasswordModal(false)}
-          />
+      <PrivacyPolicyModal
+        visible={showPrivatePolicyModal}
+        onClose={() => setShowPrivatePrivacyModal(false)}
+      />
 
-          <SocialActionModal
-            visible={showSocialModal}
-            onClose={() => setShowSocialModal(false)}
-            title="Nimbus on Instagram"
-            appDeepLink={instagramDeep}
-            webUrl={instagramWeb}
-          />
+      <TermsModal
+        visible={showTermsAndServiceModal}
+        onClose={() => setShowTermsAndServiceModal(false)}
+      />
 
-          <LogoutModal
-            visible={showLogoutModal}
-            onLogout={onLogoutClick}
-            onClose={() => setShowLogoutModal(false)}
-          />
-        </ScrollView>
-      </SafeAreaView>
+      <FAQModal
+        visible={showFAQModal}
+        onClose={() => setShowFAQModal(false)}
+      />
+
+      <SocialActionModal
+        visible={showSocialModal}
+        onClose={() => setShowSocialModal(false)}
+        title="SVA Social"
+        appDeepLink={SVA_SOCIAL_DEEP_LINK}
+        webUrl={SVA_SOCIAL_WEB_URL}
+      />
+
+      <ChangePasswordModal
+        visible={showChangePasswordModal}
+        onClose={() => setShowChangePasswordModal(false)}
+      />
+
+      <LogoutModal
+        visible={showLogoutModal}
+        onLogout={onLogoutClick}
+        onClose={() => setShowLogoutModal(false)}
+      />
     </View>
   );
 }
-const styling = (newTheme: any) =>
-  StyleSheet.create({
-    gestureContainer: {
-      flex: 1,
-      backgroundColor: newTheme.background,
-    },
-    container: {
-      paddingVertical: 24,
-    },
-    profile: {
-      padding: 24,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    profileName: {
-      fontSize: 19,
-      fontWeight: 600,
-      color: newTheme.textPrimary,
-      textAlign: "center",
-    },
 
-    profileAvatarWrapper: {
-      position: "relative",
-    },
-    profileAvatar: {
-      width: 82,
-      height: 82,
-      borderRadius: 9999,
-    },
-
-    section: {
-      paddingHorizontal: 24,
-    },
-    sectionHeader: {
-      paddingVertical: 12,
-      fontSize: 12,
-      fontWeight: 600,
-      color: newTheme.textPrimary,
-      textTransform: "uppercase",
-      letterSpacing: 1.1,
-    },
-    row: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "flex-start",
-      height: 50,
-      backgroundColor: newTheme.divider,
-      borderRadius: 8,
-      marginBottom: 12,
-      paddingHorizontal: 12,
-    },
-    rowLabel: {
-      fontSize: 12,
-      color: newTheme.textPrimary,
-    },
-    rowIcon: {
-      width: 32,
-      height: 32,
-      borderRadius: 999,
-      marginRight: 12,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    logout: {
-      fontSize: 12,
-      color: newTheme.textPrimary,
-      paddingHorizontal: 24,
-    },
-  });
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: SETTINGS_LAYOUT.screenHorizontal,
+    paddingTop: SETTINGS_LAYOUT.screenTop,
+  },
+  sectionStack: {
+    marginTop: 8,
+    gap: SETTINGS_LAYOUT.sectionGap,
+  },
+  sectionCard: {
+    marginTop: 0,
+  },
+  rowSpacing: {
+    marginBottom: 4,
+  },
+});

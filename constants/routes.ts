@@ -105,6 +105,8 @@ export const ROUTES = {
     // Others
     COACH: "/(auth)/coach",
     REWARDS: "/(auth)/rewards",
+    ADVANCED_SETTINGS: "/(auth)/advanced-settings",
+    NOTIFICATIONS: "/(auth)/notifications",
     STATISTICS_DETAILS: "/(auth)/statistics/details",
     SUCCESS_STATE: "/(auth)/state/success",
   },
