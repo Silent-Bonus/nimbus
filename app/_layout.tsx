@@ -26,6 +26,7 @@ import {
 } from "@expo-google-fonts/urbanist";
 
 import AuthProvider from "@/contexts/AuthContext";
+import { PremiumGateProvider } from "@/contexts/PremiumGateContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 // import HabitContext from "@/context/HabitContext";
 import { NimbusAlertProvider } from "@/components/ui/alert/NimbusAlertProvider";
@@ -76,17 +77,19 @@ function RootLayoutNav() {
   return (
     <AuthProvider>
       <ThemeProvider>
-        <NimbusAlertProvider>
-          {/* <HabitContext.Provider value={{ habitData, setHabitData }}> */}
-          <Stack screenOptions={{ headerShown: false }}>
-            {/* ✅ explicitly declare groups */}
-            <Stack.Screen name="(public)" />
-            <Stack.Screen name="(auth)" />
-          </Stack>
+        <PremiumGateProvider>
+          <NimbusAlertProvider>
+            {/* <HabitContext.Provider value={{ habitData, setHabitData }}> */}
+            <Stack screenOptions={{ headerShown: false }}>
+              {/* ✅ explicitly declare groups */}
+              <Stack.Screen name="(public)" />
+              <Stack.Screen name="(auth)" />
+            </Stack>
 
-          <NimbusToastHost />
-          {/* </HabitContext.Provider> */}
-        </NimbusAlertProvider>
+            <NimbusToastHost />
+            {/* </HabitContext.Provider> */}
+          </NimbusAlertProvider>
+        </PremiumGateProvider>
       </ThemeProvider>
     </AuthProvider>
   );

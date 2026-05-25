@@ -13,6 +13,10 @@ import axios from "axios";
 import { StoreKey } from "@/constants/Constant";
 import { ROUTES } from "@/constants/routes";
 import {
+  normalizeUserProfile,
+} from "@/features/auth/utils/userEntitlements";
+import type { UserProfile } from "@/features/auth/types/userProfile";
+import {
   login,
   signup,
   logout,
@@ -31,20 +35,6 @@ export async function clearAuthAndOnboarding() {
 const resetApp = async () => {
   await clearAuthAndOnboarding();
   router.replace(ROUTES.PUBLIC.LANDING);
-};
-
-type UserProfile = {
-  full_name?: string | null;
-  phone_number?: string | null;
-  id: number;
-  avatar?: string | null;
-  username: string | null;
-  email: string | null;
-  first_name: string | null;
-  last_name: string | null;
-  profile: any;
-  settings: any;
-  // add whatever fields your API returns
 };
 
 // Cache Token Key
@@ -212,7 +202,11 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
           axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
           setAuthState({ token, authenticated: true });
 
-          if (profileInfo) setUserProfile(JSON.parse(profileInfo));
+          if (profileInfo) {
+            // Temporary entitlement seed: default to a free profile until the backend sends tier data consistently.
+            const cachedProfile = normalizeUserProfile(JSON.parse(profileInfo));
+            if (cachedProfile) setUserProfile(cachedProfile);
+          }
           // ✅ If key missing, decide a default (recommended: false)
           setOnboardingDone(ob === "true");
         } else {
@@ -411,7 +405,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
           notifications,
           ...tokens
         } = data;
-        const usr = {
+        const usr = normalizeUserProfile({
           id: id,
           avatar: data.avatar || null,
           username: username,
@@ -421,8 +415,10 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
           profile: profile,
           settings: settings,
           notifications: notifications,
-        };
-        await applyServerUser(usr);
+        });
+        if (usr) {
+          await applyServerUser(usr as any);
+        }
         // const profileInfo = await SecureStore.getItem(USER_PROFILE_KEY);
         await SecureStore.setItemAsync(USER_PROFILE_KEY, JSON.stringify(usr));
         setUserProfile(usr);
@@ -454,7 +450,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
             notifications,
             notification_preferences,
           } = data;
-          const usr = {
+          const usr = normalizeUserProfile({
             id: id,
             username: username,
             email: email,
@@ -464,8 +460,10 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
             profile: profile,
             settings: settings,
             notifications: notifications,
-          };
-          await applyServerUser(usr); // keep app + storage in sync
+          });
+          await applyServerUser(usr as any); // keep app + storage in sync
+          await SecureStore.setItemAsync(USER_PROFILE_KEY, JSON.stringify(usr));
+          setUserProfile(usr);
         }
         return res; // caller decides what to do
       } catch (err: any) {
