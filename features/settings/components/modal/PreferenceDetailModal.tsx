@@ -1,449 +1,564 @@
-// components/SettingDetail.tsx
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import {
-  Modal,
-  View,
-  Text,
+  ActivityIndicator,
+  Pressable,
   StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  ScrollView,
-  Platform,
+  Text,
+  View,
 } from "react-native";
-import ThemeContext from "@/contexts/ThemeContext";
-import {
-  setPreference,
-  getPreference,
-  PreferenceKey,
-} from "@/services/PreferenceStorage";
-import { useAuth } from "@/contexts/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 
-import StyledButton from "@/components/ui/theme-components/StyledButton";
+import ThemeContext from "@/contexts/ThemeContext";
+import SettingsBottomSheet from "./SettingsBottomSheet";
+import {
+  formatAdvancedValue,
+  isTimeSettingKey,
+  type AdvancedSettingKey,
+  type AdvancedSettingsPatch,
+} from "./advancedSettingsTypes";
+import type { SvaColorSet, Spacing } from "@/theme/types";
+
+type PreferenceDetailTypography = {
+  bodyFamily: string;
+  bodyStrongFamily: string;
+  monoFamily: string;
+};
+
+type PreferenceDetailStyles = ReturnType<typeof createStyles>;
 
 type Props = {
   visible: boolean;
-
-  categoryKey: PreferenceKey | string;
+  categoryKey: AdvancedSettingKey;
   selectedUnit?: string | null;
   label: string;
-  options: string[]; // for pills: ["00:00","01:00"...], for panels: ["ml","oz"] etc.
-  onSave: (val: any) => void;
+  options: string[];
+  onSave: (val: AdvancedSettingsPatch) => Promise<boolean | void> | boolean | void;
   onClose: () => void;
 };
 
-/** Helpers */
-const normalize = (s?: string | null) =>
-  (s ?? "").toString().trim().toLowerCase();
-const normalizeHour = (s?: string | null) => {
-  if (!s) return "";
-  const parts = String(s).split(":");
-  const hh = String(Number(parts[0] ?? "0")).padStart(2, "0");
-  const mm = String(Number(parts[1] ?? "0")).padStart(2, "0");
-  return `${hh}:${mm}`;
-};
-
-// recommended circadian times (used only for start_of_day / sleep_time)
 const RECOMMENDED = ["05:00", "06:00", "07:00", "08:00", "09:00"];
 
-// which keys should show the pill-style UI
-const PILL_KEYS = new Set(["start_of_day", "sleep_time"]);
-
-export default function SettingDetail({
+export default function PreferenceDetailModal({
   visible,
-  onClose,
   categoryKey,
   selectedUnit,
   label,
   options,
   onSave,
+  onClose,
 }: Props) {
-  const { newTheme } = useContext(ThemeContext);
-  const styles = styling(newTheme);
+  const { svaColors, svaTypography, typography, spacing } =
+    useContext(ThemeContext);
+  const [selected, setSelected] = useState<string>(selectedUnit ?? "");
+  const [saving, setSaving] = useState(false);
 
-  const [selected, setSelected] = useState<string>("");
-  const [loading, setLoading] = useState(false);
-  const [showInfo, setShowInfo] = useState(false);
-
-  // load current preference when opening
-  useEffect(() => {
-    if (!visible) return;
-    (async () => {
-      try {
-        const val = await getPreference(categoryKey as PreferenceKey);
-        setSelected(val ?? "");
-      } catch (e) {
-        console.warn("getPreference error", e);
-      }
-    })();
-  }, [visible, categoryKey]);
-
-  // determine UI mode: pill vs panel
-  const isPillMode = PILL_KEYS.has(String(categoryKey));
-
-  /* ---------- Panel mode helpers (original style) ---------- */
-  const onSelectPanel = async (val: string) => {
-    try {
-      setSelected(val);
-      await setPreference(categoryKey as PreferenceKey, val);
-    } catch (e) {
-      console.warn("setPreference error", e);
-    }
-  };
-
-  /* ---------- Pill mode helpers (start_of_day / sleep_time) ---------- */
-  const { recommendedOptions, otherOptions } = useMemo(() => {
-    // normalize incoming options to HH:MM
-    const normalizedOptions = options.map((o) => normalizeHour(o));
-    const normalizedSet = new Set(normalizedOptions);
-
-    const recommended = RECOMMENDED.filter((r) =>
-      normalizedSet.has(normalizeHour(r))
-    );
-    const other = normalizedOptions.filter((o) => !recommended.includes(o));
-
-    return { recommendedOptions: recommended, otherOptions: other };
-  }, [options]);
-
-  const onSelectPill = async (val: string) => {
-    try {
-      setSelected(val);
-      await setPreference(categoryKey as PreferenceKey, val);
-    } catch (e) {
-      console.warn("setPreference error", e);
-    }
-  };
-
-  const isActive = (opt: string) => {
-    if (isPillMode) {
-      const normSelected = normalizeHour(selected || selectedUnit || "");
-      return normalizeHour(opt) === normSelected;
-    } else {
-      // panel mode: case-insensitive compare
-      const normItem = normalize(opt);
-      const normSelected = normalize(selected || selectedUnit || "");
-      return normItem === normSelected;
-    }
-  };
-
-  const doSave = () => {
-    console.log(selected, categoryKey, "selected to save");
-    if (categoryKey === "start_of_day" || categoryKey === "sleep_time") {
-      // ensure selected is in HH:MM:SS format
-      const timeValue = normalizeHour(selected || selectedUnit || "");
-      if (timeValue) {
-        const formatted = `${timeValue}:00`; // append seconds
-        // call onSave with the selected time value
-        const payload = {
-          settings: {
-            [categoryKey]: formatted,
-          },
-        };
-        onSave(payload);
-      }
-    } else {
-      const payload = {
-        settings: {
-          [categoryKey]: selected.toLowerCase(),
-        },
-      };
-      onSave(payload);
-    }
-
-    onClose();
-  };
-
-  const cancel = () => {
-    onClose();
-  };
-
-  if (!visible) return null;
-
-  /* ---------- Footer buttons component used in both modes ---------- */
-  const FooterButtons = () => (
-    <View style={styles.footerWrapper}>
-      <StyledButton
-        label="Cancel"
-        variant="secondary"
-        fullWidth
-        onPress={cancel}
-        style={styles.footerButton}
-      />
-
-      <StyledButton
-        label={loading ? "Saving..." : "Save"}
-        variant="primary"
-        fullWidth
-        disabled={loading}
-        onPress={doSave}
-      />
-    </View>
+  const fonts = useMemo<PreferenceDetailTypography>(
+    () => ({
+      bodyFamily:
+        svaTypography?.textStyle.body.fontFamily ??
+        typography.body.fontFamily ??
+        "Outfit_400Regular",
+      bodyStrongFamily:
+        svaTypography?.textStyle.bodyMedium.fontFamily ??
+        typography.bodyStrong.fontFamily ??
+        "Outfit_600SemiBold",
+      monoFamily:
+        svaTypography?.textStyle.authMonoLabel.fontFamily ??
+        "SpaceMono-Regular",
+    }),
+    [svaTypography, typography]
   );
 
+  const styles: PreferenceDetailStyles = useMemo(
+    () => createStyles(svaColors, fonts, spacing),
+    [svaColors, fonts, spacing]
+  );
+
+  useEffect(() => {
+    if (!visible) return;
+    setSelected(selectedUnit ?? "");
+  }, [selectedUnit, visible]);
+
+  const timeMode = isTimeSettingKey(categoryKey);
+
+  const recommendedOptions = useMemo(() => {
+    if (!timeMode) return [];
+    const normalized = new Set(options.map((option) => normalizeOption(option)));
+    return RECOMMENDED.filter((item) => normalized.has(normalizeOption(item)));
+  }, [options, timeMode]);
+
+  const otherOptions = useMemo(() => {
+    if (!timeMode) return options;
+    const recommendedSet = new Set(recommendedOptions.map((item) => normalizeOption(item)));
+    return options.filter((item) => !recommendedSet.has(normalizeOption(item)));
+  }, [options, recommendedOptions, timeMode]);
+
+  const selectedValue = formatAdvancedValue(categoryKey, selected || selectedUnit);
+  const hasChanges =
+    normalizeOption(selected, categoryKey) !==
+    normalizeOption(selectedUnit ?? "", categoryKey);
+
+  const canSave = selected.trim().length > 0 && !saving && hasChanges;
+
+  const saveLabel = saving ? "Saving..." : "Save changes";
+
+  const handleSave = async () => {
+    if (!canSave) return;
+
+    setSaving(true);
+    try {
+      const payloadValue = normalizePayloadValue(categoryKey, selected);
+      const result = await onSave({
+        settings: {
+          [categoryKey]: payloadValue,
+        },
+      });
+
+      if (result !== false) {
+        onClose();
+      }
+    } catch (error) {
+      console.warn("save advanced preference failed", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const headerBadgeLabel = timeMode ? "Schedule" : "Measurements";
+  const headerBadgeIcon = timeMode ? "time-outline" : "options-outline";
+
   return (
-    <Modal visible={visible} animationType="slide">
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.backBtn}>
-            <Ionicons
-              name="arrow-back"
-              size={22}
-              color={newTheme.textPrimary}
-            />
-            {/* <Text style={styles.back}>←</Text> */}
-          </TouchableOpacity>
-          <Text style={styles.title}>{label}</Text>
+    <SettingsBottomSheet
+      visible={visible}
+      onClose={onClose}
+      eyebrow="Advanced settings"
+      title={label}
+      subtitle="Choose one value and save it back to your profile."
+      badgeLabel={headerBadgeLabel}
+      badgeIcon={headerBadgeIcon}
+      closeLabel={`Close ${label}`}
+      footer={
+        <View style={styles.footerRow}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Cancel changes"
+            onPress={onClose}
+            style={({ pressed }) => [
+              styles.footerButton,
+              styles.footerButtonSecondary,
+              pressed && styles.footerButtonPressed,
+            ]}
+          >
+            <Text style={styles.footerSecondaryLabel}>Cancel</Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={saveLabel}
+            onPress={handleSave}
+            disabled={!canSave}
+            style={({ pressed }) => [
+              styles.footerButton,
+              styles.footerButtonPrimary,
+              pressed && canSave && styles.footerButtonPressed,
+              !canSave && styles.footerButtonDisabled,
+            ]}
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color={svaColors.bg.base} />
+            ) : (
+              <Text style={styles.footerPrimaryLabel}>{saveLabel}</Text>
+            )}
+          </Pressable>
+        </View>
+      }
+    >
+      <View style={styles.summaryCard}>
+        <View style={styles.summaryIconWrap}>
+          <Ionicons
+            name={timeMode ? "moon-outline" : "sparkles-outline"}
+            size={18}
+            color={svaColors.brand.primary}
+          />
         </View>
 
-        {isPillMode ? (
-          // Pill-mode UI (start_of_day, sleep_time)
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>
-                Best time to start your day
-              </Text>
-              <TouchableOpacity
-                onPress={() => setShowInfo((s) => !s)}
-                style={styles.infoBtn}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Ionicons
-                  name="information-circle-outline"
-                  size={18}
-                  color={newTheme.textSecondary}
-                />
-              </TouchableOpacity>
-            </View>
-
-            {showInfo && (
-              <View style={styles.infoBox}>
-                <Text style={styles.infoText}>
-                  These suggested times align with typical circadian rhythms —
-                  waking between 5–9 AM supports morning light exposure and
-                  consistent sleep schedules.
-                </Text>
-              </View>
-            )}
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.recommendedRow}
-            >
-              {recommendedOptions.length ? (
-                recommendedOptions.map((opt) => {
-                  const active = isActive(opt);
-                  return (
-                    <TouchableOpacity
-                      key={`rec-${opt}`}
-                      onPress={() => onSelectPill(opt)}
-                      style={[styles.recPill, active && styles.recPillActive]}
-                      activeOpacity={0.85}
-                    >
-                      <Text
-                        style={[
-                          styles.recPillText,
-                          active && styles.recPillTextActive,
-                        ]}
-                      >
-                        {opt}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })
-              ) : (
-                <Text style={styles.smallMuted}>No recommended times</Text>
-              )}
-            </ScrollView>
-
-            <Text style={[styles.sectionTitle, { marginTop: 18 }]}>
-              Other times
-            </Text>
-
-            <View style={styles.pillWrap}>
-              {otherOptions.map((opt) => {
-                const active = isActive(opt);
-                return (
-                  <TouchableOpacity
-                    key={`opt-${opt}`}
-                    onPress={() => onSelectPill(opt)}
-                    style={[
-                      styles.pillInline,
-                      active && styles.pillInlineActive,
-                    ]}
-                    activeOpacity={0.85}
-                  >
-                    <Text
-                      style={[
-                        styles.pillInlineText,
-                        active && styles.pillInlineTextActive,
-                      ]}
-                    >
-                      {opt}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <FooterButtons />
-          </ScrollView>
-        ) : (
-          // Panel-mode UI (original style for units)
-          <FlatList
-            data={options}
-            keyExtractor={(i) => i}
-            renderItem={({ item }) => {
-              const active = isActive(item);
-              return (
-                <TouchableOpacity
-                  style={[styles.item, active && styles.itemActive]}
-                  onPress={() => onSelectPanel(item)}
-                  activeOpacity={0.85}
-                >
-                  <Text
-                    style={[styles.itemText, active && styles.itemTextActive]}
-                  >
-                    {item}
-                  </Text>
-                </TouchableOpacity>
-              );
-            }}
-            ItemSeparatorComponent={() => <View style={styles.sep} />}
-            contentContainerStyle={styles.listContent}
-            ListFooterComponent={FooterButtons}
-          />
-        )}
+        <View style={styles.summaryCopy}>
+          <Text style={styles.summaryTitle}>Current selection</Text>
+          <Text style={styles.summaryValue}>{selectedValue}</Text>
+          <Text style={styles.summaryText}>
+            {timeMode
+              ? "Pick a rhythm that feels natural. The top row highlights recommended windows."
+              : "Choose the unit that best matches your profile and tracking habits."}
+          </Text>
+        </View>
       </View>
-    </Modal>
+
+      {timeMode ? (
+        <>
+          <View style={styles.sectionBlock}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>Recommended</Text>
+              <Text style={styles.sectionMeta}>
+                {String(recommendedOptions.length).padStart(2, "0")}
+              </Text>
+            </View>
+
+            <View style={styles.timeChipRow}>
+              {recommendedOptions.length ? (
+                recommendedOptions.map((option) => (
+                  <OptionChip
+                    key={option}
+                    label={option}
+                    active={normalizeOption(option) === normalizeOption(selected, categoryKey)}
+                    colors={svaColors}
+                    styles={styles}
+                    onPress={() => setSelected(option)}
+                  />
+                ))
+              ) : (
+                <Text style={styles.emptyText}>No recommended times found.</Text>
+              )}
+            </View>
+          </View>
+
+          <View style={styles.sectionBlock}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>Other options</Text>
+              <Text style={styles.sectionMeta}>
+                {String(otherOptions.length).padStart(2, "0")}
+              </Text>
+            </View>
+
+            <View style={styles.timeChipRow}>
+              {otherOptions.map((option) => (
+                <OptionChip
+                  key={option}
+                  label={option}
+                  active={normalizeOption(option) === normalizeOption(selected, categoryKey)}
+                  colors={svaColors}
+                  styles={styles}
+                  onPress={() => setSelected(option)}
+                />
+              ))}
+            </View>
+          </View>
+        </>
+      ) : (
+        <View style={styles.optionGrid}>
+          {options.map((option) => {
+            const active = normalizeOption(option, categoryKey) === normalizeOption(selected, categoryKey);
+
+            return (
+              <Pressable
+                key={option}
+                accessibilityRole="button"
+                accessibilityLabel={option}
+                onPress={() => setSelected(option)}
+                style={({ pressed }) => [
+                  styles.optionCard,
+                  active && styles.optionCardActive,
+                  pressed && styles.optionCardPressed,
+                ]}
+              >
+                <View style={styles.optionCardTopRow}>
+                  <Text
+                    style={[
+                      styles.optionText,
+                      active && styles.optionTextActive,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {option}
+                  </Text>
+
+                  {active ? (
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={18}
+                      color={svaColors.brand.primary}
+                    />
+                  ) : (
+                    <Ionicons
+                      name="ellipse-outline"
+                      size={18}
+                      color={svaColors.text.secondary}
+                    />
+                  )}
+                </View>
+
+                <Text style={styles.optionHint}>
+                  {active ? "Selected" : "Tap to switch"}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+    </SettingsBottomSheet>
   );
 }
 
-/* Styles: combines pill and panel styles, re-uses Nimbus tokens */
-const styling = (newTheme: any) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: newTheme.background,
-      paddingTop: 90,
-    },
-    header: {
-      marginTop: 12,
+function OptionChip({
+  label,
+  active,
+  colors,
+  styles,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  colors: SvaColorSet;
+  styles: PreferenceDetailStyles;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.timeChip,
+        active && styles.timeChipActive,
+        pressed && styles.timeChipPressed,
+      ]}
+    >
+      <Text
+        style={[
+          styles.timeChipText,
+          active && styles.timeChipTextActive,
+        ]}
+      >
+        {label}
+      </Text>
+      {active ? (
+        <Ionicons name="checkmark" size={14} color={colors.bg.base} />
+      ) : null}
+    </Pressable>
+  );
+}
+
+function normalizeOption(value: string, key?: AdvancedSettingKey) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  if (key && isTimeSettingKey(key)) {
+    return trimmed.slice(0, 5).padStart(5, "0");
+  }
+
+  return trimmed.toLowerCase();
+}
+
+function normalizePayloadValue(key: AdvancedSettingKey, value: string) {
+  const trimmed = value.trim();
+  if (isTimeSettingKey(key)) {
+    return trimmed.slice(0, 5);
+  }
+
+  if (key === "start_of_week" || key === "weather_unit") {
+    return trimmed.toLowerCase();
+  }
+
+  return trimmed.toLowerCase();
+}
+
+function createStyles(
+  colors: SvaColorSet,
+  fonts: PreferenceDetailTypography,
+  spacing: Spacing
+) {
+  return StyleSheet.create({
+    summaryCard: {
       flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: 16,
-      paddingBottom: 12,
-    },
-    backBtn: { padding: 6, marginRight: 8 },
-    title: { fontSize: 20, fontWeight: "700", color: newTheme.textPrimary },
-
-    /* common list content spacing */
-    listContent: {
-      paddingBottom: 12,
-    },
-
-    /* panel mode (original) */
-    item: {
-      padding: 16,
-      borderRadius: 10,
+      gap: spacing.md,
+      padding: spacing.md,
+      borderRadius: 24,
       borderWidth: 1,
-      borderColor: "transparent",
-      marginHorizontal: 16,
-      marginVertical: 6,
-      backgroundColor: newTheme.surface,
+      borderColor: colors.border.default,
+      backgroundColor: colors.surface.raised,
+      marginBottom: spacing.md,
     },
-    itemActive: {
-      borderColor: newTheme.accent,
+    summaryIconWrap: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.bg.subtle,
+      borderWidth: 1,
+      borderColor: colors.border.muted,
     },
-    itemText: { color: newTheme.textPrimary, fontSize: 16 },
-    itemTextActive: { color: newTheme.accent },
-
-    sep: {
-      height: 1,
-      backgroundColor: newTheme.divider,
-      marginHorizontal: 16,
+    summaryCopy: {
+      flex: 1,
     },
-
-    /* pill mode styles */
-    scrollContent: {
-      paddingBottom: Platform.OS === "ios" ? 26 : 16,
-      paddingHorizontal: 16,
+    summaryTitle: {
+      fontFamily: fonts.monoFamily,
+      color: colors.text.secondary,
+      fontSize: 10,
+      lineHeight: 12,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
+    },
+    summaryValue: {
+      marginTop: 4,
+      fontFamily: fonts.bodyStrongFamily,
+      color: colors.text.primary,
+      fontSize: 18,
+      lineHeight: 22,
+    },
+    summaryText: {
+      marginTop: 6,
+      fontFamily: fonts.bodyFamily,
+      color: colors.text.secondary,
+      fontSize: 12.5,
+      lineHeight: 17,
+    },
+    sectionBlock: {
+      marginBottom: spacing.md,
     },
     sectionHeaderRow: {
       flexDirection: "row",
       alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: spacing.sm,
     },
     sectionTitle: {
-      marginTop: 6,
-      marginBottom: 18,
-      fontSize: 14,
-      color: newTheme.textSecondary,
-      fontWeight: "700",
+      fontFamily: fonts.bodyStrongFamily,
+      color: colors.text.primary,
+      fontSize: 15.5,
+      lineHeight: 20,
     },
-    infoBtn: { marginLeft: 8, marginBottom: 8 },
-    infoBox: {
-      backgroundColor: newTheme.surface,
-      borderRadius: 10,
-      padding: 12,
-      marginBottom: 25,
-      borderWidth: 1,
-      borderColor: newTheme.divider,
+    sectionMeta: {
+      fontFamily: fonts.monoFamily,
+      color: colors.text.secondary,
+      fontSize: 10,
+      lineHeight: 12,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
     },
-    infoText: { color: newTheme.textSecondary, fontSize: 13, lineHeight: 22 },
-
-    /* recommended */
-    recommendedRow: {
-      marginBottom: 18,
+    timeChipRow: {
       flexDirection: "row",
       flexWrap: "wrap",
+      gap: 10,
     },
-    recPill: {
-      paddingVertical: 12,
-      paddingHorizontal: 18,
-      borderRadius: 22,
-      backgroundColor: newTheme.surface,
-      marginRight: 12,
-      minWidth: 84,
+    timeChip: {
+      flexDirection: "row",
       alignItems: "center",
-      justifyContent: "center",
-    },
-    recPillActive: { backgroundColor: newTheme.accent },
-    recPillText: { color: newTheme.textPrimary, fontWeight: "700" },
-    recPillTextActive: { color: newTheme.background },
-
-    /* other times pill grid */
-    pillWrap: { flexDirection: "row", flexWrap: "wrap", marginBottom: 18 },
-    pillInline: {
+      gap: 6,
+      paddingHorizontal: 14,
       paddingVertical: 10,
-      paddingHorizontal: 16,
-      borderRadius: 12,
-      backgroundColor: newTheme.surface,
-      marginRight: 10,
-      marginBottom: 10,
-      minWidth: 72,
-      alignItems: "center",
-      justifyContent: "center",
+      borderRadius: 999,
+      backgroundColor: colors.surface.raised,
+      borderWidth: 1,
+      borderColor: colors.border.default,
     },
-    pillInlineActive: { backgroundColor: newTheme.accent },
-    pillInlineText: { color: newTheme.textPrimary, fontWeight: "700" },
-    pillInlineTextActive: { color: newTheme.background },
-
-    smallMuted: { color: newTheme.textSecondary },
-
-    footerWrapper: {
-      paddingTop: 16,
-      paddingBottom: Platform.OS === "ios" ? 26 : 16,
-      paddingHorizontal: 16,
+    timeChipActive: {
+      backgroundColor: colors.brand.primary,
+      borderColor: colors.brand.primary,
     },
-    footerButton: {
-      marginBottom: 12,
+    timeChipPressed: {
+      transform: [{ scale: 0.98 }],
+      opacity: 0.94,
     },
-    ctaRow: {
+    timeChipText: {
+      fontFamily: fonts.monoFamily,
+      color: colors.text.primary,
+      fontSize: 10.5,
+      lineHeight: 12,
+      letterSpacing: 1.1,
+    },
+    timeChipTextActive: {
+      color: colors.bg.base,
+    },
+    emptyText: {
+      fontFamily: fonts.bodyFamily,
+      color: colors.text.secondary,
+      fontSize: 12.5,
+      lineHeight: 17,
+    },
+    optionGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+    },
+    optionCard: {
+      width: "48%",
+      minHeight: 94,
+      padding: 14,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: colors.border.default,
+      backgroundColor: colors.surface.raised,
+    },
+    optionCardActive: {
+      backgroundColor: colors.bg.subtle,
+      borderColor: colors.brand.primary,
+    },
+    optionCardPressed: {
+      opacity: 0.94,
+      transform: [{ scale: 0.99 }],
+    },
+    optionCardTopRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
+      gap: 10,
+      marginBottom: 18,
+    },
+    optionText: {
+      flex: 1,
+      fontFamily: fonts.bodyStrongFamily,
+      color: colors.text.primary,
+      fontSize: 15,
+      lineHeight: 18,
+    },
+    optionTextActive: {
+      color: colors.text.primary,
+    },
+    optionHint: {
+      fontFamily: fonts.bodyFamily,
+      color: colors.text.secondary,
+      fontSize: 12,
+      lineHeight: 16,
+    },
+    footerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+      paddingBottom: spacing.xs,
+    },
+    footerButton: {
+      flex: 1,
+      height: 48,
+      borderRadius: 999,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: spacing.md,
+    },
+    footerButtonSecondary: {
+      borderWidth: 1,
+      borderColor: colors.border.default,
+      backgroundColor: colors.surface.raised,
+    },
+    footerButtonPrimary: {
+      backgroundColor: colors.brand.primary,
+    },
+    footerButtonPressed: {
+      opacity: 0.92,
+    },
+    footerButtonDisabled: {
+      opacity: 0.5,
+    },
+    footerSecondaryLabel: {
+      fontFamily: fonts.bodyStrongFamily,
+      color: colors.text.primary,
+      fontSize: 14.5,
+      lineHeight: 18,
+    },
+    footerPrimaryLabel: {
+      fontFamily: fonts.bodyStrongFamily,
+      color: colors.bg.base,
+      fontSize: 14.5,
+      lineHeight: 18,
     },
   });
+}

@@ -1,153 +1,165 @@
-// Account Setting::
+import type { ComponentProps } from "react";
+import { Ionicons } from "@expo/vector-icons";
 
-export const Section: any[] = [
+export type SettingsActionType = "screen" | "modal" | "toggle" | "external";
+
+export type SettingsRowConfig = {
+  id: string;
+  label: string;
+  icon: ComponentProps<typeof Ionicons>["name"];
+  action: SettingsActionType;
+  showChevron?: boolean;
+  showExternal?: boolean;
+  showDot?: boolean;
+  danger?: boolean;
+};
+
+export type SettingsSectionConfig = {
+  header: string;
+  icon: ComponentProps<typeof Ionicons>["name"];
+  items: SettingsRowConfig[];
+};
+
+export const SETTINGS_SECTIONS: SettingsSectionConfig[] = [
   {
     header: "Achievements & Statistics",
-    icon: "trophy",
+    icon: "trophy-outline",
     items: [
       {
         id: "overview",
         icon: "stats-chart-outline",
-        color: "#dfd9f9",
-        type: "screen",
+        action: "screen",
         label: "Overview",
+        showChevron: true,
       },
       {
-        id: "Badges",
-        icon: "trophy-outline",
-        color: "#dfd9f9",
-        type: "screen",
+        id: "badges",
+        icon: "medal-outline",
+        action: "screen",
         label: "Badges",
+        showChevron: true,
+        showDot: true,
       },
     ],
   },
   {
-    header: "Perference",
-    icon: "settings",
+    header: "Preferences",
+    icon: "options-outline",
     items: [
       {
         id: "notification",
         icon: "notifications-outline",
-        color: "#dfd9f9",
-        type: "modal",
-        label: "Notification",
+        action: "modal",
+        label: "Notifications",
+        showChevron: true,
       },
       {
         id: "advanceSetting",
         icon: "construct-outline",
-        color: "#dfd9f9",
-        type: "modal",
-        label: "Advance Setting",
+        action: "modal",
+        label: "Advanced Settings",
+        showChevron: true,
       },
       {
         id: "soundEffect",
         icon: "musical-notes-outline",
-        color: "#dfd9f9",
-        type: "toogle",
-        label: "Sound Effect",
+        action: "toggle",
+        label: "Sound Effects",
       },
       {
         id: "navigation",
-        icon: "navigate",
-        color: "#dfd9f9",
-        type: "toogle",
-        label: "Location",
+        icon: "location-outline",
+        action: "toggle",
+        label: "Location Services",
       },
     ],
   },
   {
     header: "Account",
-    icon: "document",
+    icon: "person-outline",
     items: [
       {
         id: "edit",
-        icon: "people",
-
-        color: "#dfd9f9",
-        type: "modal",
+        icon: "person-circle-outline",
+        action: "modal",
         label: "Profile Info",
+        showChevron: true,
       },
       {
         id: "chngPass",
-        icon: "build-outline",
-        color: "#dfd9f9",
-        type: "modal",
+        icon: "lock-closed-outline",
+        action: "modal",
         label: "Change Password",
+        showChevron: true,
       },
       {
         id: "logout",
         icon: "exit-outline",
-        color: "#dfd9f9",
-        type: "modal",
+        action: "modal",
         label: "Logout",
+        showChevron: false,
+        danger: true,
       },
     ],
   },
   {
     header: "Social Media",
-    icon: "document",
+    icon: "share-social-outline",
     items: [
       {
         id: "discord",
-        icon: "logo-discord",
-        color: "#dfd9f9",
-        type: "modal",
-        label: "Discord",
+        icon: "chatbubbles-outline",
+        action: "external",
+        label: "Discord Community",
+        showExternal: true,
       },
       {
         id: "instagram",
-        icon: "logo-instagram",
-        color: "#dfd9f9",
-        type: "modal",
+        icon: "camera-outline",
+        action: "external",
         label: "Instagram",
+        showExternal: true,
       },
       {
         id: "facebook",
         icon: "logo-facebook",
-        color: "#dfd9f9",
-        type: "modal",
+        action: "external",
         label: "Facebook",
+        showExternal: true,
       },
     ],
   },
   {
-    header: "Help and feedback",
-    icon: "help-circle",
+    header: "Help & Feedback",
+    icon: "help-circle-outline",
     items: [
       {
         id: "helpCenter",
-        icon: "help",
-        color: "#dfd9f9",
-        type: "modal",
+        icon: "help-circle-outline",
+        action: "modal",
         label: "Help Center",
+        showChevron: true,
       },
       {
         id: "contactUs",
-        icon: "bug-outline",
-        color: "#dfd9f9",
-        type: "modal",
+        icon: "chatbubble-ellipses-outline",
+        action: "modal",
         label: "Contact Us",
+        showChevron: true,
       },
-      // {
-      //   id: "feedback",
-      //   icon: "mail",
-      //   color: "#dfd9f9",
-      //   type: "modal",
-      //   label: "Feedback",
-      // },
       {
         id: "privacyPolicy",
-        icon: "contract",
-        color: "#dfd9f9",
-        type: "modal",
+        icon: "shield-checkmark-outline",
+        action: "modal",
         label: "Privacy Policy",
+        showChevron: true,
       },
       {
         id: "terms",
-        icon: "document-outline",
-        color: "#dfd9f9",
-        type: "modal",
-        label: "Terms and Services",
+        icon: "document-text-outline",
+        action: "modal",
+        label: "Terms of Service",
+        showChevron: true,
       },
     ],
   },

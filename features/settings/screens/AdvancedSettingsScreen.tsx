@@ -1,25 +1,36 @@
-import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { router, useFocusEffect } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import ScreenHeader from "@/components/layout/ScreenHeader";
+import { ScreenView } from "@/components/ui/theme-components/ScreenView";
+import { useNimbusToast } from "@/components/ui/toast/useNimbusToast";
 import ThemeContext from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNimbusToast } from "@/components/ui/toast/useNimbusToast";
-import SettingsBottomSheet from "./SettingsBottomSheet";
-import PreferenceDetailModal from "./PreferenceDetailModal";
 import {
   formatAdvancedValue,
   type AdvancedSettingDisplayItem,
   type AdvancedSettingSection,
   type AdvancedSettingsPatch,
   type AdvancedSettingsState,
-} from "./advancedSettingsTypes";
+} from "@/features/settings/components/modal/advancedSettingsTypes";
+import PreferenceDetailModal from "@/features/settings/components/modal/PreferenceDetailModal";
 import type { SvaColorSet, Spacing } from "@/theme/types";
 
 type AdvancedSettingsTypography = {
@@ -143,7 +154,9 @@ function SectionBlock({
           <Text style={styles.sectionTitle}>{section.title}</Text>
           <Text style={styles.sectionHint}>{section.hint}</Text>
         </View>
-        <Text style={styles.sectionCount}>{String(items.length).padStart(2, "0")}</Text>
+        <Text style={styles.sectionCount}>
+          {String(items.length).padStart(2, "0")}
+        </Text>
       </View>
 
       <View style={styles.cardGroup}>
@@ -186,11 +199,7 @@ function SettingRow({
       ]}
     >
       <View style={styles.settingIconWrap}>
-        <Ionicons
-          name={item.icon}
-          size={18}
-          color={colors.brand.primary}
-        />
+        <Ionicons name={item.icon} size={18} color={colors.brand.primary} />
       </View>
 
       <View style={styles.settingCopy}>
@@ -203,33 +212,21 @@ function SettingRow({
       </View>
 
       <View style={styles.settingMeta}>
-        <Text
-          style={[styles.settingValue, { color: valueTone }]}
-          numberOfLines={1}
-        >
+        <Text style={[styles.settingValue, { color: valueTone }]} numberOfLines={1}>
           {value}
         </Text>
-        <Ionicons
-          name="chevron-forward"
-          size={18}
-          color={colors.text.secondary}
-        />
+        <Ionicons name="chevron-forward" size={18} color={colors.text.secondary} />
       </View>
     </Pressable>
   );
 }
 
-export default function AdvancedSettingsModal({
-  visible,
-  onClose,
-}: {
-  visible: boolean;
-  onClose: () => void;
-}) {
-  const { svaColors, svaTypography, typography, spacing } =
+export const AdvancedSettingsScreen = () => {
+  const { newTheme, svaColors, svaTypography, typography, spacing } =
     useContext(ThemeContext);
   const { loadUserFromStorage, updateProfile } = useAuth();
   const toast = useNimbusToast();
+  const insets = useSafeAreaInsets();
 
   const [loading, setLoading] = useState(false);
   const [detailVisible, setDetailVisible] = useState(false);
@@ -284,10 +281,17 @@ export default function AdvancedSettingsModal({
     }
   }, [loadUserFromStorage]);
 
+  useFocusEffect(
+    useCallback(() => {
+      refreshSettings();
+    }, [refreshSettings])
+  );
+
   useEffect(() => {
-    if (!visible) return;
-    refreshSettings();
-  }, [refreshSettings, visible]);
+    if (!detailVisible) {
+      setSelectedSetting(null);
+    }
+  }, [detailVisible]);
 
   const handlePressItem = useCallback((item: AdvancedSettingDisplayItem) => {
     setSelectedSetting({
@@ -340,22 +344,38 @@ export default function AdvancedSettingsModal({
     [toast, updateProfile]
   );
 
-  const closeAll = useCallback(() => {
+  const handleBack = useCallback(() => {
+    if (detailVisible) {
+      setDetailVisible(false);
+      return;
+    }
+
+    router.back();
+  }, [detailVisible]);
+
+  const handleCloseDetail = useCallback(() => {
     setDetailVisible(false);
-    setSelectedSetting(null);
-    onClose();
-  }, [onClose]);
+  }, []);
+
+  const activeCount = merged.filter((item) => item.selectedUnit).length;
 
   return (
-    <>
-      <SettingsBottomSheet
-        visible={visible}
-        onClose={closeAll}
-        eyebrow="SVA standard"
+    <ScreenView bgColor={newTheme.background} padding={0} style={styles.screen}>
+      <StatusBar style="light" translucent backgroundColor="transparent" />
+
+      <ScreenHeader
         title="Advanced Settings"
-        subtitle="Tune your measurement units and daily rhythm with a focused sheet."
-        badgeLabel={loading ? "Syncing" : "Ready"}
-        badgeIcon="shield-checkmark-outline"
+        subtitle="Tune your measurement units and daily rhythm from one clean screen."
+        onBack={handleBack}
+        containerStyle={styles.headerContainer}
+      />
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 126 },
+        ]}
       >
         <View style={styles.summaryCard}>
           <View style={styles.summaryIconWrap}>
@@ -373,9 +393,19 @@ export default function AdvancedSettingsModal({
           <View style={styles.summaryCopy}>
             <Text style={styles.summaryTitle}>Focused unit editing</Text>
             <Text style={styles.summaryText}>
-              Tap any item below to open a bottom sheet dedicated to that
-              setting.
+              Tap any item below to open a dedicated picker bottom sheet.
             </Text>
+          </View>
+        </View>
+
+        <View style={styles.kpiRow}>
+          <View style={styles.kpiCard}>
+            <Text style={styles.kpiLabel}>Configured</Text>
+            <Text style={styles.kpiValue}>{activeCount}</Text>
+          </View>
+          <View style={styles.kpiCard}>
+            <Text style={styles.kpiLabel}>Total items</Text>
+            <Text style={styles.kpiValue}>{merged.length}</Text>
           </View>
         </View>
 
@@ -395,7 +425,7 @@ export default function AdvancedSettingsModal({
             />
           );
         })}
-      </SettingsBottomSheet>
+      </ScrollView>
 
       {selectedSetting ? (
         <PreferenceDetailModal
@@ -405,15 +435,12 @@ export default function AdvancedSettingsModal({
           label={selectedSetting.label}
           options={selectedSetting.options}
           onSave={handleSaveSetting}
-          onClose={() => {
-            setDetailVisible(false);
-            setSelectedSetting(null);
-          }}
+          onClose={handleCloseDetail}
         />
       ) : null}
-    </>
+    </ScreenView>
   );
-}
+};
 
 function flattenSections(): AdvancedSettingDisplayItem[] {
   return ADVANCED_SECTIONS.flatMap((section) => section.items);
@@ -425,6 +452,18 @@ function createStyles(
   spacing: Spacing
 ) {
   return StyleSheet.create({
+    screen: {
+      flex: 1,
+    },
+    headerContainer: {
+      marginBottom: 12,
+      paddingBottom: 0,
+      paddingHorizontal: 12,
+    },
+    scrollContent: {
+      paddingHorizontal: 12,
+      paddingTop: 6,
+    },
     summaryCard: {
       flexDirection: "row",
       alignItems: "center",
@@ -461,6 +500,34 @@ function createStyles(
       color: colors.text.secondary,
       fontSize: 12.5,
       lineHeight: 17,
+    },
+    kpiRow: {
+      flexDirection: "row",
+      gap: spacing.md,
+      marginBottom: spacing.md,
+    },
+    kpiCard: {
+      flex: 1,
+      padding: spacing.md,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border.default,
+      backgroundColor: colors.surface.raised,
+    },
+    kpiLabel: {
+      fontFamily: fonts.monoFamily,
+      color: colors.text.secondary,
+      fontSize: 10,
+      lineHeight: 12,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
+    },
+    kpiValue: {
+      marginTop: 6,
+      fontFamily: fonts.bodyStrongFamily,
+      color: colors.text.primary,
+      fontSize: 20,
+      lineHeight: 24,
     },
     sectionBlock: {
       marginBottom: spacing.md,
@@ -526,7 +593,7 @@ function createStyles(
     },
     settingCopy: {
       flex: 1,
-      gap: 2,
+      gap: 3,
     },
     settingLabel: {
       fontFamily: fonts.bodyStrongFamily,
@@ -543,14 +610,14 @@ function createStyles(
     settingMeta: {
       alignItems: "flex-end",
       gap: 4,
+      minWidth: 68,
     },
     settingValue: {
-      maxWidth: 92,
       fontFamily: fonts.monoFamily,
-      fontSize: 10.5,
+      fontSize: 10,
       lineHeight: 12,
       letterSpacing: 1.1,
       textTransform: "uppercase",
     },
   });
-}
+};
