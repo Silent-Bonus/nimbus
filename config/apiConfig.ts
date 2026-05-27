@@ -103,6 +103,14 @@ export const API_ENDPOINTS = {
 
   reportBug: `${BASE_URL}/api/v1/bug-reports/`,
   logFeedback: `${BASE_URL}/api/v1/feedback/`,
+  sessionFeedbackQuestions: (source?: string) =>
+    `${BASE_URL}/api/v1/feedback/session-questions/${
+      source ? `?source=${encodeURIComponent(source)}` : ""
+    }`,
+  sessionFeedbackAnswers: (source?: string) =>
+    `${BASE_URL}/api/v1/feedback/session-answers/${
+      source ? `?source=${encodeURIComponent(source)}` : ""
+    }`,
 
   personaQuestion: `${BASE_URL}/api/v1/profile/persona-questions/`,
   submitPersonaAnswers: `${BASE_URL}/api/v1/profile/persona-answers/`,

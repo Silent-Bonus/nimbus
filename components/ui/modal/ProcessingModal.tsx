@@ -1,10 +1,4 @@
-import React, {
-  ReactNode,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-} from "react";
+import React, { ReactNode, useContext, useEffect, useMemo, useRef } from "react";
 import {
   Animated,
   Easing,
@@ -14,6 +8,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, {
@@ -30,10 +25,14 @@ type ProcessingModalProps = {
   visible: boolean;
   centerMessage?: ReactNode;
   footerMessage?: ReactNode;
-  title?: string;
-  subtitle?: string;
+  title?: ReactNode;
+  titlePrefix?: string;
+  titleAccent?: string;
+  subtitle?: ReactNode;
   message?: ReactNode;
   onRequestClose?: () => void;
+  iconName?: keyof typeof Ionicons.glyphMap;
+  accentColor?: string;
 };
 
 const isTextLike = (value: ReactNode): value is string | number =>
@@ -57,7 +56,15 @@ const renderMessage = (
   return resolvedContent;
 };
 
-export default function ProcessingModal({
+export default function ProcessingModal(props: ProcessingModalProps) {
+  if (props.centerMessage !== undefined || props.footerMessage !== undefined) {
+    return <LegacyProcessingModal {...props} />;
+  }
+
+  return <FeedbackProcessingModal {...props} />;
+}
+
+function LegacyProcessingModal({
   visible,
   centerMessage,
   footerMessage,
@@ -74,7 +81,7 @@ export default function ProcessingModal({
 
   const styles = useMemo(
     () =>
-      makeStyles(
+      makeLegacyStyles(
         newTheme,
         spacing,
         bodyTextStyle,
@@ -444,7 +451,171 @@ export default function ProcessingModal({
   );
 }
 
-const makeStyles = (
+function FeedbackProcessingModal({
+  visible,
+  title,
+  titlePrefix,
+  titleAccent,
+  subtitle,
+  message,
+  iconName = "cloud-outline",
+  accentColor,
+}: ProcessingModalProps) {
+  const { svaColors, svaTypography, spacing } = useContext(ThemeContext);
+  const styles = useMemo(
+    () => makeFeedbackStyles(svaColors, svaTypography, spacing),
+    [spacing, svaColors, svaTypography]
+  );
+
+  const overlayOpacity = useRef(new Animated.Value(0)).current;
+  const pulseScale = useRef(new Animated.Value(1)).current;
+  const dot1 = useRef(new Animated.Value(0.35)).current;
+  const dot2 = useRef(new Animated.Value(0.9)).current;
+  const dot3 = useRef(new Animated.Value(0.35)).current;
+
+  const primaryAccent =
+    accentColor ?? svaColors?.brand?.primary ?? "#B8D39B";
+  const resolvedTitlePrefix = titlePrefix ?? "Crafting your";
+  const resolvedTitleAccent = titleAccent ?? "unique rhythm...";
+  const resolvedSubtitle =
+    subtitle ?? "Our AI is aligning your intentions with our soulful tools";
+  const resolvedMessage =
+    message && (typeof message !== "string" || message !== resolvedSubtitle)
+      ? message
+      : "";
+  const resolvedPlainTitle = title ?? resolvedTitlePrefix;
+  const hasSplitTitle = titlePrefix !== undefined || titleAccent !== undefined;
+
+  useEffect(() => {
+    if (!visible) {
+      overlayOpacity.setValue(0);
+      pulseScale.setValue(1);
+      dot1.setValue(0.35);
+      dot2.setValue(0.9);
+      dot3.setValue(0.35);
+      return;
+    }
+
+    Animated.timing(overlayOpacity, {
+      toValue: 1,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
+
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseScale, {
+          toValue: 1.04,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseScale, {
+          toValue: 1,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulse.start();
+
+    const dotLoop = (value: Animated.Value, delay: number) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(value, {
+            toValue: 1,
+            duration: 420,
+            useNativeDriver: true,
+          }),
+          Animated.timing(value, {
+            toValue: 0.35,
+            duration: 420,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+
+    const dotLoop1 = dotLoop(dot1, 0);
+    const dotLoop2 = dotLoop(dot2, 160);
+    const dotLoop3 = dotLoop(dot3, 320);
+
+    dotLoop1.start();
+    dotLoop2.start();
+    dotLoop3.start();
+
+    return () => {
+      pulse.stop();
+      dotLoop1.stop();
+      dotLoop2.stop();
+      dotLoop3.stop();
+    };
+  }, [dot1, dot2, dot3, overlayOpacity, pulseScale, visible]);
+
+  if (!visible) return null;
+
+  return (
+    <Animated.View style={[styles.overlay, { opacity: overlayOpacity }]}>
+      <View style={styles.backdrop} />
+      <View style={styles.glowTop} />
+      <View style={styles.glowBottom} />
+
+      <View style={styles.center}>
+        <View style={styles.iconRing}>
+          <Animated.View
+            style={[
+              styles.pulseRing,
+              {
+                borderColor: primaryAccent,
+                transform: [{ scale: pulseScale }],
+              },
+            ]}
+          />
+          <View style={styles.iconTile}>
+            <Ionicons name={iconName} size={42} color={primaryAccent} />
+          </View>
+        </View>
+
+        {hasSplitTitle ? (
+          <Text style={styles.titleSplit}>
+            {resolvedTitlePrefix}
+            {"\n"}
+            <Text style={[styles.titleAccent, { color: primaryAccent }]}>
+              {resolvedTitleAccent}
+            </Text>
+          </Text>
+        ) : (
+          renderMessage(resolvedPlainTitle, styles.titlePlain)
+        )}
+
+        <Text style={styles.subtitle}>{resolvedSubtitle}</Text>
+        {!!resolvedMessage ? <Text style={styles.message}>{resolvedMessage}</Text> : null}
+      </View>
+
+      <View style={styles.dotsRow}>
+        <Animated.View
+          style={[
+            styles.dot,
+            { opacity: dot1, backgroundColor: primaryAccent },
+          ]}
+        />
+        <Animated.View
+          style={[
+            styles.dot,
+            { opacity: dot2, backgroundColor: primaryAccent },
+          ]}
+        />
+        <Animated.View
+          style={[
+            styles.dot,
+            { opacity: dot3, backgroundColor: primaryAccent },
+          ]}
+        />
+      </View>
+    </Animated.View>
+  );
+}
+
+const makeLegacyStyles = (
   t: any,
   spacing: any,
   bodyTextStyle: any,
@@ -580,5 +751,136 @@ const makeStyles = (
       textAlign: "center",
       fontWeight: "600",
       letterSpacing: 0.15,
+    },
+  });
+
+const makeFeedbackStyles = (t: any, svaTypography: any, spacing: any) =>
+  StyleSheet.create({
+    overlay: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: 999,
+    },
+    backdrop: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(6, 8, 12, 0.94)",
+    },
+    glowTop: {
+      position: "absolute",
+      top: -40,
+      left: -30,
+      width: 220,
+      height: 220,
+      borderRadius: 110,
+      backgroundColor: "rgba(94,129,172,0.12)",
+    },
+    glowBottom: {
+      position: "absolute",
+      right: -40,
+      bottom: 28,
+      width: 240,
+      height: 240,
+      borderRadius: 120,
+      backgroundColor: "rgba(255,255,255,0.05)",
+    },
+    center: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 32,
+    },
+    iconRing: {
+      width: 240,
+      height: 240,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 24,
+    },
+    pulseRing: {
+      position: "absolute",
+      width: 230,
+      height: 230,
+      borderRadius: 115,
+      borderWidth: 1,
+      backgroundColor: "transparent",
+      opacity: 0.7,
+    },
+    iconTile: {
+      width: 136,
+      height: 136,
+      borderRadius: 36,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "rgba(160, 169, 214, 0.18)",
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.08)",
+      ...Platform.select({
+        ios: {
+          shadowColor: "#000",
+          shadowOpacity: 0.18,
+          shadowOffset: { width: 0, height: 10 },
+          shadowRadius: 24,
+        },
+        android: { elevation: 4 },
+      }),
+    },
+    titleSplit: {
+      fontFamily:
+        svaTypography?.textStyle?.displayMedium?.fontFamily ??
+        "CormorantGaramond_500Medium",
+      fontSize: 34,
+      lineHeight: 36,
+      letterSpacing: -0.45,
+      textAlign: "center",
+      color: t.text.primary,
+    },
+    titleAccent: {
+      fontStyle: "italic",
+    },
+    titlePlain: {
+      fontFamily:
+        svaTypography?.textStyle?.displayMedium?.fontFamily ??
+        "CormorantGaramond_500Medium",
+      fontSize: 34,
+      lineHeight: 36,
+      letterSpacing: -0.45,
+      textAlign: "center",
+      color: t.text.primary,
+    },
+    subtitle: {
+      fontFamily:
+        svaTypography?.textStyle?.authSubtitle?.fontFamily ??
+        "Inter_400Regular",
+      fontSize: 14,
+      lineHeight: 22,
+      color: t.text.secondary,
+      textAlign: "center",
+      marginTop: 18,
+      maxWidth: 270,
+    },
+    message: {
+      fontFamily:
+        svaTypography?.textStyle?.authBody?.fontFamily ?? "Inter_400Regular",
+      fontSize: 12,
+      lineHeight: 18,
+      color: t.text.secondary,
+      textAlign: "center",
+      marginTop: 8,
+      maxWidth: 270,
+    },
+    dotsRow: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: spacing.xl,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+    },
+    dot: {
+      width: 4,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: t.state.info,
     },
   });

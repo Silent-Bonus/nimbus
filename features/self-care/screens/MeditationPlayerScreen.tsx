@@ -25,6 +25,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ThemeContext from "@/contexts/ThemeContext";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
+import SessionFeedbackModal from "@/features/session-feedback/components/SessionFeedbackModal";
 import { ROUTES } from "@/constants/routes";
 import MeditationPlayerHeader from "@/features/self-care/components/meditation/MeditationPlayerHeader";
 import MeditationTransportControls from "@/features/self-care/components/meditation/MeditationTransportControls";
@@ -115,12 +116,14 @@ export default function MeditationPlayerScreen() {
   const sessionCreatePromiseRef = useRef<Promise<string | null> | null>(null);
   const completionInFlightRef = useRef(false);
   const leavingScreenRef = useRef(false);
+  const feedbackPresentedRef = useRef(false);
   const [playbackStatus, setPlaybackStatus] = useState<AVPlaybackStatus | null>(
     null
   );
   const [isLoading, setIsLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
   const [ambientMode, setAmbientMode] = useState(false);
+  const [feedbackVisible, setFeedbackVisible] = useState(false);
   const [sessionStatus, setSessionStatus] = useState<
     "idle" | "creating" | "active" | "paused" | "completed"
   >("idle");
@@ -135,6 +138,11 @@ export default function MeditationPlayerScreen() {
       ? playbackStatus.durationMillis
       : 1;
   const progress = Math.min(positionMillis / durationMillis, 1);
+  const openFeedbackFlow = useCallback(() => {
+    if (feedbackPresentedRef.current) return;
+    feedbackPresentedRef.current = true;
+    setFeedbackVisible(true);
+  }, []);
 
   const playbackSource = useMemo(
     () => resolveMeditationPlaybackSource(meditationId, template.source ?? null),
@@ -160,6 +168,8 @@ export default function MeditationPlayerScreen() {
     leavingScreenRef.current = false;
     hasCompletedSessionRef.current = false;
     playbackPositionRef.current = 0;
+    feedbackPresentedRef.current = false;
+    setFeedbackVisible(false);
   }, [meditationId]);
 
   useEffect(() => {
@@ -307,9 +317,10 @@ export default function MeditationPlayerScreen() {
 
       if (status.didJustFinish) {
         void completeSession();
+        openFeedbackFlow();
       }
     },
-    [completeSession]
+    [completeSession, openFeedbackFlow]
   );
 
   useEffect(() => {
@@ -427,6 +438,17 @@ export default function MeditationPlayerScreen() {
 
   const handleOpenLibrary = useCallback(() => {
     router.push(ROUTES.AUTH.SELF_CARE_MEDITATION);
+  }, []);
+
+  const handleCloseFeedback = useCallback(() => {
+    feedbackPresentedRef.current = false;
+    setFeedbackVisible(false);
+  }, []);
+
+  const handleCompleteFeedback = useCallback(() => {
+    leavingScreenRef.current = true;
+    setFeedbackVisible(false);
+    router.back();
   }, []);
 
   return (
@@ -561,6 +583,14 @@ export default function MeditationPlayerScreen() {
             </View>
           ) : null}
         </ScrollView>
+
+        <SessionFeedbackModal
+          visible={feedbackVisible}
+          source="meditation"
+          sessionTitle={meditationTitle}
+          onClose={handleCloseFeedback}
+          onComplete={handleCompleteFeedback}
+        />
       </View>
     </ScreenView>
   );
