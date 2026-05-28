@@ -1,6 +1,8 @@
 import type { ImageSourcePropType } from "react-native";
 
 const FALLBACK_IMAGE = require("../../../assets/images/mt.jpg");
+const DEFAULT_MEDITATION_DESCRIPTION =
+  "A quiet cadence for the body and the part of the mind that listens.";
 
 const MEDITATION_TAG_PRIORITY = [
   "breath",
@@ -10,6 +12,23 @@ const MEDITATION_TAG_PRIORITY = [
   "release",
   "beginner",
 ] as const;
+
+type RouteValue = string | string[] | undefined;
+
+export type MeditationRouteParams = {
+  meditationId?: RouteValue;
+  meditationTitle?: RouteValue;
+  meditationDescription?: RouteValue;
+  meditationDurationLabel?: RouteValue;
+  meditationImage?: RouteValue;
+  meditationTags?: RouteValue;
+  meditationCategory?: RouteValue;
+  meditationRating?: RouteValue;
+  meditationReviews?: RouteValue;
+  meditationLevel?: RouteValue;
+  meditationDosha?: RouteValue;
+  meditationSource?: RouteValue;
+};
 
 export type MeditationTemplate = {
   id: string;
@@ -22,18 +41,31 @@ export type MeditationTemplate = {
   source?: string | null;
   isLocked: boolean;
   category?: string;
+  slug?: string;
+  rating?: number;
+  reviews?: number;
+  level?: string;
+  dosha?: string;
+  modality?: string;
 };
 
 export type RawMeditationTemplate = {
   id?: number | string;
+  slug?: string;
   title?: string;
   description?: string;
-  image?: string | null;
+  image?: string | ImageSourcePropType | null;
   source?: string | null;
   category?: string;
   duration?: number | string;
   isLocked?: boolean;
   is_locked?: boolean;
+  tags?: string[];
+  rating?: number;
+  reviews?: number;
+  level?: string;
+  dosha?: string;
+  modality?: string;
 };
 
 const titleCase = (value: string) =>
@@ -42,6 +74,42 @@ const titleCase = (value: string) =>
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+
+const firstRouteValue = (value?: RouteValue) =>
+  Array.isArray(value) ? value[0] : value;
+
+const parseOptionalNumber = (value?: RouteValue) => {
+  const rawValue = firstRouteValue(value)?.trim();
+  if (!rawValue) return undefined;
+
+  const parsed = Number(rawValue);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+const isGenericMetaValue = (value?: string | null) => {
+  if (!value) return true;
+  const normalized = value.trim().toLowerCase();
+  return normalized === "all" || normalized === "all levels";
+};
+
+const normalizeTagSource = (value?: string | null) => {
+  if (!value || isGenericMetaValue(value)) return null;
+  return normalizeMeditationTag(value);
+};
+
+const formatDurationLabel = (duration: number | string | undefined) => {
+  if (typeof duration === "number" && Number.isFinite(duration)) {
+    return `${duration} min`;
+  }
+
+  if (typeof duration === "string") {
+    const trimmed = duration.trim();
+    if (!trimmed) return "5 min";
+    return trimmed.includes("min") ? trimmed : `${trimmed} min`;
+  }
+
+  return "5 min";
+};
 
 export const normalizeMeditationTag = (value: string) =>
   value
@@ -64,12 +132,76 @@ const tagMatchers: { pattern: RegExp; tag: string }[] = [
   { pattern: /\b(beginner|starter|intro)\b/i, tag: "beginner" },
 ];
 
+const resolveMeditationImageSource = (
+  image?: string | ImageSourcePropType | null
+): ImageSourcePropType => {
+  if (!image) return FALLBACK_IMAGE;
+  if (typeof image === "string") return { uri: image };
+  return image;
+};
+
+const extractMeditationImageUri = (image?: ImageSourcePropType | string | null) => {
+  if (!image) return undefined;
+  if (typeof image === "string") return image;
+  if (Array.isArray(image)) {
+    const first = image[0];
+    return extractMeditationImageUri(first ?? null);
+  }
+  if (typeof image === "object") {
+    const maybeImage = image as { uri?: unknown };
+    if (typeof maybeImage.uri === "string" && maybeImage.uri.trim()) {
+      return maybeImage.uri.trim();
+    }
+  }
+
+  return undefined;
+};
+
+const buildMeditationDescription = (
+  item: RawMeditationTemplate,
+  title: string,
+  tags: string[]
+) => {
+  if (typeof item.description === "string" && item.description.trim()) {
+    return item.description.trim();
+  }
+
+  const descriptors = [
+    item.category?.trim() ? formatMeditationTagLabel(item.category.trim()) : null,
+    item.level?.trim() && !isGenericMetaValue(item.level)
+      ? formatMeditationTagLabel(item.level.trim())
+      : null,
+    item.dosha?.trim() && !isGenericMetaValue(item.dosha)
+      ? formatMeditationTagLabel(item.dosha.trim())
+      : null,
+  ].filter(Boolean) as string[];
+
+  if (descriptors.length > 0) {
+    return `A quiet session shaped for ${descriptors.join(", ")}.`;
+  }
+
+  const primaryTag = tags[0];
+  if (primaryTag) {
+    return `A quiet session centered on ${formatMeditationTagLabel(primaryTag)}.`;
+  }
+
+  return title ? `A quiet session centered on ${title}.` : DEFAULT_MEDITATION_DESCRIPTION;
+};
+
 export const deriveMeditationTags = (
   item: RawMeditationTemplate,
   title: string,
   description: string
 ) => {
-  const sourceText = [title, description, item.category ?? ""]
+  const sourceTags = Array.isArray(item.tags) ? item.tags : [];
+  const sourceText = [
+    title,
+    description,
+    item.category ?? "",
+    item.level ?? "",
+    item.dosha ?? "",
+    ...sourceTags,
+  ]
     .join(" ")
     .toLowerCase();
 
@@ -77,12 +209,21 @@ export const deriveMeditationTags = (
     .filter(({ pattern }) => pattern.test(sourceText))
     .map(({ tag }) => tag);
 
-  const fallback = normalizeMeditationTag(item.category ?? "");
-  const tags = derived.length ? derived : [fallback || "calm"];
+  const metadataTags = [item.category, item.level, item.dosha]
+    .map(normalizeTagSource)
+    .filter((tag): tag is string => Boolean(tag));
 
-  return Array.from(
-    new Set(tags.map((tag) => normalizeMeditationTag(tag)).filter(Boolean))
-  );
+  const combined = [
+    ...sourceTags
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0)
+      .filter((tag) => !isGenericMetaValue(tag))
+      .map(normalizeMeditationTag),
+    ...metadataTags,
+    ...derived,
+  ];
+
+  return Array.from(new Set(combined.filter(Boolean)));
 };
 
 export const sortMeditationTags = (tags: string[]) => {
@@ -106,30 +247,30 @@ export const mapMeditationTemplate = (
   index: number
 ): MeditationTemplate => {
   const title = item.title?.trim() || `Meditation ${index + 1}`;
-  const description =
-    item.description?.trim() ||
-    "A quiet cadence for the body and the part of the mind that listens.";
-  const tags = sortMeditationTags(deriveMeditationTags(item, title, description));
-  const durationValue =
-    typeof item.duration === "number"
-      ? `${item.duration} min`
-      : typeof item.duration === "string" && item.duration.trim()
-        ? item.duration.includes("min")
-          ? item.duration.trim()
-          : `${item.duration.trim()} min`
-        : "5 min";
+  const tags = sortMeditationTags(
+    deriveMeditationTags(item, title, item.description?.trim() || "")
+  );
+  const description = buildMeditationDescription(item, title, tags);
+  const durationValue = formatDurationLabel(item.duration);
+  const idValue = item.slug?.trim() || item.id;
 
   return {
-    id: String(item.id ?? `${title}-${index}`),
+    id: String(idValue ?? `${title}-${index}`),
+    slug: item.slug?.trim() || undefined,
     title,
     description,
     tag: tags[0] ?? "calm",
     tags,
     durationLabel: durationValue,
-    image: item.image ? { uri: item.image } : FALLBACK_IMAGE,
+    image: resolveMeditationImageSource(item.image),
     source: item.source ?? null,
     isLocked: Boolean(item.isLocked ?? item.is_locked),
     category: item.category?.trim() || tags[0] || "calm",
+    rating: typeof item.rating === "number" ? item.rating : undefined,
+    reviews: typeof item.reviews === "number" ? item.reviews : undefined,
+    level: item.level?.trim() || undefined,
+    dosha: item.dosha?.trim() || undefined,
+    modality: item.modality?.trim() || undefined,
   };
 };
 
@@ -151,6 +292,100 @@ export const filterMeditationTemplates = (
 ) => {
   if (selectedTag === "all") return templates;
   return templates.filter((template) => template.tags.includes(selectedTag));
+};
+
+export const buildMeditationRouteParams = (
+  template: MeditationTemplate
+): MeditationRouteParams => ({
+  meditationId: template.slug ?? template.id,
+  meditationTitle: template.title,
+  meditationDescription: template.description,
+  meditationDurationLabel: template.durationLabel,
+  meditationImage: extractMeditationImageUri(template.image),
+  meditationTags: template.tags.length > 0 ? template.tags.join("|") : undefined,
+  meditationCategory: template.category ?? undefined,
+  meditationRating:
+    typeof template.rating === "number" ? String(template.rating) : undefined,
+  meditationReviews:
+    typeof template.reviews === "number" ? String(template.reviews) : undefined,
+  meditationLevel: template.level ?? undefined,
+  meditationDosha: template.dosha ?? undefined,
+  meditationSource: template.source ?? undefined,
+});
+
+export const hydrateMeditationTemplate = (
+  params: MeditationRouteParams,
+  fallback?: MeditationTemplate | null
+): MeditationTemplate => {
+  const fallbackTemplate = fallback ?? fallbackMeditationTemplates[0];
+  const title = firstRouteValue(params.meditationTitle)?.trim() ||
+    fallbackTemplate.title;
+  const routeTags = firstRouteValue(params.meditationTags)
+    ?.split("|")
+    .map((tag) => tag.trim())
+    .filter(Boolean) ?? [];
+  const fallbackTags = fallbackTemplate.tags ?? [];
+  const tags = sortMeditationTags(
+    routeTags.length > 0 ? routeTags : fallbackTags
+  );
+  const hasExplicitMetadata = Boolean(
+    firstRouteValue(params.meditationTitle) ||
+      firstRouteValue(params.meditationDescription) ||
+      firstRouteValue(params.meditationTags) ||
+      firstRouteValue(params.meditationCategory) ||
+      firstRouteValue(params.meditationLevel) ||
+      firstRouteValue(params.meditationDosha) ||
+      firstRouteValue(params.meditationDurationLabel) ||
+      firstRouteValue(params.meditationImage) ||
+      firstRouteValue(params.meditationSource) ||
+      firstRouteValue(params.meditationRating) ||
+      firstRouteValue(params.meditationReviews)
+  );
+  const description =
+    firstRouteValue(params.meditationDescription)?.trim() ||
+    (hasExplicitMetadata
+      ? buildMeditationDescription(
+          {
+            category: firstRouteValue(params.meditationCategory)?.trim(),
+            level: firstRouteValue(params.meditationLevel)?.trim(),
+            dosha: firstRouteValue(params.meditationDosha)?.trim(),
+          },
+          title,
+          tags
+        )
+      : fallbackTemplate.description);
+  const durationLabel =
+    firstRouteValue(params.meditationDurationLabel)?.trim() ||
+    fallbackTemplate.durationLabel;
+
+  return {
+    ...fallbackTemplate,
+    id: firstRouteValue(params.meditationId)?.trim() || fallbackTemplate.id,
+    slug: firstRouteValue(params.meditationId)?.trim() || fallbackTemplate.slug,
+    title,
+    description,
+    tag: tags[0] ?? fallbackTemplate.tag ?? "calm",
+    tags: tags.length > 0 ? tags : fallbackTags,
+    durationLabel,
+    image: resolveMeditationImageSource(
+      firstRouteValue(params.meditationImage) || fallbackTemplate.image
+    ),
+    source: firstRouteValue(params.meditationSource) ?? fallbackTemplate.source ?? null,
+    category:
+      firstRouteValue(params.meditationCategory)?.trim() ||
+      fallbackTemplate.category ||
+      tags[0] ||
+      "calm",
+    rating: parseOptionalNumber(params.meditationRating) ?? fallbackTemplate.rating,
+    reviews: parseOptionalNumber(params.meditationReviews) ?? fallbackTemplate.reviews,
+    level:
+      firstRouteValue(params.meditationLevel)?.trim() ||
+      fallbackTemplate.level,
+    dosha:
+      firstRouteValue(params.meditationDosha)?.trim() ||
+      fallbackTemplate.dosha,
+    modality: fallbackTemplate.modality ?? "meditation",
+  };
 };
 
 export const fallbackMeditationTemplates: MeditationTemplate[] = [

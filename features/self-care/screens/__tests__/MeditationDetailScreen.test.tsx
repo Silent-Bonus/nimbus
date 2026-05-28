@@ -6,6 +6,10 @@ import ThemeContext from "../../../../contexts/ThemeContext";
 import { getTheme } from "../../../../theme";
 import { ROUTES } from "../../../../constants/routes";
 import MeditationDetailScreen from "../MeditationDetailScreen";
+import {
+  buildMeditationRouteParams,
+  mockMeditationRecommendations,
+} from "../../utils/meditationLibrary";
 
 const mockPush = jest.fn();
 const mockBack = jest.fn();
@@ -174,13 +178,10 @@ describe("MeditationDetailScreen", () => {
 
     expect(mockPush).toHaveBeenCalledWith({
       pathname: ROUTES.AUTH.SELF_CARE_MEDITATION_PLAYER,
-      params: {
-        meditationId: "moonlit-reset",
-        meditationTitle: "Moonlit Reset",
-        meditationDescription:
-          "A calm reset for the nervous system when the day has been too loud.",
-        meditationDurationLabel: "7 min",
-      },
+      params: buildMeditationRouteParams(
+        mockMeditationRecommendations.find((item) => item.id === "moonlit-reset") ??
+          mockMeditationRecommendations[0]
+      ),
     });
   });
 });

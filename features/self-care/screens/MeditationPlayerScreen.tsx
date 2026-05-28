@@ -37,7 +37,9 @@ import {
 } from "@/features/self-care/utils/meditationPlayback";
 import {
   formatMeditationTagLabel,
+  hydrateMeditationTemplate,
   mockMeditationRecommendations,
+  type MeditationRouteParams,
   type MeditationTemplate,
 } from "@/features/self-care/utils/meditationLibrary";
 import type {
@@ -47,12 +49,7 @@ import type {
   TypographyTokens,
 } from "@/theme/types";
 
-type MeditationPlayerParams = {
-  meditationId?: string | string[];
-  meditationTitle?: string | string[];
-  meditationDescription?: string | string[];
-  meditationDurationLabel?: string | string[];
-};
+type MeditationPlayerParams = MeditationRouteParams;
 
 const parseParam = (value?: string | string[]) => {
   if (Array.isArray(value)) return value[0];
@@ -80,19 +77,19 @@ export default function MeditationPlayerScreen() {
     useContext(ThemeContext);
 
   const meditationId = parseParam(params.meditationId) ?? "moonlit-reset";
-  const template = useMemo(
-    () =>
-      mockMeditationRecommendations.find((item) => item.id === meditationId) ??
-      mockMeditationRecommendations[0],
-    [meditationId]
-  );
+  const fallbackMeditation = useMemo<MeditationTemplate>(() => {
+    return (
+      mockMeditationRecommendations.find(
+        (item) => item.id === meditationId || item.slug === meditationId
+      ) ?? mockMeditationRecommendations[0]
+    );
+  }, [meditationId]);
 
-  const meditationTitle =
-    parseParam(params.meditationTitle) ?? template.title ?? "Meditation";
-  const meditationDescription =
-    parseParam(params.meditationDescription) ?? template.description;
-  const meditationDurationLabel =
-    parseParam(params.meditationDurationLabel) ?? template.durationLabel;
+  const template = hydrateMeditationTemplate(params, fallbackMeditation);
+
+  const meditationTitle = template.title ?? "Meditation";
+  const meditationDescription = template.description;
+  const meditationDurationLabel = template.durationLabel;
   const meditationMeta = useMemo(() => buildMeditationMeta(template), [template]);
 
   const styles = useMemo(

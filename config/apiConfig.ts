@@ -58,6 +58,7 @@ export const API_ENDPOINTS = {
   getShortVideoList: `${BASE_URL}/api/v1/media/media-assets/?type=shortVideo`,
   getAudioBookList: `${BASE_URL}/api/v1/media/media-assets/?type=meditation&category=audioBook`,
   getMeditationList: `${BASE_URL}/api/v1/media/media-assets/?type=meditation&category=breathwork`,
+  getWellnessContent: `${BASE_URL}/api/v1/wellness-content/`,
 
   getMentalTestList: `${BASE_URL}/assesment/assessments/`,
 

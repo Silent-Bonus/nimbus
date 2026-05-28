@@ -1,4 +1,4 @@
-import axios, { AxiosResponse, AxiosError } from "axios";
+import axios, { AxiosResponse } from "axios";
 import { API_ENDPOINTS } from "@/config/apiConfig";
 import {
   JournalEntryListResponse,
@@ -6,7 +6,7 @@ import {
   JournalSubmitRequest,
   JournalSubmitResponse,
   MeditationVideoListResponse,
-  MentalTestListResponse,
+  WellnessContentResponse,
   WorkoutVideoListResponse,
 } from "@/features/self-care/types/selfCareTypes";
 
@@ -104,3 +104,17 @@ export const getMeditationAudioList =
       throw error.response ? error.response.data : error.message;
     }
   };
+
+export const getWellnessContentList = async (params?: {
+  modality?: string;
+}): Promise<WellnessContentResponse> => {
+  try {
+    const response: AxiosResponse<WellnessContentResponse> = await axios.get(
+      API_ENDPOINTS.getWellnessContent,
+      { params }
+    );
+    return response.data;
+  } catch (error: any) {
+    throw error.response ? error.response.data : error.message;
+  }
+};

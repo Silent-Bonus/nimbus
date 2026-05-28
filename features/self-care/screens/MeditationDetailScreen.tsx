@@ -18,15 +18,16 @@ import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import ThemeContext from "@/contexts/ThemeContext";
 import { ROUTES } from "@/constants/routes";
 import {
+  buildMeditationRouteParams,
   formatMeditationTagLabel,
+  hydrateMeditationTemplate,
   mockMeditationRecommendations,
+  type MeditationRouteParams,
   type MeditationTemplate,
 } from "@/features/self-care/utils/meditationLibrary";
 import type { ColorSet, Spacing, Typography, TypographyTokens } from "@/theme/types";
 
-type MeditationDetailParams = {
-  meditationId?: string | string[];
-};
+type MeditationDetailParams = MeditationRouteParams;
 
 const HERO_IMAGE = require("../../../assets/images/mt.jpg");
 
@@ -85,12 +86,15 @@ export default function MeditationDetailScreen() {
   const [isFavorite, setIsFavorite] = useState(false);
 
   const meditationId = parseParam(params.meditationId) ?? "";
-  const meditation = useMemo<MeditationTemplate>(() => {
+  const fallbackMeditation = useMemo<MeditationTemplate>(() => {
     return (
-      mockMeditationRecommendations.find((item) => item.id === meditationId) ??
-      mockMeditationRecommendations[0]
+      mockMeditationRecommendations.find(
+        (item) => item.id === meditationId || item.slug === meditationId
+      ) ?? mockMeditationRecommendations[0]
     );
   }, [meditationId]);
+
+  const meditation = hydrateMeditationTemplate(params, fallbackMeditation);
 
   const styles = useMemo(
     () => styling(theme, svaTypography, spacing, typography),
@@ -112,12 +116,7 @@ export default function MeditationDetailScreen() {
   const handleStartMeditation = () => {
     router.push({
       pathname: ROUTES.AUTH.SELF_CARE_MEDITATION_PLAYER,
-      params: {
-        meditationId: meditation.id,
-        meditationTitle: meditation.title,
-        meditationDescription: meditation.description,
-        meditationDurationLabel: meditation.durationLabel,
-      },
+      params: buildMeditationRouteParams(meditation),
     });
   };
 

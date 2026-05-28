@@ -34,8 +34,6 @@ type ExerciseCategory = "cardio" | "strength" | "stretching" | "full_body";
 
 type DifficultyLevel = "easy" | "medium" | "hard";
 
-type MetricType = "time" | "reps";
-
 export interface Exercise {
   id: string;
   name: string; // "Dumbbell Shoulder Press"
@@ -159,6 +157,38 @@ export interface MeditationListItem {
 export interface MeditationVideoListResponse {
   data: MeditationListItem[];
   success: boolean;
+}
+
+export interface WellnessContentItem {
+  id: number;
+  slug: string;
+  title: string;
+  modality: string;
+  category: string;
+  duration: string;
+  image: string;
+  rating: number;
+  reviews: number;
+  tags: string[];
+  level: string;
+  dosha: string;
+}
+
+export interface WellnessContentPagination {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  results_count: number;
+}
+
+export interface WellnessContentResponse {
+  success: boolean;
+  message: string;
+  data: WellnessContentItem[];
+  pagination?: WellnessContentPagination;
 }
 
 export type EnrichedMeditation = Meditations & {
