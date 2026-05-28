@@ -1,483 +1,509 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  Platform,
-  BackHandler,
   ActivityIndicator,
+  BackHandler,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
-import { useRouter, useNavigation } from "expo-router";
-import { format } from "date-fns";
+import { useNavigation, useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import { ScreenView } from "@/components/ui/Themed";
+import { StyledButton } from "@/components/ui/StyledButton";
+import { ROUTES } from "@/constants/routes";
+import { useAuth } from "@/contexts/AuthContext";
+
 import OnboardingHeader from "../components/OnboardingHeader";
 import ChoiceItem from "../components/ChoiceItem";
-import InlineTimePicker from "@/components/ui/InlinedTimePicker";
-import SignaturePad, { SignaturePadRef } from "../components/SignaturePad";
-import LocationSearch from "../components/LocationSearch";
-import { StyledButton } from "@/components/ui/StyledButton";
-import { useAuth } from "@/contexts/AuthContext";
-import { ROUTES } from "@/constants/routes";
-
 import {
-  PersonaQuestion,
+  buildDoshaResponseItem,
+  buildDoshaSubmissionPayload,
+  DoshaOption,
+  DoshaQuestion,
+  DoshaResponseItem,
   fetchPersonaQuestions,
   submitPersonaAnswers,
-} from "@/features/onboarding/services/onboardingService";
-
-import { serializePersonaAnswers } from "@/features/onboarding/services/onboardingService";
-
-const SIGNATURE_LOCAL_ID = -999; // local-only id (we will NOT send this to backend)
-const LOCATION_LOCAL_ID = -998;
-
-const makeLocationQuestion = (): PersonaQuestion => ({
-  id: LOCATION_LOCAL_ID,
-  title: "Where are you located? 🌍",
-  subtitle:
-    "We use your location to provide local insights and relevant suggestions.",
-  type: "location",
-  choices: [],
-});
-
-const makeSignatureQuestion = (): PersonaQuestion => ({
-  id: SIGNATURE_LOCAL_ID,
-  title: "Confirm & sign ✍️",
-  subtitle: "This is only for your record — we won’t upload your signature.",
-  type: "signature",
-  choices: [],
-});
+} from "../services/onboardingService";
 
 export const OnboardingQuestionsScreen = () => {
   const navigation = useNavigation();
   const router = useRouter();
-  const { newTheme } = useContext(ThemeContext);
-  const styles = useMemo(() => styling(newTheme), [newTheme]);
+  const insets = useSafeAreaInsets();
+  const { svaColors, svaTypography } = useContext(ThemeContext);
+  const styles = useMemo(
+    () => styling(svaColors, svaTypography, insets.top, insets.bottom),
+    [insets.bottom, insets.top, svaColors, svaTypography]
+  );
 
   const { resetToPublic, markOnboardingDone, getUserDetails } = useAuth();
 
   const [loadingQuestions, setLoadingQuestions] = useState(true);
-  const [questions, setQuestions] = useState<PersonaQuestion[]>([]);
-  const [step, setStep] = useState(0);
-
-  const [answers, setAnswers] = useState<any>({});
-  const [errMsg, setErrMsg] = useState<string>("");
+  const [questions, setQuestions] = useState<DoshaQuestion[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [responses, setResponses] = useState<Record<number, DoshaResponseItem>>(
+    {}
+  );
+  const [errorMessage, setErrorMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [advancing, setAdvancing] = useState(false);
 
-  // signature
-  const sigRef = useRef<SignaturePadRef | null>(null);
-  const [pendingSigNext, setPendingSigNext] = useState(false);
+  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const question = questions[step];
-  const TOTAL = questions.length;
+  const currentQuestion = questions[currentIndex];
+  const totalQuestions = questions.length;
 
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
-  // ✅ Fetch questions from backend and append signature as the LAST step
   useEffect(() => {
-    const load = async () => {
+    return () => {
+      if (advanceTimerRef.current) {
+        clearTimeout(advanceTimerRef.current);
+      }
+    };
+  }, []);
+
+  const loadQuestions = useCallback(async () => {
+    try {
+      setLoadingQuestions(true);
+      setErrorMessage("");
+
+      const res = await fetchPersonaQuestions();
+
+      if (Array.isArray(res?.data) && res.data.length > 0) {
+        setQuestions(res.data);
+        setCurrentIndex(0);
+        setResponses({});
+        return;
+      }
+
+      setQuestions([]);
+      setErrorMessage(
+        res?.message ?? "Unable to load onboarding questions. Please try again."
+      );
+    } catch (error: any) {
+      setQuestions([]);
+      setErrorMessage(
+        typeof error?.message === "string"
+          ? error.message
+          : "Unable to load onboarding questions. Please try again."
+      );
+    } finally {
+      setLoadingQuestions(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadQuestions();
+  }, [loadQuestions]);
+
+  const handleBack = useCallback(async () => {
+    setErrorMessage("");
+
+    if (advanceTimerRef.current) {
+      clearTimeout(advanceTimerRef.current);
+      advanceTimerRef.current = null;
+      setAdvancing(false);
+    }
+
+    if (currentIndex > 0) {
+      setCurrentIndex((value) => Math.max(0, value - 1));
+      return;
+    }
+
+    await resetToPublic?.();
+  }, [currentIndex, resetToPublic]);
+
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      void handleBack();
+      return true;
+    });
+
+    return () => sub.remove();
+  }, [handleBack]);
+
+  const finishOnboarding = useCallback(
+    async (finalResponses: Record<number, DoshaResponseItem>) => {
       try {
-        setLoadingQuestions(true);
-        setErrMsg("");
+        setSubmitting(true);
+        setAdvancing(false);
+        setErrorMessage("");
 
-        console.log("Fetching persona questions...");
+        const orderedResponses = Object.values(finalResponses).sort(
+          (left, right) => left.question_id - right.question_id
+        );
+        const payload = buildDoshaSubmissionPayload(orderedResponses);
+        const res = await submitPersonaAnswers(payload);
 
-        const res = await fetchPersonaQuestions();
-
-        // Contract: { success, message, data: PersonaQuestion[] }
-        if (res?.success && Array.isArray(res?.data)) {
-          const list = [
-            ...res.data,
-            makeLocationQuestion(),
-            makeSignatureQuestion(),
-          ];
-          setQuestions(list);
-          setStep(0);
+        if (!res?.success) {
+          setErrorMessage(
+            res?.message ?? "Unable to submit your answers. Please try again."
+          );
           return;
         }
 
-        setErrMsg(res?.message ?? "Unable to load onboarding questions.");
-      } catch (e: any) {
-        setErrMsg(
-          typeof e?.message === "string"
-            ? e.message
-            : "Unable to load onboarding questions."
+        try {
+          await getUserDetails?.();
+        } catch {
+          // Non-blocking: the questionnaire result is already saved.
+        }
+
+        await markOnboardingDone?.();
+        router.replace(ROUTES.AUTH.SUCCESS_STATE);
+      } catch (error: any) {
+        setErrorMessage(
+          typeof error?.message === "string"
+            ? error.message
+            : "Unable to submit your answers. Please try again."
         );
       } finally {
-        setLoadingQuestions(false);
+        setSubmitting(false);
       }
-    };
+    },
+    [getUserDetails, markOnboardingDone, router]
+  );
 
-    load();
+  const scheduleNextQuestion = useCallback((nextIndex: number) => {
+    if (advanceTimerRef.current) {
+      clearTimeout(advanceTimerRef.current);
+    }
+
+    setAdvancing(true);
+    advanceTimerRef.current = setTimeout(() => {
+      setCurrentIndex(nextIndex);
+      setAdvancing(false);
+      advanceTimerRef.current = null;
+    }, 140);
   }, []);
 
-  // Android hardware back
-  useEffect(() => {
-    if (Platform.OS !== "android") return;
-    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      handleOnBack();
-      return true;
-    });
-    return () => sub.remove();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, questions.length]);
+  const handleOptionPress = useCallback(
+    (option: DoshaOption) => {
+      if (!currentQuestion || advancing || submitting) return;
 
-  const handleOnBack = async () => {
-    setErrMsg("");
-    if (step > 0) setStep((s) => Math.max(0, s - 1));
-    else await resetToPublic?.();
-  };
+      const nextResponse = buildDoshaResponseItem(currentQuestion, option);
+      const updatedResponses = {
+        ...responses,
+        [currentQuestion.id]: nextResponse,
+      };
 
-  // -------------------------
-  // Validation per step
-  // -------------------------
-  const validateCurrentStep = () => {
-    if (!question) return "Loading…";
+      setResponses(updatedResponses);
+      setErrorMessage("");
 
-    const v = answers[question.id];
-
-    if (question.type === "single") {
-      if (!v || typeof v !== "string") return "Please select one option.";
-    }
-
-    if (question.type === "multiple") {
-      if (!Array.isArray(v) || v.length === 0)
-        return "Please select at least one option.";
-    }
-
-    if (question.type === "time") {
-      if (!(v instanceof Date)) return "Please select a time.";
-    }
-
-    if (question.type === "location") {
-      if (!v || typeof v !== "string" || v.trim().length === 0)
-        return "Please select a location.";
-    }
-
-    if (question.type === "signature") {
-      // we only gate on "completed", not image
-      if (v !== true) return "Please sign to continue.";
-    }
-
-    return "";
-  };
-
-  // -------------------------
-  // Answer toggles
-  // -------------------------
-  const toggleAnswer = (choiceId: string) => {
-    if (!question) return;
-    setErrMsg("");
-
-    if (question.type === "single") {
-      setAnswers((prev: any) => ({ ...prev, [question.id]: choiceId }));
-      return;
-    }
-
-    if (question.type === "multiple") {
-      setAnswers((prev: any) => {
-        const existing = Array.isArray(prev[question.id])
-          ? (prev[question.id] as string[])
-          : [];
-        const next = existing.includes(choiceId)
-          ? existing.filter((x) => x !== choiceId)
-          : [...existing, choiceId];
-        return { ...prev, [question.id]: next };
-      });
-    }
-  };
-
-  const setTime = (d: Date) => {
-    if (!question) return;
-    setErrMsg("");
-    setAnswers((prev: any) => ({ ...prev, [question.id]: d }));
-  };
-
-  // -------------------------
-  // Signature handlers (no upload)
-  // -------------------------
-  const onSignatureOK = (_dataUrl: string) => {
-    if (!question) return;
-
-    // mark local boolean only
-    setAnswers((prev: any) => ({ ...prev, [question.id]: true }));
-
-    if (pendingSigNext) {
-      setPendingSigNext(false);
-      goNextOrSubmit();
-    }
-  };
-
-  const clearSignature = () => {
-    if (!question) return;
-    sigRef.current?.clear();
-    setAnswers((prev: any) => ({ ...prev, [question.id]: false }));
-  };
-
-  // -------------------------
-  // Submit to backend (omit signature)
-  // -------------------------
-  const finishOnboarding = async () => {
-    try {
-      setSubmitting(true);
-      setErrMsg("");
-
-      const payload = serializePersonaAnswers(answers, {
-        skipIds: [SIGNATURE_LOCAL_ID, LOCATION_LOCAL_ID],
-      });
-      const res = await submitPersonaAnswers(payload);
-
-      if (res.success) await getUserDetails?.();
-
-      if (!res?.success) {
-        setErrMsg(
-          res?.message ?? "Unable to submit answers. Please try again."
-        );
+      if (currentIndex >= totalQuestions - 1) {
+        void finishOnboarding(updatedResponses);
         return;
       }
 
-      // ✅ mark onboarding done AFTER successful submit
-      await markOnboardingDone?.();
+      scheduleNextQuestion(currentIndex + 1);
+    },
+    [
+      advancing,
+      currentIndex,
+      currentQuestion,
+      finishOnboarding,
+      responses,
+      scheduleNextQuestion,
+      submitting,
+      totalQuestions,
+    ]
+  );
 
-      router.replace(ROUTES.AUTH.ONBOARDING_WELCOME);
-    } catch (e: any) {
-      setErrMsg(
-        typeof e?.message === "string"
-          ? e.message
-          : "Unable to finish onboarding. Please try again."
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const goNextOrSubmit = async () => {
-    if (step < TOTAL - 1) setStep((s) => s + 1);
-    else await finishOnboarding();
-  };
-
-  const next = async () => {
-    if (!question) return;
-
-    setErrMsg("");
-
-    // signature step: trigger read + proceed when onSignatureOK fires
-    if (question.type === "signature") {
-      const done = answers[question.id] === true;
-      if (!done) {
-        setPendingSigNext(true);
-        sigRef.current?.read(); // triggers onOK if signature exists
-        return;
-      }
-    }
-
-    const e = validateCurrentStep();
-    if (e) {
-      setErrMsg(e);
-      return;
-    }
-
-    await goNextOrSubmit();
-  };
-
-  // -------------------------
-  // UI states
-  // -------------------------
   if (loadingQuestions) {
     return (
-      <ScreenView style={{ padding: 16 }} bgColor={newTheme.background}>
-        <View style={{ marginTop: 80, alignItems: "center" }}>
-          <ActivityIndicator />
-          <Text style={{ marginTop: 12, color: newTheme.textSecondary }}>
-            Loading your onboarding…
+      <View style={styles.screen}>
+        <View style={styles.loadingState}>
+          <ActivityIndicator size="small" color={svaColors.brand.primary} />
+          <Text style={styles.loadingTitle}>Loading your alignment</Text>
+          <Text style={styles.loadingSubtitle}>
+            We&apos;re preparing your 17-step dosha check-in.
           </Text>
         </View>
-      </ScreenView>
+      </View>
     );
   }
 
-  if (!question) {
+  if (!currentQuestion) {
     return (
-      <ScreenView style={{ padding: 16 }} bgColor={newTheme.background}>
-        <View style={{ marginTop: 80 }}>
-          <Text style={{ color: newTheme.textPrimary, fontSize: 18 }}>
-            No onboarding questions found.
+      <View style={styles.screen}>
+        <View style={styles.errorState}>
+          <Text style={styles.errorTitle}>No onboarding questions found.</Text>
+          <Text style={styles.errorSubtitle}>
+            {errorMessage || "Please retry to fetch the questionnaire."}
           </Text>
-          {!!errMsg && (
-            <Text style={{ marginTop: 10, color: newTheme.error }}>
-              {errMsg}
-            </Text>
-          )}
+
+          <StyledButton label="Try again" onPress={() => void loadQuestions()} />
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => void resetToPublic?.()}
+            style={styles.secondaryAction}
+          >
+            <Text style={styles.secondaryActionText}>Back to sign in</Text>
+          </Pressable>
         </View>
-      </ScreenView>
+      </View>
     );
   }
 
+  const selectedOptionId = responses[currentQuestion.id]?.selected_option;
   return (
-    <ScreenView
-      style={{ padding: 10, marginTop: 0 }}
-      bgColor={newTheme.background}
-    >
-      <View style={styles.container}>
+    <View style={styles.screen}>
+      <View pointerEvents="none" style={styles.glowOne} />
+      <View pointerEvents="none" style={styles.glowTwo} />
+
+      <View style={styles.fixedHeader}>
         <OnboardingHeader
-          step={step + 1}
-          totalSteps={TOTAL}
-          onBack={handleOnBack}
-        />
-
-        <View style={styles.titleContainer}>
-          <Text style={styles.title}>{question.title}</Text>
-          {!!question.subtitle && (
-            <Text style={styles.subtitle}>{question.subtitle}</Text>
-          )}
-        </View>
-
-        {!!errMsg && (
-          <Text style={[styles.errorText, { color: newTheme.error }]}>
-            {errMsg}
-          </Text>
-        )}
-
-        {question.type !== "time" &&
-          question.type !== "signature" &&
-          question.type !== "location" && (
-            <View style={{ marginTop: 10 }}>
-              {question.choices?.map((c) => (
-                <ChoiceItem
-                  key={c.id}
-                  choice={c}
-                  selected={
-                    question.type === "single"
-                      ? answers[question.id] === c.id
-                      : Array.isArray(answers[question.id]) &&
-                        (answers[question.id] as string[]).includes(c.id)
-                  }
-                  onPress={() => toggleAnswer(c.id)}
-                />
-              ))}
-            </View>
-          )}
-
-        {question.type === "time" && (
-          <View style={{ marginTop: 12 }}>
-            <InlineTimePicker
-              label="Select a time"
-              value={
-                answers[question.id] instanceof Date
-                  ? (answers[question.id] as Date)
-                  : new Date()
-              }
-              minuteStep={5}
-              use12h={true}
-              onChange={(d) => {
-                // optional: you can store formatted string instead if backend expects HH:mm:ss
-                console.log("Time picked picked:", d, format(d, "HH:mm:ss"));
-                setTime(d);
-              }}
-            />
-          </View>
-        )}
-
-        {question.type === "location" && (
-          <LocationSearch
-            onSelect={(data, _details) => {
-              setAnswers((prev: any) => ({
-                ...prev,
-                [question.id]: data.description,
-              }));
-              setErrMsg("");
-            }}
-            initialValue={
-              typeof answers[question.id] === "string"
-                ? answers[question.id]
-                : ""
-            }
-          />
-        )}
-
-        {question.type === "signature" && (
-          <View style={{ marginTop: 12 }}>
-            <SignaturePad
-              ref={sigRef}
-              onOK={onSignatureOK}
-              onEmpty={() => {
-                setPendingSigNext(false);
-                setAnswers((p: any) => ({ ...p, [question.id]: false }));
-                setErrMsg("Please sign to continue.");
-              }}
-              penColor={newTheme.accent}
-              backgroundColor={newTheme.surface}
-              style={{ height: 260 }}
-            />
-
-            <View style={{ flexDirection: "row", marginTop: 12 }}>
-              <Pressable
-                style={[
-                  styles.smallBtn,
-                  {
-                    backgroundColor: newTheme.surface,
-                    borderWidth: 1,
-                    borderColor: newTheme.border,
-                  },
-                ]}
-                onPress={clearSignature}
-              >
-                <Text
-                  style={{ color: newTheme.textPrimary, fontWeight: "600" }}
-                >
-                  Clear
-                </Text>
-              </Pressable>
-
-              <View style={{ flex: 1 }} />
-            </View>
-          </View>
-        )}
-
-        <StyledButton
-          label={submitting ? "Finishing…" : "Continue"}
-          onPress={next}
-          disabled={submitting}
-          style={{ marginTop: 26 }}
+          step={currentIndex + 1}
+          totalSteps={totalQuestions}
+          onBack={currentIndex > 0 ? handleBack : undefined}
         />
       </View>
-    </ScreenView>
+
+      <ScrollView
+        style={styles.scrollArea}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.heroBlock}>
+          <View style={styles.categoryPill}>
+            <Text style={styles.categoryText} numberOfLines={1}>
+              {currentQuestion.category ?? "Dosha alignment"}
+            </Text>
+          </View>
+
+          <Text style={styles.questionText}>{currentQuestion.question}</Text>
+
+          <Text style={styles.helperText}>
+            Choose the option that feels most natural right now.
+          </Text>
+        </View>
+
+        {!!errorMessage && (
+          <View style={styles.inlineError}>
+            <Text style={styles.inlineErrorText}>{errorMessage}</Text>
+          </View>
+        )}
+
+        <View style={styles.optionsWrap}>
+          {currentQuestion.options.map((option) => (
+            <ChoiceItem
+              key={option.id}
+              choice={option}
+              selected={selectedOptionId === option.id}
+              onPress={() => handleOptionPress(option)}
+            />
+          ))}
+        </View>
+
+        <Text style={styles.footerHint}>
+          Tap one option and we&apos;ll automatically continue to the next question.
+        </Text>
+      </ScrollView>
+
+      {submitting && (
+        <View style={styles.submittingOverlay}>
+          <View style={styles.submittingCard}>
+            <ActivityIndicator color={svaColors.brand.primary} />
+            <Text style={styles.submittingTitle}>Saving your responses</Text>
+            <Text style={styles.submittingSubtitle}>
+              We&apos;re sending your dosha profile to the backend.
+            </Text>
+          </View>
+        </View>
+      )}
+    </View>
   );
 };
 
-const styling = (t: any) =>
+const styling = (
+  svaColors: any,
+  svaTypography: any,
+  safeTop: number,
+  safeBottom: number
+) =>
   StyleSheet.create({
-    container: { paddingTop: 10 },
-    titleContainer: {},
-    title: {
-      marginTop: 22,
-      fontSize: 24,
-      fontWeight: "700",
-      textAlign: "center",
-      color: t.textPrimary,
-      marginBottom: 8,
-      lineHeight: 32,
+    screen: {
+      flex: 1,
+      backgroundColor: svaColors.bg.base,
     },
-    subtitle: {
-      textAlign: "center",
-      fontSize: 14,
-      color: t.textSecondary,
-      lineHeight: 22,
-      marginBottom: 14,
+    glowOne: {
+      position: "absolute",
+      top: safeTop - 16,
+      right: -72,
+      width: 220,
+      height: 220,
+      borderRadius: 999,
+      backgroundColor: svaColors.brand.subtle,
+      opacity: 0.7,
     },
-    errorText: {
-      textAlign: "center",
-      fontSize: 13,
-      fontWeight: "600",
-      marginBottom: 8,
+    glowTwo: {
+      position: "absolute",
+      bottom: safeBottom + 40,
+      left: -88,
+      width: 240,
+      height: 240,
+      borderRadius: 999,
+      backgroundColor: svaColors.surface.raised,
+      opacity: 0.45,
     },
-    smallBtn: {
+    fixedHeader: {
+      paddingTop: safeTop + 12,
+      paddingHorizontal: 20,
+      paddingBottom: 12,
+      backgroundColor: svaColors.bg.base,
+      zIndex: 2,
+      elevation: 2,
+    },
+    content: {
+      flexGrow: 1,
+      paddingHorizontal: 20,
+      paddingBottom: safeBottom + 28,
+    },
+    scrollArea: {
+      flex: 1,
+    },
+    heroBlock: {
+      marginTop: 28,
+      marginBottom: 22,
+      padding: 20,
+      borderRadius: 28,
+      backgroundColor: svaColors.surface.raised,
+      borderWidth: 1,
+      borderColor: svaColors.border.muted,
+    },
+    categoryPill: {
+      alignSelf: "flex-start",
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 999,
+      backgroundColor: svaColors.brand.subtle,
+      borderWidth: 1,
+      borderColor: svaColors.border.subtle,
+      marginBottom: 16,
+    },
+    categoryText: {
+      ...svaTypography.textStyle.authTinyLabel,
+      color: svaColors.brand.primary,
+      textTransform: "uppercase",
+    },
+    questionText: {
+      ...svaTypography.textStyle.authTitle,
+      color: svaColors.text.primary,
+      marginBottom: 10,
+      lineHeight: 36,
+    },
+    helperText: {
+      ...svaTypography.textStyle.authSubtitle,
+      color: svaColors.text.secondary,
+    },
+    optionsWrap: {
+      marginTop: 2,
+    },
+    footerHint: {
+      ...svaTypography.textStyle.authFootnote,
+      color: svaColors.text.secondary,
+      textAlign: "center",
+      marginTop: 12,
+      paddingHorizontal: 18,
+      paddingBottom: 10,
+    },
+    inlineError: {
+      marginBottom: 12,
+      borderRadius: 16,
       paddingHorizontal: 14,
+      paddingVertical: 12,
+      backgroundColor: "rgba(191, 97, 106, 0.12)",
+      borderWidth: 1,
+      borderColor: "rgba(191, 97, 106, 0.28)",
+    },
+    inlineErrorText: {
+      ...svaTypography.textStyle.authBody,
+      color: svaColors.state.error,
+    },
+    loadingState: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 24,
+    },
+    loadingTitle: {
+      ...svaTypography.textStyle.heading2,
+      color: svaColors.text.primary,
+      marginTop: 14,
+      textAlign: "center",
+    },
+    loadingSubtitle: {
+      ...svaTypography.textStyle.authSubtitle,
+      color: svaColors.text.secondary,
+      textAlign: "center",
+      marginTop: 8,
+    },
+    errorState: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 24,
+      gap: 12,
+    },
+    errorTitle: {
+      ...svaTypography.textStyle.heading2,
+      color: svaColors.text.primary,
+      textAlign: "center",
+    },
+    errorSubtitle: {
+      ...svaTypography.textStyle.authSubtitle,
+      color: svaColors.text.secondary,
+      textAlign: "center",
+      marginBottom: 8,
+    },
+    secondaryAction: {
       paddingVertical: 10,
-      borderRadius: 12,
+      paddingHorizontal: 16,
+    },
+    secondaryActionText: {
+      ...svaTypography.textStyle.authLabelStrong,
+      color: svaColors.brand.primary,
+    },
+    submittingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: svaColors.overlay.strong,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 24,
+    },
+    submittingCard: {
+      width: "100%",
+      maxWidth: 340,
+      borderRadius: 28,
+      paddingHorizontal: 24,
+      paddingVertical: 26,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: svaColors.surface.raised,
+      borderWidth: 1,
+      borderColor: svaColors.border.muted,
+    },
+    submittingTitle: {
+      ...svaTypography.textStyle.heading2,
+      color: svaColors.text.primary,
+      marginTop: 14,
+      textAlign: "center",
+    },
+    submittingSubtitle: {
+      ...svaTypography.textStyle.authSubtitle,
+      color: svaColors.text.secondary,
+      textAlign: "center",
+      marginTop: 8,
     },
   });
+
+export default OnboardingQuestionsScreen;
