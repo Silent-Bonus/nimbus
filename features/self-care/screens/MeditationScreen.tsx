@@ -123,10 +123,7 @@ export const MeditationScreen: React.FC = () => {
   );
 
   const featuredTemplate = useMemo(
-    () =>
-      templates.find((item) => item.id === "moonlit-reset") ??
-      visibleTemplates[0] ??
-      templates[0],
+    () => visibleTemplates[0] ?? templates[0],
     [visibleTemplates, templates]
   );
 

@@ -1,5 +1,11 @@
 import type { ImageSourcePropType } from "react-native";
 
+import type {
+  WellnessContentBenefit,
+  WellnessContentInstructor,
+  WellnessContentScientificSynthesis,
+} from "@/features/self-care/types/selfCareTypes";
+
 const FALLBACK_IMAGE = require("../../../assets/images/mt.jpg");
 const DEFAULT_MEDITATION_DESCRIPTION =
   "A quiet cadence for the body and the part of the mind that listens.";
@@ -47,6 +53,12 @@ export type MeditationTemplate = {
   level?: string;
   dosha?: string;
   modality?: string;
+  longDescription?: string;
+  guidance?: string;
+  date?: string;
+  instructor?: WellnessContentInstructor;
+  benefits?: WellnessContentBenefit[];
+  scientificSynthesis?: WellnessContentScientificSynthesis;
 };
 
 export type RawMeditationTemplate = {
@@ -54,8 +66,12 @@ export type RawMeditationTemplate = {
   slug?: string;
   title?: string;
   description?: string;
+  longDescription?: string;
+  guidance?: string;
+  date?: string;
   image?: string | ImageSourcePropType | null;
   source?: string | null;
+  audio?: string | null;
   category?: string;
   duration?: number | string;
   isLocked?: boolean;
@@ -66,6 +82,9 @@ export type RawMeditationTemplate = {
   level?: string;
   dosha?: string;
   modality?: string;
+  instructor?: WellnessContentInstructor;
+  benefits?: WellnessContentBenefit[];
+  scientificSynthesis?: WellnessContentScientificSynthesis;
 };
 
 const titleCase = (value: string) =>
@@ -155,6 +174,69 @@ const extractMeditationImageUri = (image?: ImageSourcePropType | string | null) 
   }
 
   return undefined;
+};
+
+const normalizeInstructor = (
+  instructor?: WellnessContentInstructor
+): WellnessContentInstructor | undefined => {
+  if (!instructor) return undefined;
+
+  const name = instructor.name.trim();
+  const role = instructor.role.trim();
+  const bio = instructor.bio.trim();
+  const image = instructor.image.trim();
+
+  if (!name && !role && !bio && !image) {
+    return undefined;
+  }
+
+  return {
+    name: name || "Instructor",
+    role,
+    bio,
+    image,
+  };
+};
+
+const normalizeBenefits = (
+  benefits?: WellnessContentBenefit[]
+): WellnessContentBenefit[] | undefined => {
+  if (!Array.isArray(benefits)) return undefined;
+
+  const normalized = benefits
+    .map((benefit) => ({
+      id: benefit.id,
+      title: benefit.title.trim(),
+      text: benefit.text.trim(),
+    }))
+    .filter(
+      (benefit) =>
+        Boolean(benefit.title) || Boolean(benefit.text) || Number.isFinite(benefit.id)
+    );
+
+  return normalized.length > 0 ? normalized : undefined;
+};
+
+const normalizeScientificSynthesis = (
+  scientificSynthesis?: WellnessContentScientificSynthesis
+):
+  | WellnessContentScientificSynthesis
+  | undefined => {
+  if (!scientificSynthesis) return undefined;
+
+  const title = scientificSynthesis.title.trim();
+  const text = scientificSynthesis.text.trim();
+  const source = scientificSynthesis.source.trim();
+
+  if (!title && !text && !source) {
+    return undefined;
+  }
+
+  return {
+    title: title || "Scientific synthesis",
+    text,
+    source,
+  };
 };
 
 const buildMeditationDescription = (
@@ -250,9 +332,14 @@ export const mapMeditationTemplate = (
   const tags = sortMeditationTags(
     deriveMeditationTags(item, title, item.description?.trim() || "")
   );
-  const description = buildMeditationDescription(item, title, tags);
+  const description =
+    item.description?.trim() ||
+    item.longDescription?.trim() ||
+    buildMeditationDescription(item, title, tags);
+  const longDescription = item.longDescription?.trim() || undefined;
   const durationValue = formatDurationLabel(item.duration);
-  const idValue = item.slug?.trim() || item.id;
+  const idValue = item.id ?? item.slug;
+  const source = item.audio?.trim() || item.source?.trim() || null;
 
   return {
     id: String(idValue ?? `${title}-${index}`),
@@ -263,7 +350,7 @@ export const mapMeditationTemplate = (
     tags,
     durationLabel: durationValue,
     image: resolveMeditationImageSource(item.image),
-    source: item.source ?? null,
+    source,
     isLocked: Boolean(item.isLocked ?? item.is_locked),
     category: item.category?.trim() || tags[0] || "calm",
     rating: typeof item.rating === "number" ? item.rating : undefined,
@@ -271,6 +358,12 @@ export const mapMeditationTemplate = (
     level: item.level?.trim() || undefined,
     dosha: item.dosha?.trim() || undefined,
     modality: item.modality?.trim() || undefined,
+    longDescription,
+    guidance: item.guidance?.trim() || undefined,
+    date: item.date?.trim() || undefined,
+    instructor: normalizeInstructor(item.instructor),
+    benefits: normalizeBenefits(item.benefits),
+    scientificSynthesis: normalizeScientificSynthesis(item.scientificSynthesis),
   };
 };
 
@@ -297,7 +390,7 @@ export const filterMeditationTemplates = (
 export const buildMeditationRouteParams = (
   template: MeditationTemplate
 ): MeditationRouteParams => ({
-  meditationId: template.slug ?? template.id,
+  meditationId: template.id,
   meditationTitle: template.title,
   meditationDescription: template.description,
   meditationDurationLabel: template.durationLabel,

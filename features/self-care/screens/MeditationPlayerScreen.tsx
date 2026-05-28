@@ -116,8 +116,8 @@ export default function MeditationPlayerScreen() {
   const progress = Math.min(positionMillis / durationMillis, 1);
 
   const playbackSource = useMemo(
-    () => resolveMeditationPlaybackSource(meditationId),
-    [meditationId]
+    () => resolveMeditationPlaybackSource(meditationId, template.source ?? null),
+    [meditationId, template.source]
   );
   const heroImage = useMemo(
     () => resolveMeditationPlaybackCover(template),

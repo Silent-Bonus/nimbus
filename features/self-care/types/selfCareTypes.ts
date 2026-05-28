@@ -161,7 +161,7 @@ export interface MeditationVideoListResponse {
 
 export interface WellnessContentItem {
   id: number;
-  slug: string;
+  slug?: string;
   title: string;
   modality: string;
   category: string;
@@ -172,6 +172,7 @@ export interface WellnessContentItem {
   tags: string[];
   level: string;
   dosha: string;
+  description?: string;
 }
 
 export interface WellnessContentPagination {
@@ -189,6 +190,42 @@ export interface WellnessContentResponse {
   message: string;
   data: WellnessContentItem[];
   pagination?: WellnessContentPagination;
+}
+
+export interface WellnessContentInstructor {
+  name: string;
+  role: string;
+  bio: string;
+  image: string;
+}
+
+export interface WellnessContentBenefit {
+  id: number;
+  title: string;
+  text: string;
+}
+
+export interface WellnessContentScientificSynthesis {
+  title: string;
+  text: string;
+  source: string;
+}
+
+export interface WellnessContentDetailItem extends WellnessContentItem {
+  audio: string;
+  description: string;
+  longDescription: string;
+  guidance: string;
+  date: string;
+  instructor: WellnessContentInstructor;
+  benefits: WellnessContentBenefit[];
+  scientificSynthesis: WellnessContentScientificSynthesis;
+}
+
+export interface WellnessContentDetailResponse {
+  success: boolean;
+  message: string;
+  data: WellnessContentDetailItem;
 }
 
 export type EnrichedMeditation = Meditations & {

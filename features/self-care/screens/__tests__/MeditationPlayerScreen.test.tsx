@@ -16,11 +16,12 @@ const mockSetAudioModeAsync = jest.fn();
 const mockCreateAsync = jest.fn();
 
 let mockParams = {
-  meditationId: "moonlit-reset",
-  meditationTitle: "Moonlit Reset",
+  meditationId: "1",
+  meditationTitle: "Relaxing Meditation",
   meditationDescription:
-    "A calm reset for the nervous system when the day has been too loud.",
-  meditationDurationLabel: "7 min",
+    "A gentle practice to release tension and find inner calm.",
+  meditationDurationLabel: "2.5 min",
+  meditationSource: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
 };
 
 let playbackStatusCallback: ((status: any) => void) | null = null;
@@ -139,11 +140,13 @@ describe("MeditationPlayerScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockParams = {
-      meditationId: "moonlit-reset",
-      meditationTitle: "Moonlit Reset",
+      meditationId: "1",
+      meditationTitle: "Relaxing Meditation",
       meditationDescription:
-        "A calm reset for the nervous system when the day has been too loud.",
-      meditationDurationLabel: "7 min",
+        "A gentle practice to release tension and find inner calm.",
+      meditationDurationLabel: "2.5 min",
+      meditationSource:
+        "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
     };
     playbackStatusCallback = null;
 
@@ -177,7 +180,10 @@ describe("MeditationPlayerScreen", () => {
 
     expect(mockSetAudioModeAsync).toHaveBeenCalled();
     expect(mockCreateAsync).toHaveBeenCalledWith(
-      resolveMeditationPlaybackSource("moonlit-reset"),
+      resolveMeditationPlaybackSource(
+        "1",
+        "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+      ),
       expect.objectContaining({
         shouldPlay: true,
       }),
@@ -187,7 +193,7 @@ describe("MeditationPlayerScreen", () => {
     expect(hasText(tree, "SVA")).toBe(false);
     expect(hasText(tree, "Meditation")).toBe(true);
     expect(hasText(tree, "NIMBUS ORIGINAL MEDITATION")).toBe(true);
-    expect(hasText(tree, "Moonlit Reset")).toBe(true);
+    expect(hasText(tree, "Relaxing Meditation")).toBe(true);
   });
 
   it("pauses, seeks, shares, and returns to the library", async () => {
@@ -222,7 +228,7 @@ describe("MeditationPlayerScreen", () => {
     expect(mockSound.setPositionAsync).toHaveBeenCalledWith(15000);
     expect(mockShare).toHaveBeenCalledWith({
       message:
-        "Moonlit Reset · A calm reset for the nervous system when the day has been too loud.",
+        "Relaxing Meditation · A gentle practice to release tension and find inner calm.",
     });
     expect(mockPush).toHaveBeenCalledWith(ROUTES.AUTH.SELF_CARE_MEDITATION);
   });

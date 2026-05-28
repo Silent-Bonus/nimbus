@@ -5,6 +5,7 @@ import {
   JournalListResponse,
   JournalSubmitRequest,
   JournalSubmitResponse,
+  WellnessContentDetailResponse,
   MeditationVideoListResponse,
   WellnessContentResponse,
   WorkoutVideoListResponse,
@@ -113,6 +114,18 @@ export const getWellnessContentList = async (params?: {
       API_ENDPOINTS.getWellnessContent,
       { params }
     );
+    return response.data;
+  } catch (error: any) {
+    throw error.response ? error.response.data : error.message;
+  }
+};
+
+export const getWellnessContentDetail = async (
+  id: number | string
+): Promise<WellnessContentDetailResponse> => {
+  try {
+    const response: AxiosResponse<WellnessContentDetailResponse> =
+      await axios.get(API_ENDPOINTS.getWellnessContentDetail(id));
     return response.data;
   } catch (error: any) {
     throw error.response ? error.response.data : error.message;
