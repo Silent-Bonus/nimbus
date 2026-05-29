@@ -3,8 +3,8 @@ import { Share, Text } from "react-native";
 import renderer, { act } from "react-test-renderer";
 
 import ThemeContext from "../../../../contexts/ThemeContext";
-import { getTheme } from "../../../../theme";
 import { ROUTES } from "../../../../constants/routes";
+import { getTheme } from "../../../../theme";
 import { resolveMeditationPlaybackSource } from "../../utils/meditationPlayback";
 import MeditationPlayerScreen from "../MeditationPlayerScreen";
 
@@ -14,14 +14,24 @@ const mockSetOptions = jest.fn();
 const mockShare = jest.fn();
 const mockSetAudioModeAsync = jest.fn();
 const mockCreateAsync = jest.fn();
+const mockCreateWellnessSessionFn = jest.fn();
+const mockPauseWellnessSessionFn = jest.fn();
+const mockResumeWellnessSessionFn = jest.fn();
+const mockCompleteWellnessSessionFn = jest.fn();
 
 let mockParams = {
-  meditationId: "moonlit-reset",
-  meditationTitle: "Moonlit Reset",
+  meditationId: "1",
+  meditationTitle: "Relaxing Meditation",
   meditationDescription:
-    "A calm reset for the nervous system when the day has been too loud.",
-  meditationDurationLabel: "7 min",
+    "A gentle practice to release tension and find inner calm.",
+  meditationGuidance:
+    "Focus on a slow inhale and a longer exhale. Let the body feel supported, then allow the mind to settle into stillness without forcing concentration.",
+  meditationDurationLabel: "2.5 min",
+  meditationSource:
+    "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
 };
+
+const mockSessionRef = "c90e8cea-42af-47d2-a4b5-62e8e7bb027c";
 
 let playbackStatusCallback: ((status: any) => void) | null = null;
 const mockSound = {
@@ -94,6 +104,14 @@ jest.mock("expo-linear-gradient", () => {
   };
 });
 
+jest.mock("../../services/wellnessSessionService", () => ({
+  createWellnessSession: (...args: any[]) => mockCreateWellnessSessionFn(...args),
+  pauseWellnessSession: (...args: any[]) => mockPauseWellnessSessionFn(...args),
+  resumeWellnessSession: (...args: any[]) => mockResumeWellnessSessionFn(...args),
+  completeWellnessSession: (...args: any[]) =>
+    mockCompleteWellnessSessionFn(...args),
+}));
+
 const theme = getTheme("sva");
 const themeValue = {
   theme: "sva",
@@ -139,20 +157,53 @@ describe("MeditationPlayerScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockParams = {
-      meditationId: "moonlit-reset",
-      meditationTitle: "Moonlit Reset",
+      meditationId: "1",
+      meditationTitle: "Relaxing Meditation",
       meditationDescription:
-        "A calm reset for the nervous system when the day has been too loud.",
-      meditationDurationLabel: "7 min",
+        "A gentle practice to release tension and find inner calm.",
+      meditationGuidance:
+        "Focus on a slow inhale and a longer exhale. Let the body feel supported, then allow the mind to settle into stillness without forcing concentration.",
+      meditationDurationLabel: "2.5 min",
+      meditationSource:
+        "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
     };
     playbackStatusCallback = null;
+
+    mockCreateWellnessSessionFn.mockResolvedValue({
+      success: true,
+      message: "Wellness session created successfully.",
+      data: {
+        session_ref: mockSessionRef,
+      },
+    } as any);
+    mockPauseWellnessSessionFn.mockResolvedValue({
+      success: true,
+      message: "Wellness session paused successfully.",
+      data: {
+        session_ref: mockSessionRef,
+      },
+    } as any);
+    mockResumeWellnessSessionFn.mockResolvedValue({
+      success: true,
+      message: "Wellness session resumed successfully.",
+      data: {
+        session_ref: mockSessionRef,
+      },
+    } as any);
+    mockCompleteWellnessSessionFn.mockResolvedValue({
+      success: true,
+      message: "Wellness session completed successfully.",
+      data: {
+        session_ref: mockSessionRef,
+      },
+    } as any);
 
     mockCreateAsync.mockImplementation(
       async (source: any, options: any, onPlaybackStatusUpdate: any) => {
         playbackStatusCallback = onPlaybackStatusUpdate;
         onPlaybackStatusUpdate({
           isLoaded: true,
-          isPlaying: true,
+          isPlaying: Boolean(options?.shouldPlay),
           positionMillis: 0,
           durationMillis: 180000,
         });
@@ -161,14 +212,14 @@ describe("MeditationPlayerScreen", () => {
     );
 
     jest.spyOn(Share, "share").mockImplementation(mockShare);
-    mockShare.mockResolvedValue({ action: "sharedAction" });
+    mockShare.mockResolvedValue({ action: "sharedAction" } as any);
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
-  it("loads the local meditation audio and renders the premium player surface", async () => {
+  it("loads the meditation paused and does not create a session on mount", async () => {
     const tree = await renderScreen();
 
     expect(mockSetOptions).toHaveBeenCalledWith({
@@ -177,25 +228,143 @@ describe("MeditationPlayerScreen", () => {
 
     expect(mockSetAudioModeAsync).toHaveBeenCalled();
     expect(mockCreateAsync).toHaveBeenCalledWith(
-      resolveMeditationPlaybackSource("moonlit-reset"),
+      resolveMeditationPlaybackSource(
+        "1",
+        "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+      ),
       expect.objectContaining({
-        shouldPlay: true,
+        shouldPlay: false,
       }),
       expect.any(Function)
     );
+    expect(mockCreateWellnessSessionFn).not.toHaveBeenCalled();
 
-    expect(hasText(tree, "SVA")).toBe(false);
     expect(hasText(tree, "Meditation")).toBe(true);
     expect(hasText(tree, "NIMBUS ORIGINAL MEDITATION")).toBe(true);
-    expect(hasText(tree, "Moonlit Reset")).toBe(true);
+    expect(hasText(tree, "Relaxing Meditation")).toBe(true);
+    expect(
+      hasText(
+        tree,
+        "Focus on a slow inhale and a longer exhale. Let the body feel supported, then allow the mind to settle into stillness without forcing concentration."
+      )
+    ).toBe(true);
+    expect(
+      tree.root.findByProps({
+        accessibilityLabel: "Play meditation",
+      })
+    ).toBeTruthy();
   });
 
-  it("pauses, seeks, shares, and returns to the library", async () => {
+  it("creates a session on play, pauses it on pause, resumes it on play again, and pauses before back", async () => {
     const tree = await renderScreen();
+
+    const playButton = tree.root.findByProps({
+      accessibilityLabel: "Play meditation",
+    });
+
+    await act(async () => {
+      await playButton.props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      playbackStatusCallback?.({
+        isLoaded: true,
+        isPlaying: true,
+        positionMillis: 15000,
+        durationMillis: 180000,
+      });
+      await Promise.resolve();
+    });
+
+    expect(mockCreateWellnessSessionFn).toHaveBeenCalledWith({
+      activity_type: "meditation",
+      content_type: "wellness_content.wellnesscontent",
+      content_object_id: 1,
+      source: "manual",
+      metadata: {
+        entry_surface: "player_screen",
+        test_mode: true,
+      },
+    });
+    expect(mockSound.playAsync).toHaveBeenCalledTimes(1);
 
     const pauseButton = tree.root.findByProps({
       accessibilityLabel: "Pause meditation",
     });
+    const backButton = tree.root.findByProps({
+      accessibilityLabel: "Back",
+    });
+
+    await act(async () => {
+      await pauseButton.props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mockPauseWellnessSessionFn).toHaveBeenCalledWith(mockSessionRef);
+    expect(mockSound.pauseAsync).toHaveBeenCalledTimes(1);
+
+    const resumedPlayButton = tree.root.findByProps({
+      accessibilityLabel: "Play meditation",
+    });
+
+    await act(async () => {
+      await resumedPlayButton.props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mockResumeWellnessSessionFn).toHaveBeenCalledWith(mockSessionRef);
+    expect(mockSound.playAsync).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      await backButton.props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mockPauseWellnessSessionFn).toHaveBeenCalledTimes(2);
+    expect(mockBack).toHaveBeenCalledTimes(1);
+  });
+
+  it("completes the session only when playback finishes naturally", async () => {
+    const tree = await renderScreen();
+
+    const playButton = tree.root.findByProps({
+      accessibilityLabel: "Play meditation",
+    });
+
+    await act(async () => {
+      await playButton.props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      playbackStatusCallback?.({
+        isLoaded: true,
+        isPlaying: false,
+        positionMillis: 205000,
+        durationMillis: 205000,
+        didJustFinish: true,
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mockCompleteWellnessSessionFn).toHaveBeenCalledWith(
+      mockSessionRef,
+      {
+        duration_seconds: 205,
+      }
+    );
+  });
+
+  it("seeks, shares, and opens the library without starting a session", async () => {
+    const tree = await renderScreen();
+
     const backButton = tree.root.findByProps({
       accessibilityLabel: "Seek backward 15 seconds",
     });
@@ -210,20 +379,19 @@ describe("MeditationPlayerScreen", () => {
     });
 
     await act(async () => {
-      await pauseButton.props.onPress();
       await backButton.props.onPress();
       await forwardButton.props.onPress();
       await shareButton.props.onPress();
       await libraryButton.props.onPress();
     });
 
-    expect(mockSound.pauseAsync).toHaveBeenCalledTimes(1);
     expect(mockSound.setPositionAsync).toHaveBeenCalledWith(0);
     expect(mockSound.setPositionAsync).toHaveBeenCalledWith(15000);
     expect(mockShare).toHaveBeenCalledWith({
       message:
-        "Moonlit Reset · A calm reset for the nervous system when the day has been too loud.",
+        "Relaxing Meditation · A gentle practice to release tension and find inner calm.",
     });
     expect(mockPush).toHaveBeenCalledWith(ROUTES.AUTH.SELF_CARE_MEDITATION);
+    expect(mockCreateWellnessSessionFn).not.toHaveBeenCalled();
   });
 });

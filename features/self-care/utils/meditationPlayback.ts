@@ -4,8 +4,13 @@ const DEFAULT_MEDITATION_AUDIO = require("../../../assets/audio/deep_sleep_guide
 const DEFAULT_MEDITATION_COVER = require("../../../assets/images/mt.jpg");
 
 export const resolveMeditationPlaybackSource = (
-  meditationId?: string | null
+  meditationId?: string | null,
+  meditationSource?: string | null
 ) => {
+  if (meditationSource) {
+    return { uri: meditationSource };
+  }
+
   switch (meditationId) {
     default:
       return DEFAULT_MEDITATION_AUDIO;
@@ -40,4 +45,3 @@ export const seekMillis = (
   const nextPosition = currentPosition + delta;
   return Math.max(0, Math.min(nextPosition, Math.max(durationMillis - 500, 0)));
 };
-

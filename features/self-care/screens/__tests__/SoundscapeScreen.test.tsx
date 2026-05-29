@@ -13,7 +13,7 @@ const mockSetOptions = jest.fn();
 const mockAddListener = jest.fn(() => jest.fn());
 const mockGetItem = jest.fn();
 const mockSetItem = jest.fn();
-const mockGetSoundscapeList = jest.fn();
+const mockGetSoundscapeContentList = jest.fn();
 
 jest.mock("expo-router", () => ({
   router: {
@@ -32,8 +32,9 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
   setItem: (...args: any[]) => mockSetItem(...args),
 }));
 
-jest.mock("@/features/tools/services/toolService", () => ({
-  getSoundscapeList: (...args: any[]) => mockGetSoundscapeList(...args),
+jest.mock("@/features/self-care/services/selfCareService", () => ({
+  getSoundscapeContentList: (...args: any[]) =>
+    mockGetSoundscapeContentList(...args),
 }));
 
 jest.mock("@expo/vector-icons", () => {
@@ -146,7 +147,7 @@ describe("SoundscapeScreen", () => {
     jest.clearAllMocks();
     mockGetItem.mockResolvedValue("[]");
     mockSetItem.mockResolvedValue(undefined);
-    mockGetSoundscapeList.mockResolvedValue({ data: rawTracks });
+    mockGetSoundscapeContentList.mockResolvedValue({ data: rawTracks });
   });
 
   it("shows the favorites tag filter and filters the library to saved soundscapes", async () => {
@@ -155,6 +156,7 @@ describe("SoundscapeScreen", () => {
     expect(mockSetOptions).toHaveBeenCalledWith({
       headerShown: false,
     });
+    expect(mockGetSoundscapeContentList).toHaveBeenCalledTimes(1);
     expect(tree.root.findAllByProps({ accessibilityLabel: "Show favorites" })).toHaveLength(0);
     expect(tree.root.findByProps({ accessibilityLabel: "Favorites" })).toBeTruthy();
     expect(hasText(tree, "Rain Over Cedar")).toBe(true);

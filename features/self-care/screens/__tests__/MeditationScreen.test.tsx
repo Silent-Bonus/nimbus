@@ -6,6 +6,11 @@ import ThemeContext from "../../../../contexts/ThemeContext";
 import { getTheme } from "../../../../theme";
 import { ROUTES } from "../../../../constants/routes";
 import MeditationScreen from "../MeditationScreen";
+import {
+  buildMeditationRouteParams,
+  mapMeditationTemplate,
+} from "../../utils/meditationLibrary";
+import { getWellnessContentList } from "../../services/selfCareService";
 
 const mockPush = jest.fn();
 const mockBack = jest.fn();
@@ -25,6 +30,15 @@ jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
+jest.mock("../../services/selfCareService", () => {
+  const actual = jest.requireActual("../../services/selfCareService");
+
+  return {
+    ...actual,
+    getWellnessContentList: jest.fn(),
+  };
+});
+
 const theme = getTheme("sva");
 const themeValue = {
   theme: "sva",
@@ -41,6 +55,41 @@ const themeValue = {
   activeTheme: theme,
 };
 
+const wellnessContent = [
+  {
+    id: 1,
+    slug: "relaxing-meditation",
+    title: "Relaxing Meditation",
+    modality: "meditation",
+    category: "Relaxation",
+    duration: "2.5 min",
+    image: "https://example.com/relaxing.png",
+    rating: 4.9,
+    reviews: 128,
+    tags: ["Calm", "Vata Balancing", "Vedic Wisdom", "Visualization"],
+    level: "Beginner",
+    dosha: "Vata",
+  },
+  {
+    id: 2,
+    slug: "sleep-soothing-meditation",
+    title: "Sleep Soothing Meditation",
+    modality: "meditation",
+    category: "Sleep",
+    duration: "5 min",
+    image: "https://example.com/sleep.png",
+    rating: 4.85,
+    reviews: 96,
+    tags: ["Sleep", "Wind Down", "Rest", "Evening"],
+    level: "All Levels",
+    dosha: "Kapha",
+  },
+];
+
+const mockGetWellnessContentList = getWellnessContentList as jest.MockedFunction<
+  typeof getWellnessContentList
+>;
+
 const hasText = (tree: renderer.ReactTestRenderer, value: string) =>
   tree.root
     .findAllByType(Text)
@@ -50,15 +99,18 @@ const hasText = (tree: renderer.ReactTestRenderer, value: string) =>
         : node.props.children === value
     );
 
-function renderScreen() {
+async function renderScreen() {
   let tree!: renderer.ReactTestRenderer;
 
-  act(() => {
+  await act(async () => {
     tree = renderer.create(
       <ThemeContext.Provider value={themeValue as any}>
         <MeditationScreen />
       </ThemeContext.Provider>
     );
+
+    await Promise.resolve();
+    await Promise.resolve();
   });
 
   return tree;
@@ -67,36 +119,43 @@ function renderScreen() {
 describe("MeditationScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetWellnessContentList.mockResolvedValue({
+      success: true,
+      message: "Wellness content retrieved successfully.",
+      data: wellnessContent as any,
+      pagination: {
+        count: 2,
+        next: null,
+        previous: null,
+        page: 1,
+        page_size: 100,
+        total_pages: 1,
+        results_count: 2,
+      },
+    });
   });
 
-  it("renders the curated recommendation above the meditation list", () => {
-    const tree = renderScreen();
+  it("renders the API-backed meditation list and opens the featured meditation with hydrated params", async () => {
+    const tree = await renderScreen();
 
     expect(mockSetOptions).toHaveBeenCalledWith({
       headerShown: false,
     });
+    expect(mockGetWellnessContentList).toHaveBeenCalledWith({
+      modality: "meditation",
+    });
 
     expect(hasText(tree, "Quiet Current")).toBe(true);
     expect(hasText(tree, "CURATED RECOMMENDATION")).toBe(true);
-    expect(hasText(tree, "Moonlit Reset")).toBe(true);
+    expect(hasText(tree, "Relaxing Meditation")).toBe(true);
+    expect(hasText(tree, "Sleep Soothing Meditation")).toBe(true);
     expect(hasText(tree, "Curated pick")).toBe(true);
-    expect(hasText(tree, "Sleep Drift")).toBe(true);
-    expect(hasText(tree, "Focus Lantern")).toBe(true);
+    expect(hasText(tree, "2 sessions")).toBe(true);
     expect(hasText(tree, "Open")).toBe(true);
 
-    const list = tree.root.findByProps({
-      testID: "meditation-library-list",
-    });
-
-    expect(list.props.horizontal).not.toBe(true);
-  });
-
-  it("opens the meditation detail page from the curated recommendation", () => {
-    const tree = renderScreen();
-
-    const featuredCard = tree.root.findByProps({
-      accessibilityLabel: "Open Moonlit Reset",
-    });
+    const featuredCard = tree.root.findAllByProps({
+      accessibilityLabel: "Open Relaxing Meditation",
+    })[0];
 
     act(() => {
       featuredCard.props.onPress();
@@ -104,14 +163,14 @@ describe("MeditationScreen", () => {
 
     expect(mockPush).toHaveBeenCalledWith({
       pathname: ROUTES.AUTH.SELF_CARE_MEDITATION_DETAIL,
-      params: {
-        meditationId: "moonlit-reset",
-      },
+      params: buildMeditationRouteParams(
+        mapMeditationTemplate(wellnessContent[0] as any, 0)
+      ),
     });
   });
 
-  it("filters the library list by tag while keeping the curated card", () => {
-    const tree = renderScreen();
+  it("filters the library by tag and opens a library item with the API payload", async () => {
+    const tree = await renderScreen();
 
     const sleepFilter = tree.root.findByProps({
       accessibilityLabel: "Sleep",
@@ -122,28 +181,22 @@ describe("MeditationScreen", () => {
     });
 
     expect(hasText(tree, "Sleep collection")).toBe(true);
-    expect(hasText(tree, "Sleep Drift")).toBe(true);
-    expect(hasText(tree, "Moonlit Reset")).toBe(true);
-    expect(hasText(tree, "Focus Lantern")).toBe(false);
-    expect(hasText(tree, "Soft Release")).toBe(false);
-  });
+    expect(hasText(tree, "Sleep Soothing Meditation")).toBe(true);
+    expect(hasText(tree, "Relaxing Meditation")).toBe(false);
 
-  it("opens the meditation detail page from a library card", () => {
-    const tree = renderScreen();
-
-    const listCard = tree.root.findByProps({
-      accessibilityLabel: "Open Sleep Drift",
-    });
+    const sleepCard = tree.root.findAllByProps({
+      accessibilityLabel: "Open Sleep Soothing Meditation",
+    })[0];
 
     act(() => {
-      listCard.props.onPress();
+      sleepCard.props.onPress();
     });
 
     expect(mockPush).toHaveBeenCalledWith({
       pathname: ROUTES.AUTH.SELF_CARE_MEDITATION_DETAIL,
-      params: {
-        meditationId: "sleep-drift",
-      },
+      params: buildMeditationRouteParams(
+        mapMeditationTemplate(wellnessContent[1] as any, 1)
+      ),
     });
   });
 });

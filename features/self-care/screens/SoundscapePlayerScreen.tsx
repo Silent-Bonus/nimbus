@@ -1,4 +1,11 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Pressable,
   ScrollView,
@@ -18,14 +25,20 @@ import {
   buildSoundscapeResonanceLabel,
   buildSoundscapeSubtitle,
   getSoundscapeById,
-  mockSoundscapeSessions,
   resolveSoundscapePlaybackSource,
+  type SoundscapeTrack,
 } from "@/features/self-care/utils/soundscapeLibrary";
 import { useAudioPlayback } from "@/features/self-care/hooks/useAudioPlayback";
 import {
   formatPlaybackRemaining,
   formatPlaybackTime,
 } from "@/features/self-care/utils/meditationPlayback";
+import {
+  completeWellnessSession,
+  createWellnessSession,
+  pauseWellnessSession,
+  resumeWellnessSession,
+} from "@/features/self-care/services/wellnessSessionService";
 import type { ColorSet, Spacing, Typography, TypographyTokens } from "@/theme/types";
 
 type SoundscapePlayerParams = {
@@ -49,54 +62,15 @@ export default function SoundscapePlayerScreen() {
     useContext(ThemeContext);
   const isCompactLayout = windowHeight < 900;
 
-  const soundscapeId = parseParam(params.soundscapeId) ?? mockSoundscapeSessions[0].id;
+  const soundscapeId = parseParam(params.soundscapeId) ?? "";
   const soundscape = useMemo(
-    () => getSoundscapeById(soundscapeId) ?? mockSoundscapeSessions[0],
+    () => getSoundscapeById(soundscapeId) ?? null,
     [soundscapeId]
-  );
-  const source = useMemo(
-    () => resolveSoundscapePlaybackSource(soundscape.id),
-    [soundscape.id]
-  );
-  const subtitle = useMemo(() => buildSoundscapeSubtitle(soundscape), [soundscape]);
-  const resonanceLabel = useMemo(
-    () => buildSoundscapeResonanceLabel(soundscape),
-    [soundscape]
   );
   const styles = useMemo(
     () => styling(theme, svaTypography, spacing, typography, isCompactLayout),
     [theme, svaTypography, spacing, typography, isCompactLayout]
   );
-
-  const [binauralEnabled, setBinauralEnabled] = useState(true);
-  const [timerIndex, setTimerIndex] = useState(0);
-  const [intensityIndex, setIntensityIndex] = useState(1);
-
-  const {
-    soundRef,
-    isLoading,
-    isPlaying,
-    positionMillis,
-    durationMillis,
-    togglePlayPause,
-  } = useAudioPlayback({
-    source,
-    autoPlay: true,
-    progressUpdateIntervalMillis: 500,
-  });
-  const currentSound = soundRef.current;
-
-  const orbScale = binauralEnabled
-    ? 1 + intensityIndex * 0.015 + (isPlaying ? 0.02 : 0)
-    : 0.96;
-  const playbackVolume = binauralEnabled
-    ? intensityVolumes[intensityIndex]
-    : Math.max(0.25, intensityVolumes[intensityIndex] * 0.7);
-
-  const progress = Math.min(positionMillis / durationMillis, 1);
-  const timerLabel =
-    timerOptions[timerIndex] === null ? "OFF" : `${timerOptions[timerIndex]} MIN`;
-  const intensityLabel = ["LOW", "MID", "HIGH"][intensityIndex];
 
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
@@ -106,256 +80,83 @@ export default function SoundscapePlayerScreen() {
     router.back();
   };
 
-  const cycleTimer = () => {
-    setTimerIndex((current) => (current + 1) % timerOptions.length);
-  };
+  if (!soundscape) {
+    return (
+      <ScreenView
+        bgColor={theme.background}
+        padding={0}
+        useSafeTop={false}
+        style={styles.screen}
+      >
+        <LinearGradient
+          colors={["#0A0C09", theme.background, "rgba(39, 46, 31, 0.94)"]}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.vignetteTop} />
+        <View style={styles.vignetteBottom} />
 
-  const cycleIntensity = () => {
-    setIntensityIndex((current) => (current + 1) % 3);
-  };
-
-  useEffect(() => {
-    if (!currentSound || isLoading) return;
-
-    void currentSound.setVolumeAsync(playbackVolume);
-  }, [currentSound, isLoading, playbackVolume]);
-
-  useEffect(() => {
-    const selectedMinutes = timerOptions[timerIndex];
-    if (!selectedMinutes) return undefined;
-
-    const timeout = setTimeout(() => {
-      if (currentSound) {
-        void currentSound.stopAsync();
-      }
-      setTimerIndex(0);
-    }, selectedMinutes * 60 * 1000);
-
-    return () => clearTimeout(timeout);
-  }, [currentSound, timerIndex]);
-
-  return (
-    <ScreenView
-      bgColor={theme.background}
-      padding={0}
-      useSafeTop={false}
-      style={styles.screen}
-    >
-      <LinearGradient
-        colors={[
-          "#0A0C09",
-          theme.background,
-          "rgba(39, 46, 31, 0.94)",
-        ]}
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={styles.vignetteTop} />
-      <View style={styles.vignetteBottom} />
-
-      <View style={styles.root}>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={[
-            styles.scrollContent,
-            {
-              paddingTop: insets.top + (isCompactLayout ? spacing.sm : spacing.md),
-              paddingBottom:
-                insets.bottom + spacing.lg + (isCompactLayout ? spacing.md : spacing.xl),
-            },
-          ]}
-        >
-          <View style={styles.topBar}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Back"
-              onPress={handleBack}
-              style={({ pressed }) => [
-                styles.backButton,
-                pressed && styles.buttonPressed,
-              ]}
-            >
-              <Ionicons name="arrow-back" size={20} color={theme.textPrimary} />
-            </Pressable>
-
-            <Text style={styles.topLabel} numberOfLines={1}>
-              NOW PLAYING
-            </Text>
-
-            <View style={styles.topSpacer} />
-          </View>
-
-          <View style={styles.titleBlock}>
-            <Text style={styles.kicker}>SVA LABORATORY SOUNDSCAPE</Text>
-            <Text style={styles.title} numberOfLines={2}>
-              {soundscape.title}
-            </Text>
-            <Text style={styles.subtitle} numberOfLines={1}>
-              {subtitle}
-            </Text>
-          </View>
-
-          <View style={styles.orbStage}>
-            <View
-              pointerEvents="none"
-              style={[
-                styles.orbGlow,
-                {
-                  transform: [
-                    {
-                      scale: orbScale,
-                    },
-                  ],
-                  opacity: binauralEnabled ? 1 : 0.78,
-                },
-              ]}
-            >
-              <View style={styles.orbOuterRing} />
-              <View style={styles.orbMidRing} />
-              <View style={styles.orbInnerRing} />
-              <View style={styles.orbCoreGlow} />
-              <View style={styles.orbCore} />
-              <View style={styles.orbCoreHalo} />
-            </View>
-
-            {isLoading ? (
-              <View style={styles.loadingPill}>
-                <Ionicons
-                  name="musical-notes"
-                  size={14}
-                  color={theme.buttonPrimaryText}
-                />
-                <Text style={styles.loadingText}>Preparing soundscape</Text>
-              </View>
-            ) : null}
-          </View>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Toggle binaural entrainment"
-            onPress={() => setBinauralEnabled((value) => !value)}
-            style={({ pressed }) => [
-              styles.entrainmentRow,
-              pressed && styles.buttonPressed,
+        <View style={styles.root}>
+          <View
+            style={[
+              styles.scrollContent,
+              {
+                flex: 1,
+                paddingTop: insets.top + (isCompactLayout ? spacing.sm : spacing.md),
+                paddingBottom:
+                  insets.bottom +
+                  spacing.lg +
+                  (isCompactLayout ? spacing.md : spacing.xl),
+              },
             ]}
           >
-            <Text style={styles.entrainmentLabel}>BINAURAL ENTRAINMENT</Text>
-            <View
-              style={[
-                styles.toggleTrack,
-                binauralEnabled && styles.toggleTrackActive,
-              ]}
-            >
-              <View
-                style={[
-                  styles.toggleThumb,
-                  binauralEnabled && styles.toggleThumbActive,
+            <View style={styles.topBar}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Back"
+                onPress={handleBack}
+                style={({ pressed }) => [
+                  styles.backButton,
+                  pressed && styles.buttonPressed,
                 ]}
-              />
-            </View>
-          </Pressable>
-
-          <View style={styles.transportRow}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Sleep timer ${timerLabel}`}
-              onPress={cycleTimer}
-              style={({ pressed }) => [
-                styles.sideControl,
-                pressed && styles.buttonPressed,
-                timerIndex > 0 && styles.sideControlActive,
-              ]}
-            >
-              <Ionicons
-                name="timer-outline"
-                size={22}
-                color={timerIndex > 0 ? theme.textPrimary : theme.textSecondary}
-              />
-              <Text
-                style={[
-                  styles.sideControlLabel,
-                  timerIndex > 0 && styles.sideControlLabelActive,
-                ]}
-                numberOfLines={1}
               >
-                TIMER
-              </Text>
-            </Pressable>
+                <Ionicons name="arrow-back" size={20} color={theme.textPrimary} />
+              </Pressable>
 
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={isPlaying ? "Pause soundscape" : "Play soundscape"}
-              disabled={isLoading}
-              onPress={() => void togglePlayPause()}
-              style={({ pressed }) => [
-                styles.playControl,
-                pressed && !isLoading && styles.playControlPressed,
-                isPlaying && styles.playControlActive,
-                isLoading && styles.playControlDisabled,
-              ]}
-            >
+              <Text style={styles.topLabel} numberOfLines={1}>
+                NOW PLAYING
+              </Text>
+
+              <View style={styles.topSpacer} />
+            </View>
+
+            <View style={styles.emptyState}>
               <Ionicons
-                name={isPlaying ? "pause" : "play"}
+                name="musical-notes-outline"
                 size={34}
-                color={theme.background}
+                color={theme.textSecondary}
               />
-            </Pressable>
-
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Intensity ${intensityLabel}`}
-              onPress={cycleIntensity}
-              style={({ pressed }) => [
-                styles.sideControl,
-                pressed && styles.buttonPressed,
-                intensityIndex > 0 && styles.sideControlActive,
-              ]}
-            >
-              <Ionicons
-                name="bar-chart-outline"
-                size={22}
-                color={intensityIndex > 0 ? theme.textPrimary : theme.textSecondary}
-              />
-              <Text
-                style={[
-                  styles.sideControlLabel,
-                  intensityIndex > 0 && styles.sideControlLabelActive,
-                ]}
-                numberOfLines={1}
-              >
-                INTENSITY
-              </Text>
-            </Pressable>
-          </View>
-
-          <View style={styles.progressBlock}>
-            <View style={styles.progressMetaRow}>
-              <Text style={styles.progressMeta}>0.0 HZ</Text>
-              <Text style={styles.progressMeta}>{resonanceLabel}</Text>
-              <Text style={styles.progressMeta}>24.0 KHZ</Text>
-            </View>
-
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
-              <View
-                style={[
-                  styles.progressDot,
-                  { left: `${Math.max(progress * 100 - 1.2, 1.2)}%` },
-                ]}
-              />
-            </View>
-
-            <View style={styles.timeRow}>
-              <Text style={styles.timeText}>
-                {formatPlaybackTime(positionMillis)}
-              </Text>
-              <Text style={styles.timeText}>
-                {formatPlaybackRemaining(positionMillis, durationMillis)}
+              <Text style={styles.emptyTitle}>Soundscape unavailable</Text>
+              <Text style={styles.emptyText}>
+                Open a soundscape detail screen first so the player can use the
+                cached track.
               </Text>
             </View>
           </View>
-        </ScrollView>
-      </View>
-    </ScreenView>
+        </View>
+      </ScreenView>
+    );
+  }
+
+  return (
+    <SoundscapePlayerContent
+      soundscape={soundscape}
+      theme={theme}
+      styles={styles}
+      insets={insets}
+      spacing={spacing}
+      isCompactLayout={isCompactLayout}
+      onBack={handleBack}
+    />
   );
 }
 
@@ -618,6 +419,9 @@ const styling = (
       backgroundColor: "rgba(163,190,140,0.12)",
       borderColor: "rgba(163,190,140,0.2)",
     },
+    buttonPressed: {
+      transform: [{ scale: 0.98 }],
+    },
     sideControlLabel: {
       ...typography.smallCaption,
       color: theme.textSecondary,
@@ -701,4 +505,568 @@ const styling = (
       color: theme.textSecondary,
       letterSpacing: 0.8,
     },
+    emptyState: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: spacing.sm,
+      paddingHorizontal: spacing.lg,
+      minHeight: isCompactLayout ? 260 : 320,
+    },
+    emptyTitle: {
+      fontFamily:
+        svaTypography?.textStyle.displayMedium.fontFamily ??
+        "CormorantGaramond_500Medium",
+      fontSize: isCompactLayout ? 24 : 28,
+      lineHeight: isCompactLayout ? 28 : 32,
+      letterSpacing: -0.3,
+      color: theme.textPrimary,
+      textAlign: "center",
+    },
+    emptyText: {
+      ...typography.caption,
+      color: theme.textSecondary,
+      textAlign: "center",
+      maxWidth: 320,
+      lineHeight: 24,
+    },
   });
+
+type SoundscapePlayerContentProps = {
+  soundscape: SoundscapeTrack;
+  theme: ColorSet;
+  styles: ReturnType<typeof styling>;
+  insets: { top: number; bottom: number };
+  spacing: Spacing;
+  isCompactLayout: boolean;
+  onBack: () => void | Promise<void>;
+};
+
+type SoundscapeSessionStatus =
+  | "idle"
+  | "creating"
+  | "active"
+  | "paused"
+  | "completed";
+
+function SoundscapePlayerContent({
+  soundscape,
+  theme,
+  styles,
+  insets,
+  spacing,
+  isCompactLayout,
+  onBack,
+}: SoundscapePlayerContentProps) {
+  const subtitle = useMemo(
+    () => buildSoundscapeSubtitle(soundscape),
+    [soundscape]
+  );
+  const resonanceLabel = useMemo(
+    () => buildSoundscapeResonanceLabel(soundscape),
+    [soundscape]
+  );
+  const source = useMemo(
+    () => resolveSoundscapePlaybackSource(soundscape.id),
+    [soundscape.id]
+  );
+  const soundscapeContentObjectId = useMemo(() => {
+    const numericId = Number(soundscape.id);
+    return Number.isFinite(numericId) ? numericId : null;
+  }, [soundscape.id]);
+
+  const [binauralEnabled, setBinauralEnabled] = useState(true);
+  const [timerIndex, setTimerIndex] = useState(0);
+  const [intensityIndex, setIntensityIndex] = useState(1);
+  const [sessionStatus, setSessionStatus] =
+    useState<SoundscapeSessionStatus>("idle");
+  const [sessionRef, setSessionRef] = useState<string | null>(null);
+  const sessionStatusRef = useRef<SoundscapeSessionStatus>("idle");
+  const pauseSessionRef = useRef<(() => Promise<void>) | null>(null);
+  const sessionCreatePromiseRef = useRef<Promise<string | null> | null>(null);
+  const completionInFlightRef = useRef(false);
+  const leavingScreenRef = useRef(false);
+
+  const {
+    soundRef,
+    playbackStatus,
+    isLoading,
+    isPlaying,
+    positionMillis,
+    durationMillis,
+    togglePlayPause,
+  } = useAudioPlayback({
+    source,
+    autoPlay: false,
+    progressUpdateIntervalMillis: 500,
+  });
+  const currentSound = soundRef.current;
+
+  useEffect(() => {
+    setSessionStatus("idle");
+    setSessionRef(null);
+    sessionStatusRef.current = "idle";
+    sessionCreatePromiseRef.current = null;
+    completionInFlightRef.current = false;
+    leavingScreenRef.current = false;
+  }, [soundscape.id]);
+
+  useEffect(() => {
+    sessionStatusRef.current = sessionStatus;
+  }, [sessionStatus]);
+
+  const orbScale = binauralEnabled
+    ? 1 + intensityIndex * 0.015 + (isPlaying ? 0.02 : 0)
+    : 0.96;
+  const playbackVolume = binauralEnabled
+    ? intensityVolumes[intensityIndex]
+    : Math.max(0.25, intensityVolumes[intensityIndex] * 0.7);
+
+  const progress = Math.min(positionMillis / durationMillis, 1);
+  const timerLabel =
+    timerOptions[timerIndex] === null ? "OFF" : `${timerOptions[timerIndex]} MIN`;
+  const intensityLabel = ["LOW", "MID", "HIGH"][intensityIndex];
+
+  const cycleTimer = () => {
+    setTimerIndex((current) => (current + 1) % timerOptions.length);
+  };
+
+  const cycleIntensity = () => {
+    setIntensityIndex((current) => (current + 1) % 3);
+  };
+
+  const resolveSessionRef = useCallback(async () => {
+    if (sessionRef) {
+      return sessionRef;
+    }
+
+    if (!sessionCreatePromiseRef.current) {
+      return null;
+    }
+
+    const resolved = await sessionCreatePromiseRef.current;
+    if (resolved) {
+      setSessionRef(resolved);
+    }
+
+    return resolved;
+  }, [sessionRef]);
+
+  const ensureSessionStarted = useCallback(() => {
+    if (
+      sessionStatus !== "idle" ||
+      sessionCreatePromiseRef.current ||
+      soundscapeContentObjectId === null
+    ) {
+      return;
+    }
+
+    setSessionStatus("creating");
+
+    const promise = createWellnessSession({
+      activity_type: "soundscape",
+      content_type: "wellness_content.wellnesscontent",
+      content_object_id: soundscapeContentObjectId,
+      source: "manual",
+      metadata: {
+        entry_surface: "session_screen",
+        test_mode: true,
+      },
+    })
+      .then((response) => {
+        const nextSessionRef = response.data.session_ref;
+        setSessionRef(nextSessionRef);
+        setSessionStatus((current) =>
+          current === "paused" || current === "completed" ? current : "active"
+        );
+        return nextSessionRef;
+      })
+      .catch((error) => {
+        console.warn("Unable to create soundscape session:", error);
+        return null;
+      })
+      .finally(() => {
+        sessionCreatePromiseRef.current = null;
+      });
+
+    sessionCreatePromiseRef.current = promise;
+  }, [sessionStatus, soundscapeContentObjectId]);
+
+  const pauseSession = useCallback(async () => {
+    if (sessionStatus === "idle" || sessionStatus === "completed") {
+      return;
+    }
+
+    const resolvedSessionRef = await resolveSessionRef();
+    if (!resolvedSessionRef) {
+      return;
+    }
+
+    try {
+      await pauseWellnessSession(resolvedSessionRef);
+      setSessionStatus("paused");
+    } catch (error) {
+      console.warn("Unable to pause soundscape session:", error);
+    }
+  }, [resolveSessionRef, sessionStatus]);
+
+  useEffect(() => {
+    pauseSessionRef.current = pauseSession;
+  }, [pauseSession]);
+
+  const resumeSession = useCallback(async () => {
+    if (sessionStatus !== "paused") {
+      return;
+    }
+
+    const resolvedSessionRef = await resolveSessionRef();
+    if (!resolvedSessionRef) {
+      return;
+    }
+
+    try {
+      await resumeWellnessSession(resolvedSessionRef);
+      setSessionStatus("active");
+    } catch (error) {
+      console.warn("Unable to resume soundscape session:", error);
+    }
+  }, [resolveSessionRef, sessionStatus]);
+
+  const completeSession = useCallback(async () => {
+    if (completionInFlightRef.current || sessionStatus === "completed") {
+      return;
+    }
+
+    completionInFlightRef.current = true;
+
+    try {
+      const resolvedSessionRef = await resolveSessionRef();
+      if (!resolvedSessionRef) {
+        return;
+      }
+
+      await completeWellnessSession(resolvedSessionRef, {
+        duration_seconds: Math.max(1, Math.round(durationMillis / 1000)),
+      });
+      setSessionStatus("completed");
+    } catch (error) {
+      console.warn("Unable to complete soundscape session:", error);
+    } finally {
+      completionInFlightRef.current = false;
+    }
+  }, [durationMillis, resolveSessionRef, sessionStatus]);
+
+  useEffect(() => {
+    if (!playbackStatus?.isLoaded) {
+      return;
+    }
+
+    if (!("didJustFinish" in playbackStatus) || !playbackStatus.didJustFinish) {
+      return;
+    }
+
+    void completeSession();
+  }, [completeSession, playbackStatus]);
+
+  useEffect(() => {
+    return () => {
+      if (leavingScreenRef.current) {
+        return;
+      }
+
+      const currentStatus = sessionStatusRef.current;
+      if (currentStatus === "active" || currentStatus === "creating") {
+        void pauseSessionRef.current?.();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!currentSound || isLoading) return;
+
+    void currentSound.setVolumeAsync(playbackVolume);
+  }, [currentSound, isLoading, playbackVolume]);
+
+  useEffect(() => {
+    const selectedMinutes = timerOptions[timerIndex];
+    if (!selectedMinutes) return undefined;
+
+    const timeout = setTimeout(() => {
+      if (currentSound) {
+        void currentSound.stopAsync();
+      }
+      void pauseSessionRef.current?.();
+      setTimerIndex(0);
+    }, selectedMinutes * 60 * 1000);
+
+    return () => clearTimeout(timeout);
+  }, [currentSound, timerIndex]);
+
+  const handlePlayPause = useCallback(async () => {
+    if (isLoading || sessionStatus === "completed") {
+      return;
+    }
+
+    if (isPlaying) {
+      await togglePlayPause();
+      void pauseSession();
+      return;
+    }
+
+    if (sessionStatus === "paused") {
+      await togglePlayPause();
+      void resumeSession();
+      return;
+    }
+
+    ensureSessionStarted();
+    await togglePlayPause();
+    setSessionStatus((current) =>
+      current === "completed" ? current : "active"
+    );
+  }, [
+    ensureSessionStarted,
+    isLoading,
+    isPlaying,
+    pauseSession,
+    resumeSession,
+    sessionStatus,
+    togglePlayPause,
+  ]);
+
+  const handleBack = useCallback(async () => {
+    leavingScreenRef.current = true;
+
+    if (isPlaying) {
+      await togglePlayPause();
+    }
+
+    if (sessionStatus !== "idle" && sessionStatus !== "completed") {
+      await pauseSession();
+    }
+
+    await onBack();
+  }, [isPlaying, onBack, pauseSession, sessionStatus, togglePlayPause]);
+
+  return (
+    <ScreenView
+      bgColor={theme.background}
+      padding={0}
+      useSafeTop={false}
+      style={styles.screen}
+    >
+      <LinearGradient
+        colors={["#0A0C09", theme.background, "rgba(39, 46, 31, 0.94)"]}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={styles.vignetteTop} />
+      <View style={styles.vignetteBottom} />
+
+      <View style={styles.root}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[
+            styles.scrollContent,
+            {
+              paddingTop: insets.top + (isCompactLayout ? spacing.sm : spacing.md),
+              paddingBottom:
+                insets.bottom + spacing.lg + (isCompactLayout ? spacing.md : spacing.xl),
+            },
+          ]}
+        >
+          <View style={styles.topBar}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+              onPress={() => void handleBack()}
+              style={({ pressed }) => [
+                styles.backButton,
+                pressed && styles.buttonPressed,
+              ]}
+            >
+              <Ionicons name="arrow-back" size={20} color={theme.textPrimary} />
+            </Pressable>
+
+            <Text style={styles.topLabel} numberOfLines={1}>
+              NOW PLAYING
+            </Text>
+
+            <View style={styles.topSpacer} />
+          </View>
+
+          <View style={styles.titleBlock}>
+            <Text style={styles.kicker}>SVA LABORATORY SOUNDSCAPE</Text>
+            <Text style={styles.title} numberOfLines={2}>
+              {soundscape.title}
+            </Text>
+            <Text style={styles.subtitle} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          </View>
+
+          <View style={styles.orbStage}>
+            <View
+              pointerEvents="none"
+              style={[
+                styles.orbGlow,
+                {
+                  transform: [
+                    {
+                      scale: orbScale,
+                    },
+                  ],
+                  opacity: binauralEnabled ? 1 : 0.78,
+                },
+              ]}
+            >
+              <View style={styles.orbOuterRing} />
+              <View style={styles.orbMidRing} />
+              <View style={styles.orbInnerRing} />
+              <View style={styles.orbCoreGlow} />
+              <View style={styles.orbCore} />
+              <View style={styles.orbCoreHalo} />
+            </View>
+
+            {isLoading ? (
+              <View style={styles.loadingPill}>
+                <Ionicons
+                  name="musical-notes"
+                  size={14}
+                  color={theme.buttonPrimaryText}
+                />
+                <Text style={styles.loadingText}>Preparing soundscape</Text>
+              </View>
+            ) : null}
+          </View>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Toggle binaural entrainment"
+            onPress={() => setBinauralEnabled((value) => !value)}
+            style={({ pressed }) => [
+              styles.entrainmentRow,
+              pressed && styles.buttonPressed,
+            ]}
+          >
+            <Text style={styles.entrainmentLabel}>BINAURAL ENTRAINMENT</Text>
+            <View
+              style={[
+                styles.toggleTrack,
+                binauralEnabled && styles.toggleTrackActive,
+              ]}
+            >
+              <View
+                style={[
+                  styles.toggleThumb,
+                  binauralEnabled && styles.toggleThumbActive,
+                ]}
+              />
+            </View>
+          </Pressable>
+
+          <View style={styles.transportRow}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Sleep timer ${timerLabel}`}
+              onPress={cycleTimer}
+              style={({ pressed }) => [
+                styles.sideControl,
+                pressed && styles.buttonPressed,
+                timerIndex > 0 && styles.sideControlActive,
+              ]}
+            >
+              <Ionicons
+                name="timer-outline"
+                size={22}
+                color={timerIndex > 0 ? theme.textPrimary : theme.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.sideControlLabel,
+                  timerIndex > 0 && styles.sideControlLabelActive,
+                ]}
+                numberOfLines={1}
+              >
+                TIMER
+              </Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                isPlaying ? "Pause soundscape" : "Play soundscape"
+              }
+              disabled={isLoading}
+              onPress={() => void handlePlayPause()}
+              style={({ pressed }) => [
+                styles.playControl,
+                pressed && !isLoading && styles.playControlPressed,
+                isPlaying && styles.playControlActive,
+                isLoading && styles.playControlDisabled,
+              ]}
+            >
+              <Ionicons
+                name={isPlaying ? "pause" : "play"}
+                size={34}
+                color={theme.background}
+              />
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Intensity ${intensityLabel}`}
+              onPress={cycleIntensity}
+              style={({ pressed }) => [
+                styles.sideControl,
+                pressed && styles.buttonPressed,
+                intensityIndex > 0 && styles.sideControlActive,
+              ]}
+            >
+              <Ionicons
+                name="bar-chart-outline"
+                size={22}
+                color={intensityIndex > 0 ? theme.textPrimary : theme.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.sideControlLabel,
+                  intensityIndex > 0 && styles.sideControlLabelActive,
+                ]}
+                numberOfLines={1}
+              >
+                INTENSITY
+              </Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.progressBlock}>
+            <View style={styles.progressMetaRow}>
+              <Text style={styles.progressMeta}>0.0 HZ</Text>
+              <Text style={styles.progressMeta}>{resonanceLabel}</Text>
+              <Text style={styles.progressMeta}>24.0 KHZ</Text>
+            </View>
+
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+              <View
+                style={[
+                  styles.progressDot,
+                  { left: `${Math.max(progress * 100 - 1.2, 1.2)}%` },
+                ]}
+              />
+            </View>
+
+            <View style={styles.timeRow}>
+              <Text style={styles.timeText}>
+                {formatPlaybackTime(positionMillis)}
+              </Text>
+              <Text style={styles.timeText}>
+                {formatPlaybackRemaining(positionMillis, durationMillis)}
+              </Text>
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    </ScreenView>
+  );
+}

@@ -6,9 +6,16 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { FlatList, Platform, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  FlatList,
+  Platform,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { router, useNavigation } from "expo-router";
+import { router, useFocusEffect, useNavigation } from "expo-router";
 
 import AppHeader from "@/components/layout/AppHeader";
 import PillFilters from "@/components/ui/PillFilters";
@@ -17,18 +24,18 @@ import ThemeContext from "@/contexts/ThemeContext";
 import { ROUTES } from "@/constants/routes";
 import BreathRecommendationSection from "@/features/self-care/components/breathwork/BreathRecommendationSection";
 import BreathStackCard from "@/features/self-care/components/breathwork/BreathStackCard";
+import { getWellnessContentList } from "@/features/self-care/services/selfCareService";
 import {
-  BREATH_FILTERS,
-  BREATH_PATTERNS,
-  filterBreathPatterns,
-  formatBreathToneLabel,
-  type BreathPattern,
-  type BreathTone,
-} from "@/features/self-care/utils/mindPractices";
-import {
-  BREATH_RECOMMENDATIONS,
-  getBreathRecommendationById,
+  buildBreathWorkPattern,
+  buildBreathWorkRecommendation,
+  buildBreathWorkCategoryOptions,
+  buildBreathWorkRouteParams,
+  mapBreathworkContent,
 } from "@/features/self-care/utils/breathworkLibrary";
+import type {
+  BreathWorkCategoryOption,
+  BreathWorkDetail,
+} from "@/features/self-care/types/breathworkTypes";
 import type {
   ColorSet,
   Spacing,
@@ -36,7 +43,7 @@ import type {
   TypographyTokens,
 } from "@/theme/types";
 
-type BreathSelection = BreathTone | "all";
+type BreathCategorySelection = string;
 
 export const BreathWorkScreen = () => {
   const navigation = useNavigation();
@@ -47,10 +54,17 @@ export const BreathWorkScreen = () => {
     typography,
   } = useContext(ThemeContext);
 
-  const [selectedTone, setSelectedTone] = useState<BreathSelection>("all");
-  const [selectedPatternId, setSelectedPatternId] = useState<string>(
-    BREATH_RECOMMENDATIONS[0]?.id ?? BREATH_PATTERNS[0]?.id ?? ""
+  const [breathworkDetails, setBreathworkDetails] = useState<BreathWorkDetail[]>(
+    []
   );
+  const [categoryOptions, setCategoryOptions] = useState<
+    BreathWorkCategoryOption[]
+  >([{ label: "All", value: "all" }]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] =
+    useState<BreathCategorySelection>("all");
+  const [selectedPatternId, setSelectedPatternId] = useState<string>("");
 
   const styles = useMemo(
     () => styling(theme, svaTypography, spacing, typography),
@@ -61,117 +75,192 @@ export const BreathWorkScreen = () => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
-  const visiblePatterns = useMemo(
-    () => filterBreathPatterns(BREATH_PATTERNS, selectedTone),
-    [selectedTone]
-  );
-
-  const activePattern = useMemo(
-    () =>
-      visiblePatterns.find((item) => item.id === selectedPatternId) ??
-      visiblePatterns[0] ??
-      BREATH_PATTERNS[0],
-    [selectedPatternId, visiblePatterns]
-  );
-
-  const activeRecommendation = useMemo(
-    () => getBreathRecommendationById(activePattern?.id ?? selectedPatternId),
-    [activePattern?.id, selectedPatternId]
+  useFocusEffect(
+    useCallback(() => {
+      setSelectedCategory("all");
+      setSelectedPatternId("");
+    }, [])
   );
 
   useEffect(() => {
-    if (!visiblePatterns.some((pattern) => pattern.id === selectedPatternId)) {
-      setSelectedPatternId(
-        visiblePatterns[0]?.id ?? BREATH_PATTERNS[0]?.id ?? ""
-      );
-    }
-  }, [selectedPatternId, visiblePatterns]);
+    let isActive = true;
 
-  const handleSelectPattern = useCallback((pattern: BreathPattern) => {
-    setSelectedTone(pattern.tone);
-    setSelectedPatternId(pattern.id);
+    const loadBreathwork = async () => {
+      setIsLoading(true);
+      setLoadError(null);
+      setBreathworkDetails([]);
+      setSelectedPatternId("");
+
+      try {
+        const params =
+          selectedCategory === "all"
+            ? { modality: "breathwork" }
+            : {
+                modality: "breathwork",
+                category: selectedCategory,
+              };
+
+        const result = await getWellnessContentList(params);
+
+        if (!isActive) {
+          return;
+        }
+
+        const mappedDetails = (result.data ?? []).map((item, index) =>
+          mapBreathworkContent(item, index)
+        );
+
+        setBreathworkDetails(mappedDetails);
+
+        if (selectedCategory === "all") {
+          setCategoryOptions(buildBreathWorkCategoryOptions(mappedDetails));
+        }
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+
+        setLoadError(
+          error instanceof Error
+            ? error.message
+            : "Unable to load breathwork right now."
+        );
+        setBreathworkDetails([]);
+      } finally {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadBreathwork();
+
+    return () => {
+      isActive = false;
+    };
+  }, [selectedCategory]);
+
+  const visibleDetails = breathworkDetails;
+
+  const activeDetail = useMemo(
+    () =>
+      visibleDetails.find((item) => item.id === selectedPatternId) ??
+      visibleDetails[0],
+    [selectedPatternId, visibleDetails]
+  );
+
+  const visibleRecommendations = useMemo(
+    () => visibleDetails.map((item) => buildBreathWorkRecommendation(item)),
+    [visibleDetails]
+  );
+
+  useEffect(() => {
+    if (isLoading || visibleDetails.length === 0) {
+      return;
+    }
+
+    if (!visibleDetails.some((pattern) => pattern.id === selectedPatternId)) {
+      setSelectedPatternId(visibleDetails[0]?.id ?? "");
+    }
+  }, [isLoading, selectedPatternId, visibleDetails]);
+
+  const handleSelectPattern = useCallback((detail: BreathWorkDetail) => {
+    setSelectedPatternId(detail.id);
     router.push({
       pathname: ROUTES.AUTH.SELF_CARE_BREATHWORK_DETAIL,
-      params: {
-        breathworkId: pattern.id,
-      },
+      params: buildBreathWorkRouteParams(detail),
     });
   }, []);
 
-  const handlePlayPattern = useCallback((pattern: BreathPattern) => {
-    setSelectedTone(pattern.tone);
-    setSelectedPatternId(pattern.id);
+  const handlePlayPattern = useCallback((detail: BreathWorkDetail) => {
+    setSelectedPatternId(detail.id);
     router.push({
       pathname: ROUTES.AUTH.SELF_CARE_BREATHWORK_SESSION,
-      params: {
-        breathworkId: pattern.id,
-      },
+      params: buildBreathWorkRouteParams(detail),
     });
   }, []);
 
   const handleSelectRecommendation = useCallback(
-    (item: (typeof BREATH_RECOMMENDATIONS)[number]) => {
-      setSelectedTone(item.tone);
-      setSelectedPatternId(item.id);
+    (item: (typeof visibleRecommendations)[number]) => {
+      const detail =
+        visibleDetails.find((candidate) => candidate.id === item.id) ??
+        activeDetail;
+
+      if (!detail) {
+        return;
+      }
+
+      setSelectedPatternId(detail.id);
       router.push({
         pathname: ROUTES.AUTH.SELF_CARE_BREATHWORK_DETAIL,
-        params: {
-          breathworkId: item.id,
-        },
+        params: buildBreathWorkRouteParams(detail),
       });
     },
-    []
+    [activeDetail, visibleDetails]
   );
 
   const handlePlayRecommendation = useCallback(
-    (item: (typeof BREATH_RECOMMENDATIONS)[number]) => {
-      setSelectedTone(item.tone);
-      setSelectedPatternId(item.id);
+    (item: (typeof visibleRecommendations)[number]) => {
+      const detail =
+        visibleDetails.find((candidate) => candidate.id === item.id) ??
+        activeDetail;
+
+      if (!detail) {
+        return;
+      }
+
+      setSelectedPatternId(detail.id);
       router.push({
         pathname: ROUTES.AUTH.SELF_CARE_BREATHWORK_SESSION,
-        params: {
-          breathworkId: item.id,
-        },
+        params: buildBreathWorkRouteParams(detail),
       });
     },
-    []
+    [activeDetail, visibleDetails]
   );
 
-  const selectedToneLabel =
-    selectedTone === "all" ? "All tones" : formatBreathToneLabel(selectedTone);
+  const selectedCategoryLabel =
+    selectedCategory === "all"
+      ? "All categories"
+      : categoryOptions.find((option) => option.value === selectedCategory)?.label ??
+        selectedCategory;
+
+  const handleSelectCategory = useCallback((value: string) => {
+    setSelectedCategory(value);
+  }, []);
 
   const quoteCopy =
-    activeRecommendation?.mantra ?? activePattern?.benefit ?? "";
+    activeDetail?.mantra ?? activeDetail?.benefits[0]?.text ?? "";
 
   return (
     <ScreenView bgColor={theme.background} style={styles.screen}>
       <View style={styles.root}>
         <AppHeader
           title="Breath Work"
-          subtitle="Choose a rhythm, then narrow the stack below."
+          subtitle="Choose a category, then narrow the stack below."
           onBack={() => router.back()}
           containerStyle={styles.header}
         />
 
         <FlatList
           testID="breathwork-library-list"
-          data={visiblePatterns}
+          data={visibleDetails}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
           ListHeaderComponent={
             <>
               <BreathRecommendationSection
-                items={BREATH_RECOMMENDATIONS}
-                selectedId={activePattern?.id ?? ""}
+                items={visibleRecommendations}
+                selectedId={activeDetail?.id ?? ""}
                 onSelect={handleSelectRecommendation}
                 onPlay={handlePlayRecommendation}
               />
 
               <PillFilters
-                options={BREATH_FILTERS}
-                selectedValue={selectedTone}
-                onChange={setSelectedTone}
+                options={categoryOptions}
+                selectedValue={selectedCategory}
+                onChange={handleSelectCategory}
+                uppercase={false}
                 scrollable
                 contentContainerStyle={styles.filterRow}
                 selectedPillStyle={styles.filterPillActive}
@@ -182,9 +271,9 @@ export const BreathWorkScreen = () => {
 
               <View style={styles.sectionHeader}>
                 <View>
-                  <Text style={styles.sectionEyebrow}>STACKED RHYTHMS</Text>
+                  <Text style={styles.sectionEyebrow}>STACKED CATEGORIES</Text>
                   <Text style={styles.sectionTitle}>
-                    {selectedToneLabel} collection
+                    {selectedCategoryLabel} collection
                   </Text>
                 </View>
 
@@ -195,8 +284,8 @@ export const BreathWorkScreen = () => {
                     color={theme.textSecondary}
                   />
                   <Text style={styles.countText}>
-                    {visiblePatterns.length} rhythm
-                    {visiblePatterns.length === 1 ? "" : "s"}
+                    {visibleDetails.length} rhythm
+                    {visibleDetails.length === 1 ? "" : "s"}
                   </Text>
                 </View>
               </View>
@@ -204,62 +293,84 @@ export const BreathWorkScreen = () => {
           }
           renderItem={({ item }) => (
             <BreathStackCard
-              item={item}
-              recommendation={getBreathRecommendationById(item.id)}
-              onPress={handleSelectPattern}
-              onPlay={handlePlayPattern}
-              selected={item.id === activePattern?.id}
+              item={buildBreathWorkPattern(item)}
+              recommendation={buildBreathWorkRecommendation(item)}
+              onPress={() => handleSelectPattern(item)}
+              onPlay={() => handlePlayPattern(item)}
+              selected={item.id === activeDetail?.id}
             />
           )}
           ListFooterComponent={
-            <View
-              style={[
-                styles.quoteCard,
-                { borderColor: activeRecommendation.palette.accent },
-              ]}
-            >
+            activeDetail ? (
               <View
                 style={[
-                  styles.quoteIconWrap,
-                  {
-                    backgroundColor: activeRecommendation.palette.tagBg,
-                    borderColor: activeRecommendation.palette.accent,
-                  },
+                  styles.quoteCard,
+                  { borderColor: activeDetail.palette.accent },
                 ]}
               >
-                <MaterialCommunityIcons
-                  name="repeat"
-                  size={18}
-                  color={activeRecommendation.palette.tagText}
-                />
+                <View
+                  style={[
+                    styles.quoteIconWrap,
+                    {
+                      backgroundColor: activeDetail.palette.tagBg,
+                      borderColor: activeDetail.palette.accent,
+                    },
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name="repeat"
+                    size={18}
+                    color={activeDetail.palette.tagText}
+                  />
+                </View>
+
+                <Text
+                  style={[
+                    styles.quoteText,
+                    { color: activeDetail.palette.text },
+                  ]}
+                >
+                  {`"${quoteCopy}"`}
+                </Text>
+
+                <Text style={styles.quoteMeta} numberOfLines={1}>
+                  {activeDetail.title}
+                </Text>
               </View>
-
-              <Text
-                style={[
-                  styles.quoteText,
-                  { color: activeRecommendation.palette.text },
-                ]}
-              >
-                {`"${quoteCopy}"`}
-              </Text>
-
-              <Text style={styles.quoteMeta} numberOfLines={1}>
-                {activePattern?.title}
-              </Text>
-            </View>
+            ) : null
           }
           ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <MaterialCommunityIcons
-                name="weather-windy"
-                size={40}
-                color={theme.textSecondary}
-              />
-              <Text style={styles.emptyTitle}>No rhythms in this filter.</Text>
-              <Text style={styles.emptyText}>
-                Switch the tone chip to bring the library back.
-              </Text>
-            </View>
+            isLoading ? (
+              <View style={styles.loadingState}>
+                <ActivityIndicator
+                  testID="breathwork-loading-indicator"
+                  size="large"
+                  color={theme.accent}
+                />
+                <Text style={styles.emptyTitle}>Loading breathwork...</Text>
+                <Text style={styles.emptyText}>
+                  Fetching the breathwork collection from the server.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.emptyState}>
+                <MaterialCommunityIcons
+                  name="weather-windy"
+                  size={40}
+                  color={theme.textSecondary}
+                />
+                <Text style={styles.emptyTitle}>
+                  {loadError
+                    ? "Breathwork is unavailable."
+                    : "No rhythms in this filter."}
+                </Text>
+                <Text style={styles.emptyText}>
+                  {loadError
+                    ? loadError
+                    : "Switch the category chip to bring the library back."}
+                </Text>
+              </View>
+            )
           }
         />
       </View>
@@ -409,6 +520,12 @@ const styling = (
       alignItems: "center",
       justifyContent: "center",
       paddingVertical: spacing.xl,
+    },
+    loadingState: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: spacing.xl * 1.5,
+      gap: spacing.sm,
     },
     emptyTitle: {
       ...typography.h3,

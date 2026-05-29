@@ -1,12 +1,13 @@
-import axios, { AxiosResponse, AxiosError } from "axios";
+import axios, { AxiosResponse } from "axios";
 import { API_ENDPOINTS } from "@/config/apiConfig";
 import {
   JournalEntryListResponse,
   JournalListResponse,
   JournalSubmitRequest,
   JournalSubmitResponse,
+  WellnessContentDetailResponse,
   MeditationVideoListResponse,
-  MentalTestListResponse,
+  WellnessContentResponse,
   WorkoutVideoListResponse,
 } from "@/features/self-care/types/selfCareTypes";
 
@@ -70,6 +71,25 @@ export const getWorkoutVideo = async (): Promise<WorkoutVideoListResponse> => {
   }
 };
 
+export const getSoundscapeContentList = async (params?: {
+  category?: string;
+}): Promise<WellnessContentResponse> => {
+  try {
+    const response: AxiosResponse<WellnessContentResponse> = await axios.get(
+      API_ENDPOINTS.getWellnessContent,
+      {
+        params: {
+          ...(params ?? {}),
+          modality: "soundscape",
+        },
+      }
+    );
+    return response.data;
+  } catch (error: any) {
+    throw error.response ? error.response.data : error.message;
+  }
+};
+
 export const getWorkouts = async (params?: {
   category?: string;
   search?: string;
@@ -104,3 +124,30 @@ export const getMeditationAudioList =
       throw error.response ? error.response.data : error.message;
     }
   };
+
+export const getWellnessContentList = async (params?: {
+  modality?: string;
+  category?: string;
+}): Promise<WellnessContentResponse> => {
+  try {
+    const response: AxiosResponse<WellnessContentResponse> = await axios.get(
+      API_ENDPOINTS.getWellnessContent,
+      { params }
+    );
+    return response.data;
+  } catch (error: any) {
+    throw error.response ? error.response.data : error.message;
+  }
+};
+
+export const getWellnessContentDetail = async (
+  id: number | string
+): Promise<WellnessContentDetailResponse> => {
+  try {
+    const response: AxiosResponse<WellnessContentDetailResponse> =
+      await axios.get(API_ENDPOINTS.getWellnessContentDetail(id));
+    return response.data;
+  } catch (error: any) {
+    throw error.response ? error.response.data : error.message;
+  }
+};

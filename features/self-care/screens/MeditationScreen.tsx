@@ -1,6 +1,7 @@
 import React, {
   useCallback,
   useContext,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useState,
@@ -20,12 +21,20 @@ import NimbusUltraFeaturedCard from "@/components/layout/NimbusUltraFeaturedCard
 import ThemeContext from "@/contexts/ThemeContext";
 import PillFilters from "@/components/ui/PillFilters";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
+import {
+  MeditationFeaturedSkeleton,
+  MeditationListSkeleton,
+} from "@/features/self-care/components/meditation/MeditationSkeletonSections";
 import MeditationTemplateCard from "@/features/self-care/components/meditation/MeditationTemplateCard";
+import { getWellnessContentList } from "@/features/self-care/services/selfCareService";
 import {
   buildMeditationFilterOptions,
+  buildMeditationRouteParams,
   filterMeditationTemplates,
   formatMeditationTagLabel,
-  mockMeditationRecommendations,
+  fallbackMeditationTemplates,
+  mapMeditationTemplate,
+  type MeditationTemplate,
 } from "@/features/self-care/utils/meditationLibrary";
 import { ROUTES } from "@/constants/routes";
 import type {
@@ -40,8 +49,11 @@ export const MeditationScreen: React.FC = () => {
   const { newTheme: theme, svaTypography, spacing, typography } =
     useContext(ThemeContext);
 
-  const templates = mockMeditationRecommendations;
+  const [templates, setTemplates] = useState<MeditationTemplate[]>(
+    fallbackMeditationTemplates
+  );
   const [selectedTag, setSelectedTag] = useState<string>("all");
+  const [isLoading, setIsLoading] = useState(true);
 
   const styles = useMemo(
     () => styling(theme, svaTypography, spacing, typography),
@@ -52,10 +64,58 @@ export const MeditationScreen: React.FC = () => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
+  useEffect(() => {
+    let active = true;
+
+    const loadMeditationContent = async () => {
+      setIsLoading(true);
+
+      try {
+        const result = await getWellnessContentList({ modality: "meditation" });
+        const sourceItems =
+          Array.isArray(result.data) && result.data.length > 0
+            ? result.data
+            : null;
+
+        const normalized = sourceItems
+          ? sourceItems.map((item, index) => mapMeditationTemplate(item, index))
+          : fallbackMeditationTemplates;
+
+        if (active) {
+          setTemplates(normalized);
+        }
+      } catch (error) {
+        console.warn("Unable to load meditation content:", error);
+        if (active) {
+          setTemplates(fallbackMeditationTemplates);
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadMeditationContent();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const filterOptions = useMemo(
     () => buildMeditationFilterOptions(templates),
     [templates]
   );
+
+  useEffect(() => {
+    if (
+      selectedTag !== "all" &&
+      !filterOptions.some((option) => option.value === selectedTag)
+    ) {
+      setSelectedTag("all");
+    }
+  }, [filterOptions, selectedTag]);
 
   const visibleTemplates = useMemo(
     () => filterMeditationTemplates(templates, selectedTag),
@@ -63,30 +123,45 @@ export const MeditationScreen: React.FC = () => {
   );
 
   const featuredTemplate = useMemo(
-    () =>
-      templates.find((item) => item.id === "moonlit-reset") ??
-      visibleTemplates[0] ??
-      templates[0],
+    () => visibleTemplates[0] ?? templates[0],
     [visibleTemplates, templates]
   );
 
   const listTemplates = useMemo(
-    () =>
-      visibleTemplates.filter((item) => item.id !== featuredTemplate?.id),
-    [visibleTemplates, featuredTemplate]
+    () => visibleTemplates,
+    [visibleTemplates]
   );
 
   const selectedLabel =
     filterOptions.find((option) => option.value === selectedTag)?.label ??
     "All Modes";
 
-
-  const openMeditationDetail = useCallback((meditationId: string) => {
+  const openMeditationDetail = useCallback((template: MeditationTemplate) => {
     router.push({
       pathname: ROUTES.AUTH.SELF_CARE_MEDITATION_DETAIL,
-      params: { meditationId },
+      params: buildMeditationRouteParams(template),
     });
   }, []);
+
+  if (isLoading) {
+    return (
+      <ScreenView bgColor={theme.background} style={styles.screen}>
+        <View style={styles.root}>
+          <AppHeader
+            title="Quiet Current"
+            subtitle="Curated recommendations for breath, sleep, and reset."
+            onBack={() => router.back()}
+            containerStyle={styles.header}
+          />
+
+          <View style={styles.loadingContent}>
+            <MeditationFeaturedSkeleton />
+            <MeditationListSkeleton />
+          </View>
+        </View>
+      </ScreenView>
+    );
+  }
 
   return (
     <ScreenView bgColor={theme.background} style={styles.screen}>
@@ -126,7 +201,7 @@ export const MeditationScreen: React.FC = () => {
                     badge="Curated pick"
                     tint="rgba(163,190,140,0.12)"
                     accent={theme.chart2 ?? theme.accent}
-                    onPress={() => openMeditationDetail(featuredTemplate.id)}
+                    onPress={() => openMeditationDetail(featuredTemplate)}
                   />
                 </View>
               ) : null}
@@ -167,7 +242,7 @@ export const MeditationScreen: React.FC = () => {
           renderItem={({ item }) => (
             <MeditationTemplateCard
               item={item}
-              onPress={() => openMeditationDetail(item.id)}
+              onPress={() => openMeditationDetail(item)}
             />
           )}
           ListEmptyComponent={
@@ -208,6 +283,9 @@ const styling = (
     },
     header: {
       marginBottom: spacing.md,
+    },
+    loadingContent: {
+      flex: 1,
     },
     listContent: {
       paddingBottom: spacing.xl * 3,

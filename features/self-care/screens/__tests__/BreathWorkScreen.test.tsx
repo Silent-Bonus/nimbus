@@ -6,10 +6,16 @@ import ThemeContext from "../../../../contexts/ThemeContext";
 import { ROUTES } from "../../../../constants/routes";
 import { getTheme } from "../../../../theme";
 import BreathWorkScreen from "../BreathWorkScreen";
+import {
+  buildBreathWorkRouteParams,
+  mapBreathworkContent,
+} from "../../utils/breathworkLibrary";
+import { getWellnessContentList } from "../../services/selfCareService";
 
 const mockBack = jest.fn();
 const mockPush = jest.fn();
 const mockSetOptions = jest.fn();
+let mockFocusEffect: (() => void) | undefined;
 
 jest.mock("expo-router", () => ({
   router: {
@@ -19,6 +25,12 @@ jest.mock("expo-router", () => ({
   useNavigation: () => ({
     setOptions: mockSetOptions,
   }),
+  useFocusEffect: (callback: () => void) => {
+    const React = require("react");
+
+    mockFocusEffect = callback;
+    React.useEffect(() => callback(), [callback]);
+  },
 }));
 
 jest.mock("@expo/vector-icons", () => {
@@ -34,6 +46,15 @@ jest.mock("@expo/vector-icons", () => {
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
+
+jest.mock("../../services/selfCareService", () => {
+  const actual = jest.requireActual("../../services/selfCareService");
+
+  return {
+    ...actual,
+    getWellnessContentList: jest.fn(),
+  };
+});
 
 const theme = getTheme("sva");
 const themeValue = {
@@ -51,6 +72,56 @@ const themeValue = {
   activeTheme: theme,
 };
 
+const wellnessContent = [
+  {
+    id: 1,
+    slug: "deep-sleep-tonight",
+    title: "Deep Sleep Tonight",
+    modality: "breathwork",
+    category: "Sleep",
+    duration: "0 min",
+    image: "https://example.com/sleep.png",
+    rating: 0,
+    reviews: 0,
+    tags: [],
+    level: "Beginner",
+    dosha: "All",
+  },
+  {
+    id: 2,
+    slug: "find-your-calm-guided-meditation-for-anxiety-overwhelm",
+    title: "Find Your Calm: Guided Meditation for Anxiety & Overwhelm",
+    modality: "breathwork",
+    category: "Relaxation",
+    duration: "0 min",
+    image: "https://example.com/calm.png",
+    rating: 0,
+    reviews: 0,
+    tags: [],
+    level: "All Levels",
+    dosha: "All",
+  },
+];
+
+const buildWellnessContentResponse = (data: typeof wellnessContent) => ({
+  success: true,
+  message: "Wellness content retrieved successfully.",
+  data,
+  pagination: {
+    count: data.length,
+    next: null,
+    previous: null,
+    page: 1,
+    page_size: 100,
+    total_pages: 1,
+    results_count: data.length,
+  },
+});
+
+const mockGetWellnessContentList = getWellnessContentList as jest.MockedFunction<
+  typeof getWellnessContentList
+>;
+
 const hasText = (tree: renderer.ReactTestRenderer, value: string) =>
   tree.root
     .findAllByType(Text)
@@ -60,7 +131,24 @@ const hasText = (tree: renderer.ReactTestRenderer, value: string) =>
         : node.props.children === value
     );
 
-function renderScreen() {
+async function renderScreen() {
+  let tree!: renderer.ReactTestRenderer;
+
+  await act(async () => {
+    tree = renderer.create(
+      <ThemeContext.Provider value={themeValue as any}>
+        <BreathWorkScreen />
+      </ThemeContext.Provider>
+    );
+
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+
+  return tree;
+}
+
+function renderLoadingScreen() {
   let tree!: renderer.ReactTestRenderer;
 
   act(() => {
@@ -77,68 +165,86 @@ function renderScreen() {
 describe("BreathWorkScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFocusEffect = undefined;
+    mockGetWellnessContentList.mockImplementation((params) =>
+      Promise.resolve(
+        buildWellnessContentResponse(
+          params?.category === "sleep"
+            ? [wellnessContent[0] as any]
+            : (wellnessContent as any)
+        )
+      )
+    );
   });
 
-  it("renders the recommendation rail, tone chips, stacked cards, and quote card", () => {
-    const tree = renderScreen();
+  it("renders the API-backed breathwork list and opens the selected rhythm with hydrated params", async () => {
+    const tree = await renderScreen();
 
     expect(mockSetOptions).toHaveBeenCalledWith({
       headerShown: false,
     });
+    expect(mockGetWellnessContentList).toHaveBeenCalledWith({
+      modality: "breathwork",
+    });
 
     expect(hasText(tree, "Breath Work")).toBe(true);
     expect(
-      hasText(tree, "Choose a rhythm, then narrow the stack below.")
+      hasText(tree, "Choose a category, then narrow the stack below.")
     ).toBe(true);
-    expect(hasText(tree, "BREATH FORMULAS")).toBe(false);
-    expect(hasText(tree, "Entrain your neural frequency.")).toBe(false);
-    expect(hasText(tree, "Swipe a formula that fits the moment.")).toBe(false);
+    expect(hasText(tree, "Deep Sleep Tonight")).toBe(true);
     expect(
       hasText(
         tree,
-        "Pick a rhythm from the carousel, then narrow the stack below to the tone you need."
+        "Find Your Calm: Guided Meditation for Anxiety & Overwhelm"
       )
-    ).toBe(false);
-    expect(
-      hasText(
-        tree,
-        "Swipe a rhythm, filter the stack, and settle the room."
-      )
-    ).toBe(false);
-    expect(hasText(tree, "4-4-4-4: Box Breath")).toBe(true);
-    expect(hasText(tree, "GROUNDING")).toBe(true);
-    expect(hasText(tree, "STEADY")).toBe(true);
-    expect(hasText(tree, "RELEASE")).toBe(true);
-    expect(hasText(tree, "SLEEP")).toBe(true);
-    expect(
-      hasText(tree, '"Equal counts make the room feel steady again."')
     ).toBe(true);
-  });
+    expect(hasText(tree, "All categories collection")).toBe(true);
+    expect(hasText(tree, "2 rhythms")).toBe(true);
 
-  it("navigates to the detail screen when a rhythm is selected", () => {
-    const tree = renderScreen();
-
-    const releaseCard = tree.root.findByProps({
-      accessibilityLabel: "Open rhythm 4-6: Release Path",
+    const rhythmCard = tree.root.findByProps({
+      accessibilityLabel: "Open rhythm Deep Sleep Tonight",
     });
 
     act(() => {
-      releaseCard.props.onPress();
+      rhythmCard.props.onPress();
     });
 
     expect(mockPush).toHaveBeenCalledWith({
       pathname: ROUTES.AUTH.SELF_CARE_BREATHWORK_DETAIL,
-      params: {
-        breathworkId: "release-breath",
-      },
+      params: buildBreathWorkRouteParams(
+        mapBreathworkContent(wellnessContent[0] as any, 0)
+      ),
     });
   });
 
-  it("launches the session when a recommendation play button is pressed", () => {
-    const tree = renderScreen();
+  it("refetches the list by category and launches the session from the visible stack card", async () => {
+    const tree = await renderScreen();
+
+    const sleepFilter = tree.root.findByProps({
+      accessibilityLabel: "Sleep",
+    });
+
+    await act(async () => {
+      sleepFilter.props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(hasText(tree, "1 rhythm")).toBe(true);
+    expect(hasText(tree, "Deep Sleep Tonight")).toBe(true);
+    expect(
+      hasText(
+        tree,
+        "Find Your Calm: Guided Meditation for Anxiety & Overwhelm"
+      )
+    ).toBe(false);
+    expect(mockGetWellnessContentList).toHaveBeenNthCalledWith(2, {
+      modality: "breathwork",
+      category: "sleep",
+    });
 
     const playButton = tree.root.findByProps({
-      accessibilityLabel: "Play recommendation 4-6: Release Path",
+      accessibilityLabel: "Play stack Deep Sleep Tonight",
     });
 
     act(() => {
@@ -149,30 +255,57 @@ describe("BreathWorkScreen", () => {
 
     expect(mockPush).toHaveBeenCalledWith({
       pathname: ROUTES.AUTH.SELF_CARE_BREATHWORK_SESSION,
-      params: {
-        breathworkId: "release-breath",
-      },
+      params: buildBreathWorkRouteParams(
+        mapBreathworkContent(wellnessContent[0] as any, 0)
+      ),
     });
   });
 
-  it("launches the session when a stack play button is pressed", () => {
-    const tree = renderScreen();
+  it("resets the selected pill and shows the full library when the screen regains focus", async () => {
+    const tree = await renderScreen();
 
-    const playButton = tree.root.findByProps({
-      accessibilityLabel: "Play stack 4-6: Release Path",
+    const sleepFilter = tree.root.findByProps({
+      accessibilityLabel: "Sleep",
     });
 
-    act(() => {
-      playButton.props.onPress({
-        stopPropagation: jest.fn(),
-      });
+    await act(async () => {
+      sleepFilter.props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
     });
 
-    expect(mockPush).toHaveBeenCalledWith({
-      pathname: ROUTES.AUTH.SELF_CARE_BREATHWORK_SESSION,
-      params: {
-        breathworkId: "release-breath",
-      },
+    expect(hasText(tree, "1 rhythm")).toBe(true);
+    expect(hasText(tree, "Deep Sleep Tonight")).toBe(true);
+
+    await act(async () => {
+      mockFocusEffect?.();
+      await Promise.resolve();
+      await Promise.resolve();
     });
+
+    expect(hasText(tree, "All categories collection")).toBe(true);
+    expect(hasText(tree, "2 rhythms")).toBe(true);
+    expect(hasText(tree, "Deep Sleep Tonight")).toBe(true);
+    expect(
+      hasText(
+        tree,
+        "Find Your Calm: Guided Meditation for Anxiety & Overwhelm"
+      )
+    ).toBe(true);
+  });
+
+  it("shows a loader while the breathwork list is fetching", () => {
+    mockGetWellnessContentList.mockImplementationOnce(
+      () => new Promise(() => {})
+    );
+
+    const tree = renderLoadingScreen();
+
+    expect(
+      tree.root.findByProps({
+        testID: "breathwork-loading-indicator",
+      })
+    ).toBeTruthy();
+    expect(hasText(tree, "Loading breathwork...")).toBe(true);
   });
 });
