@@ -51,6 +51,8 @@ import {
   HabitType,
 } from "@/features/habit/types/habitTypes";
 
+const PROCESSING_MODAL_MIN_VISIBLE_MS = 6000;
+
 const CreateProtocolScreen = () => {
   const { svaColors, svaTypography, spacing } = useContext(ThemeContext);
   const navigation = useNavigation();
@@ -80,7 +82,7 @@ const CreateProtocolScreen = () => {
   // Divine Defaults State
   const [emoji, setEmoji] = useState("🙂");
   const [selectedColor, setSelectedColor] = useState<ProtocolColorOption>(
-    PROTOCOL_COLOR_OPTIONS[3],
+    PROTOCOL_COLOR_OPTIONS[3]
   ); // Default Moss Aura
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessingModalVisible, setIsProcessingModalVisible] =
@@ -96,6 +98,9 @@ const CreateProtocolScreen = () => {
   const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
   const [unitOptions, setUnitOptions] = useState<HabitUnit[]>([]);
   const [natureOptions, setNatureOptions] = useState<HabitTag[]>([]);
+
+  const wait = (ms: number) =>
+    new Promise((resolve) => setTimeout(resolve, ms));
 
   useEffect(() => {
     navigation.setOptions({
@@ -162,7 +167,7 @@ const CreateProtocolScreen = () => {
 
   const reminderTimeLabel = useMemo(
     () => formatTimeUI(reminderTime),
-    [reminderTime],
+    [reminderTime]
   );
 
   const originLabel = useMemo(() => {
@@ -172,7 +177,7 @@ const CreateProtocolScreen = () => {
 
   const originSummaryLabel = useMemo(
     () => formatProtocolFrequencySummary(origin),
-    [origin],
+    [origin]
   );
 
   const protocolTypeLabel = useMemo(() => {
@@ -263,10 +268,16 @@ const CreateProtocolScreen = () => {
       return;
     }
 
+    const processingStartedAt = Date.now();
     setIsLoading(true);
     setIsProcessingModalVisible(true);
     try {
       const result = await createHabit(payload);
+      const elapsed = Date.now() - processingStartedAt;
+      if (elapsed < PROCESSING_MODAL_MIN_VISIBLE_MS) {
+        await wait(PROCESSING_MODAL_MIN_VISIBLE_MS - elapsed);
+      }
+
       if (result?.success) {
         setIsProcessingModalVisible(false);
         toast.show({
@@ -286,6 +297,11 @@ const CreateProtocolScreen = () => {
         });
       }
     } catch {
+      const elapsed = Date.now() - processingStartedAt;
+      if (elapsed < PROCESSING_MODAL_MIN_VISIBLE_MS) {
+        await wait(PROCESSING_MODAL_MIN_VISIBLE_MS - elapsed);
+      }
+
       setIsProcessingModalVisible(false);
       toast.show({
         variant: "error",
@@ -644,9 +660,8 @@ const CreateProtocolScreen = () => {
 
       <ProcessingModal
         visible={isProcessingModalVisible}
-        title="Sealing Ritual"
-        subtitle="Your protocol is being prepared."
-        message="Please wait while we sync the backend and open the home screen."
+        centerMessage={"Sealing Ritual\nYour protocol is being prepared."}
+        footerMessage="Please wait while we sync the backend and open the home screen."
       />
     </>
   );

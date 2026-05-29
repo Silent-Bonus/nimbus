@@ -1,100 +1,201 @@
 import axios, { AxiosResponse } from "axios";
 import { API_ENDPOINTS } from "@/config/apiConfig";
 
-export type PersonaQuestionType = "single" | "multiple" | "time" | "signature" | "location";
+export type DoshaScoreWeight = {
+  vata: number;
+  pitta: number;
+  kapha: number;
+};
 
-export interface PersonaChoice {
+export interface DoshaOption {
   id: string;
   label: string;
-  icon?: string | null; // ":sleepy:"
+  score_weight?: DoshaScoreWeight | null;
+  scoreWeight?: DoshaScoreWeight | null;
+  icon?: string | null;
 }
 
-export interface PersonaQuestion {
+export interface DoshaQuestion {
   id: number;
-  title: string;
-  subtitle?: string | null;
-  type: PersonaQuestionType;
-  choices: PersonaChoice[];
+  category?: string | null;
+  question: string;
+  options: DoshaOption[];
 }
 
-export interface PersonaQuestionsResponse {
+export interface DoshaQuestionsResponse {
   success: boolean;
   message: string;
-  data: PersonaQuestion[];
+  data: DoshaQuestion[];
   error_code?: string;
 }
 
-// --------------------
-// ✅ UI types (what you keep in React state)
-// --------------------
-export type PersonaAnswerUI =
-  | string
-  | string[]
-  | Date
-  | boolean // signature completion
-  | null;
+export interface DoshaResponseItem {
+  question_id: number;
+  selected_option: string;
+  score_weight: DoshaScoreWeight;
+}
 
-export type PersonaAnswersUIMap = Record<number, PersonaAnswerUI>;
+export interface DoshaSubmissionPayload {
+  dosha_responses: DoshaResponseItem[];
+}
 
-// --------------------
-// ✅ API types (what you send to backend)
-// Keys are stringified question IDs
-// --------------------
-export type IsoDateString = string;
-
-export type PersonaAnswerApi = string | string[] | IsoDateString;
-export type PersonaAnswersPayload = Record<string, PersonaAnswerApi>;
-
-export interface SubmitPersonaAnswersResponse {
+export interface DoshaSubmissionResponse {
   success: boolean;
   message: string;
   data: any;
   error_code?: string;
 }
 
-// Convert UI answers → backend payload, and skip local-only ids
-export function serializePersonaAnswers(
-  ui: PersonaAnswersUIMap,
-  opts?: { skipIds?: number[] }
-): PersonaAnswersPayload {
-  const skip = new Set(opts?.skipIds ?? []);
-  const out: PersonaAnswersPayload = {};
+const EMPTY_SCORE_WEIGHT: DoshaScoreWeight = {
+  vata: 0,
+  pitta: 0,
+  kapha: 0,
+};
 
-  Object.entries(ui).forEach(([qidStr, v]) => {
-    const qid = Number(qidStr);
-    if (skip.has(qid)) return;
+const DEFAULT_WEIGHT_BY_OPTION: Record<string, DoshaScoreWeight> = {
+  A: { vata: 1, pitta: 0, kapha: 0 },
+  B: { vata: 0, pitta: 1, kapha: 0 },
+  C: { vata: 0, pitta: 0, kapha: 1 },
+};
 
-    // don't ever send signature boolean
-    if (typeof v === "boolean") return;
-    if (v == null) return;
-
-    if (v instanceof Date) {
-      out[String(qid)] = v.toISOString();
-      return;
-    }
-
-    out[String(qid)] = v; // string or string[]
-  });
-
-  return out;
+function toNumber(value: unknown): number {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
-export async function fetchPersonaQuestions(): Promise<PersonaQuestionsResponse> {
-  const res: AxiosResponse<PersonaQuestionsResponse> = await axios.get(
-    API_ENDPOINTS.personaQuestion
+function normalizeScoreWeight(raw: any): DoshaScoreWeight {
+  if (!raw || typeof raw !== "object") {
+    return { ...EMPTY_SCORE_WEIGHT };
+  }
+
+  return {
+    vata: toNumber(raw.vata ?? raw.VATA),
+    pitta: toNumber(raw.pitta ?? raw.PITTA),
+    kapha: toNumber(raw.kapha ?? raw.KAPHA),
+  };
+}
+
+function hasScoreWeight(raw: any): boolean {
+  return (
+    !!raw &&
+    typeof raw === "object" &&
+    (raw.vata != null || raw.pitta != null || raw.kapha != null)
   );
-  return res.data;
 }
 
-/**
- * Backend contract you shared:
- * "Send a single JSON object where Keys are Question IDs and Values are the answers."
- * So POST body should be the payload object itself (NOT wrapped in { answers: ... })
- */
+function normalizeOption(raw: any): DoshaOption | null {
+  if (!raw || typeof raw !== "object") return null;
+
+  const id = String(raw.id ?? raw.value ?? raw.key ?? "").trim();
+  const label = String(raw.label ?? raw.text ?? raw.title ?? "").trim();
+
+  if (!id || !label) return null;
+
+  const scoreWeightSource = raw.score_weight ?? raw.scoreWeight;
+
+  return {
+    id: id.toUpperCase(),
+    label,
+    score_weight: hasScoreWeight(scoreWeightSource)
+      ? normalizeScoreWeight(scoreWeightSource)
+      : undefined,
+  };
+}
+
+function normalizeQuestion(raw: any): DoshaQuestion | null {
+  if (!raw || typeof raw !== "object") return null;
+
+  const id = Number(raw.id ?? raw.question_id ?? raw.pk);
+  const question = String(raw.question ?? raw.title ?? "").trim();
+  const category =
+    typeof raw.category === "string" ? raw.category.trim() : null;
+
+  if (!Number.isFinite(id) || !question) return null;
+
+  const optionsSource = Array.isArray(raw.options)
+    ? raw.options
+    : Array.isArray(raw.choices)
+      ? raw.choices
+      : [];
+
+  const options = optionsSource
+    .map(normalizeOption)
+    .filter(Boolean) as DoshaOption[];
+
+  if (!options.length) return null;
+
+  return {
+    id,
+    category,
+    question,
+    options,
+  };
+}
+
+function normalizeQuestionList(raw: any): DoshaQuestion[] {
+  const list = Array.isArray(raw)
+    ? raw
+    : Array.isArray(raw?.questions)
+      ? raw.questions
+      : Array.isArray(raw?.data)
+        ? raw.data
+        : Array.isArray(raw?.data?.questions)
+          ? raw.data.questions
+          : Array.isArray(raw?.data?.data)
+            ? raw.data.data
+        : [];
+
+  return list.map(normalizeQuestion).filter(Boolean) as DoshaQuestion[];
+}
+
+function getDefaultScoreWeight(optionId: string): DoshaScoreWeight {
+  const normalized = String(optionId).trim().toUpperCase();
+  return DEFAULT_WEIGHT_BY_OPTION[normalized] ?? { ...EMPTY_SCORE_WEIGHT };
+}
+
+export function buildDoshaResponseItem(
+  question: DoshaQuestion,
+  option: DoshaOption
+): DoshaResponseItem {
+  const scoreWeightSource = option.score_weight ?? option.scoreWeight;
+
+  return {
+    question_id: question.id,
+    selected_option: String(option.id).trim().toUpperCase(),
+    score_weight: hasScoreWeight(scoreWeightSource)
+      ? normalizeScoreWeight(scoreWeightSource)
+      : getDefaultScoreWeight(option.id),
+  };
+}
+
+export function buildDoshaSubmissionPayload(
+  responses: DoshaResponseItem[]
+): DoshaSubmissionPayload {
+  return {
+    dosha_responses: [...responses].sort(
+      (left, right) => left.question_id - right.question_id
+    ),
+  };
+}
+
+export async function fetchPersonaQuestions(): Promise<DoshaQuestionsResponse> {
+  const res: AxiosResponse<any> = await axios.get(API_ENDPOINTS.personaQuestion);
+  const data = normalizeQuestionList(res.data);
+  const rawMessage =
+    typeof res.data?.message === "string" ? res.data.message : undefined;
+
+  return {
+    success: res.data?.success ?? data.length > 0,
+    message: rawMessage ?? (data.length > 0 ? "Questions loaded." : "No questions found."),
+    data,
+    error_code: res.data?.error_code,
+  };
+}
+
 export async function submitPersonaAnswers(
-  payload: PersonaAnswersPayload
-): Promise<SubmitPersonaAnswersResponse> {
-  const res: AxiosResponse<SubmitPersonaAnswersResponse> = await axios.post(
+  payload: DoshaSubmissionPayload
+): Promise<DoshaSubmissionResponse> {
+  const res: AxiosResponse<DoshaSubmissionResponse> = await axios.post(
     API_ENDPOINTS.submitPersonaAnswers,
     payload
   );
