@@ -175,8 +175,8 @@ describe("MeditationPlayerScreen", () => {
       data: {
         session_ref: "c90e8cea-42af-47d2-a4b5-62e8e7bb027c",
         id: 2,
-        activity_type: "soundscape",
-        activity_type_display: "Soundscape",
+        activity_type: "meditation",
+        activity_type_display: "Meditation",
         content_type: "wellness_content.wellnesscontent",
         object_id: 1,
         content_label: "Relaxing Meditation",

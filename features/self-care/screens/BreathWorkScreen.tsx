@@ -31,9 +31,11 @@ import {
   buildBreathWorkCategoryOptions,
   buildBreathWorkRouteParams,
   mapBreathworkContent,
-  type BreathWorkCategoryOption,
-  type BreathWorkDetail,
 } from "@/features/self-care/utils/breathworkLibrary";
+import type {
+  BreathWorkCategoryOption,
+  BreathWorkDetail,
+} from "@/features/self-care/types/breathworkTypes";
 import type {
   ColorSet,
   Spacing,

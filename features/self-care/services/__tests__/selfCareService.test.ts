@@ -127,10 +127,10 @@ describe("selfCareService", () => {
         success: true,
         message: "Wellness session created successfully.",
         data: {
-          session_ref: "c90e8cea-42af-47d2-a4b5-62e8e7bb027c",
-          id: 2,
-          activity_type: "soundscape",
-          activity_type_display: "Soundscape",
+        session_ref: "c90e8cea-42af-47d2-a4b5-62e8e7bb027c",
+        id: 2,
+        activity_type: "meditation",
+        activity_type_display: "Meditation",
           content_type: "wellness_content.wellnesscontent",
           object_id: 6,
           content_label: "174 Hz | The Foundation of Healing",
@@ -155,7 +155,7 @@ describe("selfCareService", () => {
     });
 
     const payload = {
-      activity_type: "soundscape",
+      activity_type: "meditation",
       content_type: "wellness_content.wellnesscontent",
       content_object_id: 6,
       source: "manual",
@@ -183,10 +183,10 @@ describe("selfCareService", () => {
         success: true,
         message: "Wellness session completed successfully.",
         data: {
-          session_ref: "c90e8cea-42af-47d2-a4b5-62e8e7bb027c",
-          id: 2,
-          activity_type: "soundscape",
-          activity_type_display: "Soundscape",
+        session_ref: "c90e8cea-42af-47d2-a4b5-62e8e7bb027c",
+        id: 2,
+        activity_type: "meditation",
+        activity_type_display: "Meditation",
           content_type: "wellness_content.wellnesscontent",
           object_id: 6,
           content_label: "174 Hz | The Foundation of Healing",

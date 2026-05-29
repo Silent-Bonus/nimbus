@@ -11,7 +11,10 @@ import {
   getBreathWorkDetailById,
   mapBreathworkDetail,
 } from "../../utils/breathworkLibrary";
-import { getWellnessContentDetail } from "../../services/selfCareService";
+import {
+  createWellnessSession,
+  getWellnessContentDetail,
+} from "../../services/selfCareService";
 import BreathWorkDetailScreen from "../BreathWorkDetailScreen";
 
 const mockBack = jest.fn();
@@ -76,6 +79,7 @@ jest.mock("../../services/selfCareService", () => {
 
   return {
     ...actual,
+    createWellnessSession: jest.fn(),
     getWellnessContentDetail: jest.fn(),
   };
 });
@@ -103,6 +107,9 @@ const getTextContent = (node: any) =>
 
 const mockGetWellnessContentDetail = getWellnessContentDetail as jest.MockedFunction<
   typeof getWellnessContentDetail
+>;
+const mockCreateWellnessSession = createWellnessSession as jest.MockedFunction<
+  typeof createWellnessSession
 >;
 
 const hasText = (tree: renderer.ReactTestRenderer, value: string) =>
@@ -226,6 +233,13 @@ describe("BreathWorkDetailScreen", () => {
     mockGetWellnessContentDetail.mockResolvedValue(
       buildWellnessContentResponse(apiDetail)
     );
+    mockCreateWellnessSession.mockResolvedValue({
+      success: true,
+      message: "Wellness session created successfully.",
+      data: {
+        session_ref: "c90e8cea-42af-47d2-a4b5-62e8e7bb027c",
+      } as any,
+    });
   });
 
   afterEach(() => {
@@ -280,30 +294,50 @@ describe("BreathWorkDetailScreen", () => {
         "Let the air leave naturally instead of pushing it out."
       )
     ).toBe(true);
-    expect(hasText(tree, "Play Breath Work")).toBe(true);
+    expect(hasText(tree, "Start Breath Work")).toBe(true);
   });
 
   it("launches the breath session when the start button is pressed", async () => {
     const tree = await renderScreen();
 
     const startButton = tree.root.findByProps({
-      accessibilityLabel: "Play Breath Work",
+      accessibilityLabel: "Start Breath Work",
     });
 
-    act(() => {
+    await act(async () => {
       startButton.props.onPress();
+      startButton.props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
     });
 
-    expect(mockSelection).toHaveBeenCalled();
-    expect(mockPush).toHaveBeenCalledWith({
-      pathname: ROUTES.AUTH.SELF_CARE_BREATHWORK_SESSION,
-      params: buildBreathWorkRouteParams(
-        mapBreathworkDetail(
-          apiDetail,
-          0,
-          getBreathWorkDetailById("release-breath")
-        )
-      ),
+    expect(mockCreateWellnessSession).toHaveBeenCalledWith({
+      activity_type: "breathwork",
+      content_type: "wellness_content.wellnesscontent",
+      content_object_id: 1,
+      source: "manual",
+      metadata: {
+        entry_surface: "content_detail",
+        test_mode: true,
+      },
     });
+    expect(mockSelection).toHaveBeenCalled();
+    expect(mockCreateWellnessSession).toHaveBeenCalledTimes(1);
+    const pushCall = mockPush.mock.calls.at(-1)?.[0];
+
+    expect(pushCall).toEqual({
+      pathname: ROUTES.AUTH.SELF_CARE_BREATHWORK_SESSION,
+      params: expect.objectContaining({
+        ...buildBreathWorkRouteParams(
+          mapBreathworkDetail(
+            apiDetail,
+            0,
+            getBreathWorkDetailById("release-breath")
+          )
+        ),
+        breathworkSessionLaunchKey: expect.any(String),
+      }),
+    });
+    expect(mockPush).toHaveBeenCalledTimes(1);
   });
 });

@@ -43,6 +43,7 @@ import {
   type MeditationTemplate,
 } from "@/features/self-care/utils/meditationLibrary";
 import { completeWellnessSession } from "@/features/self-care/services/selfCareService";
+import { resolveWellnessSessionRef } from "@/features/self-care/utils/wellnessSessionLaunch";
 import type {
   ColorSet,
   Spacing,
@@ -79,6 +80,8 @@ export default function MeditationPlayerScreen() {
 
   const meditationId = parseParam(params.meditationId) ?? "moonlit-reset";
   const meditationSessionRef = parseParam(params.meditationSessionRef) ?? "";
+  const meditationSessionLaunchKey =
+    parseParam(params.meditationSessionLaunchKey) ?? "";
   const fallbackMeditation = useMemo<MeditationTemplate>(() => {
     return (
       mockMeditationRecommendations.find(
@@ -137,14 +140,24 @@ export default function MeditationPlayerScreen() {
   }, [navigation]);
 
   const completeSession = useCallback(async () => {
-    if (!meditationSessionRef || hasCompletedSessionRef.current) {
+    if (hasCompletedSessionRef.current) {
+      return;
+    }
+
+    const resolvedSessionRef = await resolveWellnessSessionRef({
+      sessionRef: meditationSessionRef,
+      launchKey: meditationSessionLaunchKey,
+      timeoutMs: 15000,
+    });
+
+    if (!resolvedSessionRef) {
       return;
     }
 
     hasCompletedSessionRef.current = true;
 
     try {
-      await completeWellnessSession(meditationSessionRef, {
+      await completeWellnessSession(resolvedSessionRef, {
         duration_seconds: Math.max(
           0,
           Math.round(playbackPositionRef.current / 1000)
@@ -153,7 +166,7 @@ export default function MeditationPlayerScreen() {
     } catch (error) {
       console.warn("Unable to complete meditation session", error);
     }
-  }, [meditationSessionRef]);
+  }, [meditationSessionLaunchKey, meditationSessionRef]);
 
   const handlePlaybackStatusUpdate = useCallback(
     (status: AVPlaybackStatus) => {

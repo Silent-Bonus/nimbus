@@ -200,8 +200,8 @@ describe("MeditationDetailScreen", () => {
       data: {
         session_ref: "c90e8cea-42af-47d2-a4b5-62e8e7bb027c",
         id: 2,
-        activity_type: "soundscape",
-        activity_type_display: "Soundscape",
+        activity_type: "meditation",
+        activity_type_display: "Meditation",
         content_type: "wellness_content.wellnesscontent",
         object_id: 1,
         content_label: "Relaxing Meditation",
@@ -287,11 +287,14 @@ describe("MeditationDetailScreen", () => {
     });
 
     await act(async () => {
-      await startButton.props.onPress();
+      startButton.props.onPress();
+      startButton.props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
     });
 
     expect(mockCreateWellnessSession).toHaveBeenCalledWith({
-      activity_type: "soundscape",
+      activity_type: "meditation",
       content_type: "wellness_content.wellnesscontent",
       content_object_id: 1,
       source: "manual",
@@ -300,15 +303,18 @@ describe("MeditationDetailScreen", () => {
         test_mode: true,
       },
     });
+    expect(mockCreateWellnessSession).toHaveBeenCalledTimes(1);
 
     const expectedTemplate = mapMeditationTemplate(apiDetail as any, 0);
+    const pushCall = mockPush.mock.calls.at(-1)?.[0];
 
-    expect(mockPush).toHaveBeenCalledWith({
+    expect(pushCall).toEqual({
       pathname: ROUTES.AUTH.SELF_CARE_MEDITATION_PLAYER,
-      params: {
+      params: expect.objectContaining({
         ...buildMeditationRouteParams(expectedTemplate),
-        meditationSessionRef: "c90e8cea-42af-47d2-a4b5-62e8e7bb027c",
-      },
+        meditationSessionLaunchKey: expect.any(String),
+      }),
     });
+    expect(mockPush).toHaveBeenCalledTimes(1);
   });
 });

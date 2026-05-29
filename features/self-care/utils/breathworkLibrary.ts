@@ -4,99 +4,25 @@ import {
   BREATH_PATTERNS,
   formatBreathCadence,
   formatBreathToneLabel,
-  type BreathPhase,
-  type BreathPattern,
-} from "@/features/self-care/utils/mindPractices";
+  getBreathPatternByTone,
+  normalizeBreathworkCategoryValue,
+} from "@/features/self-care/utils/breathworkUtils";
 import type {
-  WellnessContentBreathworkStep,
+  BreathPhase,
+  BreathPattern,
+  BreathRecommendation,
+  BreathRecommendationPalette,
+  BreathWorkCategoryOption,
+  BreathWorkDetail,
+  BreathWorkMetadataStep,
+  BreathWorkRouteParams,
+  RawBreathWorkDetailItem,
+  RawBreathWorkTemplate,
+  RouteValue,
+} from "@/features/self-care/types/breathworkTypes";
+import type {
   WellnessContentBenefit,
-  WellnessContentDetailItem,
-  WellnessContentItem,
-  WellnessContentMetadata,
 } from "@/features/self-care/types/selfCareTypes";
-
-export type BreathRecommendationPalette = {
-  colors: [string, string];
-  accent: string;
-  accentSoft: string;
-  text: string;
-  tagBg: string;
-  tagBorder: string;
-  tagText: string;
-};
-
-export type BreathRecommendation = {
-  id: string;
-  tone: BreathPattern["tone"];
-  title: string;
-  subtitle: string;
-  mantra: string;
-  tag: string;
-  palette: BreathRecommendationPalette;
-  icon: string;
-};
-
-export type BreathWorkCategoryOption = {
-  label: string;
-  value: string;
-};
-
-export type BreathWorkDetail = {
-  id: string;
-  title: string;
-  subtitle: string;
-  description: string;
-  context: string;
-  steps: string[];
-  benefits: WellnessContentBenefit[];
-  tips: string[];
-  image: ImageSourcePropType;
-  tone: BreathPattern["tone"];
-  toneLabel: string;
-  tag: string;
-  mantra: string;
-  palette: BreathRecommendationPalette;
-  icon: string;
-  durationLabel: string;
-  category?: string;
-  slug?: string;
-  rating?: number;
-  reviews?: number;
-  level?: string;
-  dosha?: string;
-  tags: string[];
-  modality?: string;
-  source?: string | null;
-  phases: BreathPhase[];
-  longDescription?: string;
-  guidance?: string;
-  date?: string;
-  metadata?: WellnessContentMetadata;
-  instructor?: WellnessContentDetailItem["instructor"];
-  scientificSynthesis?: WellnessContentDetailItem["scientificSynthesis"];
-};
-
-type RouteValue = string | string[] | undefined;
-
-export type BreathWorkRouteParams = {
-  breathworkId?: RouteValue;
-  breathworkTitle?: RouteValue;
-  breathworkDescription?: RouteValue;
-  breathworkDurationLabel?: RouteValue;
-  breathworkImage?: RouteValue;
-  breathworkTags?: RouteValue;
-  breathworkCategory?: RouteValue;
-  breathworkRating?: RouteValue;
-  breathworkReviews?: RouteValue;
-  breathworkLevel?: RouteValue;
-  breathworkDosha?: RouteValue;
-  breathworkTone?: RouteValue;
-  breathworkSource?: RouteValue;
-};
-
-export type RawBreathWorkTemplate = WellnessContentItem;
-export type RawBreathWorkDetailItem = WellnessContentDetailItem;
-export type BreathWorkMetadataStep = WellnessContentBreathworkStep;
 
 const BREATH_WORK_HERO_IMAGE = require("../../../assets/images/mt.jpg");
 const BREATH_WORK_DETAIL_CACHE = new Map<string, BreathWorkDetail>();
@@ -562,16 +488,6 @@ const extractBreathWorkImageUri = (
   return undefined;
 };
 
-const BREATH_PATTERN_BY_TONE: Record<BreathPattern["tone"], BreathPattern> = {
-  grounding: BREATH_PATTERNS[0],
-  steady: BREATH_PATTERNS[1],
-  release: BREATH_PATTERNS[2],
-  sleep: BREATH_PATTERNS[3],
-};
-
-export const getBreathPatternByTone = (tone: BreathPattern["tone"]) =>
-  BREATH_PATTERN_BY_TONE[tone] ?? BREATH_PATTERNS[0];
-
 const inferBreathTone = (
   item: Partial<RawBreathWorkTemplate>,
   title: string,
@@ -678,7 +594,10 @@ const buildBreathworkDescription = (
   return pattern.description || `A quiet breath practice centered on ${title}.`;
 };
 
-const buildBreathworkTags = (item: Partial<RawBreathWorkTemplate>, tone: BreathPattern["tone"]) => {
+const buildBreathworkTags = (
+  item: Partial<RawBreathWorkTemplate>,
+  tone: BreathPattern["tone"]
+): string[] => {
   const sourceTags = Array.isArray(item.tags) ? item.tags : [];
   const metadataTags = [item.category, item.level, item.dosha]
     .map((tag) =>
@@ -884,14 +803,6 @@ export const buildBreathWorkRecommendation = (
   icon: detail.icon,
 });
 
-export const normalizeBreathworkCategoryValue = (value: string) =>
-  value
-    .trim()
-    .toLowerCase()
-    .replace(/&/g, "and")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
 export const buildBreathWorkCategoryOptions = (
   items: BreathWorkDetail[]
 ): BreathWorkCategoryOption[] => {
@@ -975,10 +886,10 @@ export const hydrateBreathWorkDetail = (
 
   const title =
     firstRouteValue(params.breathworkTitle)?.trim() || fallbackDetail.title;
-  const routeTags = firstRouteValue(params.breathworkTags)
-    ?.split("|")
-    .map((tag) => tag.trim())
-    .filter(Boolean) ?? [];
+  const routeTags =
+    (firstRouteValue(params.breathworkTags)?.split("|") ?? [])
+      .map((tag: string) => tag.trim())
+      .filter((tag): tag is string => Boolean(tag));
   const fallbackTags = fallbackDetail.tags ?? [];
   const tags =
     routeTags.length > 0

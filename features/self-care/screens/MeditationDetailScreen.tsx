@@ -1,4 +1,11 @@
-import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -18,10 +25,7 @@ import { NimbusButton } from "@/components/ui/theme-components/NimbusButton";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import ThemeContext from "@/contexts/ThemeContext";
 import { ROUTES } from "@/constants/routes";
-import {
-  createWellnessSession,
-  getWellnessContentDetail,
-} from "@/features/self-care/services/selfCareService";
+import { getWellnessContentDetail } from "@/features/self-care/services/selfCareService";
 import {
   buildMeditationRouteParams,
   formatMeditationTagLabel,
@@ -31,6 +35,10 @@ import {
   type MeditationRouteParams,
   type MeditationTemplate,
 } from "@/features/self-care/utils/meditationLibrary";
+import {
+  createWellnessSessionLaunchKey,
+  launchWellnessSessionInBackground,
+} from "@/features/self-care/utils/wellnessSessionLaunch";
 import type { ColorSet, Spacing, Typography, TypographyTokens } from "@/theme/types";
 
 type MeditationDetailParams = MeditationRouteParams;
@@ -173,7 +181,7 @@ export default function MeditationDetailScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isStartingMeditation, setIsStartingMeditation] = useState(false);
-  const [startError, setStartError] = useState<string | null>(null);
+  const hasLaunchedMeditationRef = useRef(false);
 
   const meditationId = parseParam(params.meditationId) ?? "";
   const meditationTitleParam = parseParam(params.meditationTitle);
@@ -284,6 +292,11 @@ export default function MeditationDetailScreen() {
     };
   }, [initialMeditation, meditationId]);
 
+  useEffect(() => {
+    hasLaunchedMeditationRef.current = false;
+    setIsStartingMeditation(false);
+  }, [meditationId]);
+
   const benefits = useMemo<BenefitItem[]>(
     () =>
       meditation.benefits?.length
@@ -305,23 +318,22 @@ export default function MeditationDetailScreen() {
     });
   };
 
-  const handleStartMeditation = useCallback(async () => {
-    setStartError(null);
-
-    const contentObjectId = Number(meditation.id);
-    if (!Number.isFinite(contentObjectId)) {
-      router.push({
-        pathname: ROUTES.AUTH.SELF_CARE_MEDITATION_PLAYER,
-        params: buildMeditationRouteParams(meditation),
-      });
+  const handleStartMeditation = useCallback(() => {
+    if (isStartingMeditation || hasLaunchedMeditationRef.current) {
       return;
     }
 
+    hasLaunchedMeditationRef.current = true;
     setIsStartingMeditation(true);
 
-    try {
-      const response = await createWellnessSession({
-        activity_type: "soundscape",
+    const contentObjectId = Number(meditation.id);
+    const launchKey = Number.isFinite(contentObjectId)
+      ? createWellnessSessionLaunchKey("meditation")
+      : null;
+
+    if (Number.isFinite(contentObjectId) && launchKey) {
+      void launchWellnessSessionInBackground(launchKey, {
+        activity_type: "meditation",
         content_type: "wellness_content.wellnesscontent",
         content_object_id: contentObjectId,
         source: "manual",
@@ -330,22 +342,16 @@ export default function MeditationDetailScreen() {
           test_mode: true,
         },
       });
-
-      setIsStartingMeditation(false);
-
-      router.push({
-        pathname: ROUTES.AUTH.SELF_CARE_MEDITATION_PLAYER,
-        params: {
-          ...buildMeditationRouteParams(meditation),
-          meditationSessionRef: response.data.session_ref,
-        },
-      });
-    } catch (error) {
-      console.warn("Unable to create meditation session:", error);
-      setStartError("Unable to start the session right now. Please try again.");
-      setIsStartingMeditation(false);
     }
-  }, [meditation]);
+
+    router.push({
+      pathname: ROUTES.AUTH.SELF_CARE_MEDITATION_PLAYER,
+      params: {
+        ...buildMeditationRouteParams(meditation),
+        ...(launchKey ? { meditationSessionLaunchKey: launchKey } : {}),
+      },
+    });
+  }, [isStartingMeditation, meditation]);
 
   return (
     <ScreenView bgColor={theme.background} style={styles.screen}>
@@ -607,16 +613,6 @@ export default function MeditationDetailScreen() {
             }
             style={styles.ctaButton}
           />
-
-          {startError ? (
-            <View style={styles.errorCard}>
-              <View style={styles.cardHeaderRow}>
-                <Text style={styles.errorTitle}>Unable to start session</Text>
-                <Ionicons name="warning-outline" size={16} color="#F7C48B" />
-              </View>
-              <Text style={styles.errorText}>{startError}</Text>
-            </View>
-          ) : null}
         </ScrollView>
       </View>
     </ScreenView>
@@ -1018,5 +1014,6 @@ const styling = (
     },
     ctaButton: {
       width: "100%",
+      marginBottom: spacing.lg,
     },
   });

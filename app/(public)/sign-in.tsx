@@ -59,6 +59,7 @@ export default function SignIn() {
           variant: "success",
           title: "Welcome back",
           message: "Access granted",
+          position: "top",
         });
         router.replace("/(auth)/(tabs)");
         return;

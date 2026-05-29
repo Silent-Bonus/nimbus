@@ -1,13 +1,15 @@
 import {
   AFFIRMATION_CARDS,
-  BREATH_PATTERNS,
-  getBreathMotionVariant,
-  filterBreathPatterns,
   filterAffirmations,
   formatAffirmationToneLabel,
+} from "../mindPractices";
+import {
+  BREATH_PATTERNS,
+  filterBreathPatterns,
   formatBreathCadence,
   formatBreathToneLabel,
-} from "../mindPractices";
+  getBreathMotionVariant,
+} from "../breathworkUtils";
 
 describe("mindPractices", () => {
   it("filters affirmations by tone and formats the tone label", () => {
@@ -30,5 +32,8 @@ describe("mindPractices", () => {
     expect(getBreathMotionVariant("coherent-breath")).toBe("orb");
     expect(getBreathMotionVariant("release-breath")).toBe("orb");
     expect(getBreathMotionVariant("sleep-breath")).toBe("box");
+    expect(getBreathMotionVariant("Box Breathing")).toBe("box");
+    expect(getBreathMotionVariant("Calm Reset")).toBe("orb");
+    expect(getBreathMotionVariant("Night Drift")).toBe("box");
   });
 });

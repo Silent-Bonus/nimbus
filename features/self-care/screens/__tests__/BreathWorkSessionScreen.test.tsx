@@ -4,20 +4,26 @@ import renderer, { act } from "react-test-renderer";
 
 import ThemeContext from "../../../../contexts/ThemeContext";
 import { getTheme } from "../../../../theme";
-import { getWellnessContentDetail } from "../../services/selfCareService";
+import {
+  completeWellnessSession,
+  getWellnessContentDetail,
+} from "../../services/selfCareService";
 import {
   clearBreathWorkDetailCache,
   cacheBreathWorkDetail,
   buildBreathWorkRouteParams,
   mapBreathworkDetail,
-  type BreathWorkRouteParams,
 } from "../../utils/breathworkLibrary";
+import type { BreathWorkRouteParams } from "../../types/breathworkTypes";
 import BreathWorkSessionScreen from "../BreathWorkSessionScreen";
 
 const mockBack = jest.fn();
 const mockSetOptions = jest.fn();
 const mockSelection = jest.fn();
 const mockImpact = jest.fn();
+const mockCompleteWellnessSession = completeWellnessSession as jest.MockedFunction<
+  typeof completeWellnessSession
+>;
 
 let mockParams: BreathWorkRouteParams = {
   breathworkId: "1",
@@ -79,6 +85,7 @@ jest.mock("../../services/selfCareService", () => {
 
   return {
     ...actual,
+    completeWellnessSession: jest.fn(),
     getWellnessContentDetail: jest.fn(),
   };
 });
@@ -217,11 +224,21 @@ describe("BreathWorkSessionScreen", () => {
     clearBreathWorkDetailCache();
     const cachedDetail = mapBreathworkDetail(apiDetail, 0, null);
     cacheBreathWorkDetail(cachedDetail);
-    mockParams = buildBreathWorkRouteParams(cachedDetail);
+    mockParams = {
+      ...buildBreathWorkRouteParams(cachedDetail),
+      breathworkSessionRef: "c90e8cea-42af-47d2-a4b5-62e8e7bb027c",
+    };
     mockGetWellnessContentDetail.mockResolvedValue({
       success: true,
       message: "Wellness content retrieved successfully.",
       data: apiDetail,
+    });
+    mockCompleteWellnessSession.mockResolvedValue({
+      success: true,
+      message: "Wellness session completed successfully.",
+      data: {
+        session_ref: "c90e8cea-42af-47d2-a4b5-62e8e7bb027c",
+      } as any,
     });
   });
 
@@ -254,8 +271,8 @@ describe("BreathWorkSessionScreen", () => {
     ).toBe(true);
     expect(hasText(tree, "Start")).toBe(true);
     expect(hasText(tree, "Tap play to begin this rhythm.")).toBe(true);
-    expect(hasText(tree, apiDetail.title)).toBe(false);
-    expect(hasText(tree, apiDetail.description)).toBe(false);
+    expect(hasText(tree, apiDetail.title)).toBe(true);
+    expect(hasText(tree, apiDetail.description)).toBe(true);
 
     const playButton = tree.root.findByProps({
       accessibilityLabel: "Start breathwork",
@@ -266,7 +283,10 @@ describe("BreathWorkSessionScreen", () => {
     });
 
     expect(mockSelection).toHaveBeenCalledTimes(1);
-    expect(hasText(tree, "Start")).toBe(true);
+    expect(hasText(tree, "In Progress")).toBe(true);
+    expect(
+      hasText(tree, "Complete 5 rounds before marking complete.")
+    ).toBe(true);
     expect(hasText(tree, "INHALE GENTLY")).toBe(true);
     expect(
       hasText(tree, "Draw the breath in with a steady, rooted count.")
@@ -286,5 +306,39 @@ describe("BreathWorkSessionScreen", () => {
     act(() => {
       tree.unmount();
     });
+  });
+
+  it("allows completion only after five rounds and completes the session", async () => {
+    const tree = await renderScreen();
+
+    const playButton = tree.root.findByProps({
+      accessibilityLabel: "Start breathwork",
+    });
+
+    act(() => {
+      playButton.props.onPress();
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(70000);
+    });
+
+    expect(hasText(tree, "Mark Complete")).toBe(true);
+
+    const completeButton = tree.root.findByProps({
+      accessibilityLabel: "Mark breathwork complete",
+    });
+
+    await act(async () => {
+      await completeButton.props.onPress();
+    });
+
+    expect(mockCompleteWellnessSession).toHaveBeenCalledWith(
+      "c90e8cea-42af-47d2-a4b5-62e8e7bb027c",
+      {
+        duration_seconds: 70,
+      }
+    );
+    expect(hasText(tree, "Completed")).toBe(true);
   });
 });

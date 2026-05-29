@@ -12,8 +12,7 @@ const BASE_URLS = {
 
 // Get the base URL based on the environment
 const BASE_URL = BASE_URLS[ENV];
-const WELLNESS_SESSION_BASE_URL =
-  ENV === "development" ? "http://127.0.0.1:8000" : BASE_URL;
+const WELLNESS_SESSION_BASE_URL = BASE_URL;
 
 export const API_URL = BASE_URL;
 
@@ -63,7 +62,7 @@ export const API_ENDPOINTS = {
   getWellnessContent: `${BASE_URL}/api/v1/wellness-content/`,
   getWellnessContentDetail: (id: number | string) =>
     `${BASE_URL}/api/v1/wellness-content/${id}/`,
-  createWellnessSession: `${WELLNESS_SESSION_BASE_URL}/api/v1/wellness-content/sessions/`,
+  createWellnessSession: `${WELLNESS_SESSION_BASE_URL}/api/v1/wellness/sessions/`,
   completeWellnessSession: (sessionRef: string) =>
     `${WELLNESS_SESSION_BASE_URL}/api/v1/wellness/sessions/${sessionRef}/complete/`,
 
