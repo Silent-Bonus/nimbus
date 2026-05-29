@@ -12,6 +12,8 @@ const BASE_URLS = {
 
 // Get the base URL based on the environment
 const BASE_URL = BASE_URLS[ENV];
+const WELLNESS_SESSION_BASE_URL =
+  ENV === "development" ? "http://127.0.0.1:8000" : BASE_URL;
 
 export const API_URL = BASE_URL;
 
@@ -59,6 +61,11 @@ export const API_ENDPOINTS = {
   getAudioBookList: `${BASE_URL}/api/v1/media/media-assets/?type=meditation&category=audioBook`,
   getMeditationList: `${BASE_URL}/api/v1/media/media-assets/?type=meditation&category=breathwork`,
   getWellnessContent: `${BASE_URL}/api/v1/wellness-content/`,
+  getWellnessContentDetail: (id: number | string) =>
+    `${BASE_URL}/api/v1/wellness-content/${id}/`,
+  createWellnessSession: `${WELLNESS_SESSION_BASE_URL}/api/v1/wellness-content/sessions/`,
+  completeWellnessSession: (sessionRef: string) =>
+    `${WELLNESS_SESSION_BASE_URL}/api/v1/wellness/sessions/${sessionRef}/complete/`,
 
   getMentalTestList: `${BASE_URL}/assesment/assessments/`,
 

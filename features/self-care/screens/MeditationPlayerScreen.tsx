@@ -42,6 +42,7 @@ import {
   type MeditationRouteParams,
   type MeditationTemplate,
 } from "@/features/self-care/utils/meditationLibrary";
+import { completeWellnessSession } from "@/features/self-care/services/selfCareService";
 import type {
   ColorSet,
   Spacing,
@@ -77,6 +78,7 @@ export default function MeditationPlayerScreen() {
     useContext(ThemeContext);
 
   const meditationId = parseParam(params.meditationId) ?? "moonlit-reset";
+  const meditationSessionRef = parseParam(params.meditationSessionRef) ?? "";
   const fallbackMeditation = useMemo<MeditationTemplate>(() => {
     return (
       mockMeditationRecommendations.find(
@@ -89,6 +91,8 @@ export default function MeditationPlayerScreen() {
 
   const meditationTitle = template.title ?? "Meditation";
   const meditationDescription = template.description;
+  const meditationSessionNotes =
+    template.guidance?.trim() || meditationDescription;
   const meditationDurationLabel = template.durationLabel;
   const meditationMeta = useMemo(() => buildMeditationMeta(template), [template]);
 
@@ -98,6 +102,8 @@ export default function MeditationPlayerScreen() {
   );
 
   const soundRef = useRef<Audio.Sound | null>(null);
+  const playbackPositionRef = useRef(0);
+  const hasCompletedSessionRef = useRef(false);
   const [playbackStatus, setPlaybackStatus] = useState<AVPlaybackStatus | null>(
     null
   );
@@ -116,8 +122,8 @@ export default function MeditationPlayerScreen() {
   const progress = Math.min(positionMillis / durationMillis, 1);
 
   const playbackSource = useMemo(
-    () => resolveMeditationPlaybackSource(meditationId),
-    [meditationId]
+    () => resolveMeditationPlaybackSource(meditationId, template.source ?? null),
+    [meditationId, template.source]
   );
   const heroImage = useMemo(
     () => resolveMeditationPlaybackCover(template),
@@ -129,6 +135,42 @@ export default function MeditationPlayerScreen() {
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
+
+  const completeSession = useCallback(async () => {
+    if (!meditationSessionRef || hasCompletedSessionRef.current) {
+      return;
+    }
+
+    hasCompletedSessionRef.current = true;
+
+    try {
+      await completeWellnessSession(meditationSessionRef, {
+        duration_seconds: Math.max(
+          0,
+          Math.round(playbackPositionRef.current / 1000)
+        ),
+      });
+    } catch (error) {
+      console.warn("Unable to complete meditation session", error);
+    }
+  }, [meditationSessionRef]);
+
+  const handlePlaybackStatusUpdate = useCallback(
+    (status: AVPlaybackStatus) => {
+      setPlaybackStatus(status);
+
+      if (!status.isLoaded) {
+        return;
+      }
+
+      playbackPositionRef.current = status.positionMillis;
+
+      if (status.didJustFinish) {
+        void completeSession();
+      }
+    },
+    [completeSession]
+  );
 
   useEffect(() => {
     let active = true;
@@ -148,7 +190,7 @@ export default function MeditationPlayerScreen() {
             shouldPlay: true,
             progressUpdateIntervalMillis: 500,
           },
-          (status) => setPlaybackStatus(status)
+          handlePlaybackStatusUpdate
         );
 
         if (!active) {
@@ -170,10 +212,11 @@ export default function MeditationPlayerScreen() {
 
     return () => {
       active = false;
+      void completeSession();
       soundRef.current?.unloadAsync();
       soundRef.current = null;
     };
-  }, [playbackSource]);
+  }, [completeSession, handlePlaybackStatusUpdate, playbackSource]);
 
   const handleSeek = useCallback(async (delta: number) => {
     const sound = soundRef.current;
@@ -295,7 +338,7 @@ export default function MeditationPlayerScreen() {
               </Text>
             </View>
 
-            <Text style={styles.metaText}>{meditationDescription}</Text>
+            <Text style={styles.metaText}>{meditationSessionNotes}</Text>
 
             <View style={styles.tagsRow}>
               {selectedTags.map((tag) => (

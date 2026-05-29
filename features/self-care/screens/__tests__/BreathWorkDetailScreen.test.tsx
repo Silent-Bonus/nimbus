@@ -5,6 +5,13 @@ import renderer, { act } from "react-test-renderer";
 import ThemeContext from "../../../../contexts/ThemeContext";
 import { ROUTES } from "../../../../constants/routes";
 import { getTheme } from "../../../../theme";
+import {
+  clearBreathWorkDetailCache,
+  buildBreathWorkRouteParams,
+  getBreathWorkDetailById,
+  mapBreathworkDetail,
+} from "../../utils/breathworkLibrary";
+import { getWellnessContentDetail } from "../../services/selfCareService";
 import BreathWorkDetailScreen from "../BreathWorkDetailScreen";
 
 const mockBack = jest.fn();
@@ -13,7 +20,7 @@ const mockPush = jest.fn();
 const mockSelection = jest.fn();
 
 let mockParams = {
-  breathworkId: "release-breath",
+  breathworkId: "1",
 };
 
 jest.mock("expo-router", () => ({
@@ -64,6 +71,15 @@ jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
+jest.mock("../../services/selfCareService", () => {
+  const actual = jest.requireActual("../../services/selfCareService");
+
+  return {
+    ...actual,
+    getWellnessContentDetail: jest.fn(),
+  };
+});
+
 const theme = getTheme("sva");
 const themeValue = {
   theme: "sva",
@@ -85,20 +101,116 @@ const getTextContent = (node: any) =>
     ? node.props.children.join("")
     : node.props.children;
 
+const mockGetWellnessContentDetail = getWellnessContentDetail as jest.MockedFunction<
+  typeof getWellnessContentDetail
+>;
+
 const hasText = (tree: renderer.ReactTestRenderer, value: string) =>
   tree.root
     .findAllByType(Text)
     .some((node) => getTextContent(node) === value);
 
-function renderScreen() {
+const apiDetail = {
+  id: 1,
+  slug: "release-path-breath",
+  title: "Release Path",
+  modality: "breathwork",
+  category: "Relaxation",
+  duration: "0 min",
+  image: "https://example.com/release-path.png",
+  description: "A gentle release sequence for easing tension.",
+  guidance:
+    "Use a slow inhale and a longer exhale so the body can unwind naturally.",
+  longDescription:
+    "This sequence keeps the body quiet while the breath moves with a steady, lowering pace.",
+  date: "Oct 24, 2026",
+  rating: 4.9,
+  reviews: 128,
+  tags: ["Calm", "Release"],
+  level: "Beginner",
+  dosha: "Vata",
+  benefits: [
+    {
+      id: 1,
+      title: "Release Tension",
+      text: "Longer exhale to soften tension and loosen the edges.",
+    },
+    {
+      id: 2,
+      title: "Ease the Body",
+      text: "Unclench the jaw, soften the shoulders, and give the chest a little room.",
+    },
+    {
+      id: 3,
+      title: "Effortless Exhale",
+      text: "Helps the exhale carry more of the effort than the inhale.",
+    },
+  ],
+  tips: [
+    "Let the air leave naturally instead of pushing it out.",
+    "Pair the practice with a shoulder roll between rounds.",
+    "If the exhale feels shaky, ease the pace before increasing the count.",
+  ],
+  metadata: {
+    steps: [
+      {
+        name: "Inhale Gently",
+        color: "var(--primary)",
+        sanskrit: "Puraka",
+        frequency: 220,
+        hold_seconds: 0,
+        exhale_seconds: 0,
+        inhale_seconds: 4,
+      },
+      {
+        name: "Hold Breath",
+        color: "#60A5FA",
+        sanskrit: "Antar Kumbhaka",
+        frequency: 246.94,
+        hold_seconds: 2,
+        exhale_seconds: 0,
+        inhale_seconds: 0,
+      },
+      {
+        name: "Exhale Extended",
+        color: "#34D399",
+        sanskrit: "Rechaka",
+        frequency: 196,
+        hold_seconds: 0,
+        exhale_seconds: 6,
+        inhale_seconds: 0,
+      },
+      {
+        name: "Hold Empty",
+        color: "#A78BFA",
+        sanskrit: "Bahya Kumbhaka",
+        frequency: 174.61,
+        hold_seconds: 2,
+        exhale_seconds: 0,
+        inhale_seconds: 0,
+      },
+    ],
+  },
+};
+
+const buildWellnessContentResponse = (data: typeof apiDetail) => ({
+  success: true,
+  message: "Wellness content retrieved successfully.",
+  data,
+});
+
+async function renderScreen() {
   let tree!: renderer.ReactTestRenderer;
 
-  act(() => {
+  await act(async () => {
     tree = renderer.create(
       <ThemeContext.Provider value={themeValue as any}>
         <BreathWorkDetailScreen />
       </ThemeContext.Provider>
     );
+
+    await Promise.resolve();
+    await Promise.resolve();
   });
 
   return tree;
@@ -107,44 +219,50 @@ function renderScreen() {
 describe("BreathWorkDetailScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    clearBreathWorkDetailCache();
     mockParams = {
-      breathworkId: "release-breath",
+      breathworkId: "1",
     };
+    mockGetWellnessContentDetail.mockResolvedValue(
+      buildWellnessContentResponse(apiDetail)
+    );
   });
 
-  it("renders the premium breathwork detail layout", () => {
-    const tree = renderScreen();
+  afterEach(() => {
+    clearBreathWorkDetailCache();
+  });
+
+  it("renders the premium breathwork detail layout", async () => {
+    const tree = await renderScreen();
 
     expect(mockSetOptions).toHaveBeenCalledWith({
       headerShown: false,
     });
+    expect(mockGetWellnessContentDetail).toHaveBeenCalledWith(1);
 
     expect(hasText(tree, "Breath Prelude")).toBe(true);
     expect(
       hasText(tree, "A quiet threshold before the practice begins.")
     ).toBe(true);
-    expect(hasText(tree, "4-6: Release Path")).toBe(true);
+    expect(hasText(tree, "Release Path")).toBe(true);
     expect(hasText(tree, "DESCRIPTION")).toBe(true);
     expect(hasText(tree, "CONTEXT")).toBe(true);
     expect(hasText(tree, "STEPS TO PERFORM")).toBe(true);
     expect(hasText(tree, "BENEFITS")).toBe(true);
     expect(hasText(tree, "TIPS")).toBe(true);
     expect(
+      hasText(tree, "Inhale Gently (Puraka · 220.00 Hz)")
+    ).toBe(true);
+    expect(
       hasText(
         tree,
-        "Longer exhale to soften tension and loosen the edges."
+        "A gentle release sequence for easing tension."
       )
     ).toBe(true);
     expect(
       hasText(
         tree,
-        "Use this when tension is parked in the jaw, chest, or shoulders and you want the exhale to carry more of the release."
-      )
-    ).toBe(true);
-    expect(
-      hasText(
-        tree,
-        "Unclench the jaw, soften the shoulders, and give the chest a little room."
+        "Use a slow inhale and a longer exhale so the body can unwind naturally."
       )
     ).toBe(true);
     expect(
@@ -153,6 +271,9 @@ describe("BreathWorkDetailScreen", () => {
         "Helps the exhale carry more of the effort than the inhale."
       )
     ).toBe(true);
+    expect(hasText(tree, "Release Tension")).toBe(true);
+    expect(hasText(tree, "Ease the Body")).toBe(true);
+    expect(hasText(tree, "Effortless Exhale")).toBe(true);
     expect(
       hasText(
         tree,
@@ -162,8 +283,8 @@ describe("BreathWorkDetailScreen", () => {
     expect(hasText(tree, "Play Breath Work")).toBe(true);
   });
 
-  it("launches the breath session when the start button is pressed", () => {
-    const tree = renderScreen();
+  it("launches the breath session when the start button is pressed", async () => {
+    const tree = await renderScreen();
 
     const startButton = tree.root.findByProps({
       accessibilityLabel: "Play Breath Work",
@@ -176,9 +297,13 @@ describe("BreathWorkDetailScreen", () => {
     expect(mockSelection).toHaveBeenCalled();
     expect(mockPush).toHaveBeenCalledWith({
       pathname: ROUTES.AUTH.SELF_CARE_BREATHWORK_SESSION,
-      params: {
-        breathworkId: "release-breath",
-      },
+      params: buildBreathWorkRouteParams(
+        mapBreathworkDetail(
+          apiDetail,
+          0,
+          getBreathWorkDetailById("release-breath")
+        )
+      ),
     });
   });
 });

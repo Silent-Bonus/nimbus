@@ -81,22 +81,6 @@ const BreathStackCard = ({
               <Text style={[styles.title, { color: recommendation.palette.text }]} numberOfLines={2}>
                 {recommendation.title}
               </Text>
-
-              {selected ? (
-                <View
-                  style={[
-                    styles.selectedChip,
-                    {
-                      backgroundColor: recommendation.palette.tagBg,
-                      borderColor: recommendation.palette.tagBorder,
-                    },
-                  ]}
-                >
-                  <Text style={[styles.selectedText, { color: recommendation.palette.tagText }]}>
-                    Selected
-                  </Text>
-                </View>
-              ) : null}
             </View>
 
             <Text
@@ -265,23 +249,6 @@ const styling = (
       fontSize: 22,
       lineHeight: 26,
       letterSpacing: -0.25,
-    },
-    selectedChip: {
-      alignSelf: "flex-start",
-      borderRadius: 999,
-      borderWidth: 1,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-    },
-    selectedText: {
-      fontFamily:
-        svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
-      fontSize: 9.5,
-      lineHeight: 12,
-      letterSpacing: 1.2,
-      textTransform: "uppercase",
-      fontWeight: "700",
     },
     subtitle: {
       ...typography.caption,

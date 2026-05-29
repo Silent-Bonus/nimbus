@@ -5,6 +5,7 @@ import renderer, { act } from "react-test-renderer";
 import ThemeContext from "../../../../contexts/ThemeContext";
 import { getTheme } from "../../../../theme";
 import { ROUTES } from "../../../../constants/routes";
+import { completeWellnessSession } from "../../services/selfCareService";
 import { resolveMeditationPlaybackSource } from "../../utils/meditationPlayback";
 import MeditationPlayerScreen from "../MeditationPlayerScreen";
 
@@ -16,11 +17,15 @@ const mockSetAudioModeAsync = jest.fn();
 const mockCreateAsync = jest.fn();
 
 let mockParams = {
-  meditationId: "moonlit-reset",
-  meditationTitle: "Moonlit Reset",
+  meditationId: "1",
+  meditationTitle: "Relaxing Meditation",
   meditationDescription:
-    "A calm reset for the nervous system when the day has been too loud.",
-  meditationDurationLabel: "7 min",
+    "A gentle practice to release tension and find inner calm.",
+  meditationGuidance:
+    "Focus on a slow inhale and a longer exhale. Let the body feel supported, then allow the mind to settle into stillness without forcing concentration.",
+  meditationDurationLabel: "2.5 min",
+  meditationSessionRef: "c90e8cea-42af-47d2-a4b5-62e8e7bb027c",
+  meditationSource: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
 };
 
 let playbackStatusCallback: ((status: any) => void) | null = null;
@@ -94,6 +99,15 @@ jest.mock("expo-linear-gradient", () => {
   };
 });
 
+jest.mock("../../services/selfCareService", () => {
+  const actual = jest.requireActual("../../services/selfCareService");
+
+  return {
+    ...actual,
+    completeWellnessSession: jest.fn(),
+  };
+});
+
 const theme = getTheme("sva");
 const themeValue = {
   theme: "sva",
@@ -120,6 +134,10 @@ const hasText = (tree: renderer.ReactTestRenderer, value: string) =>
     .findAllByType(Text)
     .some((node) => getTextContent(node) === value);
 
+const mockCompleteWellnessSessionFn = completeWellnessSession as jest.MockedFunction<
+  typeof completeWellnessSession
+>;
+
 async function renderScreen() {
   let tree!: renderer.ReactTestRenderer;
 
@@ -139,13 +157,47 @@ describe("MeditationPlayerScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockParams = {
-      meditationId: "moonlit-reset",
-      meditationTitle: "Moonlit Reset",
+      meditationId: "1",
+      meditationTitle: "Relaxing Meditation",
       meditationDescription:
-        "A calm reset for the nervous system when the day has been too loud.",
-      meditationDurationLabel: "7 min",
+        "A gentle practice to release tension and find inner calm.",
+      meditationGuidance:
+        "Focus on a slow inhale and a longer exhale. Let the body feel supported, then allow the mind to settle into stillness without forcing concentration.",
+      meditationDurationLabel: "2.5 min",
+      meditationSessionRef: "c90e8cea-42af-47d2-a4b5-62e8e7bb027c",
+      meditationSource:
+        "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
     };
     playbackStatusCallback = null;
+    mockCompleteWellnessSessionFn.mockResolvedValue({
+      success: true,
+      message: "Wellness session completed successfully.",
+      data: {
+        session_ref: "c90e8cea-42af-47d2-a4b5-62e8e7bb027c",
+        id: 2,
+        activity_type: "soundscape",
+        activity_type_display: "Soundscape",
+        content_type: "wellness_content.wellnesscontent",
+        object_id: 1,
+        content_label: "Relaxing Meditation",
+        source: "manual",
+        source_display: "Manual",
+        status: "completed",
+        status_display: "Completed",
+        started_at: "2026-05-05T12:14:25.441160Z",
+        paused_at: null,
+        resumed_at: null,
+        completed_at: "2026-05-05T12:23:22.757043Z",
+        duration_seconds: 205,
+        metadata: {
+          entry_surface: "content_detail",
+          test_mode: true,
+        },
+        has_feedback: false,
+        created_at: "2026-05-05T12:14:25.441442Z",
+        updated_at: "2026-05-05T12:23:22.757187Z",
+      },
+    });
 
     mockCreateAsync.mockImplementation(
       async (source: any, options: any, onPlaybackStatusUpdate: any) => {
@@ -177,7 +229,10 @@ describe("MeditationPlayerScreen", () => {
 
     expect(mockSetAudioModeAsync).toHaveBeenCalled();
     expect(mockCreateAsync).toHaveBeenCalledWith(
-      resolveMeditationPlaybackSource("moonlit-reset"),
+      resolveMeditationPlaybackSource(
+        "1",
+        "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+      ),
       expect.objectContaining({
         shouldPlay: true,
       }),
@@ -187,7 +242,32 @@ describe("MeditationPlayerScreen", () => {
     expect(hasText(tree, "SVA")).toBe(false);
     expect(hasText(tree, "Meditation")).toBe(true);
     expect(hasText(tree, "NIMBUS ORIGINAL MEDITATION")).toBe(true);
-    expect(hasText(tree, "Moonlit Reset")).toBe(true);
+    expect(hasText(tree, "Relaxing Meditation")).toBe(true);
+    expect(
+      hasText(
+        tree,
+        "Focus on a slow inhale and a longer exhale. Let the body feel supported, then allow the mind to settle into stillness without forcing concentration."
+      )
+    ).toBe(true);
+
+    await act(async () => {
+      playbackStatusCallback?.({
+        isLoaded: true,
+        isPlaying: false,
+        positionMillis: 205000,
+        durationMillis: 205000,
+        didJustFinish: true,
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mockCompleteWellnessSessionFn).toHaveBeenCalledWith(
+      "c90e8cea-42af-47d2-a4b5-62e8e7bb027c",
+      {
+        duration_seconds: 205,
+      }
+    );
   });
 
   it("pauses, seeks, shares, and returns to the library", async () => {
@@ -222,8 +302,27 @@ describe("MeditationPlayerScreen", () => {
     expect(mockSound.setPositionAsync).toHaveBeenCalledWith(15000);
     expect(mockShare).toHaveBeenCalledWith({
       message:
-        "Moonlit Reset · A calm reset for the nervous system when the day has been too loud.",
+        "Relaxing Meditation · A gentle practice to release tension and find inner calm.",
     });
     expect(mockPush).toHaveBeenCalledWith(ROUTES.AUTH.SELF_CARE_MEDITATION);
+
+    await act(async () => {
+      playbackStatusCallback?.({
+        isLoaded: true,
+        isPlaying: true,
+        positionMillis: 15000,
+        durationMillis: 180000,
+      });
+      tree.unmount();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mockCompleteWellnessSessionFn).toHaveBeenCalledWith(
+      "c90e8cea-42af-47d2-a4b5-62e8e7bb027c",
+      {
+        duration_seconds: 15,
+      }
+    );
   });
 });

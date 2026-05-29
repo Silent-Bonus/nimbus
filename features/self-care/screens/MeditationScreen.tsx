@@ -123,17 +123,13 @@ export const MeditationScreen: React.FC = () => {
   );
 
   const featuredTemplate = useMemo(
-    () =>
-      templates.find((item) => item.id === "moonlit-reset") ??
-      visibleTemplates[0] ??
-      templates[0],
+    () => visibleTemplates[0] ?? templates[0],
     [visibleTemplates, templates]
   );
 
   const listTemplates = useMemo(
-    () =>
-      visibleTemplates.filter((item) => item.id !== featuredTemplate?.id),
-    [visibleTemplates, featuredTemplate]
+    () => visibleTemplates,
+    [visibleTemplates]
   );
 
   const selectedLabel =

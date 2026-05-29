@@ -68,6 +68,12 @@ export const formatAffirmationToneLabel = (tone: AffirmationTone) =>
 export type BreathPhase = {
   label: string;
   seconds: number;
+  color?: string;
+  sanskrit?: string;
+  frequency?: number;
+  inhaleSeconds?: number;
+  holdSeconds?: number;
+  exhaleSeconds?: number;
 };
 
 export type BreathTone = "grounding" | "steady" | "release" | "sleep";
@@ -80,6 +86,8 @@ export type BreathPattern = {
   benefit: string;
   phases: BreathPhase[];
 };
+
+export type BreathMotionVariant = "box" | "orb";
 
 export const BREATH_PATTERNS: BreathPattern[] = [
   {
@@ -132,6 +140,13 @@ export const BREATH_PATTERNS: BreathPattern[] = [
   },
 ];
 
+export const BREATH_MOTION_VARIANTS: Record<string, BreathMotionVariant> = {
+  "box-breath": "box",
+  "coherent-breath": "orb",
+  "release-breath": "orb",
+  "sleep-breath": "box",
+};
+
 export const BREATH_FILTERS = [
   { label: "All", value: "all" },
   { label: "Grounding", value: "grounding" },
@@ -156,3 +171,8 @@ export const filterBreathPatterns = <T extends BreathPattern>(
 
 export const formatBreathToneLabel = (tone: BreathTone) =>
   tone.charAt(0).toUpperCase() + tone.slice(1);
+
+export const getBreathMotionVariant = (
+  patternId: string,
+  fallback: BreathMotionVariant = "orb"
+) => BREATH_MOTION_VARIANTS[patternId] ?? fallback;

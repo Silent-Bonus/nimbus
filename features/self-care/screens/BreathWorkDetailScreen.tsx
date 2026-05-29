@@ -1,5 +1,12 @@
-import React, { useContext, useLayoutEffect, useMemo } from "react";
+import React, {
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
+  ActivityIndicator,
   Platform,
   ScrollView,
   StyleSheet,
@@ -18,12 +25,17 @@ import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import { NimbusButton } from "@/components/ui/theme-components/NimbusButton";
 import ThemeContext from "@/contexts/ThemeContext";
 import { ROUTES } from "@/constants/routes";
-import { getBreathWorkDetailById } from "@/features/self-care/utils/breathworkLibrary";
+import { getWellnessContentDetail } from "@/features/self-care/services/selfCareService";
+import {
+  cacheBreathWorkDetail,
+  buildBreathWorkRouteParams,
+  mapBreathworkDetail,
+  hydrateBreathWorkDetail,
+  type BreathWorkRouteParams,
+} from "@/features/self-care/utils/breathworkLibrary";
 import type { ColorSet, Spacing, Typography } from "@/theme/types";
 
-type BreathWorkDetailParams = {
-  breathworkId?: string | string[];
-};
+type BreathWorkDetailParams = BreathWorkRouteParams;
 
 const parseParam = (value?: string | string[]) => {
   if (Array.isArray(value)) return value[0];
@@ -35,12 +47,47 @@ export default function BreathWorkDetailScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<BreathWorkDetailParams>();
   const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
+  const breathworkId = parseParam(params.breathworkId);
 
-  const breathworkId = parseParam(params.breathworkId) ?? "";
-  const detail = useMemo(
-    () => getBreathWorkDetailById(breathworkId),
-    [breathworkId]
+  const routeBreathworkParams = useMemo(
+    () => ({
+      breathworkId,
+      breathworkTitle: parseParam(params.breathworkTitle),
+      breathworkDescription: parseParam(params.breathworkDescription),
+      breathworkDurationLabel: parseParam(params.breathworkDurationLabel),
+      breathworkImage: parseParam(params.breathworkImage),
+      breathworkTags: parseParam(params.breathworkTags),
+      breathworkCategory: parseParam(params.breathworkCategory),
+      breathworkRating: parseParam(params.breathworkRating),
+      breathworkReviews: parseParam(params.breathworkReviews),
+      breathworkLevel: parseParam(params.breathworkLevel),
+      breathworkDosha: parseParam(params.breathworkDosha),
+      breathworkTone: parseParam(params.breathworkTone),
+      breathworkSource: parseParam(params.breathworkSource),
+    }),
+    [
+      breathworkId,
+      params.breathworkCategory,
+      params.breathworkDescription,
+      params.breathworkDosha,
+      params.breathworkDurationLabel,
+      params.breathworkImage,
+      params.breathworkLevel,
+      params.breathworkRating,
+      params.breathworkReviews,
+      params.breathworkSource,
+      params.breathworkTags,
+      params.breathworkTitle,
+      params.breathworkTone,
+    ]
   );
+  const fallbackDetail = useMemo(
+    () => hydrateBreathWorkDetail(routeBreathworkParams),
+    [routeBreathworkParams]
+  );
+  const [detail, setDetail] = useState(fallbackDetail);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const styles = useMemo(
     () => styling(theme, spacing, typography),
@@ -51,6 +98,54 @@ export default function BreathWorkDetailScreen() {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
+  useEffect(() => {
+    let active = true;
+
+    setDetail(fallbackDetail);
+    setLoadError(null);
+
+    const numericId = Number(breathworkId);
+    if (!Number.isFinite(numericId)) {
+      setIsLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    setIsLoading(true);
+
+    void getWellnessContentDetail(numericId)
+      .then((response) => {
+        if (!active) {
+          return;
+        }
+
+        const mappedDetail = mapBreathworkDetail(
+          response.data,
+          0,
+          fallbackDetail
+        );
+
+        cacheBreathWorkDetail(mappedDetail);
+        setDetail(mappedDetail);
+      })
+      .catch((error) => {
+        console.warn("Unable to load breathwork details:", error);
+        if (active) {
+          setLoadError("Unable to load the latest breathwork details.");
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [breathworkId, fallbackDetail]);
+
   const handleStartBreathWork = () => {
     if (Platform.OS !== "web") {
       void Haptics.selectionAsync().catch(() => {});
@@ -58,9 +153,7 @@ export default function BreathWorkDetailScreen() {
 
     router.push({
       pathname: ROUTES.AUTH.SELF_CARE_BREATHWORK_SESSION,
-      params: {
-        breathworkId: detail.id,
-      },
+      params: buildBreathWorkRouteParams(detail),
     });
   };
 
@@ -109,6 +202,17 @@ export default function BreathWorkDetailScreen() {
                 {detail.title}
               </Text>
               <Text style={styles.heroSubtext}>{detail.subtitle}</Text>
+              {isLoading ? (
+                <View style={styles.loadingChip}>
+                  <ActivityIndicator
+                    size="small"
+                    color={theme.chart2 ?? theme.accent}
+                  />
+                  <Text style={styles.loadingChipText}>
+                    Refreshing details
+                  </Text>
+                </View>
+              ) : null}
             </View>
           </View>
 
@@ -130,7 +234,7 @@ export default function BreathWorkDetailScreen() {
                     { color: detail.palette.tagText },
                   ]}
                 >
-                  {detail.toneLabel.toUpperCase()}
+                  {(detail.category ?? detail.toneLabel).toUpperCase()}
                 </Text>
               </View>
             </View>
@@ -139,78 +243,89 @@ export default function BreathWorkDetailScreen() {
 
           <View style={styles.sectionCard}>
             <Text style={styles.sectionLabel}>CONTEXT</Text>
-            <Text style={styles.sectionBody}>{detail.context}</Text>
+            <View style={styles.sectionContent}>
+              <Text style={styles.sectionBody}>{detail.context}</Text>
+            </View>
           </View>
 
           <View style={styles.sectionCard}>
             <Text style={styles.sectionLabel}>STEPS TO PERFORM</Text>
-            <View style={styles.listStack}>
-              {detail.steps.map((step, index) => (
-                <View key={step} style={styles.stepRow}>
-                  <View
-                    style={[
-                      styles.stepNumber,
-                      {
-                        backgroundColor: detail.palette.tagBg,
-                        borderColor: detail.palette.tagBorder,
-                      },
-                    ]}
-                  >
-                    <Text
+            <View style={styles.sectionContent}>
+              <View style={styles.listStack}>
+                {detail.steps.map((step, index) => (
+                  <View key={step} style={styles.stepRow}>
+                    <View
                       style={[
-                        styles.stepNumberText,
-                        { color: detail.palette.tagText },
+                        styles.stepNumber,
+                        {
+                          backgroundColor: detail.palette.tagBg,
+                          borderColor: detail.palette.tagBorder,
+                        },
                       ]}
                     >
-                      {index + 1}
-                    </Text>
+                      <Text
+                        style={[
+                          styles.stepNumberText,
+                          { color: detail.palette.tagText },
+                        ]}
+                      >
+                        {index + 1}
+                      </Text>
+                    </View>
+                    <Text style={styles.stepText}>{step}</Text>
                   </View>
-                  <Text style={styles.stepText}>{step}</Text>
-                </View>
-              ))}
+                ))}
+              </View>
             </View>
           </View>
 
           <View style={styles.sectionCard}>
             <Text style={styles.sectionLabel}>BENEFITS</Text>
-            <View style={styles.listStack}>
-              {detail.benefits.map((benefit) => (
-                <View key={benefit} style={styles.bulletRow}>
-                  <View
-                    style={[
-                      styles.bulletIcon,
-                      { backgroundColor: detail.palette.accentSoft },
-                    ]}
-                  >
-                    <Ionicons
-                      name="checkmark"
-                      size={12}
-                      color={detail.palette.accent}
-                    />
+            <View style={styles.sectionContent}>
+              <View style={styles.listStack}>
+                {detail.benefits.map((benefit) => (
+                  <View key={benefit.id} style={styles.bulletRow}>
+                    <View
+                      style={[
+                        styles.bulletIcon,
+                        { backgroundColor: detail.palette.accentSoft },
+                      ]}
+                    >
+                      <Ionicons
+                        name="checkmark"
+                        size={12}
+                        color={detail.palette.accent}
+                      />
+                    </View>
+                    <View style={styles.benefitCopy}>
+                      <Text style={styles.benefitTitle}>{benefit.title}</Text>
+                      <Text style={styles.listText}>{benefit.text}</Text>
+                    </View>
                   </View>
-                  <Text style={styles.listText}>{benefit}</Text>
-                </View>
-              ))}
+                ))}
+              </View>
             </View>
           </View>
 
           <View style={styles.sectionCard}>
             <Text style={styles.sectionLabel}>TIPS</Text>
-            <View style={styles.listStack}>
-              {detail.tips.map((tip) => (
-                <View key={tip} style={styles.tipRow}>
-                  <View
-                    style={[
-                      styles.tipIcon,
-                      {
-                        backgroundColor: detail.palette.tagBg,
-                        borderColor: detail.palette.tagBorder,
-                      },
-                    ]}
-                  />
-                  <Text style={styles.listText}>{tip}</Text>
-                </View>
-              ))}
+            <View style={styles.sectionContent}>
+              <View style={styles.listStack}>
+                {detail.tips.map((tip) => (
+                  <View key={tip} style={styles.tipRow}>
+                    <View
+                      style={[
+                        styles.tipIcon,
+                        {
+                          backgroundColor: detail.palette.tagBg,
+                          borderColor: detail.palette.tagBorder,
+                        },
+                      ]}
+                    />
+                    <Text style={styles.listText}>{tip}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
           </View>
 
@@ -228,6 +343,16 @@ export default function BreathWorkDetailScreen() {
             }
             style={[styles.startButton, { backgroundColor: detail.palette.accent }]}
           />
+
+          {loadError ? (
+            <View style={styles.errorCard}>
+              <View style={styles.errorHeaderRow}>
+                <Text style={styles.errorTitle}>Detail unavailable</Text>
+                <Ionicons name="warning-outline" size={16} color="#F7C48B" />
+              </View>
+              <Text style={styles.errorText}>{loadError}</Text>
+            </View>
+          ) : null}
         </ScrollView>
       </View>
     </ScreenView>
@@ -315,6 +440,24 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       maxWidth: 320,
       opacity: 0.88,
     },
+    loadingChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      borderRadius: 999,
+      marginTop: 12,
+      alignSelf: "flex-start",
+      backgroundColor: "rgba(7, 9, 7, 0.52)",
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.08)",
+    },
+    loadingChipText: {
+      ...typography.smallCaption,
+      color: theme.textPrimary,
+      letterSpacing: 0.8,
+    },
     startButton: {
       alignSelf: "stretch",
       borderRadius: 18,
@@ -369,6 +512,9 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       color: theme.textPrimary,
       lineHeight: 24,
     },
+    sectionContent: {
+      marginTop: spacing.md,
+    },
     listStack: {
       gap: spacing.md,
     },
@@ -401,6 +547,14 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       alignItems: "flex-start",
       gap: spacing.sm,
     },
+    benefitCopy: {
+      flex: 1,
+      gap: 4,
+    },
+    benefitTitle: {
+      ...typography.bodyStrong,
+      color: theme.textPrimary,
+    },
     bulletIcon: {
       width: 22,
       height: 22,
@@ -414,6 +568,31 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       ...typography.body,
       color: theme.textPrimary,
       lineHeight: 24,
+    },
+    errorCard: {
+      borderRadius: 24,
+      backgroundColor: "rgba(247, 196, 139, 0.08)",
+      borderWidth: 1,
+      borderColor: "rgba(247, 196, 139, 0.22)",
+      padding: spacing.md,
+      gap: spacing.xs,
+      marginTop: spacing.xs,
+      marginBottom: spacing.sm,
+    },
+    errorHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: spacing.sm,
+    },
+    errorTitle: {
+      ...typography.button,
+      color: "#F7C48B",
+    },
+    errorText: {
+      ...typography.body,
+      color: theme.textSecondary,
+      lineHeight: 22,
     },
     tipRow: {
       flexDirection: "row",

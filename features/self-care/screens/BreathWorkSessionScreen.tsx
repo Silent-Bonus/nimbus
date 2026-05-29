@@ -27,17 +27,23 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AppHeader from "@/components/layout/AppHeader";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import ThemeContext from "@/contexts/ThemeContext";
-import { getBreathWorkDetailById } from "@/features/self-care/utils/breathworkLibrary";
+import { getWellnessContentDetail } from "@/features/self-care/services/selfCareService";
+import {
+  cacheBreathWorkDetail,
+  getCachedBreathWorkDetail,
+  getBreathPatternByTone,
+  hydrateBreathWorkDetail,
+  mapBreathworkDetail,
+  type BreathWorkRouteParams,
+} from "@/features/self-care/utils/breathworkLibrary";
 import {
   BREATH_PATTERNS,
-  type BreathPattern,
+  getBreathMotionVariant,
   type BreathPhase,
 } from "@/features/self-care/utils/mindPractices";
 import type { ColorSet, Spacing, Typography } from "@/theme/types";
 
-type BreathWorkSessionParams = {
-  breathworkId?: string | string[];
-};
+type BreathWorkSessionParams = BreathWorkRouteParams;
 
 const parseParam = (value?: string | string[]) => {
   if (Array.isArray(value)) return value[0];
@@ -49,72 +55,42 @@ const BOX_FRAME_RADIUS = 28;
 const formatPhaseTimeline = (phases: BreathPhase[]) =>
   phases.map((phase) => `${phase.label} ${phase.seconds}s`).join(" · ");
 
-const getMotionVariant = (patternId: string) =>
-  patternId === "box-breath" ? "box" : "orb";
-
 const getPhaseCue = (
-  pattern: BreathPattern,
   phase: BreathPhase,
-  phaseIndex: number
+  phaseIndex: number,
+  phases: BreathPhase[]
 ) => {
   const label = phase.label.toLowerCase();
 
-  if (pattern.id === "box-breath") {
-    switch (phaseIndex) {
-      case 0:
-        return "Climb the left edge with a smooth inhale.";
-      case 1:
-        return "Pause at the top and keep the frame steady.";
-      case 2:
-        return "Move down the right edge and let the breath leave.";
-      case 3:
-        return "Rest at the bottom edge before the next inhale.";
-      default:
-        return "Stay with the square and keep the count even.";
-    }
+  if (label.includes("inhale")) {
+    return phaseIndex === 0
+      ? "Draw the breath in with a steady, rooted count."
+      : "Take in the same calm count you will return on the way out.";
   }
 
-  switch (pattern.id) {
-    case "coherent-breath":
-      if (label === "inhale") {
-        return "Take in the same calm count you will return on the way out.";
-      }
-      if (label === "exhale") {
-        return "Let the exhale stay just as smooth and even.";
-      }
-      return "Keep the body easy and the tempo quiet.";
-    case "release-breath":
-      if (label === "inhale") {
-        return "Invite the breath in without lifting the shoulders.";
-      }
-      if (label === "exhale") {
-        return "Let the longer exhale do the loosening.";
-      }
-      return "Stay soft while the breath settles.";
-    case "sleep-breath":
-      if (label === "inhale") {
-        return "Take a gentle breath and keep the room dim.";
-      }
-      if (label === "hold") {
-        return "Hold lightly, with no strain.";
-      }
-      if (label === "exhale") {
-        return "Let the exhale get quieter as you go.";
-      }
-      return "Allow the next round to arrive slowly.";
-    case "grounding":
-    default:
-      if (label === "inhale") {
-        return "Draw the breath in with a steady, rooted count.";
-      }
-      if (label === "hold") {
-        return "Keep the frame still for a clean pause.";
-      }
-      if (label === "exhale") {
-        return "Release with the same deliberate pace.";
-      }
-      return `Stay with the ${phase.label.toLowerCase()} for ${phase.seconds} seconds.`;
+  if (label.includes("exhale")) {
+    return "Let the exhale stay smooth and even.";
   }
+
+  if (label.includes("hold")) {
+    if (phaseIndex === phases.length - 1) {
+      return "Rest lightly at the end of the cycle before the next round begins.";
+    }
+    return "Hold gently and keep the frame steady.";
+  }
+
+  return `Stay with the ${phase.label.toLowerCase()} for ${phase.seconds} seconds.`;
+};
+
+const resolveStepColor = (color: string | undefined, fallback: string) => {
+  if (!color) return fallback;
+
+  const trimmed = color.trim();
+  if (!trimmed || trimmed.startsWith("var(")) {
+    return fallback;
+  }
+
+  return trimmed;
 };
 
 const getPulseScaleRange = (phaseLabel: string): number[] => {
@@ -130,6 +106,7 @@ const getPulseScaleRange = (phaseLabel: string): number[] => {
 
 type BreathMotionCanvasProps = {
   motionVariant: "box" | "orb";
+  phases: BreathPhase[];
   currentPhase: BreathPhase;
   phaseIndex: number;
   phaseProgress: Animated.Value;
@@ -241,6 +218,7 @@ const motionStyling = (typography: Typography) =>
 
 const BreathMotionCanvas = ({
   motionVariant,
+  phases,
   currentPhase,
   phaseIndex,
   phaseProgress,
@@ -261,7 +239,7 @@ const BreathMotionCanvas = ({
   const cornerInset = Math.max(0, BOX_FRAME_RADIUS - ballSize / 2);
 
   if (motionVariant === "box") {
-    const segments = [
+    const positions = [
       {
         startX: 0,
         startY: frameSize - ballSize - cornerInset,
@@ -288,7 +266,17 @@ const BreathMotionCanvas = ({
       },
     ];
 
-    const segment = segments[phaseIndex] ?? segments[0];
+    const segments = phases.slice(0, 4).map((phase, index) => ({
+      ...positions[index],
+      phase,
+    }));
+
+    const segment = segments[phaseIndex] ?? segments[0] ?? {
+      startX: 0,
+      startY: frameSize - ballSize - cornerInset,
+      endX: 0,
+      endY: cornerInset,
+    };
     const scale = phaseProgress.interpolate({
       inputRange: [0, 1],
       outputRange: getPulseScaleRange(currentPhase.label),
@@ -302,28 +290,13 @@ const BreathMotionCanvas = ({
       outputRange: [segment.startY, segment.endY],
     });
 
-    const edges = [
-      {
-        label: "Inhale",
-        position: "left",
-        active: phaseIndex === 0,
-      },
-      {
-        label: "Hold",
-        position: "top",
-        active: phaseIndex === 1,
-      },
-      {
-        label: "Exhale",
-        position: "right",
-        active: phaseIndex === 2,
-      },
-      {
-        label: "Hold",
-        position: "bottom",
-        active: phaseIndex === 3,
-      },
-    ] as const;
+    const edgePositions = ["left", "top", "right", "bottom"] as const;
+    const edges = phases.slice(0, 4).map((phase, index) => ({
+      label: phase.label,
+      position: edgePositions[index],
+      active: phaseIndex === index,
+      color: phase.color,
+    }));
 
     return (
         <View
@@ -367,7 +340,9 @@ const BreathMotionCanvas = ({
                 edge.position === "bottom" && s.edgeBottom,
                 edge.position === "left" && s.edgeLeft,
                 {
-                  color: edge.active ? accent : textSecondary,
+                  color: edge.active
+                    ? resolveStepColor(edge.color, accent)
+                    : textSecondary,
                   opacity: edge.active ? 1 : 0.72,
                 },
               ]}
@@ -503,20 +478,53 @@ export default function BreathWorkSessionScreen() {
   const { width } = useWindowDimensions();
   const params = useLocalSearchParams<BreathWorkSessionParams>();
   const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
+  const breathworkId = parseParam(params.breathworkId);
 
-  const breathworkId = parseParam(params.breathworkId) ?? "";
-  const detail = useMemo(
-    () => getBreathWorkDetailById(breathworkId),
-    [breathworkId]
+  const routeBreathworkParams = useMemo(
+    () => ({
+      breathworkId,
+      breathworkTitle: parseParam(params.breathworkTitle),
+      breathworkDescription: parseParam(params.breathworkDescription),
+      breathworkDurationLabel: parseParam(params.breathworkDurationLabel),
+      breathworkImage: parseParam(params.breathworkImage),
+      breathworkTags: parseParam(params.breathworkTags),
+      breathworkCategory: parseParam(params.breathworkCategory),
+      breathworkRating: parseParam(params.breathworkRating),
+      breathworkReviews: parseParam(params.breathworkReviews),
+      breathworkLevel: parseParam(params.breathworkLevel),
+      breathworkDosha: parseParam(params.breathworkDosha),
+      breathworkTone: parseParam(params.breathworkTone),
+      breathworkSource: parseParam(params.breathworkSource),
+    }),
+    [
+      breathworkId,
+      params.breathworkCategory,
+      params.breathworkDescription,
+      params.breathworkDosha,
+      params.breathworkDurationLabel,
+      params.breathworkImage,
+      params.breathworkLevel,
+      params.breathworkRating,
+      params.breathworkReviews,
+      params.breathworkSource,
+      params.breathworkTags,
+      params.breathworkTitle,
+      params.breathworkTone,
+    ]
   );
+  const fallbackDetail = useMemo(
+    () => hydrateBreathWorkDetail(routeBreathworkParams),
+    [routeBreathworkParams]
+  );
+  const [detail, setDetail] = useState(fallbackDetail);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const pattern = useMemo(
-    () =>
-      BREATH_PATTERNS.find((item) => item.id === detail.id) ??
-      BREATH_PATTERNS[0],
-    [detail.id]
+    () => getBreathPatternByTone(detail.tone),
+    [detail.tone]
   );
-  const phases = pattern.phases.length ? pattern.phases : BREATH_PATTERNS[0].phases;
-  const motionVariant = getMotionVariant(pattern.id);
+  const phases =
+    detail.phases.length ? detail.phases : BREATH_PATTERNS[0].phases;
+  const motionVariant = getBreathMotionVariant(pattern.id);
   const phaseTimeline = useMemo(() => formatPhaseTimeline(phases), [phases]);
 
   const [phaseIndex, setPhaseIndex] = useState(0);
@@ -536,6 +544,58 @@ export default function BreathWorkSessionScreen() {
   }, [navigation]);
 
   useEffect(() => {
+    let active = true;
+
+    setDetail(fallbackDetail);
+    setLoadError(null);
+
+    const cachedDetail = breathworkId
+      ? getCachedBreathWorkDetail(breathworkId)
+      : undefined;
+
+    if (cachedDetail) {
+      setDetail(cachedDetail);
+
+      return () => {
+        active = false;
+      };
+    }
+
+    const numericId = Number(breathworkId);
+    if (!Number.isFinite(numericId)) {
+      return () => {
+        active = false;
+      };
+    }
+
+    void getWellnessContentDetail(numericId)
+      .then((response) => {
+        if (!active) {
+          return;
+        }
+
+        const mappedDetail = mapBreathworkDetail(
+          response.data,
+          0,
+          fallbackDetail
+        );
+
+        cacheBreathWorkDetail(mappedDetail);
+        setDetail(mappedDetail);
+      })
+      .catch((error) => {
+        console.warn("Unable to load breathwork details:", error);
+        if (active) {
+          setLoadError("Unable to load the latest breathwork details.");
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [breathworkId, fallbackDetail]);
+
+  useEffect(() => {
     phaseIndexRef.current = 0;
     setPhaseIndex(0);
     setSecondsRemaining(phases[0]?.seconds ?? 0);
@@ -543,7 +603,7 @@ export default function BreathWorkSessionScreen() {
     setHasStarted(false);
     phaseProgress.stopAnimation();
     phaseProgress.setValue(0);
-  }, [breathworkId, phaseProgress, phases]);
+  }, [detail.id, phaseProgress, phases]);
 
   useEffect(() => {
     if (!hasStarted) {
@@ -612,8 +672,8 @@ export default function BreathWorkSessionScreen() {
     [phases, phaseIndex]
   );
   const phaseCue = hasStarted
-    ? getPhaseCue(pattern, currentPhase, phaseIndex)
-    : "Tap play to begin the 4-4-4-4 cycle.";
+    ? getPhaseCue(currentPhase, phaseIndex, phases)
+    : "Tap play to begin this rhythm.";
   const motionSize = Math.min(Math.max(width - spacing.md * 2 - 8, 260), 332);
   const currentRound = hasStarted ? roundCount + 1 : 0;
   const motionCoreStart = theme.chart5;
@@ -690,20 +750,12 @@ export default function BreathWorkSessionScreen() {
               ]}
             />
             <View pointerEvents="none" style={styles.heroGlowSecondary} />
-
-            <View style={styles.heroCopy}>
-              <Text style={styles.heroKicker}>GUIDED RHYTHM</Text>
-              <Text style={styles.heroTitle} numberOfLines={2}>
-                {detail.title}
-              </Text>
-              <Text style={styles.heroSubtext}>{detail.description}</Text>
-            </View>
           </View>
 
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Start breathwork"
-            accessibilityHint="Starts the 4-4-4-4 breathwork pattern"
+            accessibilityHint="Starts the selected breathwork pattern"
             disabled={hasStarted}
             onPress={hasStarted ? undefined : handleStart}
             style={({ pressed }) => [
@@ -779,7 +831,9 @@ export default function BreathWorkSessionScreen() {
               </View>
             </View>
 
-            <Text style={styles.phaseCue}>{phaseCue}</Text>
+            <Text style={styles.phaseCue} numberOfLines={3}>
+              {phaseCue}
+            </Text>
 
             <View style={styles.metricRow}>
               <View style={styles.metricBlock}>
@@ -801,6 +855,7 @@ export default function BreathWorkSessionScreen() {
           <View style={[styles.motionCard, { borderColor: theme.border ?? theme.borderMuted }]}>
             <BreathMotionCanvas
               motionVariant={motionVariant}
+              phases={phases}
               currentPhase={currentPhase}
               phaseIndex={phaseIndex}
               phaseProgress={phaseProgress}
@@ -822,6 +877,7 @@ export default function BreathWorkSessionScreen() {
             <View style={styles.sequenceRow}>
               {phases.map((phase, index) => {
                 const selected = index === phaseIndex;
+                const phaseColor = resolveStepColor(phase.color, detail.palette.accent);
                 return (
                   <View
                     key={`${phase.label}-${phase.seconds}-${index}`}
@@ -830,7 +886,7 @@ export default function BreathWorkSessionScreen() {
                       selected && [
                         styles.sequenceChipSelected,
                         {
-                          borderColor: detail.palette.accent,
+                          borderColor: phaseColor,
                           backgroundColor: detail.palette.accentSoft,
                         },
                       ],
@@ -841,7 +897,7 @@ export default function BreathWorkSessionScreen() {
                         styles.sequenceChipLabel,
                         {
                           color: selected
-                            ? detail.palette.accent
+                            ? phaseColor
                             : theme.textSecondary,
                         },
                       ]}
@@ -853,7 +909,7 @@ export default function BreathWorkSessionScreen() {
                         styles.sequenceChipValue,
                         {
                           color: selected
-                            ? detail.palette.accent
+                            ? phaseColor
                             : theme.textPrimary,
                         },
                       ]}
@@ -869,7 +925,9 @@ export default function BreathWorkSessionScreen() {
           <View style={styles.insightCard}>
             <Text style={styles.insightLabel}>WHY THIS RHYTHM</Text>
             <Text style={styles.insightText}>{detail.context}</Text>
-            <Text style={styles.insightSubtext}>{detail.benefits[0]}</Text>
+            <Text style={styles.insightSubtext}>
+              {detail.benefits[0]?.text}
+            </Text>
             <View style={styles.tipRow}>
               <Ionicons
                 name="sparkles-outline"
@@ -879,6 +937,17 @@ export default function BreathWorkSessionScreen() {
               <Text style={styles.tipText}>{detail.tips[0]}</Text>
             </View>
           </View>
+
+          {loadError ? (
+            <View style={styles.errorCard}>
+              <View style={styles.errorHeaderRow}>
+                <Text style={styles.errorTitle}>Detail unavailable</Text>
+                <Ionicons name="warning-outline" size={16} color="#F7C48B" />
+              </View>
+              <Text style={styles.errorText}>{loadError}</Text>
+            </View>
+          ) : null}
+
         </ScrollView>
       </View>
     </ScreenView>
@@ -964,6 +1033,24 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       maxWidth: 320,
       opacity: 0.88,
     },
+    loadingChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      borderRadius: 999,
+      marginTop: 12,
+      alignSelf: "flex-start",
+      backgroundColor: "rgba(7, 9, 7, 0.52)",
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.08)",
+    },
+    loadingChipText: {
+      ...typography.smallCaption,
+      color: theme.textPrimary,
+      letterSpacing: 0.8,
+    },
     motionCard: {
       borderRadius: 32,
       borderWidth: 1,
@@ -978,12 +1065,14 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       elevation: 6,
     },
     phaseCard: {
+      height: 242,
       borderRadius: 28,
       padding: spacing.lg,
       backgroundColor: theme.surface,
       borderWidth: 1,
       borderColor: theme.border ?? theme.borderMuted,
       gap: spacing.md,
+      justifyContent: "space-between",
     },
     phaseCardPressed: {
       transform: [{ scale: 0.99 }],
@@ -1048,6 +1137,7 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       ...typography.body,
       color: theme.textSecondary,
       lineHeight: 24,
+      minHeight: 72,
     },
     metricRow: {
       flexDirection: "row",
@@ -1091,17 +1181,21 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
     sequenceRow: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: spacing.sm,
+      justifyContent: "space-between",
+      rowGap: spacing.sm,
     },
     sequenceChip: {
-      minWidth: 92,
+      width: "48%",
+      height: 92,
       borderRadius: 20,
       borderWidth: 1,
       borderColor: theme.borderMuted ?? "rgba(255,255,255,0.08)",
       backgroundColor: theme.surfaceMuted,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      gap: 2,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      gap: 4,
+      justifyContent: "space-between",
+      flexShrink: 0,
     },
     sequenceChipSelected: {
       borderWidth: 1,
@@ -1115,6 +1209,32 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       ...typography.button,
       fontSize: 14,
       lineHeight: 18,
+      marginTop: 2,
+    },
+    errorCard: {
+      borderRadius: 24,
+      backgroundColor: "rgba(247, 196, 139, 0.08)",
+      borderWidth: 1,
+      borderColor: "rgba(247, 196, 139, 0.22)",
+      padding: spacing.md,
+      gap: spacing.xs,
+      marginTop: spacing.xs,
+      marginBottom: spacing.sm,
+    },
+    errorHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: spacing.sm,
+    },
+    errorTitle: {
+      ...typography.button,
+      color: "#F7C48B",
+    },
+    errorText: {
+      ...typography.body,
+      color: theme.textSecondary,
+      lineHeight: 22,
     },
     insightCard: {
       borderRadius: 28,

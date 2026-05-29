@@ -150,11 +150,12 @@ describe("MeditationScreen", () => {
     expect(hasText(tree, "Relaxing Meditation")).toBe(true);
     expect(hasText(tree, "Sleep Soothing Meditation")).toBe(true);
     expect(hasText(tree, "Curated pick")).toBe(true);
+    expect(hasText(tree, "2 sessions")).toBe(true);
     expect(hasText(tree, "Open")).toBe(true);
 
-    const featuredCard = tree.root.findByProps({
+    const featuredCard = tree.root.findAllByProps({
       accessibilityLabel: "Open Relaxing Meditation",
-    });
+    })[0];
 
     act(() => {
       featuredCard.props.onPress();
@@ -183,9 +184,9 @@ describe("MeditationScreen", () => {
     expect(hasText(tree, "Sleep Soothing Meditation")).toBe(true);
     expect(hasText(tree, "Relaxing Meditation")).toBe(false);
 
-    const sleepCard = tree.root.findByProps({
+    const sleepCard = tree.root.findAllByProps({
       accessibilityLabel: "Open Sleep Soothing Meditation",
-    });
+    })[0];
 
     act(() => {
       sleepCard.props.onPress();

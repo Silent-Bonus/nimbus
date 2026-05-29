@@ -161,7 +161,7 @@ export interface MeditationVideoListResponse {
 
 export interface WellnessContentItem {
   id: number;
-  slug: string;
+  slug?: string;
   title: string;
   modality: string;
   category: string;
@@ -172,6 +172,21 @@ export interface WellnessContentItem {
   tags: string[];
   level: string;
   dosha: string;
+  description?: string;
+}
+
+export interface WellnessContentBreathworkStep {
+  name: string;
+  color?: string;
+  sanskrit?: string;
+  frequency?: number;
+  hold_seconds?: number;
+  exhale_seconds?: number;
+  inhale_seconds?: number;
+}
+
+export interface WellnessContentMetadata extends Record<string, unknown> {
+  steps?: WellnessContentBreathworkStep[];
 }
 
 export interface WellnessContentPagination {
@@ -189,6 +204,91 @@ export interface WellnessContentResponse {
   message: string;
   data: WellnessContentItem[];
   pagination?: WellnessContentPagination;
+}
+
+export interface WellnessContentInstructor {
+  name: string;
+  role: string;
+  bio: string;
+  image: string;
+}
+
+export interface WellnessContentBenefit {
+  id: number;
+  title: string;
+  text: string;
+}
+
+export interface WellnessContentScientificSynthesis {
+  title: string;
+  text: string;
+  source: string;
+}
+
+export interface WellnessContentDetailItem extends WellnessContentItem {
+  audio?: string;
+  description?: string;
+  longDescription?: string;
+  guidance?: string;
+  date?: string;
+  metadata?: WellnessContentMetadata;
+  instructor?: WellnessContentInstructor;
+  benefits?: WellnessContentBenefit[];
+  tips?: string[];
+  scientificSynthesis?: WellnessContentScientificSynthesis;
+}
+
+export interface WellnessContentDetailResponse {
+  success: boolean;
+  message: string;
+  data: WellnessContentDetailItem;
+}
+
+export interface WellnessSessionRequest {
+  activity_type: string;
+  content_type: string;
+  content_object_id: number;
+  source: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface WellnessSessionItem {
+  session_ref: string;
+  id: number;
+  activity_type: string;
+  activity_type_display: string;
+  content_type: string;
+  object_id: number;
+  content_label: string;
+  source: string;
+  source_display: string;
+  status: string;
+  status_display: string;
+  started_at: string;
+  paused_at: string | null;
+  resumed_at: string | null;
+  completed_at: string | null;
+  duration_seconds: number;
+  metadata: Record<string, unknown>;
+  has_feedback: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WellnessSessionCreateResponse {
+  success: boolean;
+  message: string;
+  data: WellnessSessionItem;
+}
+
+export interface WellnessSessionCompleteRequest {
+  duration_seconds: number;
+}
+
+export interface WellnessSessionCompleteResponse {
+  success: boolean;
+  message: string;
+  data: WellnessSessionItem;
 }
 
 export type EnrichedMeditation = Meditations & {
