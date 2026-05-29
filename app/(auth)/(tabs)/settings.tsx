@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ThemeContext from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { getMembershipLabel } from "@/features/auth/utils/userEntitlements";
 import { ROUTES } from "@/constants/routes";
 import { SETTINGS_SECTIONS } from "@/constants/data/settingsList";
 import { SETTINGS_LAYOUT } from "@/features/settings/settingsLayout";
@@ -78,6 +79,11 @@ export default function SettingsScreen() {
     const handle = userProfile?.username?.trim();
     return `#${handle || "321be4"} glow active`;
   }, [userProfile]);
+
+  const membershipLabel = useMemo(
+    () => getMembershipLabel(userProfile),
+    [userProfile]
+  );
 
   useEffect(() => {
     if (!loc) return;
@@ -219,8 +225,8 @@ export default function SettingsScreen() {
           username={userProfile?.username || "321be4"}
           displayName={displayName}
           avatarUrl={userProfile?.avatar || null}
-          planLabel="PREMIUM MEMBER"
-          badgeLabel="PREMIUM MEMBER"
+          planLabel={membershipLabel}
+          badgeLabel={membershipLabel}
           statusLine={statusLine}
           onPressManagePlan={() => router.push(ROUTES.AUTH.BILLING_UPGRADE)}
         />
