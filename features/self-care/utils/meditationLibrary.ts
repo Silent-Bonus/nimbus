@@ -35,8 +35,6 @@ export type MeditationRouteParams = {
   meditationLevel?: RouteValue;
   meditationDosha?: RouteValue;
   meditationSource?: RouteValue;
-  meditationSessionRef?: RouteValue;
-  meditationSessionLaunchKey?: RouteValue;
 };
 
 export type MeditationTemplate = {

@@ -109,8 +109,6 @@ export type BreathWorkRouteParams = {
   breathworkDosha?: RouteValue;
   breathworkTone?: RouteValue;
   breathworkSource?: RouteValue;
-  breathworkSessionRef?: RouteValue;
-  breathworkSessionLaunchKey?: RouteValue;
 };
 
 export type RawBreathWorkTemplate = WellnessContentItem;

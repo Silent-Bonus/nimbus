@@ -4,10 +4,7 @@ import renderer, { act } from "react-test-renderer";
 
 import ThemeContext from "../../../../contexts/ThemeContext";
 import { getTheme } from "../../../../theme";
-import {
-  completeWellnessSession,
-  getWellnessContentDetail,
-} from "../../services/selfCareService";
+import { getWellnessContentDetail } from "../../services/selfCareService";
 import {
   clearBreathWorkDetailCache,
   cacheBreathWorkDetail,
@@ -21,9 +18,9 @@ const mockBack = jest.fn();
 const mockSetOptions = jest.fn();
 const mockSelection = jest.fn();
 const mockImpact = jest.fn();
-const mockCompleteWellnessSession = completeWellnessSession as jest.MockedFunction<
-  typeof completeWellnessSession
->;
+const mockCompleteWellnessSession = jest.fn();
+const mockCreateWellnessSessionService = jest.fn();
+const mockPauseWellnessSession = jest.fn();
 
 let mockParams: BreathWorkRouteParams = {
   breathworkId: "1",
@@ -85,8 +82,17 @@ jest.mock("../../services/selfCareService", () => {
 
   return {
     ...actual,
-    completeWellnessSession: jest.fn(),
     getWellnessContentDetail: jest.fn(),
+  };
+});
+
+jest.mock("../../services/wellnessSessionService", () => {
+  return {
+    createWellnessSession: (...args: any[]) =>
+      mockCreateWellnessSessionService(...args),
+    pauseWellnessSession: (...args: any[]) => mockPauseWellnessSession(...args),
+    completeWellnessSession: (...args: any[]) =>
+      mockCompleteWellnessSession(...args),
   };
 });
 
@@ -226,12 +232,25 @@ describe("BreathWorkSessionScreen", () => {
     cacheBreathWorkDetail(cachedDetail);
     mockParams = {
       ...buildBreathWorkRouteParams(cachedDetail),
-      breathworkSessionRef: "c90e8cea-42af-47d2-a4b5-62e8e7bb027c",
     };
     mockGetWellnessContentDetail.mockResolvedValue({
       success: true,
       message: "Wellness content retrieved successfully.",
       data: apiDetail,
+    });
+    mockCreateWellnessSessionService.mockResolvedValue({
+      success: true,
+      message: "Wellness session created successfully.",
+      data: {
+        session_ref: "c90e8cea-42af-47d2-a4b5-62e8e7bb027c",
+      } as any,
+    });
+    mockPauseWellnessSession.mockResolvedValue({
+      success: true,
+      message: "Wellness session paused successfully.",
+      data: {
+        session_ref: "c90e8cea-42af-47d2-a4b5-62e8e7bb027c",
+      } as any,
     });
     mockCompleteWellnessSession.mockResolvedValue({
       success: true,
@@ -243,7 +262,9 @@ describe("BreathWorkSessionScreen", () => {
   });
 
   afterEach(() => {
-    jest.runOnlyPendingTimers();
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
     jest.useRealTimers();
     clearBreathWorkDetailCache();
   });
@@ -283,6 +304,16 @@ describe("BreathWorkSessionScreen", () => {
     });
 
     expect(mockSelection).toHaveBeenCalledTimes(1);
+    expect(mockCreateWellnessSessionService).toHaveBeenCalledWith({
+      activity_type: "breathwork",
+      content_type: "wellness_content.wellnesscontent",
+      content_object_id: 1,
+      source: "manual",
+      metadata: {
+        entry_surface: "session_screen",
+        test_mode: true,
+      },
+    });
     expect(hasText(tree, "In Progress")).toBe(true);
     expect(
       hasText(tree, "Complete 5 rounds before marking complete.")
@@ -306,6 +337,35 @@ describe("BreathWorkSessionScreen", () => {
     act(() => {
       tree.unmount();
     });
+  });
+
+  it("pauses the session before navigating back while active", async () => {
+    const tree = await renderScreen();
+
+    const playButton = tree.root.findByProps({
+      accessibilityLabel: "Start breathwork",
+    });
+    const backButton = tree.root.findByProps({
+      accessibilityLabel: "Back",
+    });
+
+    await act(async () => {
+      playButton.props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      await backButton.props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mockPauseWellnessSession).toHaveBeenCalledWith(
+      "c90e8cea-42af-47d2-a4b5-62e8e7bb027c"
+    );
+    expect(mockBack).toHaveBeenCalledTimes(1);
+    expect(mockCompleteWellnessSession).not.toHaveBeenCalled();
   });
 
   it("allows completion only after five rounds and completes the session", async () => {

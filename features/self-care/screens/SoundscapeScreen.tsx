@@ -10,234 +10,28 @@ import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useNavigation } from "expo-router";
-import {
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type ImageSourcePropType,
-} from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 
 import BottomPlayer from "@/components/layout/BottomPlayer";
 import AppHeader from "@/components/layout/AppHeader";
 import PillFilters from "@/components/ui/PillFilters";
 import { ScreenView } from "@/components/ui/Themed";
 import ThemeContext from "@/contexts/ThemeContext";
-import { TrackType } from "@/constants/data/soundtrack";
 import { ROUTES } from "@/constants/routes";
-import { getSoundscapeList } from "@/features/tools/services/toolService";
 import ProtocolTemplateCard from "@/features/tools/components/common/ProtocolTemplateCard";
+import { getSoundscapeContentList } from "@/features/self-care/services/selfCareService";
 import SoundscapePinterestSkeleton from "@/features/self-care/components/soundscape/SoundscapePinterestSkeleton";
+import {
+  cacheSoundscapeTracks,
+  normalizeKey,
+  resolveSoundscapeTracks,
+  uniqueStrings,
+  type SoundscapeTrack,
+} from "@/features/self-care/utils/soundscapeLibrary";
 import type { Spacing, SvaColorSet, TypographyTokens } from "@/theme/types";
 
 const FAVORITES_KEY = "soundscape_favorites_v1";
 const FAVORITES_FILTER_VALUE = "favorites";
-const FALLBACK_IMAGE = require("@/assets/images/mt.jpg");
-const FALLBACK_SOURCE = require("@/assets/dump/lightRain.mp3");
-
-const MOCK_SOUNDSCAPES = [
-  {
-    id: "528-dna-integrity",
-    title: "528Hz: DNA Integrity",
-    duration: "6 min",
-    description: "Alpha 10Hz | Solfeggio 528Hz",
-    image: require("@/assets/images/mt.jpg"),
-    source: FALLBACK_SOURCE,
-    category: "Frequency",
-    isLocked: false,
-  },
-  {
-    id: "432-earth-pulse",
-    title: "432Hz: Earth Pulse",
-    duration: "7 min",
-    description: "Theta 6Hz | Pythagorean 432Hz",
-    image: require("@/assets/images/loginLatest.png"),
-    source: FALLBACK_SOURCE,
-    category: "Grounding",
-    isLocked: false,
-  },
-  {
-    id: "639-neural-bridge",
-    title: "639Hz: Neural Bridge",
-    duration: "8 min",
-    description: "Gamma 40Hz | Solfeggio 639Hz",
-    image: require("@/assets/images/bodyShape/1.png"),
-    source: FALLBACK_SOURCE,
-    category: "Coherence",
-    isLocked: false,
-  },
-  {
-    id: "174-foundation",
-    title: "174Hz: Foundation",
-    duration: "5 min",
-    description: "Delta 2Hz | Solfeggio 174Hz",
-    image: require("@/assets/images/bodyShape/2.png"),
-    source: FALLBACK_SOURCE,
-    category: "Release",
-    isLocked: false,
-  },
-  {
-    id: "rain-cedar",
-    title: "Rain Over Cedar",
-    duration: "10 min",
-    description: "Late rain, cedar hush, and low-frequency calm.",
-    image: require("@/assets/images/mentalTest/childhoodTrauma.png"),
-    source: FALLBACK_SOURCE,
-    category: "Nature",
-    isLocked: false,
-  },
-  {
-    id: "ocean-drift",
-    title: "Ocean Drift",
-    duration: "12 min",
-    description: "Slow surf texture for sleep and deep reset.",
-    image: require("@/assets/images/result.jpg"),
-    source: FALLBACK_SOURCE,
-    category: "Sleep",
-    isLocked: false,
-  },
-];
-
-type SoundscapeTrack = TrackType & {
-  durationLabel: string;
-  tags: string[];
-  filterTags: string[];
-};
-
-type SoundscapeRawTrack = {
-  id?: string;
-  title?: string;
-  name?: string;
-  duration?: unknown;
-  description?: string;
-  image?: unknown;
-  source?: unknown;
-  category?: string;
-  isLocked?: boolean;
-};
-
-const normalizeKey = (value: string) =>
-  value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
-
-const formatTagLabel = (value?: string | null) => {
-  if (!value) return "Curated";
-
-  return value
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .split(" ")
-    .map((part) =>
-      part && part === part.toUpperCase()
-        ? part
-        : part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
-    )
-    .join(" ");
-};
-
-const formatDurationLabel = (duration: unknown) => {
-  if (typeof duration === "number" && Number.isFinite(duration)) {
-    return `${duration} min`;
-  }
-
-  if (typeof duration === "string") {
-    const trimmed = duration.trim();
-    if (!trimmed) return "3 min";
-    if (/\d/.test(trimmed)) return trimmed;
-    return `${trimmed} min`;
-  }
-
-  return "3 min";
-};
-
-const detectMoodTag = (
-  title: string,
-  description: string,
-  category: string
-) => {
-  const blob = `${title} ${description} ${category}`.toLowerCase();
-
-  if (/(rain|storm|wave|ocean|river|stream|brook|water|sea)/.test(blob)) {
-    return "Nature";
-  }
-  if (/(sleep|dream|night|rest|nap|lullaby)/.test(blob)) {
-    return "Sleep";
-  }
-  if (/(focus|study|work|clarity|concentr|productiv|brain)/.test(blob)) {
-    return "Focus";
-  }
-  if (
-    /(binaural|frequency|hz|resonance|pulse|alpha|beta|theta|delta|gamma)/.test(
-      blob
-    )
-  ) {
-    return "Frequency";
-  }
-  if (/(breath|breathing|meditat|calm|relax|soothe)/.test(blob)) {
-    return "Calm";
-  }
-
-  return "Curated";
-};
-
-const resolveImageSource = (image: unknown): ImageSourcePropType => {
-  if (!image) return FALLBACK_IMAGE;
-  if (typeof image === "string") return { uri: image };
-  if (typeof image === "number") return image;
-  if (typeof image === "object") {
-    const maybeImage = image as { uri?: unknown; url?: unknown };
-    if (typeof maybeImage.uri === "string") return { uri: maybeImage.uri };
-    if (typeof maybeImage.url === "string") return { uri: maybeImage.url };
-    return image as ImageSourcePropType;
-  }
-
-  return FALLBACK_IMAGE;
-};
-
-const resolveAudioSource = (source: unknown) => {
-  if (!source) return FALLBACK_SOURCE;
-  if (typeof source === "string") return { uri: source };
-  return source;
-};
-
-const uniqueStrings = (values: string[]) =>
-  Array.from(new Set(values.filter(Boolean)));
-
-const toSoundscapeTrack = (
-  item: SoundscapeRawTrack | unknown,
-  index: number
-): SoundscapeTrack => {
-  const record = isRecord(item) ? (item as SoundscapeRawTrack) : {};
-  const title = String(record.title ?? `Soundscape ${index + 1}`);
-  const description = String(record.description ?? "");
-  const category = formatTagLabel(String(record.category ?? "Curated"));
-  const durationLabel = formatDurationLabel(record.duration);
-  const moodTag = detectMoodTag(title, description, category);
-  const tags = uniqueStrings([category, moodTag]);
-
-  return {
-    ...(record ?? {}),
-    id: String(record.id ?? `${normalizeKey(title)}-${index}`),
-    title,
-    name: record.name ?? title,
-    duration: durationLabel,
-    durationLabel,
-    description,
-    image: resolveImageSource(record.image),
-    source: resolveAudioSource(record.source),
-    category,
-    isLocked: Boolean(record.isLocked),
-    tags,
-    filterTags: tags,
-  };
-};
 
 const FAVORITES_SUBTITLE = "Soundscape archive for rest, focus, and reset.";
 
@@ -329,46 +123,19 @@ export const SoundscapeScreen = () => {
     const loadSoundscapes = async () => {
       setIsLoading(true);
       try {
-        const result: unknown = await getSoundscapeList();
-        const rawTracks = isRecord(result)
-          ? Array.isArray(result.data)
-            ? (result.data as SoundscapeRawTrack[])
-            : Array.isArray(result.items)
-            ? (result.items as SoundscapeRawTrack[])
-            : null
-          : Array.isArray(result)
-          ? (result as SoundscapeRawTrack[])
-          : null;
-
-        if (!rawTracks) {
-          console.error("Soundscape response data is not an array:", result);
-          if (active) {
-            setTracks(
-              MOCK_SOUNDSCAPES.map((item, index) =>
-                toSoundscapeTrack(item, index)
-              )
-            );
-          }
-          return;
-        }
-
-        const sourceTracks =
-          rawTracks.length > 0 ? rawTracks : MOCK_SOUNDSCAPES;
-        const normalized = sourceTracks.map((item, index) =>
-          toSoundscapeTrack(item, index)
-        );
+        const result: unknown = await getSoundscapeContentList();
+        const normalized = resolveSoundscapeTracks(result);
 
         if (active) {
           setTracks(normalized);
+          cacheSoundscapeTracks(normalized);
         }
       } catch (error) {
         console.log(error, "API Error Response");
         if (active) {
-          setTracks(
-            MOCK_SOUNDSCAPES.map((item, index) =>
-              toSoundscapeTrack(item, index)
-            )
-          );
+          const fallbackTracks = resolveSoundscapeTracks(null);
+          setTracks(fallbackTracks);
+          cacheSoundscapeTracks(fallbackTracks);
         }
       } finally {
         if (active) {

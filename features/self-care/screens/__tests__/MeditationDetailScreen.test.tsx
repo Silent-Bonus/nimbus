@@ -11,9 +11,9 @@ import {
   mapMeditationTemplate,
 } from "../../utils/meditationLibrary";
 import {
-  createWellnessSession,
   getWellnessContentDetail,
 } from "../../services/selfCareService";
+import { createWellnessSession } from "../../services/wellnessSessionService";
 
 const mockPush = jest.fn();
 const mockBack = jest.fn();
@@ -76,8 +76,16 @@ jest.mock("../../services/selfCareService", () => {
 
   return {
     ...actual,
-    createWellnessSession: jest.fn(),
     getWellnessContentDetail: jest.fn(),
+  };
+});
+
+jest.mock("../../services/wellnessSessionService", () => {
+  const actual = jest.requireActual("../../services/wellnessSessionService");
+
+  return {
+    ...actual,
+    createWellnessSession: jest.fn(),
   };
 });
 
@@ -293,17 +301,7 @@ describe("MeditationDetailScreen", () => {
       await Promise.resolve();
     });
 
-    expect(mockCreateWellnessSession).toHaveBeenCalledWith({
-      activity_type: "meditation",
-      content_type: "wellness_content.wellnesscontent",
-      content_object_id: 1,
-      source: "manual",
-      metadata: {
-        entry_surface: "content_detail",
-        test_mode: true,
-      },
-    });
-    expect(mockCreateWellnessSession).toHaveBeenCalledTimes(1);
+    expect(mockCreateWellnessSession).not.toHaveBeenCalled();
 
     const expectedTemplate = mapMeditationTemplate(apiDetail as any, 0);
     const pushCall = mockPush.mock.calls.at(-1)?.[0];
@@ -312,7 +310,6 @@ describe("MeditationDetailScreen", () => {
       pathname: ROUTES.AUTH.SELF_CARE_MEDITATION_PLAYER,
       params: expect.objectContaining({
         ...buildMeditationRouteParams(expectedTemplate),
-        meditationSessionLaunchKey: expect.any(String),
       }),
     });
     expect(mockPush).toHaveBeenCalledTimes(1);

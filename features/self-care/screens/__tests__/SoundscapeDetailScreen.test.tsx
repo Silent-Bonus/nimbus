@@ -6,6 +6,7 @@ import ThemeContext from "../../../../contexts/ThemeContext";
 import { getTheme } from "../../../../theme";
 import { ROUTES } from "../../../../constants/routes";
 import SoundscapeDetailScreen from "../SoundscapeDetailScreen";
+import { getWellnessContentDetail } from "../../services/selfCareService";
 
 const mockPush = jest.fn();
 const mockBack = jest.fn();
@@ -13,7 +14,7 @@ const mockSetOptions = jest.fn();
 const mockShare = jest.fn();
 
 let mockParams = {
-  soundscapeId: "528-dna-integrity",
+  soundscapeId: "1",
 };
 
 jest.mock("expo-router", () => ({
@@ -63,6 +64,15 @@ jest.mock("../../../../components/ui/theme-components/NimbusButton", () => {
   };
 });
 
+jest.mock("../../services/selfCareService", () => {
+  const actual = jest.requireActual("../../services/selfCareService");
+
+  return {
+    ...actual,
+    getWellnessContentDetail: jest.fn(),
+  };
+});
+
 const theme = getTheme("sva");
 const themeValue = {
   theme: "sva",
@@ -89,6 +99,10 @@ const hasText = (tree: renderer.ReactTestRenderer, value: string) =>
     .findAllByType(Text)
     .some((node) => getTextContent(node) === value);
 
+const mockGetWellnessContentDetail = getWellnessContentDetail as jest.MockedFunction<
+  typeof getWellnessContentDetail
+>;
+
 async function renderScreen() {
   let tree!: renderer.ReactTestRenderer;
 
@@ -98,6 +112,8 @@ async function renderScreen() {
         <SoundscapeDetailScreen />
       </ThemeContext.Provider>
     );
+
+    await Promise.resolve();
     await Promise.resolve();
   });
 
@@ -108,31 +124,47 @@ describe("SoundscapeDetailScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockParams = {
-      soundscapeId: "528-dna-integrity",
+      soundscapeId: "1",
     };
     jest.spyOn(Share, "share").mockImplementation(mockShare);
     mockShare.mockResolvedValue({ action: "sharedAction" });
+    mockGetWellnessContentDetail.mockResolvedValue({
+      success: true,
+      message: "Wellness content retrieved successfully.",
+      data: {
+        id: 1,
+        title: "Rain Over Cedar",
+        duration: "10 min",
+        category: "Nature",
+        image: "https://example.com/rain.jpg",
+        audio: "https://example.com/rain.mp3",
+        description: "Late rain, cedar hush, and low-frequency calm.",
+        tags: ["Nature", "Sleep"],
+        isLocked: false,
+      } as any,
+    });
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
-  it("renders the soundscape detail layout", async () => {
+  it("renders the soundscape detail layout from the fetched content", async () => {
     const tree = await renderScreen();
 
     expect(mockSetOptions).toHaveBeenCalledWith({
       headerShown: false,
     });
+    expect(mockGetWellnessContentDetail).toHaveBeenCalledWith(1);
 
     expect(hasText(tree, "Soundscape Prelude")).toBe(true);
-    expect(hasText(tree, "528Hz: DNA Integrity")).toBe(true);
+    expect(hasText(tree, "Rain Over Cedar")).toBe(true);
     expect(hasText(tree, "ABOUT THIS SOUNDSCAPE")).toBe(true);
     expect(hasText(tree, "WHY IT HELPS")).toBe(true);
     expect(hasText(tree, "Start Soundscape")).toBe(true);
   });
 
-  it("toggles favorite state and shares the soundscape", async () => {
+  it("toggles favorite state and shares the fetched soundscape", async () => {
     const tree = await renderScreen();
 
     const favoriteButton = tree.root.findByProps({
@@ -158,7 +190,7 @@ describe("SoundscapeDetailScreen", () => {
     });
 
     expect(mockShare).toHaveBeenCalledWith({
-      message: "528Hz: DNA Integrity · Alpha 10Hz | Solfeggio 528Hz",
+      message: "Rain Over Cedar · Late rain, cedar hush, and low-frequency calm.",
     });
   });
 
@@ -176,7 +208,7 @@ describe("SoundscapeDetailScreen", () => {
     expect(mockPush).toHaveBeenCalledWith({
       pathname: ROUTES.AUTH.SELF_CARE_SOUNDSCAPE_PLAYER,
       params: {
-        soundscapeId: "528-dna-integrity",
+        soundscapeId: "1",
       },
     });
   });

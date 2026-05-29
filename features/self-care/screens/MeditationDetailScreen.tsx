@@ -35,10 +35,6 @@ import {
   type MeditationRouteParams,
   type MeditationTemplate,
 } from "@/features/self-care/utils/meditationLibrary";
-import {
-  createWellnessSessionLaunchKey,
-  launchWellnessSessionInBackground,
-} from "@/features/self-care/utils/wellnessSessionLaunch";
 import type { ColorSet, Spacing, Typography, TypographyTokens } from "@/theme/types";
 
 type MeditationDetailParams = MeditationRouteParams;
@@ -326,29 +322,10 @@ export default function MeditationDetailScreen() {
     hasLaunchedMeditationRef.current = true;
     setIsStartingMeditation(true);
 
-    const contentObjectId = Number(meditation.id);
-    const launchKey = Number.isFinite(contentObjectId)
-      ? createWellnessSessionLaunchKey("meditation")
-      : null;
-
-    if (Number.isFinite(contentObjectId) && launchKey) {
-      void launchWellnessSessionInBackground(launchKey, {
-        activity_type: "meditation",
-        content_type: "wellness_content.wellnesscontent",
-        content_object_id: contentObjectId,
-        source: "manual",
-        metadata: {
-          entry_surface: "content_detail",
-          test_mode: true,
-        },
-      });
-    }
-
     router.push({
       pathname: ROUTES.AUTH.SELF_CARE_MEDITATION_PLAYER,
       params: {
         ...buildMeditationRouteParams(meditation),
-        ...(launchKey ? { meditationSessionLaunchKey: launchKey } : {}),
       },
     });
   }, [isStartingMeditation, meditation]);

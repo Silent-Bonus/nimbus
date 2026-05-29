@@ -5,7 +5,15 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { Platform, ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Platform,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -14,16 +22,20 @@ import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import AppHeader from "@/components/layout/AppHeader";
+import type { HeaderRightAction } from "@/components/layout/AppHeader";
 import { NimbusButton } from "@/components/ui/theme-components/NimbusButton";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import ThemeContext from "@/contexts/ThemeContext";
 import { ROUTES } from "@/constants/routes";
+import { getWellnessContentDetail } from "@/features/self-care/services/selfCareService";
 import {
+  cacheSoundscapeTracks,
   buildSoundscapeBenefits,
   buildSoundscapeSubtitle,
   formatSoundscapeTagLabel,
   getSoundscapeById,
-  mockSoundscapeSessions,
+  toSoundscapeTrack,
+  type SoundscapeTrack,
 } from "@/features/self-care/utils/soundscapeLibrary";
 import type {
   Spacing,
@@ -43,6 +55,8 @@ const parseParam = (value?: string | string[]) => {
   return value;
 };
 
+const isNumericId = (value: string) => /^\d+$/.test(value.trim());
+
 export default function SoundscapeDetailScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -52,25 +66,28 @@ export default function SoundscapeDetailScreen() {
 
   const soundscapeId = parseParam(params.soundscapeId) ?? "";
 
-  const soundscape = useMemo(
-    () => getSoundscapeById(soundscapeId) ?? mockSoundscapeSessions[0],
-    [soundscapeId]
-  );
-
   const styles = useMemo(
     () => styling(svaColors, svaTypography, spacing, typography),
     [svaColors, svaTypography, spacing, typography]
   );
 
+  const [soundscape, setSoundscape] = useState<SoundscapeTrack | null>(() =>
+    getSoundscapeById(soundscapeId) ?? null
+  );
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const favoriteSet = useMemo(() => new Set(favoriteIds), [favoriteIds]);
-  const isFavorite = favoriteSet.has(soundscape.id);
+  const isFavorite = soundscape ? favoriteSet.has(soundscape.id) : false;
   const benefits = useMemo(
-    () => buildSoundscapeBenefits(soundscape),
+    () => (soundscape ? buildSoundscapeBenefits(soundscape) : []),
     [soundscape]
   );
-  const subtitle = useMemo(() => buildSoundscapeSubtitle(soundscape), [soundscape]);
+  const subtitle = useMemo(
+    () => (soundscape ? buildSoundscapeSubtitle(soundscape) : ""),
+    [soundscape]
+  );
 
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
@@ -100,7 +117,51 @@ export default function SoundscapeDetailScreen() {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+
+    setSoundscape(getSoundscapeById(soundscapeId) ?? null);
+    setLoadError(null);
+
+    if (!isNumericId(soundscapeId)) {
+      setIsLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    setIsLoading(true);
+
+    const loadSoundscapeDetails = async () => {
+      try {
+        const response = await getWellnessContentDetail(Number(soundscapeId));
+        if (!active) return;
+
+        const mappedSoundscape = toSoundscapeTrack(response.data, 0);
+        setSoundscape(mappedSoundscape);
+        cacheSoundscapeTracks([mappedSoundscape]);
+      } catch (error) {
+        console.warn("Unable to load soundscape details:", error);
+        if (active) {
+          setLoadError("Unable to load the latest soundscape details.");
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadSoundscapeDetails();
+
+    return () => {
+      active = false;
+    };
+  }, [soundscapeId]);
+
   const handleToggleFavorite = useCallback(async () => {
+    if (!soundscape) return;
+
     try {
       const nextFavorites = isFavorite
         ? favoriteIds.filter((id) => id !== soundscape.id)
@@ -111,28 +172,48 @@ export default function SoundscapeDetailScreen() {
     } catch (error) {
       console.warn("soundscape favorite toggle failed", error);
     }
-  }, [favoriteIds, isFavorite, soundscape.id]);
+  }, [favoriteIds, isFavorite, soundscape]);
 
   const handleShare = useCallback(async () => {
+    if (!soundscape) return;
+
     await Share.share({
       message: `${soundscape.title} · ${soundscape.description}`,
     });
-  }, [soundscape.description, soundscape.title]);
+  }, [soundscape]);
 
   const handleBack = useCallback(() => {
     router.back();
   }, []);
 
   const handleStartSoundscape = useCallback(() => {
+    if (!soundscape) return;
+
     router.push({
       pathname: ROUTES.AUTH.SELF_CARE_SOUNDSCAPE_PLAYER,
       params: {
         soundscapeId: soundscape.id,
       },
     });
-  }, [soundscape.id]);
+  }, [soundscape]);
 
   const ctaLabel = "Start Soundscape";
+  const headerActions: HeaderRightAction[] = soundscape
+    ? [
+        {
+          icon: isFavorite ? "bookmark" : "bookmark-outline",
+          accessibilityLabel: isFavorite
+            ? "Remove from favorites"
+            : "Add to favorites",
+          onPress: () => void handleToggleFavorite(),
+        },
+        {
+          icon: "share-outline",
+          accessibilityLabel: "Share soundscape",
+          onPress: () => void handleShare(),
+        },
+      ]
+    : [];
 
   return (
     <ScreenView bgColor={svaColors.bg.base} style={styles.screen}>
@@ -141,118 +222,162 @@ export default function SoundscapeDetailScreen() {
           title="Soundscape Prelude"
           subtitle="A quiet threshold before the sound begins."
           onBack={handleBack}
-          rightActions={[
-            {
-              icon: isFavorite ? "bookmark" : "bookmark-outline",
-              accessibilityLabel: isFavorite
-                ? "Remove from favorites"
-                : "Add to favorites",
-              onPress: () => void handleToggleFavorite(),
-            },
-            {
-              icon: "share-outline",
-              accessibilityLabel: "Share soundscape",
-              onPress: () => void handleShare(),
-            },
-          ]}
+          rightActions={headerActions}
           titleStyle={styles.headerTitle}
           subtitleStyle={styles.headerSubtitle}
           containerStyle={styles.header}
         />
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: insets.bottom + spacing.xl * 2.5 },
-          ]}
-        >
-          <View style={styles.heroCard}>
-            <Image
-              source={soundscape.image}
-              style={styles.heroImage}
-              contentFit="cover"
-            />
-            <LinearGradient
-              colors={["rgba(9, 11, 8, 0.02)", "rgba(9, 11, 8, 0.84)"]}
-              style={StyleSheet.absoluteFill}
-            />
+        {!soundscape ? (
+          <View
+            style={[
+              styles.scrollContent,
+              {
+                paddingBottom: insets.bottom + spacing.xl * 2.5,
+              },
+            ]}
+          >
+            <View style={styles.heroCard}>
+              <View style={styles.heroTextBlock}>
+                <Text style={styles.heroKicker}>CURATED SOUNDSCAPE</Text>
+                <Text style={styles.heroTitle} numberOfLines={2}>
+                  {isLoading ? "Refreshing soundscape" : "Soundscape unavailable"}
+                </Text>
+                <Text style={styles.heroSubtext}>
+                  {loadError ?? "Open a soundscape detail screen to load the latest content."}
+                </Text>
 
-            <View style={styles.heroGlowTop} />
-            <View style={styles.heroGlowBottom} />
-
-            <View style={styles.heroTextBlock}>
-              <Text style={styles.heroKicker}>CURATED SOUNDSCAPE</Text>
-              <Text style={styles.heroTitle} numberOfLines={2}>
-                {soundscape.title}
-              </Text>
-              <Text style={styles.heroSubtext}>{subtitle}</Text>
-            </View>
-          </View>
-
-          <View style={styles.descriptionCard}>
-            <View style={styles.cardHeaderRow}>
-              <Text style={styles.cardLabel}>ABOUT THIS SOUNDSCAPE</Text>
-              <Text style={styles.cardMeta}>{soundscape.category}</Text>
-            </View>
-
-            <Text style={styles.descriptionText}>{soundscape.description}</Text>
-
-            <View style={styles.tagsRow}>
-              {soundscape.tags.slice(0, 3).map((tag) => (
-                <View key={tag} style={styles.tagChip}>
-                  <Text style={styles.tagText}>
-                    #{formatSoundscapeTagLabel(tag).toUpperCase()}
+                <View style={styles.loadingChip}>
+                  {isLoading ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={svaColors.brand.primary}
+                    />
+                  ) : (
+                    <Ionicons
+                      name="alert-circle-outline"
+                      size={16}
+                      color={svaColors.brand.primary}
+                    />
+                  )}
+                  <Text style={styles.loadingChipText}>
+                    {isLoading ? "Loading soundscape" : "Waiting for soundscape"}
                   </Text>
                 </View>
-              ))}
+              </View>
             </View>
           </View>
+        ) : (
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[
+              styles.scrollContent,
+              { paddingBottom: insets.bottom + spacing.xl * 2.5 },
+            ]}
+          >
+            <View style={styles.heroCard}>
+              <Image
+                source={soundscape.image}
+                style={styles.heroImage}
+                contentFit="cover"
+              />
+              <LinearGradient
+                colors={["rgba(9, 11, 8, 0.02)", "rgba(9, 11, 8, 0.84)"]}
+                style={StyleSheet.absoluteFill}
+              />
 
-          <View style={styles.benefitCard}>
-            <View style={styles.cardHeaderRow}>
-              <Text style={styles.cardLabel}>WHY IT HELPS</Text>
-              <View style={styles.miniPill}>
-                <Ionicons
-                  name="musical-notes-outline"
-                  size={14}
-                  color={svaColors.text.secondary}
-                />
-                <Text style={styles.miniPillText}>
-                  {soundscape.category.toUpperCase()}
+              <View style={styles.heroGlowTop} />
+              <View style={styles.heroGlowBottom} />
+
+              <View style={styles.heroTextBlock}>
+                <Text style={styles.heroKicker}>CURATED SOUNDSCAPE</Text>
+                <Text style={styles.heroTitle} numberOfLines={2}>
+                  {soundscape.title}
                 </Text>
+                <Text style={styles.heroSubtext}>{subtitle}</Text>
+
+                {isLoading ? (
+                  <View style={styles.loadingChip}>
+                    <ActivityIndicator
+                      size="small"
+                      color={svaColors.brand.primary}
+                    />
+                    <Text style={styles.loadingChipText}>
+                      Refreshing soundscape
+                    </Text>
+                  </View>
+                ) : null}
               </View>
             </View>
 
-            <View style={styles.benefitList}>
-              {benefits.map((benefit) => (
-                <View key={benefit} style={styles.benefitRow}>
-                  <View style={styles.benefitIcon}>
-                    <Ionicons
-                      name="checkmark"
-                      size={14}
-                      color={svaColors.bg.base}
-                    />
-                  </View>
-                  <Text style={styles.benefitText}>{benefit}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
+            <View style={styles.descriptionCard}>
+              <View style={styles.cardHeaderRow}>
+                <Text style={styles.cardLabel}>ABOUT THIS SOUNDSCAPE</Text>
+                <Text style={styles.cardMeta}>{soundscape.category}</Text>
+              </View>
 
-          <NimbusButton
-            label={ctaLabel}
-            onPress={handleStartSoundscape}
-            rightIcon={
-              <Ionicons
-                name="arrow-forward"
-                size={18}
-                color={svaColors.text.inverse}
-              />
-            }
-            style={styles.ctaButton}
-          />
-        </ScrollView>
+              <Text style={styles.descriptionText}>{soundscape.description}</Text>
+
+              {loadError ? (
+                <Text style={styles.errorText}>{loadError}</Text>
+              ) : null}
+
+              <View style={styles.tagsRow}>
+                {soundscape.tags.slice(0, 3).map((tag) => (
+                  <View key={tag} style={styles.tagChip}>
+                    <Text style={styles.tagText}>
+                      #{formatSoundscapeTagLabel(tag).toUpperCase()}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.benefitCard}>
+              <View style={styles.cardHeaderRow}>
+                <Text style={styles.cardLabel}>WHY IT HELPS</Text>
+                <View style={styles.miniPill}>
+                  <Ionicons
+                    name="musical-notes-outline"
+                    size={14}
+                    color={svaColors.text.secondary}
+                  />
+                  <Text style={styles.miniPillText}>
+                    {soundscape.category.toUpperCase()}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.benefitList}>
+                {benefits.map((benefit) => (
+                  <View key={benefit} style={styles.benefitRow}>
+                    <View style={styles.benefitIcon}>
+                      <Ionicons
+                        name="checkmark"
+                        size={14}
+                        color={svaColors.bg.base}
+                      />
+                    </View>
+                    <Text style={styles.benefitText}>{benefit}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            <NimbusButton
+              label={ctaLabel}
+              onPress={handleStartSoundscape}
+              rightIcon={
+                <Ionicons
+                  name="arrow-forward"
+                  size={18}
+                  color={svaColors.text.inverse}
+                />
+              }
+              style={styles.ctaButton}
+            />
+          </ScrollView>
+        )}
       </View>
     </ScreenView>
   );
@@ -368,6 +493,25 @@ const styling = (
       marginTop: 10,
       letterSpacing: 0.3,
     },
+    loadingChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginTop: 12,
+      alignSelf: "flex-start",
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 999,
+      backgroundColor: "rgba(255, 255, 255, 0.08)",
+      borderWidth: 1,
+      borderColor: "rgba(255, 255, 255, 0.08)",
+    },
+    loadingChipText: {
+      ...typography.smallCaption,
+      color: theme.text.secondary,
+      textTransform: "uppercase",
+      letterSpacing: 1.2,
+    },
     descriptionCard: {
       borderRadius: 28,
       backgroundColor: theme.surface.base,
@@ -425,6 +569,13 @@ const styling = (
       lineHeight: 26,
       color: theme.text.primary,
       opacity: 0.96,
+    },
+    errorText: {
+      ...typography.smallCaption,
+      color: "#C85B5B",
+      marginTop: spacing.sm,
+      textTransform: "uppercase",
+      letterSpacing: 1.2,
     },
     tagsRow: {
       flexDirection: "row",

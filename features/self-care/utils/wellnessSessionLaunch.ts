@@ -1,6 +1,4 @@
-import {
-  createWellnessSession,
-} from "@/features/self-care/services/selfCareService";
+import { createWellnessSession } from "@/features/self-care/services/wellnessSessionService";
 import type {
   WellnessSessionCreateResponse,
   WellnessSessionRequest,

@@ -34,10 +34,6 @@ import {
   mapBreathworkDetail,
   hydrateBreathWorkDetail,
 } from "@/features/self-care/utils/breathworkLibrary";
-import {
-  createWellnessSessionLaunchKey,
-  launchWellnessSessionInBackground,
-} from "@/features/self-care/utils/wellnessSessionLaunch";
 import type { BreathWorkRouteParams } from "@/features/self-care/types/breathworkTypes";
 import type { ColorSet, Spacing, Typography } from "@/theme/types";
 
@@ -171,29 +167,10 @@ export default function BreathWorkDetailScreen() {
     hasLaunchedBreathWorkRef.current = true;
     setIsStartingBreathWork(true);
 
-    const contentObjectId = Number(detail.id);
-    const launchKey = Number.isFinite(contentObjectId)
-      ? createWellnessSessionLaunchKey("breathwork")
-      : null;
-
-    if (Number.isFinite(contentObjectId) && launchKey) {
-      void launchWellnessSessionInBackground(launchKey, {
-        activity_type: "breathwork",
-        content_type: "wellness_content.wellnesscontent",
-        content_object_id: contentObjectId,
-        source: "manual",
-        metadata: {
-          entry_surface: "content_detail",
-          test_mode: true,
-        },
-      });
-    }
-
     router.push({
       pathname: ROUTES.AUTH.SELF_CARE_BREATHWORK_SESSION,
       params: {
         ...buildBreathWorkRouteParams(detail),
-        ...(launchKey ? { breathworkSessionLaunchKey: launchKey } : {}),
       },
     });
   }, [detail, isStartingBreathWork]);
@@ -371,12 +348,12 @@ export default function BreathWorkDetailScreen() {
           </View>
 
           <NimbusButton
-            label="Start Breath Work"
+            label="Open Breath Work"
             onPress={handleStartBreathWork}
             loading={isStartingBreathWork}
             disabled={isStartingBreathWork}
-            accessibilityLabel="Start Breath Work"
-            accessibilityHint="Starts the selected breathwork practice"
+            accessibilityLabel="Open Breath Work"
+            accessibilityHint="Opens the selected breathwork session"
             leftIcon={
               <Ionicons
                 name="play"

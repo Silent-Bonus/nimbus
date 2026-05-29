@@ -42,8 +42,12 @@ import {
   type MeditationRouteParams,
   type MeditationTemplate,
 } from "@/features/self-care/utils/meditationLibrary";
-import { completeWellnessSession } from "@/features/self-care/services/selfCareService";
-import { resolveWellnessSessionRef } from "@/features/self-care/utils/wellnessSessionLaunch";
+import {
+  completeWellnessSession,
+  createWellnessSession,
+  pauseWellnessSession,
+  resumeWellnessSession,
+} from "@/features/self-care/services/wellnessSessionService";
 import type {
   ColorSet,
   Spacing,
@@ -79,9 +83,6 @@ export default function MeditationPlayerScreen() {
     useContext(ThemeContext);
 
   const meditationId = parseParam(params.meditationId) ?? "moonlit-reset";
-  const meditationSessionRef = parseParam(params.meditationSessionRef) ?? "";
-  const meditationSessionLaunchKey =
-    parseParam(params.meditationSessionLaunchKey) ?? "";
   const fallbackMeditation = useMemo<MeditationTemplate>(() => {
     return (
       mockMeditationRecommendations.find(
@@ -107,12 +108,23 @@ export default function MeditationPlayerScreen() {
   const soundRef = useRef<Audio.Sound | null>(null);
   const playbackPositionRef = useRef(0);
   const hasCompletedSessionRef = useRef(false);
+  const sessionStatusRef = useRef<
+    "idle" | "creating" | "active" | "paused" | "completed"
+  >("idle");
+  const pauseSessionRef = useRef<(() => Promise<void>) | null>(null);
+  const sessionCreatePromiseRef = useRef<Promise<string | null> | null>(null);
+  const completionInFlightRef = useRef(false);
+  const leavingScreenRef = useRef(false);
   const [playbackStatus, setPlaybackStatus] = useState<AVPlaybackStatus | null>(
     null
   );
   const [isLoading, setIsLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
   const [ambientMode, setAmbientMode] = useState(false);
+  const [sessionStatus, setSessionStatus] = useState<
+    "idle" | "creating" | "active" | "paused" | "completed"
+  >("idle");
+  const [sessionRef, setSessionRef] = useState<string | null>(null);
 
   const isPlaying = playbackStatus?.isLoaded ? playbackStatus.isPlaying : false;
   const positionMillis = playbackStatus?.isLoaded
@@ -139,34 +151,149 @@ export default function MeditationPlayerScreen() {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
-  const completeSession = useCallback(async () => {
-    if (hasCompletedSessionRef.current) {
+  useEffect(() => {
+    setSessionStatus("idle");
+    setSessionRef(null);
+    sessionStatusRef.current = "idle";
+    sessionCreatePromiseRef.current = null;
+    completionInFlightRef.current = false;
+    leavingScreenRef.current = false;
+    hasCompletedSessionRef.current = false;
+    playbackPositionRef.current = 0;
+  }, [meditationId]);
+
+  useEffect(() => {
+    sessionStatusRef.current = sessionStatus;
+  }, [sessionStatus]);
+
+  const resolveSessionRef = useCallback(async () => {
+    if (sessionRef) {
+      return sessionRef;
+    }
+
+    if (!sessionCreatePromiseRef.current) {
+      return null;
+    }
+
+    const resolved = await sessionCreatePromiseRef.current;
+    if (resolved) {
+      setSessionRef(resolved);
+    }
+
+    return resolved;
+  }, [sessionRef]);
+
+  const ensureSessionStarted = useCallback(() => {
+    if (
+      sessionStatus !== "idle" ||
+      sessionCreatePromiseRef.current ||
+      !Number.isFinite(Number(template.id))
+    ) {
       return;
     }
 
-    const resolvedSessionRef = await resolveWellnessSessionRef({
-      sessionRef: meditationSessionRef,
-      launchKey: meditationSessionLaunchKey,
-      timeoutMs: 15000,
-    });
+    setSessionStatus("creating");
 
+    const promise = createWellnessSession({
+      activity_type: "meditation",
+      content_type: "wellness_content.wellnesscontent",
+      content_object_id: Number(template.id),
+      source: "manual",
+      metadata: {
+        entry_surface: "player_screen",
+        test_mode: true,
+      },
+    })
+      .then((response) => {
+        const nextSessionRef = response.data.session_ref;
+        setSessionRef(nextSessionRef);
+        setSessionStatus((current) =>
+          current === "paused" || current === "completed" ? current : "active"
+        );
+        return nextSessionRef;
+      })
+      .catch((error) => {
+        console.warn("Unable to create meditation session:", error);
+        return null;
+      })
+      .finally(() => {
+        sessionCreatePromiseRef.current = null;
+      });
+
+    sessionCreatePromiseRef.current = promise;
+  }, [sessionStatus, template.id]);
+
+  const pauseSession = useCallback(async () => {
+    if (
+      sessionStatus === "idle" ||
+      sessionStatus === "paused" ||
+      sessionStatus === "completed"
+    ) {
+      return;
+    }
+
+    const resolvedSessionRef = await resolveSessionRef();
     if (!resolvedSessionRef) {
       return;
     }
 
-    hasCompletedSessionRef.current = true;
+    try {
+      await pauseWellnessSession(resolvedSessionRef);
+      setSessionStatus("paused");
+    } catch (error) {
+      console.warn("Unable to pause meditation session:", error);
+    }
+  }, [resolveSessionRef, sessionStatus]);
+
+  useEffect(() => {
+    pauseSessionRef.current = pauseSession;
+  }, [pauseSession]);
+
+  const resumeSession = useCallback(async () => {
+    if (sessionStatus !== "paused") {
+      return;
+    }
+
+    const resolvedSessionRef = await resolveSessionRef();
+    if (!resolvedSessionRef) {
+      return;
+    }
 
     try {
+      await resumeWellnessSession(resolvedSessionRef);
+      setSessionStatus("active");
+    } catch (error) {
+      console.warn("Unable to resume meditation session:", error);
+    }
+  }, [resolveSessionRef, sessionStatus]);
+
+  const completeSession = useCallback(async () => {
+    if (completionInFlightRef.current || hasCompletedSessionRef.current) {
+      return;
+    }
+
+    completionInFlightRef.current = true;
+
+    try {
+      const resolvedSessionRef = await resolveSessionRef();
+      if (!resolvedSessionRef) {
+        return;
+      }
+
       await completeWellnessSession(resolvedSessionRef, {
         duration_seconds: Math.max(
           0,
           Math.round(playbackPositionRef.current / 1000)
         ),
       });
+      hasCompletedSessionRef.current = true;
+      setSessionStatus("completed");
     } catch (error) {
       console.warn("Unable to complete meditation session", error);
+    } finally {
+      completionInFlightRef.current = false;
     }
-  }, [meditationSessionLaunchKey, meditationSessionRef]);
+  }, [resolveSessionRef]);
 
   const handlePlaybackStatusUpdate = useCallback(
     (status: AVPlaybackStatus) => {
@@ -200,7 +327,7 @@ export default function MeditationPlayerScreen() {
         const { sound } = await Audio.Sound.createAsync(
           playbackSource,
           {
-            shouldPlay: true,
+            shouldPlay: false,
             progressUpdateIntervalMillis: 500,
           },
           handlePlaybackStatusUpdate
@@ -225,11 +352,16 @@ export default function MeditationPlayerScreen() {
 
     return () => {
       active = false;
-      void completeSession();
+      if (!leavingScreenRef.current) {
+        const currentStatus = sessionStatusRef.current;
+        if (currentStatus === "active" || currentStatus === "creating") {
+          void pauseSessionRef.current?.();
+        }
+      }
       soundRef.current?.unloadAsync();
       soundRef.current = null;
     };
-  }, [completeSession, handlePlaybackStatusUpdate, playbackSource]);
+  }, [handlePlaybackStatusUpdate, playbackSource]);
 
   const handleSeek = useCallback(async (delta: number) => {
     const sound = soundRef.current;
@@ -245,14 +377,47 @@ export default function MeditationPlayerScreen() {
 
   const handleTogglePlayPause = useCallback(async () => {
     const sound = soundRef.current;
-    if (!sound) return;
+    if (!sound || sessionStatus === "completed") return;
 
     if (isPlaying) {
       await sound.pauseAsync();
-    } else {
-      await sound.playAsync();
+      void pauseSession();
+      return;
     }
-  }, [isPlaying]);
+
+    if (sessionStatus === "paused") {
+      await sound.playAsync();
+      void resumeSession();
+      return;
+    }
+
+    ensureSessionStarted();
+    await sound.playAsync();
+    setSessionStatus((current) =>
+      current === "completed" ? current : "active"
+    );
+  }, [
+    ensureSessionStarted,
+    isPlaying,
+    pauseSession,
+    resumeSession,
+    sessionStatus,
+  ]);
+
+  const handleBack = useCallback(async () => {
+    leavingScreenRef.current = true;
+
+    const sound = soundRef.current;
+    if (sound && isPlaying) {
+      await sound.pauseAsync();
+    }
+
+    if (sessionStatus !== "idle" && sessionStatus !== "completed") {
+      await pauseSession();
+    }
+
+    router.back();
+  }, [isPlaying, pauseSession, sessionStatus]);
 
   const handleShare = useCallback(async () => {
     await Share.share({
@@ -268,7 +433,7 @@ export default function MeditationPlayerScreen() {
     <ScreenView bgColor={theme.background} style={styles.screen}>
       <View style={styles.root}>
         <MeditationPlayerHeader
-          onBack={() => router.back()}
+          onBack={() => void handleBack()}
         />
 
         <ScrollView

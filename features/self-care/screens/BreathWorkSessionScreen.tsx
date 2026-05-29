@@ -28,10 +28,12 @@ import AppHeader from "@/components/layout/AppHeader";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import ThemeContext from "@/contexts/ThemeContext";
 import BreathMotionCanvas from "@/features/self-care/components/breathwork/BreathMotionCanvas";
+import { getWellnessContentDetail } from "@/features/self-care/services/selfCareService";
 import {
   completeWellnessSession,
-  getWellnessContentDetail,
-} from "@/features/self-care/services/selfCareService";
+  createWellnessSession,
+  pauseWellnessSession,
+} from "@/features/self-care/services/wellnessSessionService";
 import {
   cacheBreathWorkDetail,
   getCachedBreathWorkDetail,
@@ -48,7 +50,6 @@ import type {
   BreathWorkRouteParams,
 } from "@/features/self-care/types/breathworkTypes";
 import { makeBreathWorkSessionStyles } from "@/features/self-care/styles/breathwork/breathWorkSessionStyles";
-import { resolveWellnessSessionRef } from "@/features/self-care/utils/wellnessSessionLaunch";
 
 type BreathWorkSessionParams = BreathWorkRouteParams;
 
@@ -96,9 +97,6 @@ export default function BreathWorkSessionScreen() {
   const params = useLocalSearchParams<BreathWorkSessionParams>();
   const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
   const breathworkId = parseParam(params.breathworkId);
-  const breathworkSessionRef = parseParam(params.breathworkSessionRef) ?? "";
-  const breathworkSessionLaunchKey =
-    parseParam(params.breathworkSessionLaunchKey) ?? "";
 
   const routeBreathworkParams = useMemo(
     () => ({
@@ -161,6 +159,15 @@ export default function BreathWorkSessionScreen() {
   const [hasStarted, setHasStarted] = useState(false);
   const [hasCompletedSession, setHasCompletedSession] = useState(false);
   const [isCompletingSession, setIsCompletingSession] = useState(false);
+  const [sessionStatus, setSessionStatus] = useState<
+    "idle" | "creating" | "active" | "paused" | "completed"
+  >("idle");
+  const [sessionRef, setSessionRef] = useState<string | null>(null);
+  const sessionStatusRef = useRef<"idle" | "creating" | "active" | "paused" | "completed">("idle");
+  const sessionCreatePromiseRef = useRef<Promise<string | null> | null>(null);
+  const pauseSessionRef = useRef<(() => Promise<void>) | null>(null);
+  const completionInFlightRef = useRef(false);
+  const leavingScreenRef = useRef(false);
   const phaseProgress = useRef(new Animated.Value(0)).current;
   const phaseIndexRef = useRef(0);
   const elapsedSecondsRef = useRef(0);
@@ -234,10 +241,20 @@ export default function BreathWorkSessionScreen() {
     setHasStarted(false);
     setHasCompletedSession(false);
     setIsCompletingSession(false);
+    setSessionStatus("idle");
+    setSessionRef(null);
+    sessionStatusRef.current = "idle";
+    sessionCreatePromiseRef.current = null;
+    completionInFlightRef.current = false;
+    leavingScreenRef.current = false;
     elapsedSecondsRef.current = 0;
     phaseProgress.stopAnimation();
     phaseProgress.setValue(0);
   }, [detail.id, phaseProgress, phases]);
+
+  useEffect(() => {
+    sessionStatusRef.current = sessionStatus;
+  }, [sessionStatus]);
 
   useEffect(() => {
     if (!hasStarted) {
@@ -343,17 +360,106 @@ export default function BreathWorkSessionScreen() {
   const canTriggerPrimaryAction =
     !hasCompletedSession && (!hasStarted || hasCompletedMinimumRounds);
 
+  const resolveSessionRef = useCallback(async () => {
+    if (sessionRef) {
+      return sessionRef;
+    }
+
+    if (!sessionCreatePromiseRef.current) {
+      return null;
+    }
+
+    const resolved = await sessionCreatePromiseRef.current;
+    if (resolved) {
+      setSessionRef(resolved);
+    }
+
+    return resolved;
+  }, [sessionRef]);
+
+  const ensureSessionStarted = useCallback(() => {
+    if (
+      sessionStatus !== "idle" ||
+      sessionCreatePromiseRef.current ||
+      !Number.isFinite(Number(detail.id))
+    ) {
+      return;
+    }
+
+    setSessionStatus("creating");
+
+    const promise = createWellnessSession({
+      activity_type: "breathwork",
+      content_type: "wellness_content.wellnesscontent",
+      content_object_id: Number(detail.id),
+      source: "manual",
+      metadata: {
+        entry_surface: "session_screen",
+        test_mode: true,
+      },
+    })
+      .then((response) => {
+        const nextSessionRef = response.data.session_ref;
+        setSessionRef(nextSessionRef);
+        setSessionStatus((current) =>
+          current === "paused" || current === "completed" ? current : "active"
+        );
+        return nextSessionRef;
+      })
+      .catch((error) => {
+        console.warn("Unable to create breathwork session:", error);
+        return null;
+      })
+      .finally(() => {
+        sessionCreatePromiseRef.current = null;
+      });
+
+    sessionCreatePromiseRef.current = promise;
+  }, [detail.id, sessionStatus]);
+
+  const pauseSession = useCallback(async () => {
+    if (
+      sessionStatus === "idle" ||
+      sessionStatus === "paused" ||
+      sessionStatus === "completed"
+    ) {
+      return;
+    }
+
+    const resolvedSessionRef = await resolveSessionRef();
+    if (!resolvedSessionRef) {
+      return;
+    }
+
+    try {
+      await pauseWellnessSession(resolvedSessionRef);
+      setSessionStatus("paused");
+    } catch (error) {
+      console.warn("Unable to pause breathwork session:", error);
+    }
+  }, [resolveSessionRef, sessionStatus]);
+
+  useEffect(() => {
+    pauseSessionRef.current = pauseSession;
+  }, [pauseSession]);
+
   const handleStart = useCallback(() => {
     if (hasCompletedSession || isCompletingSession) {
       return;
     }
 
+    ensureSessionStarted();
     setHasStarted(true);
 
     if (Platform.OS !== "web") {
       void Haptics.selectionAsync().catch(() => {});
     }
-  }, [hasCompletedSession, isCompletingSession]);
+  }, [
+    ensureSessionStarted,
+    detail.id,
+    hasCompletedSession,
+    isCompletingSession,
+  ]);
 
   const handleCompleteBreathwork = useCallback(async () => {
     if (
@@ -370,13 +476,10 @@ export default function BreathWorkSessionScreen() {
     }
 
     setIsCompletingSession(true);
+    completionInFlightRef.current = true;
 
     try {
-      const resolvedSessionRef = await resolveWellnessSessionRef({
-        sessionRef: breathworkSessionRef,
-        launchKey: breathworkSessionLaunchKey,
-        timeoutMs: 15000,
-      });
+      const resolvedSessionRef = await resolveSessionRef();
 
       if (resolvedSessionRef) {
         await completeWellnessSession(resolvedSessionRef, {
@@ -388,6 +491,7 @@ export default function BreathWorkSessionScreen() {
 
       setHasStarted(false);
       setHasCompletedSession(true);
+      setSessionStatus("completed");
       phaseIndexRef.current = 0;
       setPhaseIndex(0);
       setSecondsRemaining(phases[0]?.seconds ?? 0);
@@ -397,19 +501,33 @@ export default function BreathWorkSessionScreen() {
       console.warn("Unable to complete breathwork session:", error);
     } finally {
       setIsCompletingSession(false);
+      completionInFlightRef.current = false;
     }
   }, [
-    breathworkSessionRef,
-    breathworkSessionLaunchKey,
     hasCompletedMinimumRounds,
     hasCompletedSession,
     hasStarted,
     isCompletingSession,
     phaseProgress,
+    resolveSessionRef,
     phases,
   ]);
 
-  const handleRestart = () => {
+  const handleBack = useCallback(async () => {
+    leavingScreenRef.current = true;
+
+    if (sessionStatus !== "idle" && sessionStatus !== "completed") {
+      await pauseSession();
+    }
+
+    router.back();
+  }, [pauseSession, sessionStatus]);
+
+  const handleRestart = useCallback(async () => {
+    if (sessionStatus === "active" || sessionStatus === "creating") {
+      await pauseSession();
+    }
+
     phaseIndexRef.current = 0;
     setPhaseIndex(0);
     setSecondsRemaining(phases[0]?.seconds ?? 0);
@@ -417,6 +535,12 @@ export default function BreathWorkSessionScreen() {
     setHasStarted(false);
     setHasCompletedSession(false);
     setIsCompletingSession(false);
+    setSessionStatus("idle");
+    setSessionRef(null);
+    sessionStatusRef.current = "idle";
+    sessionCreatePromiseRef.current = null;
+    completionInFlightRef.current = false;
+    leavingScreenRef.current = false;
     elapsedSecondsRef.current = 0;
     phaseProgress.stopAnimation();
     phaseProgress.setValue(0);
@@ -424,7 +548,20 @@ export default function BreathWorkSessionScreen() {
     if (Platform.OS !== "web") {
       void Haptics.selectionAsync().catch(() => {});
     }
-  };
+  }, [pauseSession, phaseProgress, phases, sessionStatus]);
+
+  useEffect(() => {
+    return () => {
+      if (leavingScreenRef.current) {
+        return;
+      }
+
+      const currentStatus = sessionStatusRef.current;
+      if (currentStatus === "active" || currentStatus === "creating") {
+        void pauseSessionRef.current?.();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     setSecondsRemaining(currentPhase.seconds);
@@ -436,12 +573,12 @@ export default function BreathWorkSessionScreen() {
         <AppHeader
           title="Breath Session"
           subtitle={phaseTimeline}
-          onBack={() => router.back()}
+          onBack={() => void handleBack()}
           rightActions={[
             {
               icon: "refresh-outline",
               accessibilityLabel: "Restart session",
-              onPress: handleRestart,
+              onPress: () => void handleRestart(),
             },
           ]}
           containerStyle={styles.header}

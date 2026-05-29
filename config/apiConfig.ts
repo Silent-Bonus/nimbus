@@ -12,8 +12,6 @@ const BASE_URLS = {
 
 // Get the base URL based on the environment
 const BASE_URL = BASE_URLS[ENV];
-const WELLNESS_SESSION_BASE_URL = BASE_URL;
-
 export const API_URL = BASE_URL;
 
 // Define API endpoints
@@ -62,9 +60,21 @@ export const API_ENDPOINTS = {
   getWellnessContent: `${BASE_URL}/api/v1/wellness-content/`,
   getWellnessContentDetail: (id: number | string) =>
     `${BASE_URL}/api/v1/wellness-content/${id}/`,
-  createWellnessSession: `${WELLNESS_SESSION_BASE_URL}/api/v1/wellness/sessions/`,
+  createWellnessSession: `${BASE_URL}/api/v1/wellness/sessions/`,
+  getWellnessSessionList: `${BASE_URL}/api/v1/wellness/sessions/`,
+  getWellnessSessionByRef: (sessionRef: string) =>
+    `${BASE_URL}/api/v1/wellness/sessions/${sessionRef}/`,
+  pauseWellnessSession: (sessionRef: string) =>
+    `${BASE_URL}/api/v1/wellness/sessions/${sessionRef}/pause/`,
+  resumeWellnessSession: (sessionRef: string) =>
+    `${BASE_URL}/api/v1/wellness/sessions/${sessionRef}/resume/`,
   completeWellnessSession: (sessionRef: string) =>
-    `${WELLNESS_SESSION_BASE_URL}/api/v1/wellness/sessions/${sessionRef}/complete/`,
+    `${BASE_URL}/api/v1/wellness/sessions/${sessionRef}/complete/`,
+  submitWellnessSessionFeedback: (sessionRef: string) =>
+    `${BASE_URL}/api/v1/wellness/sessions/${sessionRef}/feedback/`,
+  createMoodLog: `${BASE_URL}/api/v1/wellness/mood-logs/`,
+  getMoodLogStats: `${BASE_URL}/api/v1/wellness/mood-logs/stats/`,
+  getWellnessSummary: `${BASE_URL}/api/v1/wellness/summary/`,
 
   getMentalTestList: `${BASE_URL}/assesment/assessments/`,
 
