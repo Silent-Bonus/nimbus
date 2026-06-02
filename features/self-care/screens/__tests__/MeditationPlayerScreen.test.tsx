@@ -112,6 +112,16 @@ jest.mock("../../services/wellnessSessionService", () => ({
     mockCompleteWellnessSessionFn(...args),
 }));
 
+jest.mock(
+  "../../../../features/session-feedback/components/SessionFeedbackModal",
+  () => {
+    const React = require("react");
+    return function MockSessionFeedbackModal() {
+      return null;
+    };
+  }
+);
+
 const theme = getTheme("sva");
 const themeValue = {
   theme: "sva",
