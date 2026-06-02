@@ -5,7 +5,6 @@ import ThemeContext from "@/contexts/ThemeContext";
 import type { Spacing, SvaColorSet, TypographyTokens } from "@/theme/types";
 
 type ArticleContextCardProps = {
-  eyebrow: string;
   primaryLabel: string;
   primaryValue: string;
   secondaryLabel: string;
@@ -14,7 +13,6 @@ type ArticleContextCardProps = {
 };
 
 const ArticleContextCard: React.FC<ArticleContextCardProps> = ({
-  eyebrow,
   primaryLabel,
   primaryValue,
   secondaryLabel,
@@ -26,7 +24,6 @@ const ArticleContextCard: React.FC<ArticleContextCardProps> = ({
 
   return (
     <View style={styles.card}>
-      <Text style={styles.eyebrow}>{eyebrow.toUpperCase()}</Text>
       <View style={styles.metricsRow}>
         <View style={styles.metric}>
           <Text style={styles.metricLabel}>{primaryLabel.toUpperCase()}</Text>
@@ -60,13 +57,6 @@ const styling = (
       shadowRadius: 16,
       shadowOffset: { width: 0, height: 8 },
       elevation: 7,
-    },
-    eyebrow: {
-      ...typography?.textStyle?.authTinyLabel,
-      color: colors.text.secondary,
-      fontSize: 9.5,
-      letterSpacing: 2,
-      marginBottom: spacing.sm,
     },
     metricsRow: {
       flexDirection: "row",

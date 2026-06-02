@@ -10,12 +10,14 @@ import {
   Easing,
   Modal,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import Svg, {
   Circle,
   Defs,
@@ -26,6 +28,8 @@ import Svg, {
 
 import ThemeContext from "@/contexts/ThemeContext";
 
+type ProcessingModalStatus = "loading" | "success" | "error";
+
 type ProcessingModalProps = {
   visible: boolean;
   centerMessage?: ReactNode;
@@ -33,6 +37,9 @@ type ProcessingModalProps = {
   title?: string;
   subtitle?: string;
   message?: ReactNode;
+  status?: ProcessingModalStatus;
+  actionLabel?: string;
+  onActionPress?: () => void;
   onRequestClose?: () => void;
 };
 
@@ -64,13 +71,23 @@ export default function ProcessingModal({
   title = "Processing",
   subtitle = "Please wait while we finish your request.",
   message = "We're sending this to the backend and preparing the next screen.",
-  onRequestClose = () => {},
+  status = "loading",
+  actionLabel,
+  onActionPress,
+  onRequestClose,
 }: ProcessingModalProps) {
   const { newTheme, spacing, svaColors, svaTypography, typography } =
     useContext(ThemeContext);
 
   const bodyTextStyle = svaTypography?.textStyle?.body ?? typography.body;
   const accentColor = svaColors?.brand?.primary ?? newTheme.accent ?? "#B8D39B";
+  const isLoading = status === "loading";
+  const statusIconColor =
+    status === "success"
+      ? newTheme.success ?? accentColor
+      : status === "error"
+        ? newTheme.error ?? accentColor
+        : accentColor;
 
   const styles = useMemo(
     () =>
@@ -92,7 +109,7 @@ export default function ProcessingModal({
   const ringThree = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (!visible) {
+    if (!visible || !isLoading) {
       [floatX, floatY, breathe, ringOne, ringTwo, ringThree].forEach(
         (value) => {
           value.stopAnimation();
@@ -206,7 +223,7 @@ export default function ProcessingModal({
     return () => {
       loops.forEach((animation) => animation.stop());
     };
-  }, [breathe, floatX, floatY, ringOne, ringThree, ringTwo, visible]);
+  }, [breathe, floatX, floatY, isLoading, ringOne, ringThree, ringTwo, visible]);
 
   const floatXTranslate = floatX.interpolate({
     inputRange: [0, 0.5, 1],
@@ -233,6 +250,13 @@ export default function ProcessingModal({
     outputRange: [0.22, 0.38, 0.22],
   });
 
+  const resolvedCenterMessage =
+    centerMessage ??
+    (title || subtitle ? [title, subtitle].filter(Boolean).join("\n") : null);
+  const resolvedFooterMessage =
+    footerMessage ?? message ?? "Please wait while we finish your request.";
+  const handleActionPress = onActionPress ?? onRequestClose ?? (() => {});
+
   const ringOneScale = ringOne.interpolate({
     inputRange: [0, 1],
     outputRange: [0.88, 1.45],
@@ -258,12 +282,6 @@ export default function ProcessingModal({
     outputRange: [0.28, 0.12, 0],
   });
 
-  const resolvedCenterMessage =
-    centerMessage ??
-    (title || subtitle ? [title, subtitle].filter(Boolean).join("\n") : null);
-  const resolvedFooterMessage =
-    footerMessage ?? message ?? "Please wait while we finish your request.";
-
   return (
     <Modal
       visible={visible}
@@ -271,7 +289,11 @@ export default function ProcessingModal({
       animationType="fade"
       presentationStyle="overFullScreen"
       statusBarTranslucent
-      onRequestClose={onRequestClose}
+      onRequestClose={() => {
+        if (!isLoading) {
+          onRequestClose?.();
+        }
+      }}
     >
       <View style={styles.overlay}>
         <View style={styles.backdrop} />
@@ -289,137 +311,181 @@ export default function ProcessingModal({
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.content}>
             <View style={styles.orbitalField}>
-              <Animated.View
-                pointerEvents="none"
-                style={[
-                  styles.halo,
-                  {
-                    opacity: haloOpacity,
-                    transform: [{ scale: haloScale }],
-                  },
-                ]}
-              >
-                <LinearGradient
-                  colors={[accentColor, "transparent"]}
-                  style={StyleSheet.absoluteFillObject}
-                />
-              </Animated.View>
+              {isLoading ? (
+                <>
+                  <Animated.View
+                    pointerEvents="none"
+                    style={[
+                      styles.halo,
+                      {
+                        opacity: haloOpacity,
+                        transform: [{ scale: haloScale }],
+                      },
+                    ]}
+                  >
+                    <LinearGradient
+                      colors={[accentColor, "transparent"]}
+                      style={StyleSheet.absoluteFillObject}
+                    />
+                  </Animated.View>
 
-              <Animated.View
-                pointerEvents="none"
-                style={[
-                  styles.ring,
-                  {
-                    opacity: ringOneOpacity,
-                    transform: [{ scale: ringOneScale }],
-                  },
-                ]}
-              />
-              <Animated.View
-                pointerEvents="none"
-                style={[
-                  styles.ring,
-                  {
-                    opacity: ringTwoOpacity,
-                    transform: [{ scale: ringTwoScale }],
-                  },
-                ]}
-              />
-              <Animated.View
-                pointerEvents="none"
-                style={[
-                  styles.ring,
-                  {
-                    opacity: ringThreeOpacity,
-                    transform: [{ scale: ringThreeScale }],
-                  },
-                ]}
-              />
+                  <Animated.View
+                    pointerEvents="none"
+                    style={[
+                      styles.ring,
+                      {
+                        opacity: ringOneOpacity,
+                        transform: [{ scale: ringOneScale }],
+                      },
+                    ]}
+                  />
+                  <Animated.View
+                    pointerEvents="none"
+                    style={[
+                      styles.ring,
+                      {
+                        opacity: ringTwoOpacity,
+                        transform: [{ scale: ringTwoScale }],
+                      },
+                    ]}
+                  />
+                  <Animated.View
+                    pointerEvents="none"
+                    style={[
+                      styles.ring,
+                      {
+                        opacity: ringThreeOpacity,
+                        transform: [{ scale: ringThreeScale }],
+                      },
+                    ]}
+                  />
 
-              <Animated.View
-                style={[
-                  styles.blobMotion,
-                  {
-                    transform: [
-                      { translateX: floatXTranslate },
-                      { translateY: floatYTranslate },
-                      { scale: floatScale },
-                      { rotate: floatRotate },
-                    ],
-                  },
-                ]}
-              >
+                  <Animated.View
+                    style={[
+                      styles.blobMotion,
+                      {
+                        transform: [
+                          { translateX: floatXTranslate },
+                          { translateY: floatYTranslate },
+                          { scale: floatScale },
+                          { rotate: floatRotate },
+                        ],
+                      },
+                    ]}
+                  >
+                    <View style={styles.blobShell}>
+                      <Svg width="100%" height="100%" viewBox="0 0 240 240">
+                        <Defs>
+                          <RadialGradient
+                            id="blobBase"
+                            cx="35%"
+                            cy="28%"
+                            rx="80%"
+                            ry="80%"
+                            fx="30%"
+                            fy="20%"
+                          >
+                            <Stop
+                              offset="0%"
+                              stopColor="#FFFFFF"
+                              stopOpacity="0.88"
+                            />
+                            <Stop
+                              offset="24%"
+                              stopColor={accentColor}
+                              stopOpacity="1"
+                            />
+                            <Stop
+                              offset="58%"
+                              stopColor={accentColor}
+                              stopOpacity="0.72"
+                            />
+                            <Stop
+                              offset="100%"
+                              stopColor={accentColor}
+                              stopOpacity="0.12"
+                            />
+                          </RadialGradient>
+                          <RadialGradient
+                            id="blobGlow"
+                            cx="50%"
+                            cy="40%"
+                            rx="70%"
+                            ry="70%"
+                          >
+                            <Stop
+                              offset="0%"
+                              stopColor={accentColor}
+                              stopOpacity="0.58"
+                            />
+                            <Stop
+                              offset="65%"
+                              stopColor={accentColor}
+                              stopOpacity="0.2"
+                            />
+                            <Stop
+                              offset="100%"
+                              stopColor={accentColor}
+                              stopOpacity="0"
+                            />
+                          </RadialGradient>
+                        </Defs>
+
+                        <Circle cx="120" cy="122" r="86" fill="url(#blobGlow)" />
+                        <Path
+                          d="M120 22C145 16 167 28 181 46C194 64 208 82 204 107C200 132 192 154 177 171C161 188 141 198 120 199C97 200 75 195 57 182C38 168 21 150 18 126C14 102 23 78 36 60C49 42 66 26 88 21C101 18 110 25 120 22Z"
+                          fill="url(#blobBase)"
+                        />
+                        <Path
+                          d="M121 35C141 30 159 38 170 53C181 68 190 82 187 103C184 124 179 142 167 155C154 170 137 180 120 180C101 181 83 177 68 167C52 156 38 142 35 121C31 99 37 79 48 63C58 47 72 36 90 33C103 31 111 38 121 35Z"
+                          fill="#FFFFFF"
+                          fillOpacity="0.12"
+                        />
+                        <Circle
+                          cx="84"
+                          cy="76"
+                          r="16"
+                          fill="#FFFFFF"
+                          fillOpacity="0.28"
+                        />
+                        <Circle
+                          cx="160"
+                          cy="82"
+                          r="10"
+                          fill="#FFFFFF"
+                          fillOpacity="0.16"
+                        />
+                        <Circle
+                          cx="150"
+                          cy="161"
+                          r="14"
+                          fill="#FFFFFF"
+                          fillOpacity="0.14"
+                        />
+                        <Circle
+                          cx="74"
+                          cy="154"
+                          r="8"
+                          fill="#FFFFFF"
+                          fillOpacity="0.12"
+                        />
+                      </Svg>
+                    </View>
+                  </Animated.View>
+                </>
+              ) : (
                 <View style={styles.blobShell}>
-                  <Svg width="100%" height="100%" viewBox="0 0 240 240">
-                    <Defs>
-                      <RadialGradient
-                        id="blobBase"
-                        cx="35%"
-                        cy="28%"
-                        rx="80%"
-                        ry="80%"
-                        fx="30%"
-                        fy="20%"
-                      >
-                        <Stop
-                          offset="0%"
-                          stopColor="#FFFFFF"
-                          stopOpacity="0.88"
-                        />
-                        <Stop
-                          offset="24%"
-                          stopColor={accentColor}
-                          stopOpacity="1"
-                        />
-                        <Stop
-                          offset="58%"
-                          stopColor={accentColor}
-                          stopOpacity="0.72"
-                        />
-                        <Stop
-                          offset="100%"
-                          stopColor={accentColor}
-                          stopOpacity="0.12"
-                        />
-                      </RadialGradient>
-                      <RadialGradient
-                        id="blobGlow"
-                        cx="50%"
-                        cy="40%"
-                        rx="70%"
-                        ry="70%"
-                      >
-                        <Stop
-                          offset="0%"
-                          stopColor={accentColor}
-                          stopOpacity="0.58"
-                        />
-                        <Stop
-                          offset="65%"
-                          stopColor={accentColor}
-                          stopOpacity="0.2"
-                        />
-                        <Stop offset="100%" stopColor={accentColor} stopOpacity="0" />
-                      </RadialGradient>
-                    </Defs>
-
-                    <Circle cx="120" cy="122" r="86" fill="url(#blobGlow)" />
-                    <Path
-                      d="M120 22C145 16 167 28 181 46C194 64 208 82 204 107C200 132 192 154 177 171C161 188 141 198 120 199C97 200 75 195 57 182C38 168 21 150 18 126C14 102 23 78 36 60C49 42 66 26 88 21C101 18 110 25 120 22Z"
-                      fill="url(#blobBase)"
-                    />
-                    <Path
-                      d="M121 35C141 30 159 38 170 53C181 68 190 82 187 103C184 124 179 142 167 155C154 170 137 180 120 180C101 181 83 177 68 167C52 156 38 142 35 121C31 99 37 79 48 63C58 47 72 36 90 33C103 31 111 38 121 35Z"
-                      fill="#FFFFFF"
-                      fillOpacity="0.12"
-                    />
-                    <Circle cx="84" cy="76" r="16" fill="#FFFFFF" fillOpacity="0.28" />
-                    <Circle cx="160" cy="82" r="10" fill="#FFFFFF" fillOpacity="0.16" />
-                    <Circle cx="150" cy="161" r="14" fill="#FFFFFF" fillOpacity="0.14" />
-                    <Circle cx="74" cy="154" r="8" fill="#FFFFFF" fillOpacity="0.12" />
-                  </Svg>
+                  <Ionicons
+                    name={
+                      status === "success"
+                        ? "checkmark-circle-outline"
+                        : "alert-circle-outline"
+                    }
+                    size={72}
+                    color={statusIconColor}
+                  />
                 </View>
-              </Animated.View>
+              )}
             </View>
 
             {resolvedCenterMessage ? (
@@ -437,6 +503,24 @@ export default function ProcessingModal({
             <View style={styles.footerShell}>
               {renderMessage(resolvedFooterMessage, styles.footerMessage)}
             </View>
+
+            {!isLoading ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={handleActionPress}
+                style={({ pressed }) => [
+                  styles.actionButton,
+                  {
+                    backgroundColor: statusIconColor,
+                    opacity: pressed ? 0.9 : 1,
+                  },
+                ]}
+              >
+                <Text style={styles.actionText}>
+                  {actionLabel ?? (status === "error" ? "Close" : "Done")}
+                </Text>
+              </Pressable>
+            ) : null}
           </View>
         </SafeAreaView>
       </View>
@@ -580,5 +664,20 @@ const makeStyles = (
       textAlign: "center",
       fontWeight: "600",
       letterSpacing: 0.15,
+    },
+    actionButton: {
+      marginTop: spacing.lg,
+      minWidth: 140,
+      height: 46,
+      paddingHorizontal: spacing.lg,
+      borderRadius: 16,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    actionText: {
+      color: t.buttonPrimaryText ?? "#10120E",
+      fontSize: 14,
+      lineHeight: 18,
+      fontWeight: "800",
     },
   });

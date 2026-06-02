@@ -20,28 +20,39 @@ const resolveImageSource = (image: unknown): ImageSourcePropType => {
   return image as ImageSourcePropType;
 };
 
+const formatPublishedDate = (value: unknown) => {
+  if (typeof value !== "string" || !value.trim()) {
+    return null;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(date);
+};
+
 export const buildArticleCardItem = (
   item: Record<string, any>,
   fallbackTag: string
 ): ArticleCardItem => {
   const title = item?.title || item?.name || "Untitled Article";
   const category = item?.category || item?.topic || fallbackTag;
-  const readTime =
-    item?.read_time ||
-    item?.readTime ||
-    item?.time ||
-    item?.meta_info?.time ||
-    item?.meta_info?.duration;
-  const highlight = item?.highlight || item?.theme || "Insight";
-
-  const tags = [category, readTime, highlight].filter(Boolean).slice(0, 2);
+  const publishedDate = formatPublishedDate(item?.published_at);
+  const tags = [category, publishedDate ?? "Insight"].filter(Boolean).slice(0, 2);
 
   return {
     id: String(item?.id ?? title),
     title,
     image: resolveImageSource(item?.image || item?.imageUri),
     imageFit: item?.imageFit,
-    favorite: Boolean(item?.favorite ?? item?.is_favorite ?? false),
+    favorite: Boolean(
+      item?.favorite ?? item?.is_favorite ?? item?.is_favorited ?? false
+    ),
     tags: tags.length > 0 ? (tags as string[]) : [fallbackTag, "Insight"],
     raw: item,
   };
