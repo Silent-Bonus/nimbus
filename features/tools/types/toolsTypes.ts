@@ -30,6 +30,47 @@ export interface ArticleListResponse {
   error_code?: string;
 }
 
+export interface NewsletterItem {
+  id: number;
+  title: string;
+  slug: string;
+  category: string;
+  excerpt: string;
+  published_at: string;
+  content?: string;
+}
+
+export interface NewsletterListResponse {
+  data: NewsletterItem[];
+  success: boolean;
+  message: string;
+  error_code?: string;
+}
+
+export interface NewsletterReflectionPrompt {
+  eyebrow?: string;
+  title?: string;
+  prompt?: string;
+  helper?: string;
+  actionLabel?: string;
+  action_label?: string;
+}
+
+export interface NewsletterDetailItem extends NewsletterItem {
+  content: string;
+  reflection_prompt?: string | NewsletterReflectionPrompt;
+  reflectionPrompt?: string | NewsletterReflectionPrompt;
+  call_to_action?: string;
+  callToAction?: string;
+}
+
+export interface NewsletterDetailResponse {
+  success: boolean;
+  message: string;
+  data: NewsletterDetailItem;
+  error_code?: string;
+}
+
 export interface SoundscapeListResponse {
   data: ArticleDetails[];
   success: boolean;
@@ -63,16 +104,96 @@ export interface AudioBookListResponse {
   error_code?: string;
 }
 
+export interface RecipeCategory {
+  id: number;
+  name: string;
+  slug: string;
+  parent: RecipeCategory | null;
+  sort_order: number;
+}
+
+export interface RecipeStep {
+  step: number;
+  title: string;
+  description: string;
+}
+
 export interface RecipeItem {
   id: number;
+  slug: string;
   title: string;
-  image: string;
+  short_description: string;
+  meal_slot: string;
+  category: RecipeCategory | null;
+  difficulty_level: string;
+  total_time_minutes: number;
+  avg_rating: string;
+  reviews_count: number;
+  favorites_count: number;
+  is_favorited: boolean;
+  image: string | null;
+  [key: string]: any;
 }
 
 export interface RecipeListResponse {
-  data: ArticleDetails[];
+  data: RecipeItem[];
   success: boolean;
   message: string;
+  error_code?: string;
+}
+
+export interface RecipeCategoryListResponse {
+  data: RecipeCategory[];
+  success: boolean;
+  message: string;
+  error_code?: string;
+}
+
+export interface RecipeDetailItem extends RecipeItem {
+  context: string;
+  pro_tip: string;
+  fast_track: string;
+  bio_hacker: string;
+  prep_time_minutes: number;
+  active_time_minutes: number;
+  total_time_minutes: number;
+  ingredients_json: string[];
+  steps_json: RecipeStep[];
+  nutrition_json: unknown[];
+  benefits_json: unknown[];
+  tags_json: unknown[];
+  views_count: number;
+}
+
+export interface RecipeDetailResponse {
+  success: boolean;
+  message: string;
+  data: RecipeDetailItem;
+  error_code?: string;
+}
+
+export interface RecipeFavoriteResponse {
+  success: boolean;
+  message: string;
+  data?: RecipeDetailItem | null;
+  error_code?: string;
+}
+
+export interface RecipeReviewPayload {
+  rating: number;
+  review_text: string;
+  clarity_score: number;
+  energy_score: number;
+  satiety_score: number;
+  digestibility_score: number;
+  would_repeat: boolean;
+  made_as_is: boolean;
+}
+
+export interface RecipeReviewResponse {
+  success: boolean;
+  message: string;
+  data?: unknown;
   error_code?: string;
 }
 

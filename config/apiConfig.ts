@@ -50,9 +50,20 @@ export const API_ENDPOINTS = {
   getJournalEntry: `${BASE_URL}/api/v1/assesments/journal-entries/`,
 
   getWorkoutVideoList: `${BASE_URL}/api/v1/media/media-assets/?type=video`,
-  getRecipeList: `${BASE_URL}/api/v1/media/media-assets/?type=recipe`,
+  getNewsletterList: `${BASE_URL}/api/v1/newsletter/`,
+  getNewsletterDetails: (slug: number | string) =>
+    `${BASE_URL}/api/v1/newsletter/${slug}/`,
+  getRecipeList: `${BASE_URL}/api/v1/recipes/`,
+  getRecipeCategories: `${BASE_URL}/api/v1/recipes/categories/`,
+  getRecipeFavorites: `${BASE_URL}/api/v1/recipes/favorites/`,
+  getRecipeDetails: (id: number | string) =>
+    `${BASE_URL}/api/v1/recipes/${id}/`,
+  getRecipeFavorite: (id: number | string) =>
+    `${BASE_URL}/api/v1/recipes/${id}/favorite/`,
+  submitRecipeReview: (id: number | string) =>
+    `${BASE_URL}/api/v1/recipes/${id}/reviews/`,
   searchRecipes: (query: string) =>
-    `${BASE_URL}/api/v1/media/media-assets/recipes/?search=${query}`,
+    `${BASE_URL}/api/v1/recipes/?search=${encodeURIComponent(query)}`,
   //TODO: category Data fix
   getShortVideoList: `${BASE_URL}/api/v1/media/media-assets/?type=shortVideo`,
   getAudioBookList: `${BASE_URL}/api/v1/media/media-assets/?type=meditation&category=audioBook`,

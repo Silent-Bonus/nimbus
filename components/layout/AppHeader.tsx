@@ -79,7 +79,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
         </View>
 
         <View style={styles.rightSlot}>
-          {actions.slice(0, 2).map((action, index) => (
+          {actions.slice(0, 3).map((action, index) => (
             <TouchableOpacity
               key={`${action.icon ?? "action"}-${index}`}
               style={[styles.iconButton, index > 0 && { marginLeft: spacing.sm }]}

@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { useContext, useMemo, useRef, useState } from "react";
 import {
   FlatList,
   Platform,
@@ -7,8 +7,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
-import { router, useNavigation } from "expo-router";
+import { router, useFocusEffect, useNavigation } from "expo-router";
 
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import PillFilters, {
@@ -20,37 +21,15 @@ import EmptyState from "@/features/tools/components/common/EmptyState";
 import ProtocolTemplateCard from "@/features/tools/components/common/ProtocolTemplateCard";
 import { RoutineSkeletonGrid } from "@/features/tools/components/common/RoutineSkeletonGrid";
 import { ROUTES } from "@/constants/routes";
-import { getArticleList } from "@/features/tools/services/toolService";
-import {
-  MOCK_ARTICLE_ITEMS,
-  type ArticleCardItem,
-  buildArticleCardItem,
-} from "@/features/tools/data/articleLibrary";
+import { getNewsletterList } from "@/features/tools/services/toolService";
+import { type ArticleCardItem, buildArticleCardItem } from "@/features/tools/data/articleLibrary";
 import type { Spacing, SvaColorSet } from "@/theme/types";
 
-const FILTER_OPTIONS = [
+const FAVORITES_KEY = "favorites_v1";
+const STATIC_FILTER_OPTIONS = [
   { label: "All", value: "all" },
   { label: "Favorites", value: "favorites" },
-  { label: "Herbs", value: "Herbs" },
-  { label: "Mindfulness", value: "Mindfulness" },
-  { label: "Meditation", value: "Meditation" },
-  { label: "Epigenetics", value: "Epigenetics" },
-  { label: "Neuroplasticity", value: "Neuroplasticity" },
 ] as const satisfies readonly PillFilterOption<string>[];
-
-type FilterLabel = (typeof FILTER_OPTIONS)[number]["value"];
-
-const FILTER_MAP: Record<
-  Exclude<FilterLabel, "favorites">,
-  string | undefined
-> = {
-  all: undefined,
-  Herbs: "healingHerbs",
-  Mindfulness: "mindfullness",
-  Meditation: "meditation",
-  Epigenetics: "epigenetics",
-  Neuroplasticity: "neuroplasticity",
-};
 
 const normalize = (value: string) =>
   value
@@ -58,8 +37,52 @@ const normalize = (value: string) =>
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 
-const getFilterLabel = (value: FilterLabel) =>
-  FILTER_OPTIONS.find((option) => option.value === value)?.label ?? "Articles";
+const getFilterLabel = (
+  value: string,
+  options: readonly PillFilterOption<string>[]
+) => options.find((option) => option.value === value)?.label ?? "Articles";
+
+const getArticleCategoryText = (category: unknown) => {
+  if (typeof category === "string") {
+    return category.trim();
+  }
+
+  if (category && typeof category === "object") {
+    const candidate = category as { name?: string; slug?: string };
+    return (candidate.name || candidate.slug || "").trim();
+  }
+
+  return "";
+};
+
+const buildCategoryFilterOptions = (
+  articles: ArticleCardItem[]
+): PillFilterOption<string>[] => {
+  const seen = new Set<string>();
+  const options: PillFilterOption<string>[] = [];
+
+  articles.forEach((item) => {
+    const category = getArticleCategoryText(item.raw?.category);
+    if (!category) {
+      return;
+    }
+
+    const normalized = category.toLowerCase();
+    if (seen.has(normalized)) {
+      return;
+    }
+
+    seen.add(normalized);
+    options.push({
+      label: category,
+      value: category,
+      accessibilityLabel: `${category} articles`,
+    });
+  });
+
+  return options
+    .sort((a, b) => a.label.localeCompare(b.label));
+};
 
 export const ArticleListScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -68,86 +91,131 @@ export const ArticleListScreen: React.FC = () => {
   const searchInputRef = useRef<TextInput>(null);
 
   const [query, setQuery] = useState("");
-  const [selectedFilter, setSelectedFilter] = useState<FilterLabel>("all");
-  const [articles, setArticles] = useState<ArticleCardItem[]>(
-    __DEV__ ? MOCK_ARTICLE_ITEMS : []
+  const [selectedFilter, setSelectedFilter] = useState<string>("all");
+  const [articles, setArticles] = useState<ArticleCardItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const categoryFilters = useMemo(
+    () => buildCategoryFilterOptions(articles),
+    [articles]
   );
-  const [isLoading, setIsLoading] = useState(!__DEV__);
+  const filterOptions = useMemo(
+    () => [...STATIC_FILTER_OPTIONS, ...categoryFilters],
+    [categoryFilters]
+  );
 
-  useEffect(() => {
+  React.useEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
-  const fetchArticles = async (filter: Exclude<FilterLabel, "favorites">) => {
-    try {
-      setIsLoading(true);
-      const categorySlug = FILTER_MAP[filter];
-      const result: any = await getArticleList(categorySlug);
-      const data = result?.data || (Array.isArray(result) ? result : []);
+  useFocusEffect(
+    React.useCallback(() => {
+      let active = true;
 
-      if (Array.isArray(data)) {
-        setArticles(
-          data.map((item: Record<string, any>) =>
-            buildArticleCardItem(item, filter === "all" ? "Article" : filter)
-          )
-        );
-      } else {
-        console.error("Article API did not return data array:", result);
-        setArticles([]);
-      }
-    } catch (err) {
-      console.log("Article API error", err);
-      setArticles([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      const loadArticles = async () => {
+        try {
+          setIsLoading(true);
 
-  useEffect(() => {
-    if (__DEV__) {
-      setIsLoading(false);
-      setArticles(MOCK_ARTICLE_ITEMS);
-      return;
-    }
+          const [favoritesRaw, result] = await Promise.all([
+            AsyncStorage.getItem(FAVORITES_KEY),
+            getNewsletterList(),
+          ]);
+          let favoriteIdsArray: unknown[] = [];
 
-    fetchArticles("all");
-  }, []);
+          try {
+            const parsedFavorites = favoritesRaw
+              ? JSON.parse(favoritesRaw)
+              : [];
+            favoriteIdsArray = Array.isArray(parsedFavorites)
+              ? parsedFavorites
+              : [];
+          } catch (parseError) {
+            console.warn("[ArticleList] favorite cache parse failed", parseError);
+          }
 
-  const handleFilterPress = (label: FilterLabel) => {
+          const favoriteIds = new Set(
+            favoriteIdsArray.map((item) => String(item))
+          );
+          const data = result?.data || (Array.isArray(result) ? result : []);
+
+          if (!active) return;
+
+          if (Array.isArray(data)) {
+            const mappedArticles = data.map((item: Record<string, any>) => {
+              const card = buildArticleCardItem(item, "Article");
+              return {
+                ...card,
+                favorite:
+                  favoriteIds.has(card.id) ||
+                  Boolean(item?.favorite ?? item?.is_favorite ?? false),
+              };
+            });
+
+            setArticles(mappedArticles);
+          } else {
+            console.error("Article API did not return data array:", result);
+            setArticles([]);
+          }
+        } catch (err) {
+          console.log("Article API error", err);
+          if (active) {
+            setArticles([]);
+          }
+        } finally {
+          if (active) {
+            setIsLoading(false);
+          }
+        }
+      };
+
+      void loadArticles();
+
+      return () => {
+        active = false;
+      };
+    }, [])
+  );
+
+  const handleFilterPress = (label: string) => {
     setSelectedFilter(label);
-
-    if (__DEV__ || label === "favorites") {
-      return;
-    }
-
-    fetchArticles(label);
   };
 
   const handleItemClick = (item: ArticleCardItem) => {
+    const params: { id: string; slug?: string } = { id: item.id };
+
+    if (typeof item.raw?.slug === "string" && item.raw.slug.trim()) {
+      params.slug = item.raw.slug;
+    }
+
     router.push({
       pathname: ROUTES.AUTH.TOOLS_ARTICLE_DETAIL,
-      params: { id: item.id },
+      params,
     });
   };
 
   const filteredArticles = useMemo(() => {
     const normalizedQuery = normalize(query);
     const categoryFilteredArticles =
-      __DEV__ && selectedFilter !== "all" && selectedFilter !== "favorites"
-        ? articles.filter(
-            (item) =>
-              item.raw.filterKey === selectedFilter ||
-              item.raw.category === selectedFilter
-          )
-        : selectedFilter === "favorites"
+      selectedFilter === "favorites"
         ? articles.filter((item) => item.favorite)
-        : articles;
+        : selectedFilter === "all"
+        ? articles
+        : articles.filter((item) =>
+            normalize(getArticleCategoryText(item.raw?.category)) ===
+            normalize(selectedFilter)
+          );
 
     if (!normalizedQuery) return categoryFilteredArticles;
 
     return categoryFilteredArticles.filter((item) => {
       const searchBlob = normalize(
-        [item.title, ...item.tags, item.raw.category, item.raw.description]
+        [
+          item.title,
+          ...item.tags,
+          getArticleCategoryText(item.raw?.category),
+          item.raw?.excerpt,
+          item.raw?.content,
+          item.raw?.slug,
+        ]
           .filter(Boolean)
           .join(" ")
       );
@@ -211,7 +279,7 @@ export const ArticleListScreen: React.FC = () => {
       </View>
 
       <PillFilters
-        options={FILTER_OPTIONS}
+        options={filterOptions}
         selectedValue={selectedFilter}
         onChange={handleFilterPress}
         contentContainerStyle={styles.filtersRow}
@@ -232,11 +300,16 @@ export const ArticleListScreen: React.FC = () => {
     ) : (
       <EmptyState
         title={
-          selectedFilter === "all"
-            ? "No articles found."
+          query.trim()
+            ? `No articles found for "${query.trim()}".`
             : selectedFilter === "favorites"
             ? "No favorite articles found."
-            : `No ${getFilterLabel(selectedFilter).toLowerCase()} articles found.`
+            : selectedFilter === "all"
+            ? "No articles found."
+            : `No ${getFilterLabel(
+                selectedFilter,
+                filterOptions
+              ).toLowerCase()} articles found.`
         }
         subtitle="Try switching filters or checking back later for new reads."
         color={svaColors.text.secondary}
