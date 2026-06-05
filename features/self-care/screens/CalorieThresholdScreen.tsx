@@ -1,4 +1,4 @@
-import React, { useContext, useMemo } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -16,77 +16,63 @@ import ThemeContext from "@/contexts/ThemeContext";
 import AppHeader from "@/components/layout/AppHeader";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import { ROUTES } from "@/constants/routes";
+import { getStoredBodyVitalsContext } from "@/features/self-care/services/bodyVitalsStorage";
+import type { BodyVitalsContext } from "@/features/self-care/types/bodyVitals";
+import {
+  buildCaloriePanelTiers,
+  resolveCaloriePanelDataFromContext,
+  resolveCaloriePanelDataFromParams,
+  type CaloriePanelParams,
+} from "@/features/self-care/services/caloriePanelService";
 import type { ColorSet, Spacing, Typography } from "@/theme/types";
-
-const DEFAULT_MAINTENANCE_CALORIES = 2150;
-
-const roundToNearestFifty = (value: number) =>
-  Math.max(0, Math.round(value / 50) * 50);
-
-const readFirstParam = (value: string | string[] | undefined) =>
-  Array.isArray(value) ? value[0] : value;
-
-type CalorieTier = {
-  key: string;
-  label: string;
-  title: string;
-  calories: number;
-  highlight?: boolean;
-};
 
 export default function CalorieThresholdScreen() {
   const { newTheme, spacing, typography } = useContext(ThemeContext);
   const { width } = useWindowDimensions();
   const params = useLocalSearchParams();
+  const [savedVitalsContext, setSavedVitalsContext] =
+    useState<BodyVitalsContext | null>(null);
 
-  const maintenanceCalories = useMemo(() => {
-    const raw =
-      readFirstParam(
-        params.maintenanceCalories as string | string[] | undefined
-      ) ??
-      readFirstParam(params.calories as string | string[] | undefined) ??
-      readFirstParam(params.targetCalories as string | string[] | undefined) ??
-      readFirstParam(params.maintenance as string | string[] | undefined);
+  useEffect(() => {
+    let active = true;
 
-    const parsed = Number.parseInt(raw ?? "", 10);
-    return Number.isFinite(parsed) && parsed > 0
-      ? parsed
-      : DEFAULT_MAINTENANCE_CALORIES;
-  }, [
-    params.calories,
-    params.maintenance,
-    params.maintenanceCalories,
-    params.targetCalories,
-  ]);
+    const loadSavedVitals = async () => {
+      const cachedVitals = await getStoredBodyVitalsContext();
 
-  const calorieTiers = useMemo<CalorieTier[]>(() => {
-    const burnCalories = roundToNearestFifty(
-      Math.max(0, maintenanceCalories - 300)
-    );
-    const buildCalories = roundToNearestFifty(maintenanceCalories + 250);
+      if (!active) {
+        return;
+      }
 
-    return [
-      {
-        key: "maintenance",
-        label: "METABOLIC FLUX",
-        title: "Maintenance",
-        calories: maintenanceCalories,
-      },
-      {
-        key: "burn",
-        label: "OPTIMAL IGNITION",
-        title: "Burn (Fat Loss)",
-        calories: burnCalories,
-        highlight: true,
-      },
-      {
-        key: "build",
-        label: "STRUCTURAL GROWTH",
-        title: "Build (Muscle)",
-        calories: buildCalories,
-      },
-    ];
-  }, [maintenanceCalories]);
+      setSavedVitalsContext(cachedVitals);
+    };
+
+    void loadSavedVitals();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const routeCalorieData = useMemo(
+    () =>
+      resolveCaloriePanelDataFromParams(
+        params as unknown as CaloriePanelParams
+      ),
+    [params]
+  );
+
+  const savedCalorieData = useMemo(
+    () => resolveCaloriePanelDataFromContext(savedVitalsContext),
+    [savedVitalsContext]
+  );
+
+  const calorieData =
+    routeCalorieData.source === "api" ? routeCalorieData : savedCalorieData;
+
+  const calorieTiers = useMemo(
+    () => buildCaloriePanelTiers(calorieData),
+    [calorieData]
+  );
 
   const heroWidth = Math.min(Math.max(width * 0.68, 208), 244);
   const heroHeight = 96;
@@ -97,15 +83,11 @@ export default function CalorieThresholdScreen() {
   );
 
   const handleSealToPlan = () => {
-    const burnCalories = roundToNearestFifty(
-      Math.max(0, maintenanceCalories - 300)
-    );
-
     router.push({
       pathname: ROUTES.AUTH.TOOLS_MEAL_PLANNER,
       params: {
-        maintenanceCalories: String(maintenanceCalories),
-        targetCalories: String(burnCalories),
+        maintenanceCalories: String(calorieData.maintenanceCalories),
+        targetCalories: String(calorieData.optimalBurnCalories),
       },
     });
   };
@@ -152,9 +134,10 @@ export default function CalorieThresholdScreen() {
             />
 
             <Text style={styles.heroValue}>
-              {maintenanceCalories}
-              <Text style={styles.heroUnit}> kcal</Text>
+              {calorieData.totalCalorie}
+              <Text style={styles.heroUnit}> {calorieData.unit}</Text>
             </Text>
+            <Text style={styles.heroCaption}>TOTAL CALORIES</Text>
           </View>
         </View>
 
@@ -196,7 +179,7 @@ export default function CalorieThresholdScreen() {
                 ]}
               >
                 {tier.calories}
-                <Text style={styles.cardCaloriesUnit}> kcal</Text>
+                <Text style={styles.cardCaloriesUnit}> {calorieData.unit}</Text>
               </Text>
             </View>
           ))}
@@ -204,7 +187,8 @@ export default function CalorieThresholdScreen() {
 
         <View style={styles.tipWrap}>
           <Text style={styles.tipText}>
-            This formula is synthesized from your maintenance estimate.
+            {calorieData.tip}
+            {"\n"}
             Assign the selected Burn target to your Nourish Plan to begin.
           </Text>
         </View>
@@ -304,6 +288,16 @@ const styling = (
       lineHeight: 24,
       fontStyle: "italic",
       letterSpacing: -0.4,
+    },
+    heroCaption: {
+      marginTop: 2,
+      color: themeInk,
+      fontFamily: typography.smallCaption.fontFamily,
+      fontSize: 10,
+      lineHeight: 12,
+      fontWeight: "800",
+      letterSpacing: 2.4,
+      opacity: 0.88,
     },
     sectionTitle: {
       color: theme.textPrimary,

@@ -1,5 +1,12 @@
-import React, { useContext, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -18,6 +25,7 @@ import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import AppHeader from "@/components/layout/AppHeader";
 import { ROUTES } from "@/constants/routes";
 import { useNimbusToast } from "@/components/ui/toast/useNimbusToast";
+import { useAuth } from "@/contexts/AuthContext";
 import type { ColorSet, Spacing, Typography } from "@/theme/types";
 
 import {
@@ -27,25 +35,28 @@ import {
   InsightCard,
   NumericMetricTile,
   NumericMetricTileFooter,
-  calculateMaintenanceCalories,
-  calculateProteinTarget,
   clampHeightCm,
   deriveArchitecture,
   parseMetricNumber,
   sanitizeDecimalInput,
   sanitizeIntegerInput,
   stepWeight,
-  type SomaticGender,
-  type SomaticInsight,
 } from "@/features/self-care/components/body-vitals";
-
-const INITIAL_VALUES = {
-  gender: "masculine" as SomaticGender,
-  age: "32",
-  weight: "74.5",
-  height: "182",
-  activityLevel: 0.68,
-};
+import type { BodyVitalsContext } from "@/features/self-care/types/bodyVitals";
+import { buildBodyVitalsUpdatePayload } from "@/features/self-care/services/bodyVitalsService";
+import {
+  DEFAULT_BODY_VITALS_FORM,
+  getStoredBodyVitalsContext,
+  resolveBodyVitalsFormState,
+} from "@/features/self-care/services/bodyVitalsStorage";
+import {
+  buildCaloriePanelRouteParams,
+  resolveCaloriePanelDataFromContext,
+} from "@/features/self-care/services/caloriePanelService";
+import {
+  buildProteinPanelRouteParams,
+  resolveProteinPanelDataFromContext,
+} from "@/features/self-care/services/proteinPanelService";
 
 export default function BodyVitalScreen() {
   const { width: windowWidth } = useWindowDimensions();
@@ -55,49 +66,50 @@ export default function BodyVitalScreen() {
     [newTheme, spacing, typography, windowWidth]
   );
 
+  const { updateProfile } = useAuth();
   const toast = useNimbusToast();
+  const [savedVitalsContext, setSavedVitalsContext] =
+    useState<BodyVitalsContext | null>(null);
+  const [form, setForm] = useState(DEFAULT_BODY_VITALS_FORM);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const [gender, setGender] = useState<SomaticGender>(INITIAL_VALUES.gender);
-  const [age, setAge] = useState(INITIAL_VALUES.age);
-  const [weight, setWeight] = useState(INITIAL_VALUES.weight);
-  const [height, setHeight] = useState(INITIAL_VALUES.height);
-  const [activityLevel, setActivityLevel] = useState(
-    INITIAL_VALUES.activityLevel
-  );
+  useEffect(() => {
+    let active = true;
+
+    const loadSavedVitals = async () => {
+      const cachedVitals = await getStoredBodyVitalsContext();
+
+      if (!active) {
+        return;
+      }
+
+      setSavedVitalsContext(cachedVitals);
+
+      if (cachedVitals) {
+        setForm(resolveBodyVitalsFormState(cachedVitals));
+      }
+    };
+
+    void loadSavedVitals();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const numericProfile = useMemo(() => {
-    const parsedAge = parseMetricNumber(age, 32);
-    const parsedWeight = parseMetricNumber(weight, 74.5);
-    const parsedHeight = clampHeightCm(parseMetricNumber(height, 182));
+    const parsedAge = parseMetricNumber(form.age, 32);
+    const parsedWeight = parseMetricNumber(form.weight, 74.5);
+    const parsedHeight = clampHeightCm(parseMetricNumber(form.height, 182));
 
     return {
       age: parsedAge,
       weight: parsedWeight,
       height: parsedHeight,
-      gender,
-      activityLevel,
+      gender: form.gender,
+      activityLevel: form.activityLevel,
     };
-  }, [age, gender, height, activityLevel, weight]);
-
-  const proteinTarget = useMemo(() => {
-    return calculateProteinTarget(numericProfile.weight, numericProfile.activityLevel);
-  }, [numericProfile.activityLevel, numericProfile.weight]);
-
-  const calorieThreshold = useMemo(() => {
-    return calculateMaintenanceCalories({
-      age: numericProfile.age,
-      heightCm: numericProfile.height,
-      weightKg: numericProfile.weight,
-      gender: numericProfile.gender,
-      activityLevel: numericProfile.activityLevel,
-    });
-  }, [
-    numericProfile.activityLevel,
-    numericProfile.age,
-    numericProfile.gender,
-    numericProfile.height,
-    numericProfile.weight,
-  ]);
+  }, [form]);
 
   const architecture = useMemo(() => {
     return deriveArchitecture({
@@ -111,53 +123,123 @@ export default function BodyVitalScreen() {
     numericProfile.weight,
   ]);
 
-  const insights = useMemo<SomaticInsight[]>(
+  const bannerMessage = savedVitalsContext
+    ? savedVitalsContext.banner?.show && savedVitalsContext.banner.message
+      ? savedVitalsContext.banner.message
+      : "Prefilled from your saved vitals data."
+    : null;
+
+  const bannerMeta = useMemo(() => {
+    if (!savedVitalsContext) {
+      return null;
+    }
+
+    if (typeof savedVitalsContext.days_since_last_update === "number") {
+      return `Last updated ${savedVitalsContext.days_since_last_update} days ago`;
+    }
+
+    if (savedVitalsContext.profile_status) {
+      return `Profile status: ${savedVitalsContext.profile_status}`;
+    }
+
+    return null;
+  }, [savedVitalsContext]);
+
+  const proteinPanelData = useMemo(
+    () => resolveProteinPanelDataFromContext(savedVitalsContext),
+    [savedVitalsContext]
+  );
+
+  const caloriePanelData = useMemo(
+    () => resolveCaloriePanelDataFromContext(savedVitalsContext),
+    [savedVitalsContext]
+  );
+
+  const insights = useMemo(
     () => [
       {
         key: "protein",
         label: "Protein Intake",
-        value: `${proteinTarget}g / Day`,
-        icon: "flash",
+        value: `${proteinPanelData.totalRequirement} ${proteinPanelData.unit} / Day`,
+        icon: "flash" as const,
         accent: newTheme.chart4 ?? newTheme.error,
         route: ROUTES.AUTH.SELF_CARE_PROTEIN,
       },
       {
         key: "calorie",
-        label: "Calorie Threshold",
-        value: `${calorieThreshold} kcal`,
-        icon: "flame",
+        label: "Calorie Intake",
+        value: `${caloriePanelData.totalCalorie} ${caloriePanelData.unit} / Day`,
+        icon: "flame" as const,
         accent: newTheme.chart3 ?? newTheme.warning,
         route: ROUTES.AUTH.SELF_CARE_CALORIE_THRESHOLD,
       },
-        {
-          key: "architecture",
-          label: "Body Architecture",
-          value: architecture,
-          icon: "body-outline",
-          accent: newTheme.chart5 ?? newTheme.success,
-          route: ROUTES.AUTH.SELF_CARE_BODY_ARCHITECTURE,
-        },
+      {
+        key: "architecture",
+        label: "Body Architecture",
+        value: architecture,
+        icon: "body-outline" as const,
+        accent: newTheme.chart5 ?? newTheme.success,
+        route: ROUTES.AUTH.SELF_CARE_BODY_ARCHITECTURE,
+      },
     ],
     [
       architecture,
-      calorieThreshold,
       newTheme.chart3,
       newTheme.chart4,
       newTheme.chart5,
       newTheme.error,
       newTheme.warning,
       newTheme.success,
-      proteinTarget,
+      proteinPanelData.totalRequirement,
+      proteinPanelData.unit,
+      caloriePanelData.totalCalorie,
+      caloriePanelData.unit,
     ]
   );
 
-  const handleGenerateSummary = () => {
-    toast.show({
-      variant: "success",
-      title: "Biological summary generated",
-      message: "Protein, calorie, and architecture outputs are ready.",
-    });
-  };
+  const handleGenerateSummary = useCallback(async () => {
+    if (isSaving) return;
+
+    setIsSaving(true);
+
+    try {
+      const contextForPayload =
+        savedVitalsContext ?? (await getStoredBodyVitalsContext());
+      const payload = buildBodyVitalsUpdatePayload(form, contextForPayload);
+      const result = await updateProfile?.(payload);
+
+      if (result?.success) {
+        const refreshedContext = await getStoredBodyVitalsContext();
+        setSavedVitalsContext(refreshedContext);
+
+        if (refreshedContext) {
+          setForm(resolveBodyVitalsFormState(refreshedContext));
+        }
+
+        toast.show({
+          variant: "success",
+          title: "Vitals saved",
+          message: "Your body vitals were sent to your profile.",
+        });
+        return;
+      }
+
+      toast.show({
+        variant: "error",
+        title: "Unable to save vitals",
+        message: result?.message ?? "Please try again.",
+      });
+    } catch (error) {
+      console.warn("body vitals save error", error);
+      toast.show({
+        variant: "error",
+        title: "Unable to save vitals",
+        message: "Please try again.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }, [form, isSaving, savedVitalsContext, toast, updateProfile]);
 
   return (
     <ScreenView padding={0} bgColor={newTheme.background} style={styles.screen}>
@@ -183,14 +265,40 @@ export default function BodyVitalScreen() {
             }}
           />
 
+          {bannerMessage ? (
+            <View style={styles.bannerCard}>
+              <LinearGradient
+                colors={["rgba(163,190,140,0.18)", "rgba(125,164,116,0.06)"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                pointerEvents="none"
+                style={StyleSheet.absoluteFillObject}
+              />
+              <Text style={styles.bannerLabel}>SAVED VITALS PROFILE</Text>
+              <Text style={styles.bannerText}>{bannerMessage}</Text>
+              {bannerMeta ? <Text style={styles.bannerMeta}>{bannerMeta}</Text> : null}
+            </View>
+          ) : null}
+
           <View style={styles.grid}>
-            <GenderTile value={gender} onChange={setGender} style={styles.gridTile} />
+            <GenderTile
+              value={form.gender}
+              onChange={(gender) =>
+                setForm((current) => ({ ...current, gender }))
+              }
+              style={styles.gridTile}
+            />
 
             <NumericMetricTile
               accentTint="rgba(163,190,140,0.12)"
               label="Age"
-              value={age}
-              onChangeText={(text) => setAge(sanitizeIntegerInput(text))}
+              value={form.age}
+              onChangeText={(text) =>
+                setForm((current) => ({
+                  ...current,
+                  age: sanitizeIntegerInput(text),
+                }))
+              }
               keyboardType="number-pad"
               maxLength={3}
               trailingIcon="ellipsis-vertical"
@@ -200,15 +308,30 @@ export default function BodyVitalScreen() {
             <NumericMetricTile
               accentTint="rgba(163,190,140,0.10)"
               label="Weight"
-              value={weight}
-              onChangeText={(text) => setWeight(sanitizeDecimalInput(text, 1))}
+              value={form.weight}
+              onChangeText={(text) =>
+                setForm((current) => ({
+                  ...current,
+                  weight: sanitizeDecimalInput(text, 1),
+                }))
+              }
               keyboardType="decimal-pad"
               maxLength={5}
               style={styles.gridTile}
               footer={
                 <NumericMetricTileFooter.StepperRow
-                  onDecrement={() => setWeight((current) => stepWeight(current, -0.5))}
-                  onIncrement={() => setWeight((current) => stepWeight(current, 0.5))}
+                  onDecrement={() =>
+                    setForm((current) => ({
+                      ...current,
+                      weight: stepWeight(current.weight, -0.5),
+                    }))
+                  }
+                  onIncrement={() =>
+                    setForm((current) => ({
+                      ...current,
+                      weight: stepWeight(current.weight, 0.5),
+                    }))
+                  }
                 />
               }
             />
@@ -216,12 +339,17 @@ export default function BodyVitalScreen() {
             <NumericMetricTile
               accentTint="rgba(125,164,116,0.12)"
               label="Height"
-              value={height}
-              onChangeText={(text) => setHeight(sanitizeIntegerInput(text))}
+              value={form.height}
+              onChangeText={(text) =>
+                setForm((current) => ({
+                  ...current,
+                  height: sanitizeIntegerInput(text),
+                }))
+              }
               onBlur={() =>
-                setHeight((current) => {
-                  const next = clampHeightCm(parseMetricNumber(current, 182));
-                  return String(next);
+                setForm((current) => {
+                  const next = clampHeightCm(parseMetricNumber(current.height, 182));
+                  return { ...current, height: String(next) };
                 })
               }
               keyboardType="number-pad"
@@ -231,15 +359,22 @@ export default function BodyVitalScreen() {
               footer={
                 <HeightSlider
                   value={numericProfile.height}
-                  onChange={(next) => setHeight(String(next))}
+                  onChange={(next) =>
+                    setForm((current) => ({
+                      ...current,
+                      height: String(next),
+                    }))
+                  }
                 />
               }
             />
           </View>
 
           <ActivityLevelCard
-            value={activityLevel}
-            onChange={setActivityLevel}
+            value={form.activityLevel}
+            onChange={(activityLevel) =>
+              setForm((current) => ({ ...current, activityLevel }))
+            }
           />
 
           <View style={styles.sectionHeaderRow}>
@@ -258,7 +393,12 @@ export default function BodyVitalScreen() {
                   item.key === "protein"
                     ? router.push({
                         pathname: item.route ?? ROUTES.TABS.HOME,
-                        params: { protein: String(proteinTarget) },
+                        params: buildProteinPanelRouteParams(proteinPanelData),
+                      })
+                    : item.key === "calorie"
+                    ? router.push({
+                        pathname: item.route ?? ROUTES.TABS.HOME,
+                        params: buildCaloriePanelRouteParams(caloriePanelData),
                       })
                     : router.push(item.route ?? ROUTES.TABS.HOME)
                 }
@@ -269,9 +409,13 @@ export default function BodyVitalScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Generate biological summary"
-            onPress={handleGenerateSummary}
+            onPress={() => {
+              void handleGenerateSummary();
+            }}
+            disabled={isSaving}
             style={({ pressed }) => [
               styles.primaryButton,
+              isSaving && styles.primaryButtonDisabled,
               pressed && styles.primaryButtonPressed,
             ]}
           >
@@ -282,9 +426,16 @@ export default function BodyVitalScreen() {
               pointerEvents="none"
               style={StyleSheet.absoluteFillObject}
             />
-            <Text style={styles.primaryButtonText}>
-              GENERATE BIOLOGICAL SUMMARY
-            </Text>
+            {isSaving ? (
+              <View style={styles.primaryButtonContent}>
+                <ActivityIndicator color={newTheme.buttonPrimaryText} />
+                <Text style={styles.primaryButtonText}>SAVING VITALS</Text>
+              </View>
+            ) : (
+              <Text style={styles.primaryButtonText}>
+                GENERATE BIOLOGICAL SUMMARY
+              </Text>
+            )}
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -309,6 +460,36 @@ const styling = (
     content: {
       paddingHorizontal: spacing.md,
       paddingBottom: spacing.xl * 2.25,
+    },
+    bannerCard: {
+      borderRadius: 20,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      overflow: "hidden",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.borderMuted ?? theme.border,
+      backgroundColor: theme.surfaceMuted ?? "rgba(163,190,140,0.08)",
+      marginTop: spacing.sm,
+      marginBottom: spacing.md,
+      gap: spacing.xs,
+    },
+    bannerLabel: {
+      ...typography.smallCaption,
+      color: theme.textSecondary,
+      letterSpacing: 1.6,
+      fontWeight: "700",
+      opacity: 0.92,
+    },
+    bannerText: {
+      ...typography.body,
+      color: theme.textPrimary,
+      lineHeight: 20,
+    },
+    bannerMeta: {
+      ...typography.smallCaption,
+      color: theme.textSecondary,
+      opacity: 0.8,
+      letterSpacing: 0.4,
     },
     grid: {
       flexDirection: "row",
@@ -353,9 +534,17 @@ const styling = (
       shadowRadius: 18,
       elevation: 6,
     },
+    primaryButtonDisabled: {
+      opacity: 0.86,
+    },
     primaryButtonPressed: {
       opacity: 0.96,
       transform: [{ scale: 0.99 }],
+    },
+    primaryButtonContent: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
     },
     primaryButtonText: {
       color: theme.buttonPrimaryText,

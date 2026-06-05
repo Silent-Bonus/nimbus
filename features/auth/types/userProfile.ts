@@ -1,3 +1,5 @@
+import type { BodyVitalsContext } from "@/features/self-care/types/bodyVitals";
+
 export type UserSubscriptionTier = "free" | "plus";
 
 export type UserSubscription = {
@@ -27,5 +29,7 @@ export type UserProfile = {
   settings?: Record<string, unknown> | null;
   address?: Record<string, unknown> | null;
   notifications?: UserNotification[];
+  notification_preferences?: Record<string, unknown> | null;
+  vitals_context?: BodyVitalsContext | null;
   subscription?: UserSubscription | null;
 };
