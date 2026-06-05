@@ -6,6 +6,10 @@ import ThemeContext from "../../../../contexts/ThemeContext";
 import { ROUTES } from "../../../../constants/routes";
 import { getTheme } from "../../../../theme";
 import AffirmationScreen from "../AffirmationScreen";
+import {
+  getAffirmations,
+  getMockAffirmationDeck,
+} from "@/features/self-care/services/affirmationService";
 
 const mockBack = jest.fn();
 const mockPush = jest.fn();
@@ -48,6 +52,17 @@ jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
+jest.mock("@/features/self-care/services/affirmationService", () => {
+  const actual = jest.requireActual(
+    "@/features/self-care/services/affirmationService"
+  );
+
+  return {
+    ...actual,
+    getAffirmations: jest.fn(),
+  };
+});
+
 const theme = getTheme("sva");
 const themeValue = {
   theme: "sva",
@@ -73,15 +88,17 @@ const hasText = (tree: renderer.ReactTestRenderer, value: string) =>
         : node.props.children === value
     );
 
-function renderScreen() {
+async function renderScreen() {
   let tree!: renderer.ReactTestRenderer;
 
-  act(() => {
+  await act(async () => {
     tree = renderer.create(
       <ThemeContext.Provider value={themeValue as any}>
         <AffirmationScreen />
       </ThemeContext.Provider>
     );
+
+    await Promise.resolve();
   });
 
   return tree;
@@ -90,14 +107,16 @@ function renderScreen() {
 describe("AffirmationScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (getAffirmations as jest.Mock).mockResolvedValue(getMockAffirmationDeck());
   });
 
-  it("renders the recommendation row and list content", () => {
-    const tree = renderScreen();
+  it("renders the recommendation row and list content", async () => {
+    const tree = await renderScreen();
 
     expect(mockSetOptions).toHaveBeenCalledWith({
       headerShown: false,
     });
+    expect(getAffirmations).toHaveBeenCalledTimes(1);
 
     expect(hasText(tree, "Affirmations")).toBe(true);
     expect(hasText(tree, "RECOMMENDED LINE")).toBe(true);
@@ -111,8 +130,8 @@ describe("AffirmationScreen", () => {
     expect(hasText(tree, "CALM")).toBe(true);
   });
 
-  it("opens the story modal when a card is pressed", () => {
-    const tree = renderScreen();
+  it("opens the story modal when a card is pressed", async () => {
+    const tree = await renderScreen();
 
     const card = tree.root.findByProps({
       accessibilityLabel: "Choose affirmation open-space",
@@ -132,8 +151,8 @@ describe("AffirmationScreen", () => {
     ).toBe(true);
   });
 
-  it("opens the custom affirmation screen from the pencil action", () => {
-    const tree = renderScreen();
+  it("opens the custom affirmation screen from the pencil action", async () => {
+    const tree = await renderScreen();
 
     const pencil = tree.root.findByProps({
       accessibilityLabel: "Create custom affirmation",

@@ -5,6 +5,7 @@ export type AffirmationCard = {
   tone: AffirmationTone;
   quote: string;
   detail: string;
+  paletteKey?: string;
 };
 
 export const AFFIRMATION_CARDS: AffirmationCard[] = [

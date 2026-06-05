@@ -69,6 +69,7 @@ export const API_ENDPOINTS = {
   getAudioBookList: `${BASE_URL}/api/v1/media/media-assets/?type=meditation&category=audioBook`,
   getMeditationList: `${BASE_URL}/api/v1/media/media-assets/?type=meditation&category=breathwork`,
   getWellnessContent: `${BASE_URL}/api/v1/wellness-content/`,
+  getAffirmations: `${BASE_URL}/api/v1/wellness-content/affirmations/`,
   getWellnessContentDetail: (id: number | string) =>
     `${BASE_URL}/api/v1/wellness-content/${id}/`,
   createWellnessSession: `${BASE_URL}/api/v1/wellness/sessions/`,

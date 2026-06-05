@@ -18,14 +18,17 @@ import ThemeContext from "@/contexts/ThemeContext";
 import AffirmationListCard from "@/features/self-care/components/affirmation/AffirmationListCard";
 import AffirmationStoryModal from "@/features/self-care/components/affirmation/AffirmationStoryModal";
 import AffirmationRecommendationSection from "@/features/self-care/components/affirmation/AffirmationRecommendationSection";
-import { AFFIRMATION_RECOMMENDATIONS } from "@/features/self-care/utils/affirmationLibrary";
 import {
-  AFFIRMATION_CARDS,
+  getAffirmations,
+  getMockAffirmationDeck,
+} from "@/features/self-care/services/affirmationService";
+import {
   AFFIRMATION_FILTERS,
   filterAffirmations,
   formatAffirmationToneLabel,
   type AffirmationTone,
 } from "@/features/self-care/utils/mindPractices";
+import type { AffirmationDeck } from "@/features/self-care/types/affirmation";
 import type {
   ColorSet,
   Spacing,
@@ -40,10 +43,14 @@ export const AffirmationScreen = () => {
   const { newTheme: theme, svaTypography, spacing, typography } =
     useContext(ThemeContext);
 
+  const fallbackAffirmationDeck = useMemo(() => getMockAffirmationDeck(), []);
+  const [affirmationDeck, setAffirmationDeck] = useState<AffirmationDeck>(
+    fallbackAffirmationDeck
+  );
   const [selectedTone, setSelectedTone] =
     useState<AffirmationFilterValue>("all");
   const [selectedAffirmationId, setSelectedAffirmationId] = useState<string>(
-    AFFIRMATION_RECOMMENDATIONS[0]?.id ?? ""
+    fallbackAffirmationDeck.recommendations[0]?.id ?? ""
   );
   const [storyVisible, setStoryVisible] = useState(false);
 
@@ -57,14 +64,34 @@ export const AffirmationScreen = () => {
   }, [navigation]);
 
   const visibleAffirmations = useMemo(
-    () => filterAffirmations(AFFIRMATION_CARDS, selectedTone),
-    [selectedTone]
+    () => filterAffirmations(affirmationDeck.cards, selectedTone),
+    [affirmationDeck.cards, selectedTone]
   );
 
   const visibleRecommendations = useMemo(
-    () => filterAffirmations(AFFIRMATION_RECOMMENDATIONS, selectedTone),
-    [selectedTone]
+    () => filterAffirmations(affirmationDeck.recommendations, selectedTone),
+    [affirmationDeck.recommendations, selectedTone]
   );
+
+  useEffect(() => {
+    let active = true;
+
+    const loadAffirmations = async () => {
+      const deck = await getAffirmations();
+
+      if (!active) {
+        return;
+      }
+
+      setAffirmationDeck(deck);
+    };
+
+    void loadAffirmations();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (
@@ -74,18 +101,26 @@ export const AffirmationScreen = () => {
     ) {
       setSelectedAffirmationId(
         visibleRecommendations[0]?.id ??
-          AFFIRMATION_RECOMMENDATIONS[0]?.id ??
+          affirmationDeck.recommendations[0]?.id ??
           ""
       );
     }
-  }, [selectedAffirmationId, visibleRecommendations]);
+  }, [
+    affirmationDeck.recommendations,
+    selectedAffirmationId,
+    visibleRecommendations,
+  ]);
 
   const selectedAffirmation = useMemo(
     () =>
       visibleRecommendations.find((item) => item.id === selectedAffirmationId) ??
       visibleRecommendations[0] ??
-      AFFIRMATION_RECOMMENDATIONS[0],
-    [selectedAffirmationId, visibleRecommendations]
+      affirmationDeck.recommendations[0],
+    [
+      affirmationDeck.recommendations,
+      selectedAffirmationId,
+      visibleRecommendations,
+    ]
   );
 
   const listAffirmations = useMemo(
@@ -199,7 +234,7 @@ export const AffirmationScreen = () => {
         <AffirmationStoryModal
           visible={storyVisible}
           onClose={handleCloseStory}
-          slides={AFFIRMATION_RECOMMENDATIONS}
+          slides={affirmationDeck.recommendations}
           initialSlideId={selectedAffirmation?.id}
         />
       </View>

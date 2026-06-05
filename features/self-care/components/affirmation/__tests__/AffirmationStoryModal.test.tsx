@@ -84,7 +84,7 @@ describe("AffirmationStoryModal", () => {
     );
 
     expect(hasText(tree, "AFFIRMATION STORY")).toBe(true);
-    expect(hasText(tree, "Six slides to hold the mood.")).toBe(true);
+    expect(hasText(tree, "6 slides to hold the mood.")).toBe(true);
     expect(hasText(tree, "06 / 06")).toBe(true);
     expect(hasText(tree, "Steady Flame")).toBe(true);
     expect(hasText(tree, "Quiet Ground")).toBe(true);

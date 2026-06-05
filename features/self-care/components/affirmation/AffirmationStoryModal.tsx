@@ -143,6 +143,10 @@ const AffirmationStoryModal = ({
 
   const slideWidth = Math.max(1, Math.round(width - spacing.md * 2));
   const sheetHeight = Math.min(Math.round(height * 0.9), 780);
+  const storyDeckLabel =
+    slides.length === 1
+      ? "1 slide to hold the mood."
+      : `${slides.length} slides to hold the mood.`;
 
   const initialIndex = useMemo(() => {
     const foundIndex = slides.findIndex((item) => item.id === initialSlideId);
@@ -304,7 +308,7 @@ const AffirmationStoryModal = ({
               <View style={styles.headerRow}>
                 <View style={styles.headerCopy}>
                   <Text style={styles.eyebrow}>AFFIRMATION STORY</Text>
-                  <Text style={styles.title}>Six slides to hold the mood.</Text>
+                  <Text style={styles.title}>{storyDeckLabel}</Text>
                   <Text style={styles.subtitle}>
                     Swipe horizontally through the selected line and the full deck.
                   </Text>

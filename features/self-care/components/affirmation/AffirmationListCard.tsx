@@ -31,8 +31,8 @@ const AffirmationListCard = ({
     useContext(ThemeContext);
 
   const palette = useMemo<AffirmationRecommendationPalette>(
-    () => getAffirmationRecommendationPaletteById(item.id),
-    [item.id]
+    () => getAffirmationRecommendationPaletteById(item.paletteKey ?? item.id),
+    [item.id, item.paletteKey]
   );
 
   const styles = useMemo(
