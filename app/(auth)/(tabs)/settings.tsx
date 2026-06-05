@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useMemo, useState } from "react";
 import { router } from "expo-router";
 import * as Location from "expo-location";
 import { StatusBar } from "expo-status-bar";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ThemeContext from "@/contexts/ThemeContext";
@@ -42,12 +42,20 @@ const SVA_SOCIAL_WEB_URL = "https://instagram.com/sva_app";
 
 export default function SettingsScreen() {
   const { toggleTheme, newTheme } = useContext(ThemeContext);
-  const { onLogout, userProfile } = useAuth();
+  const {
+    onLogout,
+    userProfile,
+    resetToPublic,
+    authSessionTestMode,
+    setAuthSessionTestMode,
+  } = useAuth();
   const insets = useSafeAreaInsets();
 
   const [toggleState, setToggleState] = useState<ToggleState>(
     INITIAL_TOGGLE_STATE
   );
+  const [authResetting, setAuthResetting] = useState(false);
+  const [authModeSaving, setAuthModeSaving] = useState(false);
   const [loc, setLoc] = useState<Location.LocationObject | null>(null);
 
   const [showReportBugModal, setShowReportBugModal] = useState(false);
@@ -79,6 +87,9 @@ export default function SettingsScreen() {
     const handle = userProfile?.username?.trim();
     return `#${handle || "321be4"} glow active`;
   }, [userProfile]);
+
+  const showAuthTestControls = __DEV__;
+  const authTestTimeoutLabel = authSessionTestMode ? "15 min" : "15 days";
 
   const membershipLabel = useMemo(
     () => getMembershipLabel(userProfile),
@@ -125,6 +136,28 @@ export default function SettingsScreen() {
   const onLogoutClick = async () => {
     if (onLogout) {
       await onLogout();
+    }
+  };
+
+  const onResetAuthClick = async () => {
+    if (!resetToPublic || authResetting) return;
+
+    try {
+      setAuthResetting(true);
+      await resetToPublic();
+    } finally {
+      setAuthResetting(false);
+    }
+  };
+
+  const onAuthTestModeToggle = async (next: boolean) => {
+    if (!setAuthSessionTestMode || authModeSaving) return;
+
+    try {
+      setAuthModeSaving(true);
+      await setAuthSessionTestMode(next);
+    } finally {
+      setAuthModeSaving(false);
     }
   };
 
@@ -279,6 +312,45 @@ export default function SettingsScreen() {
               })}
             </SettingsSectionCard>
           ))}
+
+          {showAuthTestControls ? (
+            <SettingsSectionCard
+              title="Developer"
+              icon="bug-outline"
+              style={styles.sectionCard}
+            >
+              <SettingsRow
+                icon="timer-outline"
+                label="Auth test mode"
+                style={styles.rowSpacing}
+                rightSlot={
+                  <View style={styles.devRowRightSlot}>
+                    <Text
+                      style={[
+                        styles.devRowValue,
+                        { color: newTheme.textSecondary },
+                      ]}
+                    >
+                      {authTestTimeoutLabel}
+                    </Text>
+                    <SettingsToggle
+                      value={Boolean(authSessionTestMode)}
+                      onValueChange={(next) => void onAuthTestModeToggle(next)}
+                      disabled={authModeSaving}
+                    />
+                  </View>
+                }
+              />
+
+              <SettingsRow
+                icon="refresh-circle-outline"
+                label={authResetting ? "Resetting app..." : "Reset auth session"}
+                danger
+                showChevron
+                onPress={() => void onResetAuthClick()}
+              />
+            </SettingsSectionCard>
+          ) : null}
         </View>
 
         <SettingsFooter />
@@ -354,5 +426,15 @@ const styles = StyleSheet.create({
   },
   rowSpacing: {
     marginBottom: 4,
+  },
+  devRowRightSlot: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  devRowValue: {
+    fontSize: 12,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
   },
 });

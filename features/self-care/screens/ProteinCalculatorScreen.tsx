@@ -16,81 +16,37 @@ import AppHeader from "@/components/layout/AppHeader";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import { ROUTES } from "@/constants/routes";
 import type { ColorSet, Spacing, Typography } from "@/theme/types";
-
-const DEFAULT_PROTEIN_TARGET = 165;
-
-const roundToNearestFive = (value: number) => Math.max(0, Math.round(value / 5) * 5);
-
-const readFirstParam = (value: string | string[] | undefined) =>
-  Array.isArray(value) ? value[0] : value;
-
-const buildProteinSlots = (proteinTarget: number) => {
-  const first = roundToNearestFive(proteinTarget * 0.24);
-  const second = roundToNearestFive(proteinTarget * 0.39);
-  let third = proteinTarget - first - second;
-
-  if (third < 0) {
-    const overflow = Math.abs(third);
-    const adjustedSecond = Math.max(0, second - overflow);
-    third = proteinTarget - first - adjustedSecond;
-
-    return [
-      {
-        key: "slot-1",
-        label: "SLOT 1 (BREAKING FAST)",
-        grams: first,
-      },
-      {
-        key: "slot-2",
-        label: "SLOT 2 (MID-DAY FUEL)",
-        grams: adjustedSecond,
-      },
-      {
-        key: "slot-3",
-        label: "SLOT 3 (EVENING REPAIR)",
-        grams: third,
-      },
-    ];
-  }
-
-  return [
-    {
-      key: "slot-1",
-      label: "SLOT 1 (BREAKING FAST)",
-      grams: first,
-    },
-    {
-      key: "slot-2",
-      label: "SLOT 2 (MID-DAY FUEL)",
-      grams: second,
-    },
-    {
-      key: "slot-3",
-      label: "SLOT 3 (EVENING REPAIR)",
-      grams: third,
-    },
-  ];
-};
+import {
+  buildProteinPanelMealSlots,
+  resolveProteinPanelDataFromParams,
+} from "@/features/self-care/services/proteinPanelService";
 
 export const ProteinCalculatorScreen = () => {
   const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const { width } = useWindowDimensions();
   const params = useLocalSearchParams();
+  const { width } = useWindowDimensions();
 
-  const proteinTarget = useMemo(() => {
-    const parsed = Number.parseInt(
-      readFirstParam(params.protein as string | string[] | undefined) ?? "",
-      10
-    );
-
-    return Number.isFinite(parsed) && parsed > 0
-      ? parsed
-      : DEFAULT_PROTEIN_TARGET;
-  }, [params.protein]);
+  const proteinPanelData = useMemo(
+    () =>
+      resolveProteinPanelDataFromParams(
+        params as {
+          total_requirement?: string | string[];
+          meal_one?: string | string[];
+          meal_two?: string | string[];
+          meal_three?: string | string[];
+          unit?: string | string[];
+          tip?: string | string[];
+          protein?: string | string[];
+        }
+      ),
+    [
+      params,
+    ]
+  );
 
   const proteinSlots = useMemo(
-    () => buildProteinSlots(proteinTarget),
-    [proteinTarget]
+    () => buildProteinPanelMealSlots(proteinPanelData),
+    [proteinPanelData]
   );
 
   const heroSize = Math.min(Math.max(width * 0.64, 198), 226);
@@ -103,7 +59,7 @@ export const ProteinCalculatorScreen = () => {
   const handleSealToPlan = () => {
     router.push({
       pathname: ROUTES.AUTH.TOOLS_MEAL_PLANNER,
-      params: { protein: String(proteinTarget) },
+      params: { protein: String(proteinPanelData.totalRequirement) },
     });
   };
 
@@ -144,10 +100,10 @@ export const ProteinCalculatorScreen = () => {
             />
 
             <Text style={styles.heroValue}>
-              {proteinTarget}
-              <Text style={styles.heroUnit}>g</Text>
+              {proteinPanelData.totalRequirement}
+              <Text style={styles.heroUnit}> {proteinPanelData.unit}</Text>
             </Text>
-            <Text style={styles.heroCaption}>DAILY STRUCTURAL REQUIREMENT</Text>
+            <Text style={styles.heroCaption}>TOTAL REQUIREMENT</Text>
           </View>
         </View>
 
@@ -169,7 +125,7 @@ export const ProteinCalculatorScreen = () => {
               <View style={styles.slotAmountColumn}>
                 <Text style={styles.slotAmount}>
                   {slot.grams}
-                  <Text style={styles.slotUnit}>g</Text>
+                  <Text style={styles.slotUnit}> {proteinPanelData.unit}</Text>
                 </Text>
                 <Text style={styles.slotAmountLabel}>Protein</Text>
               </View>
@@ -179,8 +135,7 @@ export const ProteinCalculatorScreen = () => {
 
         <View style={styles.tipWrap}>
           <Text style={styles.tipText}>
-            This formula is optimized for Lean Body Mass maintenance and Neural
-            Recovery.
+            {proteinPanelData.tip}
             {"\n"}
             Assign these values to your Nourish Plan to begin.
           </Text>

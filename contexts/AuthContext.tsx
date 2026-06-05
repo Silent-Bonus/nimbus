@@ -6,15 +6,15 @@ import {
   useRef,
 } from "react";
 import { useContext, useState } from "react";
+import { AppState } from "react-native";
 import { router, useSegments } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import axios from "axios";
 
 import { StoreKey } from "@/constants/Constant";
+import { API_ENDPOINTS } from "@/config/apiConfig";
 import { ROUTES } from "@/constants/routes";
-import {
-  normalizeUserProfile,
-} from "@/features/auth/utils/userEntitlements";
+import { normalizeUserProfile } from "@/features/auth/utils/userEntitlements";
 import type { UserProfile } from "@/features/auth/types/userProfile";
 import {
   login,
@@ -24,32 +24,37 @@ import {
   saveUpdateUser,
 } from "@/features/auth/services/loginService";
 import { setStoredUser, User, getStoredUser } from "@/services/storageService";
-import { storageKey } from "@/services/remiderStorageService";
+import {
+  clearAuthSession,
+  getAuthSessionTestModeEnabled,
+  getFreshAuthTokenOrClearSession,
+  setAuthSessionTestModeEnabled,
+  touchAuthSessionActivity,
+} from "@/services/authSessionService";
+import { syncStoredBodyVitalsContext } from "@/features/self-care/services/bodyVitalsStorage";
 
 export async function clearAuthAndOnboarding() {
-  await SecureStore.deleteItemAsync(StoreKey.TOKEN_KEY);
-  await SecureStore.deleteItemAsync(StoreKey.REFRESH_TOKEN);
-  await SecureStore.deleteItemAsync(StoreKey.ONBOARDING_DONE_KEY);
+  await clearAuthSession();
 }
-
-const resetApp = async () => {
-  await clearAuthAndOnboarding();
-  router.replace(ROUTES.PUBLIC.LANDING);
-};
 
 // Cache Token Key
 const TOKEN_KEY = StoreKey.TOKEN_KEY;
-const USER_KEY = StoreKey.USER_KEY;
 const REFRESH_TOKEN = StoreKey.REFRESH_TOKEN;
-const USER_PROFILE_KEY = StoreKey.USER_PROFILE_KEY;
-const LAST_ACTIVE_KEY = StoreKey.LAST_ACTIVE_KEY;
-const WELCOME_SEEN_KEY = StoreKey.WELCOME_SEEN_KEY;
-const ONBOARDING_DONE_KEY = StoreKey.ONBOARDING_DONE_KEY;
+const AUTH_ENDPOINTS = [
+  API_ENDPOINTS.login,
+  API_ENDPOINTS.register,
+  API_ENDPOINTS.logout,
+  API_ENDPOINTS.getOtp,
+  API_ENDPOINTS.verifyOtp,
+  API_ENDPOINTS.setPassword,
+  API_ENDPOINTS.forgotPassword,
+  API_ENDPOINTS.changePassword,
+];
 
-// Refresh intervals & expiry
-const REFRESH_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
-const AUTO_LOGOUT_DAYS = 15;
-const AUTO_LOGOUT_MS = AUTO_LOGOUT_DAYS * 24 * 60 * 60 * 1000;
+function isAuthEndpoint(url?: string) {
+  if (!url) return false;
+  return AUTH_ENDPOINTS.some((endpoint) => url.startsWith(endpoint));
+}
 
 interface AuthProps {
   authState?: { token: string | null; authenticated: boolean | null };
@@ -70,7 +75,8 @@ interface AuthProps {
   resetToPublic?: () => Promise<void>;
   markOnboardingDone?: () => Promise<void>;
   onboardingDone?: boolean | null;
-  user?: User;
+  authSessionTestMode?: boolean;
+  setAuthSessionTestMode?: (enabled: boolean) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthProps>({});
@@ -88,14 +94,16 @@ function useProtectedRoute(
   onboardingDone: boolean | null
 ) {
   const segments = useSegments() as string[];
+  const hasSegments = segments.length > 0;
+  const segmentsKey = segments.join("/");
+  const root = segments[0];
+  const child = segments[1];
 
   useEffect(() => {
     if (authState.authenticated === null) return;
-    if (!segments?.length) return;
+    if (!hasSegments) return;
 
     const isAuthed = authState.authenticated === true;
-    const root = segments[0];
-    const child = segments[1];
 
     if (isAuthed && onboardingDone === null) return;
 
@@ -118,16 +126,10 @@ function useProtectedRoute(
       return; // ✅ allow any /(auth) route
     }
     if (isAuthed && onboardingDone === null) return;
-  }, [authState.authenticated, onboardingDone, segments.join("/")]);
+  }, [authState.authenticated, onboardingDone, hasSegments, root, child, segmentsKey]);
 }
 
 export default function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User>();
-  const [loggedInUser, setLoggedInUser] = useState<{
-    email: string | null;
-    username: string | null;
-  } | null>();
-
   const [authState, setAuthState] = useState<{
     token: string | null;
     authenticated: boolean | null;
@@ -135,6 +137,15 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
+  const [authSessionTestMode, setAuthSessionTestModeState] =
+    useState<boolean>(false);
+
+  const sessionClearInProgressRef = useRef(false);
+  const authStateRef = useRef(authState);
+
+  useEffect(() => {
+    authStateRef.current = authState;
+  }, [authState]);
 
   useEffect(() => {
     (async () => {
@@ -153,10 +164,41 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     })();
   }, [authState.authenticated]);
 
-  // refs for refresh flow
-  const isRefreshingRef = useRef(false);
-  const refreshPromiseRef = useRef<Promise<string | null> | null>(null);
-  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  useEffect(() => {
+    (async () => {
+      const enabled = await getAuthSessionTestModeEnabled();
+      setAuthSessionTestModeState(enabled);
+    })();
+  }, []);
+
+  const clearLocalSession = useCallback(async () => {
+    if (sessionClearInProgressRef.current) return;
+
+    sessionClearInProgressRef.current = true;
+
+    try {
+      await clearAuthSession();
+    } catch {
+      // Keep going: state must still be cleared locally.
+    } finally {
+      delete axios.defaults.headers.common["Authorization"];
+      setAuthState({ token: null, authenticated: false });
+      setUserProfile(null);
+      setOnboardingDone(null);
+      sessionClearInProgressRef.current = false;
+    }
+  }, []);
+
+  const setAuthSessionTestMode = useCallback(async (enabled: boolean) => {
+    await setAuthSessionTestModeEnabled(enabled);
+    setAuthSessionTestModeState(enabled);
+  }, []);
+
+  const resetToPublic = useCallback(async () => {
+    await clearLocalSession();
+
+    router.replace(ROUTES.PUBLIC.LANDING);
+  }, [clearLocalSession]);
 
   // Helper: set axios auth header + save token to secure store
   const applyAccessToken = async (accessToken: string | null) => {
@@ -164,68 +206,130 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       axios.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
       setAuthState({ token: accessToken, authenticated: true });
       await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
-      // update last active timestamp on token set
-      await SecureStore.setItemAsync(LAST_ACTIVE_KEY, String(Date.now()));
+      try {
+        await touchAuthSessionActivity();
+      } catch {
+        // A missing activity timestamp should not block login.
+      }
     } else {
       delete axios.defaults.headers.common["Authorization"];
       setAuthState({ token: null, authenticated: false });
     }
   };
 
-  // Helper: get refresh token from store
-  const getStoredRefreshToken = async () => {
-    return await SecureStore.getItemAsync(REFRESH_TOKEN);
-  };
-
   const loadUserFromStorage = useCallback(async (): Promise<User | null> => {
-    const cached = await getStoredUser();
-    // console.log(cached, "cached");
-    if (cached) {
-      // setUser(cached);
-      // setUserProfile(cached as any);
-    }
-    return cached;
+    return await getStoredUser();
   }, []);
 
   useEffect(() => {
     const loadToken = async () => {
-      resetApp();
       try {
-        const token = await SecureStore.getItemAsync(TOKEN_KEY);
-        const refresh = await SecureStore.getItemAsync(REFRESH_TOKEN);
-        const profileInfo = await SecureStore.getItemAsync(USER_PROFILE_KEY);
-
-        // ✅ Always load onboarding key too
+        const token = await getFreshAuthTokenOrClearSession();
         const ob = await SecureStore.getItemAsync(StoreKey.ONBOARDING_DONE_KEY);
 
         if (token) {
           axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
           setAuthState({ token, authenticated: true });
 
-          if (profileInfo) {
-            // Temporary entitlement seed: default to a free profile until the backend sends tier data consistently.
-            const cachedProfile = normalizeUserProfile(JSON.parse(profileInfo));
-            if (cachedProfile) setUserProfile(cachedProfile);
+          const cachedProfile = await getStoredUser();
+          if (cachedProfile) {
+            const normalizedProfile = normalizeUserProfile(cachedProfile);
+            setUserProfile(normalizedProfile);
+            await syncStoredBodyVitalsContext(normalizedProfile);
           }
-          // ✅ If key missing, decide a default (recommended: false)
           setOnboardingDone(ob === "true");
-        } else {
-          setAuthState({ token: null, authenticated: false });
+          return;
         }
-      } catch (e) {
+
+        delete axios.defaults.headers.common["Authorization"];
         setAuthState({ token: null, authenticated: false });
+        setUserProfile(null);
+        setOnboardingDone(null);
+      } catch {
+        delete axios.defaults.headers.common["Authorization"];
+        setAuthState({ token: null, authenticated: false });
+        setUserProfile(null);
+        setOnboardingDone(null);
       }
     };
 
-    loadToken();
+    void loadToken();
   }, []);
 
   useEffect(() => {
-    (async () => {
-      const v = await SecureStore.getItemAsync(StoreKey.ONBOARDING_DONE_KEY);
-      console.log("onboardingDone key: auth", v);
-    })();
-  }, []);
+    if (authState.authenticated !== true) return;
+
+    const checkSessionFreshness = async () => {
+      if (sessionClearInProgressRef.current) return;
+
+      const token = await getFreshAuthTokenOrClearSession();
+      if (!token) {
+        await resetToPublic();
+      }
+    };
+
+    void checkSessionFreshness();
+
+    const interval = setInterval(() => {
+      void checkSessionFreshness();
+    }, 60 * 1000);
+
+    const appStateSubscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") {
+        void checkSessionFreshness();
+      }
+    });
+
+    return () => {
+      clearInterval(interval);
+      appStateSubscription.remove();
+    };
+  }, [authState.authenticated, resetToPublic]);
+
+  useEffect(() => {
+    const requestInterceptor = axios.interceptors.request.use(
+      async (config) => {
+        if (authStateRef.current.authenticated !== true) {
+          return config;
+        }
+
+        if (isAuthEndpoint(config.url)) {
+          return config;
+        }
+
+        const token = await getFreshAuthTokenOrClearSession();
+        if (!token) {
+          await resetToPublic();
+          return Promise.reject(new Error("Session expired"));
+        }
+
+        await touchAuthSessionActivity();
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+
+    const responseInterceptor = axios.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        if (authStateRef.current.authenticated !== true) {
+          return Promise.reject(error);
+        }
+
+        const url = error?.config?.url as string | undefined;
+        if (error?.response?.status === 401 && !isAuthEndpoint(url)) {
+          await resetToPublic();
+        }
+
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      axios.interceptors.request.eject(requestInterceptor);
+      axios.interceptors.response.eject(responseInterceptor);
+    };
+  }, [resetToPublic]);
 
   const markOnboardingDone = useCallback(async () => {
     await SecureStore.setItemAsync(StoreKey.ONBOARDING_DONE_KEY, "true");
@@ -262,19 +366,12 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
           StoreKey.REFRESH_TOKEN,
           data.refresh ?? ""
         );
-        await SecureStore.setItemAsync(StoreKey.TOKEN_KEY, data.access);
+        await applyAccessToken(data.access);
         await SecureStore.setItemAsync(StoreKey.ONBOARDING_DONE_KEY, "false");
         setOnboardingDone(false);
-        await applyAccessToken(data.access); // sets axios header + authState + TOKEN_KEY
-        // await _fetchUserProfile(); // optional but recommended
-
-        axios.defaults.headers.common[
-          "Authorization"
-        ] = `Bearer ${data.access}`;
-        setAuthState({ token: data.access, authenticated: true });
         return result;
       }
-    } catch (e) {
+    } catch {
       return {
         success: false,
         error: true,
@@ -294,24 +391,10 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       const { success, message, data } = result;
 
       if (success && "email" in data) {
-        const { username, email, ...tokens } = data; // Destructuring user details separately
-        const userInfo = {
-          email: email,
-          username: username,
-        };
-        setAuthState({
-          token: tokens.access,
-          authenticated: true,
-        });
-        setLoggedInUser(userInfo);
+        const { access, refresh } = data;
+        await applyAccessToken(access);
 
-        axios.defaults.headers.common[
-          "Authorization"
-        ] = `Bearer ${tokens.access}`;
-
-        await SecureStore.setItemAsync(TOKEN_KEY, tokens.access);
-
-        await SecureStore.setItemAsync(REFRESH_TOKEN, tokens.refresh);
+        await SecureStore.setItemAsync(REFRESH_TOKEN, refresh);
 
         const ob = await SecureStore.getItemAsync(StoreKey.ONBOARDING_DONE_KEY);
         if (ob == null) {
@@ -320,8 +403,6 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         await _fetchUserProfile();
-
-        // await SecureStore.setItemAsync(USER_KEY, JSON.stringify(userInfo));
       } else {
         console.error("Login failed:", message);
       }
@@ -339,30 +420,21 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         refresh: ref ?? "",
       };
 
-      const result = await logout(request);
+      await logout(request);
+    } catch {
+      // best effort remote logout; local session will still be cleared.
+    }
 
-      if (result.success && result.message) {
-        await clearAuthAndOnboarding();
-        await SecureStore.setItemAsync(TOKEN_KEY, "");
-        setOnboardingDone(null);
-        delete axios.defaults.headers.common["Authorization"];
-        await SecureStore.setItemAsync(USER_KEY, "");
-        await SecureStore.setItemAsync(REFRESH_TOKEN, "");
-        setLoggedInUser({ username: null, email: null });
-        setAuthState({
-          authenticated: false,
-          token: null,
-        });
-        setUserProfile(null);
-        router.replace(ROUTES.PUBLIC.LANDING);
-      }
-    } catch (e) {}
+    await resetToPublic();
   };
 
   // single place to update state + storage from server
-  const applyServerUser = useCallback(async (serverUser: User) => {
-    setUser(serverUser);
-    await setStoredUser(serverUser);
+  const applyServerUser = useCallback(async (serverUser: User | null) => {
+    const normalizedUser = normalizeUserProfile(serverUser);
+    setUserProfile(normalizedUser);
+    await setStoredUser(normalizedUser);
+    await syncStoredBodyVitalsContext(normalizedUser);
+    return normalizedUser;
   }, []);
 
   // public helpers
@@ -371,60 +443,16 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   //   await setStoredUser(u);
   // }, []);
 
-  const resetToPublic = useCallback(async () => {
-    await SecureStore.deleteItemAsync(StoreKey.TOKEN_KEY);
-    await SecureStore.deleteItemAsync(StoreKey.REFRESH_TOKEN);
-    await SecureStore.deleteItemAsync(StoreKey.ONBOARDING_DONE_KEY);
-    setOnboardingDone(null);
-    delete axios.defaults.headers.common["Authorization"];
-
-    setAuthState({ token: null, authenticated: false });
-    setUserProfile(null);
-
-    router.replace(ROUTES.PUBLIC.LANDING);
-  }, []);
-
   const _fetchUserProfile = async () => {
     try {
-      const response = await getUserDetails(); // 👈 your backend endpoint
-      const { success, message, data } = response;
-      // console.log(response, "response auth context");
-      const { username, email, id, ...tokens } = data;
-      if (success && "email" in data) {
-        // console.log(response, "conimg response auth context 2222");
+      const response = await getUserDetails();
+      const { success, data } = response;
 
-        const {
-          username,
-          email,
-          first_name,
-          id,
-          last_name,
-          profile,
-          settings,
-          avatar,
-          notifications,
-          ...tokens
-        } = data;
-        const usr = normalizeUserProfile({
-          id: id,
-          avatar: data.avatar || null,
-          username: username,
-          email: email,
-          first_name: first_name,
-          last_name: last_name,
-          profile: profile,
-          settings: settings,
-          notifications: notifications,
-        });
-        if (usr) {
-          await applyServerUser(usr as any);
-        }
-        // const profileInfo = await SecureStore.getItem(USER_PROFILE_KEY);
-        await SecureStore.setItemAsync(USER_PROFILE_KEY, JSON.stringify(usr));
-        setUserProfile(usr);
-        return usr;
+      if (success && data) {
+        return await applyServerUser(data);
       }
-      // return response;
+
+      return null;
     } catch (e) {
       console.error("Failed to fetch user profile", e);
       return null;
@@ -437,33 +465,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         const res = await saveUpdateUser(payload); // your API
         // if your API shape is { success, data: { user }, message }
         if (res?.success && res?.data) {
-          const { success, message, data } = res;
-          const {
-            id,
-            username,
-            email,
-            first_name,
-            last_name,
-            profile,
-            settings,
-            address,
-            notifications,
-            notification_preferences,
-          } = data;
-          const usr = normalizeUserProfile({
-            id: id,
-            username: username,
-            email: email,
-            avatar: profile?.avatar || null,
-            first_name: first_name,
-            last_name: last_name,
-            profile: profile,
-            settings: settings,
-            notifications: notifications,
-          });
-          await applyServerUser(usr as any); // keep app + storage in sync
-          await SecureStore.setItemAsync(USER_PROFILE_KEY, JSON.stringify(usr));
-          setUserProfile(usr);
+          await applyServerUser(res.data); // keep app + storage in sync
         }
         return res; // caller decides what to do
       } catch (err: any) {
@@ -483,6 +485,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     onLogout: _logout,
     userProfile,
     authState,
+    authSessionTestMode,
+    setAuthSessionTestMode,
     resetToPublic,
     getUserDetails: _fetchUserProfile,
     updateProfile: updateProfile,
