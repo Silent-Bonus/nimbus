@@ -7,6 +7,7 @@ type UseAudioPlaybackOptions = {
   source: Parameters<typeof Audio.Sound.createAsync>[0];
   autoPlay?: boolean;
   progressUpdateIntervalMillis?: number;
+  onDidFinish?: () => void;
 };
 
 const DEFAULT_AUDIO_MODE = {
@@ -20,12 +21,18 @@ export function useAudioPlayback({
   source,
   autoPlay = true,
   progressUpdateIntervalMillis = 500,
+  onDidFinish,
 }: UseAudioPlaybackOptions) {
   const soundRef = useRef<Audio.Sound | null>(null);
+  const didNotifyFinishRef = useRef(false);
   const [playbackStatus, setPlaybackStatus] = useState<AVPlaybackStatus | null>(
     null
   );
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    didNotifyFinishRef.current = false;
+  }, [source]);
 
   useEffect(() => {
     let active = true;
@@ -45,6 +52,14 @@ export function useAudioPlayback({
           (status) => {
             if (active) {
               setPlaybackStatus(status);
+              if (
+                status.isLoaded &&
+                status.didJustFinish &&
+                !didNotifyFinishRef.current
+              ) {
+                didNotifyFinishRef.current = true;
+                onDidFinish?.();
+              }
             }
           }
         );
@@ -72,7 +87,7 @@ export function useAudioPlayback({
       soundRef.current = null;
       void sound?.unloadAsync();
     };
-  }, [autoPlay, progressUpdateIntervalMillis, source]);
+  }, [autoPlay, onDidFinish, progressUpdateIntervalMillis, source]);
 
   const isPlaying = playbackStatus?.isLoaded ? playbackStatus.isPlaying : false;
   const positionMillis = playbackStatus?.isLoaded
@@ -106,13 +121,22 @@ export function useAudioPlayback({
     if (isPlaying) {
       await sound.pauseAsync();
     } else {
+      if (
+        playbackStatus?.isLoaded &&
+        (playbackStatus.didJustFinish ||
+          playbackStatus.positionMillis >=
+            Math.max((playbackStatus.durationMillis ?? 0) - 1000, 0))
+      ) {
+        didNotifyFinishRef.current = false;
+      }
       await sound.playAsync();
     }
-  }, [isPlaying]);
+  }, [isPlaying, playbackStatus]);
 
   const stop = useCallback(async () => {
     const sound = soundRef.current;
     if (!sound) return;
+    didNotifyFinishRef.current = false;
     await sound.stopAsync();
   }, []);
 
@@ -128,4 +152,3 @@ export function useAudioPlayback({
     stop,
   };
 }
-

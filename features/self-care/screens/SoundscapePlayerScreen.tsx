@@ -21,6 +21,7 @@ import { LinearGradient } from "expo-linear-gradient";
 
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import ThemeContext from "@/contexts/ThemeContext";
+import SessionFeedbackModal from "@/features/session-feedback/components/SessionFeedbackModal";
 import {
   buildSoundscapeResonanceLabel,
   buildSoundscapeSubtitle,
@@ -581,11 +582,19 @@ function SoundscapePlayerContent({
   const [sessionStatus, setSessionStatus] =
     useState<SoundscapeSessionStatus>("idle");
   const [sessionRef, setSessionRef] = useState<string | null>(null);
+  const [feedbackVisible, setFeedbackVisible] = useState(false);
   const sessionStatusRef = useRef<SoundscapeSessionStatus>("idle");
   const pauseSessionRef = useRef<(() => Promise<void>) | null>(null);
   const sessionCreatePromiseRef = useRef<Promise<string | null> | null>(null);
   const completionInFlightRef = useRef(false);
   const leavingScreenRef = useRef(false);
+  const feedbackPresentedRef = useRef(false);
+
+  const openFeedbackFlow = useCallback(() => {
+    if (feedbackPresentedRef.current) return;
+    feedbackPresentedRef.current = true;
+    setFeedbackVisible(true);
+  }, []);
 
   const {
     soundRef,
@@ -599,6 +608,7 @@ function SoundscapePlayerContent({
     source,
     autoPlay: false,
     progressUpdateIntervalMillis: 500,
+    onDidFinish: openFeedbackFlow,
   });
   const currentSound = soundRef.current;
 
@@ -609,6 +619,8 @@ function SoundscapePlayerContent({
     sessionCreatePromiseRef.current = null;
     completionInFlightRef.current = false;
     leavingScreenRef.current = false;
+    feedbackPresentedRef.current = false;
+    setFeedbackVisible(false);
   }, [soundscape.id]);
 
   useEffect(() => {
@@ -732,7 +744,7 @@ function SoundscapePlayerContent({
     }
   }, [resolveSessionRef, sessionStatus]);
 
-  const completeSession = useCallback(async () => {
+  const completeSession = useCallback(async (durationSecondsOverride?: number) => {
     if (completionInFlightRef.current || sessionStatus === "completed") {
       return;
     }
@@ -746,7 +758,8 @@ function SoundscapePlayerContent({
       }
 
       await completeWellnessSession(resolvedSessionRef, {
-        duration_seconds: Math.max(1, Math.round(durationMillis / 1000)),
+        duration_seconds:
+          durationSecondsOverride ?? Math.max(1, Math.round(durationMillis / 1000)),
       });
       setSessionStatus("completed");
     } catch (error) {
@@ -795,12 +808,13 @@ function SoundscapePlayerContent({
       if (currentSound) {
         void currentSound.stopAsync();
       }
-      void pauseSessionRef.current?.();
+      void completeSession(selectedMinutes * 60);
+      openFeedbackFlow();
       setTimerIndex(0);
     }, selectedMinutes * 60 * 1000);
 
     return () => clearTimeout(timeout);
-  }, [currentSound, timerIndex]);
+  }, [completeSession, currentSound, openFeedbackFlow, timerIndex]);
 
   const handlePlayPause = useCallback(async () => {
     if (isLoading || sessionStatus === "completed") {
@@ -847,6 +861,17 @@ function SoundscapePlayerContent({
 
     await onBack();
   }, [isPlaying, onBack, pauseSession, sessionStatus, togglePlayPause]);
+
+  const handleCloseFeedback = useCallback(() => {
+    feedbackPresentedRef.current = false;
+    setFeedbackVisible(false);
+  }, []);
+
+  const handleCompleteFeedback = useCallback(() => {
+    leavingScreenRef.current = true;
+    setFeedbackVisible(false);
+    router.back();
+  }, []);
 
   return (
     <ScreenView
@@ -1066,6 +1091,14 @@ function SoundscapePlayerContent({
             </View>
           </View>
         </ScrollView>
+
+        <SessionFeedbackModal
+          visible={feedbackVisible}
+          source="soundscape"
+          sessionTitle={soundscape.title}
+          onClose={handleCloseFeedback}
+          onComplete={handleCompleteFeedback}
+        />
       </View>
     </ScreenView>
   );
