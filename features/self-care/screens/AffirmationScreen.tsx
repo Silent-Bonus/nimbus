@@ -8,7 +8,7 @@ import React, {
 } from "react";
 import { FlatList, Platform, StyleSheet, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { router, useNavigation } from "expo-router";
+import { router, useFocusEffect, useNavigation } from "expo-router";
 
 import AppHeader from "@/components/layout/AppHeader";
 import PillFilters from "@/components/ui/PillFilters";
@@ -18,8 +18,10 @@ import ThemeContext from "@/contexts/ThemeContext";
 import AffirmationListCard from "@/features/self-care/components/affirmation/AffirmationListCard";
 import AffirmationStoryModal from "@/features/self-care/components/affirmation/AffirmationStoryModal";
 import AffirmationRecommendationSection from "@/features/self-care/components/affirmation/AffirmationRecommendationSection";
+import { consumeQueuedCreatedAffirmation } from "@/features/self-care/data/affirmationCreationInbox";
 import {
   getAffirmations,
+  getAffirmationBySlug,
   getMockAffirmationDeck,
 } from "@/features/self-care/services/affirmationService";
 import {
@@ -28,7 +30,10 @@ import {
   formatAffirmationToneLabel,
   type AffirmationTone,
 } from "@/features/self-care/utils/mindPractices";
-import type { AffirmationDeck } from "@/features/self-care/types/affirmation";
+import type {
+  AffirmationDeck,
+  AffirmationResolvedItem,
+} from "@/features/self-care/types/affirmation";
 import type {
   ColorSet,
   Spacing,
@@ -73,6 +78,69 @@ export const AffirmationScreen = () => {
     [affirmationDeck.recommendations, selectedTone]
   );
 
+  const mergeResolvedAffirmation = useCallback(
+    (
+      resolved: AffirmationResolvedItem,
+      options?: {
+        prepend?: boolean;
+        select?: boolean;
+        revealAllIfNeeded?: boolean;
+      }
+    ) => {
+      setAffirmationDeck((current) => {
+        const nextCards = current.cards.some((card) => card.id === resolved.card.id)
+          ? current.cards.map((card) =>
+              card.id === resolved.card.id
+                ? {
+                    ...resolved.card,
+                    paletteKey: card.paletteKey ?? resolved.card.paletteKey,
+                  }
+                : card
+            )
+          : options?.prepend
+            ? [resolved.card, ...current.cards]
+            : [...current.cards, resolved.card];
+
+        const nextRecommendations = current.recommendations.some(
+          (item) => item.id === resolved.recommendation.id
+        )
+          ? current.recommendations.map((item) =>
+              item.id === resolved.recommendation.id
+                ? {
+                    ...resolved.recommendation,
+                    palette: item.palette,
+                    detail: resolved.recommendation.detail ?? item.detail,
+                  }
+                : item
+            )
+          : options?.prepend
+            ? [resolved.recommendation, ...current.recommendations]
+            : [...current.recommendations, resolved.recommendation];
+
+        return {
+          ...current,
+          cards: nextCards,
+          recommendations: nextRecommendations,
+          source: resolved.source,
+          message: resolved.message,
+        };
+      });
+
+      if (options?.select !== false) {
+        setSelectedAffirmationId(resolved.recommendation.id);
+      }
+
+      if (
+        options?.revealAllIfNeeded &&
+        selectedTone !== "all" &&
+        selectedTone !== resolved.card.tone
+      ) {
+        setSelectedTone("all");
+      }
+    },
+    [selectedTone]
+  );
+
   useEffect(() => {
     let active = true;
 
@@ -93,6 +161,19 @@ export const AffirmationScreen = () => {
     };
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      const pending = consumeQueuedCreatedAffirmation();
+
+      if (pending) {
+        mergeResolvedAffirmation(pending, {
+          prepend: true,
+          select: false,
+          revealAllIfNeeded: true,
+        });
+      }
+    }, [mergeResolvedAffirmation])
+  );
   useEffect(() => {
     if (
       !visibleRecommendations.some(
@@ -134,10 +215,20 @@ export const AffirmationScreen = () => {
       ? "All tones"
       : formatAffirmationToneLabel(selectedTone as AffirmationTone);
 
-  const handleOpenStory = useCallback((item: { id: string }) => {
-    setSelectedAffirmationId(item.id);
-    setStoryVisible(true);
-  }, []);
+  const handleOpenStory = useCallback(
+    async (item: { id: string }) => {
+      setSelectedAffirmationId(item.id);
+      setStoryVisible(true);
+
+      try {
+        const resolved = await getAffirmationBySlug(item.id);
+        mergeResolvedAffirmation(resolved);
+      } catch (error) {
+        console.warn("Failed to load affirmation detail:", error);
+      }
+    },
+    [mergeResolvedAffirmation]
+  );
 
   const handleOpenCreateAffirmation = useCallback(() => {
     router.push(ROUTES.AUTH.SELF_CARE_CREATE_AFFIRMATION as never);

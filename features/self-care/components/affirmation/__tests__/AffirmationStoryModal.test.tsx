@@ -87,6 +87,9 @@ describe("AffirmationStoryModal", () => {
     expect(hasText(tree, "6 slides to hold the mood.")).toBe(true);
     expect(hasText(tree, "06 / 06")).toBe(true);
     expect(hasText(tree, "Steady Flame")).toBe(true);
+    expect(
+      hasText(tree, "A cleaner rhythm for focus, study, and follow-through.")
+    ).toBe(true);
     expect(hasText(tree, "Quiet Ground")).toBe(true);
     expect(hasText(tree, "Clear Path")).toBe(true);
     expect(hasText(tree, "Soft Return")).toBe(true);

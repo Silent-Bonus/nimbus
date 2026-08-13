@@ -5,7 +5,6 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -25,25 +24,34 @@ import { useNimbusToast } from "@/components/ui/toast/useNimbusToast";
 import { NimbusButton } from "@/components/ui/theme-components/NimbusButton";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import ThemeContext from "@/contexts/ThemeContext";
+import { queueCreatedAffirmation } from "@/features/self-care/data/affirmationCreationInbox";
+import { createAffirmation } from "@/features/self-care/services/affirmationService";
 import type {
   ColorSet,
   Spacing,
   Typography,
   TypographyTokens,
 } from "@/theme/types";
+import type {
+  AffirmationTone,
+} from "@/features/self-care/utils/mindPractices";
 
-type CustomAffirmationDeck = {
-  id: string;
-  title: string;
-  tag: string;
-  tags: string[];
-  statements: string[];
-  createdAt: number;
-};
-
-const STORAGE_KEY = "custom_affirmations_v1";
 const INITIAL_STATEMENT_COUNT = 3;
 const MAX_STATEMENTS = 7;
+
+const AFFIRMATION_TONES: AffirmationTone[] = [
+  "calm",
+  "confidence",
+  "reset",
+  "sleep",
+];
+
+const TONE_KEYWORDS: Record<AffirmationTone, string[]> = {
+  calm: ["calm", "ground", "grounding", "breathe", "breath", "quiet"],
+  confidence: ["confidence", "focus", "study", "steady", "power", "progress"],
+  reset: ["reset", "restart", "release", "fresh", "clear"],
+  sleep: ["sleep", "rest", "night", "dream", "wind"],
+};
 
 const STATEMENT_ACCENTS = [
   "rgba(163, 190, 140, 0.16)",
@@ -61,6 +69,20 @@ const normalizeTagList = (value: string) =>
     .map((tag) => tag.replace(/^#+/, "").trim().toLowerCase())
     .filter(Boolean);
 
+const resolveToneFromTags = (tags: string[]): AffirmationTone => {
+  for (const tone of AFFIRMATION_TONES) {
+    if (
+      tags.some(
+        (tag) => tag === tone || TONE_KEYWORDS[tone].includes(tag.toLowerCase())
+      )
+    ) {
+      return tone;
+    }
+  }
+
+  return "confidence";
+};
+
 export const CreateAffirmationScreen = () => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -70,6 +92,7 @@ export const CreateAffirmationScreen = () => {
 
   const [title, setTitle] = useState("");
   const [tag, setTag] = useState("");
+  const [quoteDetail, setQuoteDetail] = useState("");
   const [statements, setStatements] = useState<string[]>(() => makeStatements());
   const [isSaving, setIsSaving] = useState(false);
 
@@ -82,6 +105,7 @@ export const CreateAffirmationScreen = () => {
   const canAddStatement = statements.length < MAX_STATEMENTS;
   const canCreate =
     title.trim().length > 0 &&
+    quoteDetail.trim().length > 0 &&
     statements.length >= INITIAL_STATEMENT_COUNT &&
     statements.every((statement) => statement.trim().length > 0);
 
@@ -109,51 +133,43 @@ export const CreateAffirmationScreen = () => {
   const handleCreate = useCallback(async () => {
     if (!canCreate || isSaving) return;
 
-    const deck: CustomAffirmationDeck = {
-      id: `custom-affirmation-${Date.now()}`,
+    const payload = {
       title: title.trim(),
-      tag: normalizedTags[0] ?? "",
+      tone: resolveToneFromTags(normalizedTags),
       tags: normalizedTags,
       statements: statements.map((statement) => statement.trim()),
-      createdAt: Date.now(),
+      quote_detail: quoteDetail.trim(),
     };
 
     setIsSaving(true);
 
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      const parsed: unknown = raw ? JSON.parse(raw) : [];
-      const existing = Array.isArray(parsed) ? parsed : [];
-
-      await AsyncStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify([deck, ...existing].slice(0, 24))
-      );
-
+      const created = await createAffirmation(payload);
+      queueCreatedAffirmation(created);
       toast.show({
         variant: "success",
-        title: "Affirmation saved",
-        message: "Your custom deck is ready.",
+        title: "Affirmation created",
+        message: created.message,
       });
       router.back();
     } catch (error) {
-      console.warn("Unable to save custom affirmation:", error);
+      console.warn("Unable to create custom affirmation:", error);
       toast.show({
         variant: "error",
-        title: "Couldn’t save affirmation",
+        title: "Couldn’t create affirmation",
         message: "Please try again in a moment.",
       });
     } finally {
       setIsSaving(false);
     }
-  }, [canCreate, isSaving, normalizedTags, statements, title, toast]);
+  }, [canCreate, isSaving, normalizedTags, quoteDetail, statements, title, toast]);
 
   return (
     <ScreenView bgColor={theme.background} style={styles.screen}>
       <View style={styles.root}>
         <AppHeader
           title="Create Affirmation"
-          subtitle="Start with a title, then stack three to seven lines."
+          subtitle="Start with a title and detail, then stack three to seven lines."
           onBack={() => router.back()}
           containerStyle={styles.header}
         />
@@ -202,16 +218,16 @@ export const CreateAffirmationScreen = () => {
                 Shape a private line set that sounds like you.
               </Text>
               <Text style={styles.heroSubtitle}>
-                Begin with a title, add three statements, then extend it to a
-                maximum of seven.
+                Begin with a title and detail, add three statements, then
+                extend it to a maximum of seven.
               </Text>
 
               <View style={styles.heroMetaRow}>
                 <View style={styles.metaChip}>
-                  <Text style={styles.metaChipText}>Saved locally</Text>
+                  <Text style={styles.metaChipText}>Saves to backend</Text>
                 </View>
                 <View style={styles.metaChip}>
-                  <Text style={styles.metaChipText}>Tap create when ready</Text>
+                  <Text style={styles.metaChipText}>Mock fallback ready</Text>
                 </View>
               </View>
             </View>
@@ -238,8 +254,10 @@ export const CreateAffirmationScreen = () => {
 
             <View style={styles.fieldCard}>
               <View style={styles.fieldHeader}>
-                <Text style={styles.fieldLabel}>Tag</Text>
-                <Text style={styles.fieldHint}>Optional. Separate labels with commas.</Text>
+                <Text style={styles.fieldLabel}>Tags</Text>
+                <Text style={styles.fieldHint}>
+                  Optional. Separate labels with commas.
+                </Text>
               </View>
 
               <TextInput
@@ -252,6 +270,29 @@ export const CreateAffirmationScreen = () => {
                 autoCapitalize="none"
                 autoCorrect={false}
                 returnKeyType="done"
+              />
+            </View>
+
+            <View style={styles.fieldCard}>
+              <View style={styles.fieldHeader}>
+                <Text style={styles.fieldLabel}>Quote detail</Text>
+                <Text style={styles.fieldHint}>
+                  One short line that frames the deck.
+                </Text>
+              </View>
+
+              <TextInput
+                testID="affirmation-detail-input"
+                style={styles.detailInput}
+                value={quoteDetail}
+                onChangeText={setQuoteDetail}
+                placeholder="A cleaner rhythm for focus, study, and follow-through."
+                placeholderTextColor={theme.textSecondary}
+                multiline
+                autoCapitalize="sentences"
+                autoCorrect={false}
+                textAlignVertical="top"
+                returnKeyType="default"
               />
             </View>
 
@@ -347,7 +388,8 @@ export const CreateAffirmationScreen = () => {
             </Pressable>
 
             <Text style={styles.helperCopy}>
-              Every visible line must be filled before you create the deck.
+              Every visible line and the detail must be filled before you
+              create the deck.
             </Text>
           </ScrollView>
 
@@ -360,11 +402,12 @@ export const CreateAffirmationScreen = () => {
               disabled={!canCreate || isSaving}
               textStyle={svaTypography?.textStyle.button}
               accessibilityLabel="Create affirmation"
-              accessibilityHint="Saves the custom affirmation deck"
+              accessibilityHint="Submits the custom affirmation deck"
               style={styles.createButton}
             />
             <Text style={styles.footerNote}>
-              Your custom deck is stored locally on this device.
+              Uses the affirmation API first, with a mock fallback while
+              testing.
             </Text>
           </View>
         </KeyboardAvoidingView>
@@ -544,6 +587,13 @@ const styling = (
       color: theme.textPrimary,
       paddingVertical: 0,
       minHeight: 28,
+      lineHeight: 22,
+    },
+    detailInput: {
+      ...typography.body,
+      color: theme.textPrimary,
+      minHeight: 88,
+      paddingVertical: 0,
       lineHeight: 22,
     },
     sectionRow: {

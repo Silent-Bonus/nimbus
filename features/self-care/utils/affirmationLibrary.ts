@@ -19,6 +19,7 @@ export type AffirmationRecommendation = {
   tone: AffirmationTone;
   title: string;
   affirmation: string;
+  detail?: string;
   tag: string;
   palette: AffirmationRecommendationPalette;
 };
@@ -103,8 +104,11 @@ export const AFFIRMATION_RECOMMENDATIONS: AffirmationRecommendation[] =
   AFFIRMATION_CARDS.map((card, index) => ({
     id: card.id,
     tone: card.tone,
-    title: RECOMMENDATION_TITLES[card.id] ?? formatAffirmationToneLabel(card.tone),
+    title:
+      RECOMMENDATION_TITLES[card.id] ??
+      formatAffirmationToneLabel(card.tone),
     affirmation: limitWords(card.quote, 20),
+    detail: card.detail,
     tag: formatAffirmationToneLabel(card.tone),
     palette:
       RECOMMENDATION_PALETTES[index % RECOMMENDATION_PALETTES.length],

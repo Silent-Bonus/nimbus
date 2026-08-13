@@ -102,6 +102,15 @@ const StorySlide = ({
             <Text style={[styles.slideQuote, { color: item.palette.text }]} numberOfLines={5}>
               {item.affirmation}
             </Text>
+
+            {item.detail ? (
+              <Text
+                style={[styles.slideDetail, { color: item.palette.text }]}
+                numberOfLines={3}
+              >
+                {item.detail}
+              </Text>
+            ) : null}
           </View>
 
           <View style={styles.slideFooter}>
@@ -644,6 +653,12 @@ const styling = (
       fontSize: 27,
       lineHeight: 34,
       letterSpacing: -0.35,
+    },
+    slideDetail: {
+      ...typography.caption,
+      color: theme.textSecondary,
+      lineHeight: 18,
+      opacity: 0.92,
     },
     slideFooter: {
       flexDirection: "row",

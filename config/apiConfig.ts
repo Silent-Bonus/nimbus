@@ -70,6 +70,9 @@ export const API_ENDPOINTS = {
   getMeditationList: `${BASE_URL}/api/v1/media/media-assets/?type=meditation&category=breathwork`,
   getWellnessContent: `${BASE_URL}/api/v1/wellness-content/`,
   getAffirmations: `${BASE_URL}/api/v1/wellness-content/affirmations/`,
+  createAffirmation: `${BASE_URL}/api/v1/wellness-content/affirmations/`,
+  getAffirmationDetail: (slug: string) =>
+    `${BASE_URL}/api/v1/wellness-content/affirmations/${slug}`,
   getWellnessContentDetail: (id: number | string) =>
     `${BASE_URL}/api/v1/wellness-content/${id}/`,
   createWellnessSession: `${BASE_URL}/api/v1/wellness/sessions/`,
