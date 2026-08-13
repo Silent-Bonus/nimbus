@@ -22,7 +22,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { AffirmationRecommendation } from "@/features/self-care/utils/affirmationLibrary";
+import { getAffirmationRecommendationPalette } from "@/features/self-care/utils/affirmationPresentation";
+import type { AffirmationCard } from "@/features/self-care/types/affirmation";
 import type {
   ColorSet,
   Spacing,
@@ -30,15 +31,21 @@ import type {
   TypographyTokens,
 } from "@/theme/types";
 
+type AffirmationStatementSlide = {
+  id: string;
+  statement: string;
+};
+
 type AffirmationStoryModalProps = {
   visible: boolean;
   onClose: () => void;
-  slides: AffirmationRecommendation[];
-  initialSlideId?: string;
+  affirmation?: AffirmationCard | null;
+  isLoading?: boolean;
 };
 
 type StorySlideProps = {
-  item: AffirmationRecommendation;
+  affirmation: AffirmationCard;
+  item: AffirmationStatementSlide;
   index: number;
   total: number;
   slideWidth: number;
@@ -46,17 +53,21 @@ type StorySlideProps = {
 };
 
 const StorySlide = ({
+  affirmation,
   item,
   index,
   total,
   slideWidth,
   styles,
 }: StorySlideProps) => {
+  const palette = getAffirmationRecommendationPalette(affirmation.toneCategory);
+  const isLastSlide = index === total - 1;
+
   return (
     <View style={[styles.slideWrap, { width: slideWidth }]}>
       <View style={styles.slideCard}>
         <LinearGradient
-          colors={item.palette.colors}
+          colors={palette.colors}
           start={{ x: 0.08, y: 0.05 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFillObject}
@@ -64,7 +75,7 @@ const StorySlide = ({
 
         <View
           pointerEvents="none"
-          style={[styles.slideGlow, { backgroundColor: item.palette.accentSoft }]}
+          style={[styles.slideGlow, { backgroundColor: palette.accentSoft }]}
         />
         <View pointerEvents="none" style={styles.slideGlowSoft} />
 
@@ -72,51 +83,98 @@ const StorySlide = ({
           <View style={styles.slideTopRow}>
             <View
               style={[
-                styles.slideTag,
+                styles.slideTonePill,
                 {
-                  backgroundColor: item.palette.tagBg,
-                  borderColor: item.palette.tagBorder,
+                  backgroundColor: palette.tagBg,
+                  borderColor: palette.tagBorder,
                 },
               ]}
             >
               <MaterialCommunityIcons
                 name="cards-heart-outline"
                 size={12}
-                color={item.palette.tagText}
+                color={palette.tagText}
               />
-              <Text style={[styles.slideTagText, { color: item.palette.tagText }]}>
-                {item.tag.toUpperCase()}
+              <Text style={[styles.slideToneText, { color: palette.tagText }]}>
+                {affirmation.tone}
               </Text>
             </View>
 
-            <Text style={[styles.slideCounter, { color: item.palette.text }]}>
-              {String(index + 1).padStart(2, "0")}/{String(total).padStart(2, "0")}
+            <Text style={[styles.slideCounter, { color: palette.text }]}>
+              {`${index + 1}/${total}`}
             </Text>
           </View>
+
+          {affirmation.tags?.length ? (
+            <View style={styles.tagRow}>
+              {affirmation.tags.map((tag) => (
+                <View
+                  key={tag}
+                  style={[
+                    styles.tagChip,
+                    {
+                      backgroundColor: palette.tagBg,
+                      borderColor: palette.tagBorder,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[styles.tagChipText, { color: palette.tagText }]}
+                    numberOfLines={1}
+                  >
+                    {tag}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
 
           <View style={styles.slideCopyBlock}>
-            <Text style={[styles.slideTitle, { color: item.palette.text }]} numberOfLines={1}>
-              {item.title}
+            <Text style={[styles.slideTitle, { color: palette.text }]}>
+              {affirmation.title}
             </Text>
 
-            <Text style={[styles.slideQuote, { color: item.palette.text }]} numberOfLines={5}>
-              {item.affirmation}
-            </Text>
-          </View>
-
-          <View style={styles.slideFooter}>
-            <Text style={[styles.slideFooterText, { color: item.palette.text }]}>
-              Swipe for the next line
-            </Text>
-            <View
-              style={[
-                styles.slideChevronBubble,
-                { backgroundColor: item.palette.tagBg },
-              ]}
+            <Text
+              style={[styles.slideDetail, { color: palette.text }]}
+              numberOfLines={3}
             >
-              <Ionicons name="chevron-forward" size={16} color={item.palette.text} />
-            </View>
+              {affirmation.detail}
+            </Text>
+
+            <Text
+              style={[styles.statementLabel, { color: palette.text }]}
+              numberOfLines={1}
+            >
+              Statement
+            </Text>
+
+            <Text
+              style={[styles.slideQuote, { color: palette.text }]}
+              numberOfLines={6}
+            >
+              {item.statement}
+            </Text>
           </View>
+
+          {!isLastSlide ? (
+            <View style={styles.slideFooter}>
+              <Text style={[styles.slideFooterText, { color: palette.text }]}>
+                Swipe to the next statement
+              </Text>
+              <View
+                style={[
+                  styles.slideChevronBubble,
+                  { backgroundColor: palette.tagBg },
+                ]}
+              >
+                <Ionicons
+                  name="chevron-forward"
+                  size={16}
+                  color={palette.text}
+                />
+              </View>
+            </View>
+          ) : null}
         </View>
       </View>
     </View>
@@ -126,15 +184,15 @@ const StorySlide = ({
 const AffirmationStoryModal = ({
   visible,
   onClose,
-  slides,
-  initialSlideId,
+  affirmation,
+  isLoading = false,
 }: AffirmationStoryModalProps) => {
   const { newTheme, spacing, typography, svaTypography } =
     useContext(ThemeContext);
   const insets = useSafeAreaInsets();
   const { width, height } = Dimensions.get("window");
 
-  const listRef = useRef<FlatList<AffirmationRecommendation>>(null);
+  const listRef = useRef<FlatList<AffirmationStatementSlide>>(null);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const sheetTranslateY = useRef(new Animated.Value(height)).current;
 
@@ -143,17 +201,31 @@ const AffirmationStoryModal = ({
 
   const slideWidth = Math.max(1, Math.round(width - spacing.md * 2));
   const sheetHeight = Math.min(Math.round(height * 0.9), 780);
-
-  const initialIndex = useMemo(() => {
-    const foundIndex = slides.findIndex((item) => item.id === initialSlideId);
-    return foundIndex >= 0 ? foundIndex : 0;
-  }, [initialSlideId, slides]);
-
-  const activeSlide = slides[activeIndex] ?? slides[initialIndex] ?? slides[0];
+  const statementSlides = useMemo<AffirmationStatementSlide[]>(
+    () =>
+      (affirmation?.statements?.length
+        ? affirmation.statements
+        : affirmation?.quote
+          ? [affirmation.quote]
+          : []
+      ).map((statement, index) => ({
+        id: `${affirmation?.id ?? "affirmation"}-statement-${index}`,
+        statement,
+      })),
+    [affirmation]
+  );
 
   const styles = useMemo(
     () => styling(newTheme, spacing, typography, svaTypography),
     [newTheme, spacing, typography, svaTypography]
+  );
+
+  const palette = useMemo(
+    () =>
+      getAffirmationRecommendationPalette(
+        affirmation?.toneCategory ?? "confidence"
+      ),
+    [affirmation?.toneCategory]
   );
 
   const animateIn = useCallback(() => {
@@ -221,10 +293,10 @@ const AffirmationStoryModal = ({
   useEffect(() => {
     if (visible) {
       setIsMounted(true);
-      setActiveIndex(initialIndex);
+      setActiveIndex(0);
       animateIn();
-      listRef.current?.scrollToIndex({
-        index: initialIndex,
+      listRef.current?.scrollToOffset({
+        offset: 0,
         animated: false,
       });
       return;
@@ -233,7 +305,7 @@ const AffirmationStoryModal = ({
     if (isMounted) {
       animateOut();
     }
-  }, [animateIn, animateOut, initialIndex, isMounted, visible]);
+  }, [animateIn, animateOut, isMounted, visible]);
 
   useEffect(() => {
     if (!visible) {
@@ -241,6 +313,14 @@ const AffirmationStoryModal = ({
       sheetTranslateY.setValue(sheetHeight);
     }
   }, [backdropOpacity, sheetHeight, sheetTranslateY, visible]);
+
+  useEffect(() => {
+    setActiveIndex(0);
+    listRef.current?.scrollToOffset({
+      offset: 0,
+      animated: false,
+    });
+  }, [affirmation?.id]);
 
   const handleClose = useCallback(() => {
     onClose();
@@ -250,21 +330,18 @@ const AffirmationStoryModal = ({
     (event: any) => {
       const nextIndex = Math.round(event.nativeEvent.contentOffset.x / slideWidth);
       if (Number.isFinite(nextIndex)) {
-        setActiveIndex(Math.max(0, Math.min(nextIndex, slides.length - 1)));
+        setActiveIndex(Math.max(0, Math.min(nextIndex, statementSlides.length - 1)));
       }
     },
-    [slideWidth, slides.length]
+    [slideWidth, statementSlides.length]
   );
 
-  if (!isMounted) {
+  if (!isMounted || !affirmation) {
     return null;
   }
 
   return (
-    <View
-      pointerEvents={visible ? "auto" : "none"}
-      style={styles.overlay}
-    >
+    <View pointerEvents={visible ? "auto" : "none"} style={styles.overlay}>
       <View style={styles.root}>
         <TouchableWithoutFeedback onPress={handleClose}>
           <Animated.View
@@ -288,10 +365,7 @@ const AffirmationStoryModal = ({
             ]}
           >
             <LinearGradient
-              colors={[
-                activeSlide?.palette.accentSoft ?? "rgba(255,255,255,0.08)",
-                "transparent",
-              ]}
+              colors={[palette.accentSoft, "transparent"]}
               start={{ x: 0.05, y: 0 }}
               end={{ x: 0.95, y: 1 }}
               pointerEvents="none"
@@ -303,10 +377,10 @@ const AffirmationStoryModal = ({
 
               <View style={styles.headerRow}>
                 <View style={styles.headerCopy}>
-                  <Text style={styles.eyebrow}>AFFIRMATION STORY</Text>
-                  <Text style={styles.title}>Six slides to hold the mood.</Text>
+                  <Text style={styles.eyebrow}>AFFIRMATION</Text>
+                  <Text style={styles.title}>{affirmation.title}</Text>
                   <Text style={styles.subtitle}>
-                    Swipe horizontally through the selected line and the full deck.
+                    Open one affirmation and move through it statement by statement.
                   </Text>
                 </View>
 
@@ -323,30 +397,29 @@ const AffirmationStoryModal = ({
                 </Pressable>
               </View>
 
+              {isLoading ? (
+                <View style={styles.loadingPill}>
+                  <Text style={styles.loadingText}>Refreshing affirmation…</Text>
+                </View>
+              ) : null}
+
               <View style={styles.metaRow}>
                 <View
                   style={[
                     styles.metaPill,
                     {
-                      backgroundColor: activeSlide?.palette.tagBg,
-                      borderColor: activeSlide?.palette.tagBorder,
+                      backgroundColor: palette.tagBg,
+                      borderColor: palette.tagBorder,
                     },
                   ]}
                 >
-                  <Text
-                    style={[
-                      styles.metaText,
-                      { color: activeSlide?.palette.tagText ?? newTheme.textSecondary },
-                    ]}
-                  >
-                    {`${String(activeIndex + 1).padStart(2, "0")} / ${String(
-                      slides.length
-                    ).padStart(2, "0")}`}
+                  <Text style={[styles.metaText, { color: palette.tagText }]}>
+                    {`${activeIndex + 1}/${statementSlides.length}`}
                   </Text>
                 </View>
 
                 <View style={styles.dotRow}>
-                  {slides.map((slide, index) => {
+                  {statementSlides.map((slide, index) => {
                     const isActive = index === activeIndex;
                     return (
                       <View
@@ -355,7 +428,7 @@ const AffirmationStoryModal = ({
                           styles.dot,
                           {
                             backgroundColor: isActive
-                              ? activeSlide?.palette.accent ?? newTheme.accent
+                              ? palette.accent
                               : newTheme.borderMuted ?? "rgba(255,255,255,0.08)",
                             transform: [{ scale: isActive ? 1.1 : 1 }],
                           },
@@ -368,14 +441,14 @@ const AffirmationStoryModal = ({
 
               <FlatList
                 ref={listRef}
-                data={slides}
+                data={statementSlides}
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
                 keyExtractor={(item) => item.id}
-                initialNumToRender={slides.length}
-                maxToRenderPerBatch={slides.length}
-                windowSize={slides.length}
+                initialNumToRender={statementSlides.length}
+                maxToRenderPerBatch={statementSlides.length}
+                windowSize={statementSlides.length}
                 decelerationRate="fast"
                 bounces={false}
                 snapToAlignment="start"
@@ -389,9 +462,10 @@ const AffirmationStoryModal = ({
                 style={[styles.carousel, { width: slideWidth }]}
                 renderItem={({ item, index }) => (
                   <StorySlide
+                    affirmation={affirmation}
                     item={item}
                     index={index}
-                    total={slides.length}
+                    total={statementSlides.length}
                     slideWidth={slideWidth}
                     styles={styles}
                   />
@@ -501,39 +575,48 @@ const styling = (
       opacity: 0.85,
       transform: [{ scale: 0.98 }],
     },
+    loadingPill: {
+      alignSelf: "flex-start",
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs,
+      borderRadius: 999,
+      backgroundColor: theme.surfaceMuted,
+      borderWidth: 1,
+      borderColor: theme.borderMuted ?? "rgba(255,255,255,0.08)",
+      marginBottom: spacing.sm,
+    },
+    loadingText: {
+      ...typography.caption,
+      color: theme.textSecondary,
+    },
     metaRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      marginBottom: spacing.sm,
+      gap: spacing.md,
+      marginBottom: spacing.md,
     },
     metaPill: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: 10,
-      paddingVertical: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
       borderRadius: 999,
       borderWidth: 1,
     },
     metaText: {
-      fontFamily:
-        svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
-      fontSize: 10,
-      lineHeight: 12,
-      letterSpacing: 1.2,
-      textTransform: "uppercase",
+      ...typography.smallCaption,
       fontWeight: "700",
     },
     dotRow: {
       flexDirection: "row",
       alignItems: "center",
+      justifyContent: "flex-end",
+      flex: 1,
       gap: 6,
     },
     dot: {
-      width: 6,
-      height: 6,
-      borderRadius: 99,
+      width: 7,
+      height: 7,
+      borderRadius: 999,
     },
     carousel: {
       flex: 1,
@@ -544,53 +627,51 @@ const styling = (
     },
     slideWrap: {
       flex: 1,
-      paddingBottom: spacing.sm,
-      paddingRight: spacing.xs,
     },
     slideCard: {
       flex: 1,
       borderRadius: 28,
       overflow: "hidden",
       borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.12)",
+      borderColor: theme.borderMuted ?? "rgba(255,255,255,0.08)",
       shadowColor: theme.shadow,
-      shadowOpacity: 0.24,
-      shadowRadius: 18,
-      shadowOffset: { width: 0, height: 12 },
-      elevation: 10,
+      shadowOpacity: 0.2,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 10 },
+      elevation: 8,
     },
     slideGlow: {
       position: "absolute",
       top: -24,
-      right: -18,
-      width: 128,
-      height: 128,
+      right: -16,
+      width: 112,
+      height: 112,
       borderRadius: 999,
-      opacity: 0.82,
+      opacity: 0.9,
     },
     slideGlowSoft: {
       position: "absolute",
-      bottom: -40,
+      bottom: -30,
       left: -20,
-      width: 160,
-      height: 160,
+      width: 136,
+      height: 136,
       borderRadius: 999,
-      backgroundColor: "rgba(255,255,255,0.18)",
-      opacity: 0.4,
+      backgroundColor: "rgba(255,255,255,0.16)",
+      opacity: 0.5,
     },
     slideInner: {
       flex: 1,
-      justifyContent: "space-between",
       padding: spacing.lg,
+      justifyContent: "space-between",
       gap: spacing.md,
     },
     slideTopRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      gap: spacing.sm,
+      gap: spacing.md,
     },
-    slideTag: {
+    slideTonePill: {
       flexDirection: "row",
       alignItems: "center",
       gap: 6,
@@ -600,46 +681,53 @@ const styling = (
       borderRadius: 999,
       borderWidth: 1,
     },
-    slideTagText: {
-      fontFamily:
-        svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
-      fontSize: 10,
-      lineHeight: 12,
-      letterSpacing: 1.25,
+    slideToneText: {
+      ...typography.smallCaption,
       fontWeight: "700",
-      textTransform: "uppercase",
     },
     slideCounter: {
-      fontFamily:
-        svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
-      fontSize: 10,
-      lineHeight: 12,
-      letterSpacing: 1.3,
-      textTransform: "uppercase",
+      ...typography.smallCaption,
       fontWeight: "700",
-      opacity: 0.85,
+    },
+    tagRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: spacing.xs,
+    },
+    tagChip: {
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 999,
+      borderWidth: 1,
+    },
+    tagChipText: {
+      ...typography.smallCaption,
+      fontWeight: "600",
     },
     slideCopyBlock: {
       flex: 1,
       justifyContent: "center",
-      gap: 10,
-      paddingVertical: spacing.sm,
+      gap: spacing.sm,
     },
     slideTitle: {
+      ...typography.h3,
+    },
+    slideDetail: {
+      ...typography.caption,
+    },
+    statementLabel: {
       fontFamily:
-        svaTypography?.textStyle.authTitle.fontFamily ??
-        "CormorantGaramond_500Medium",
-      fontSize: 22,
-      lineHeight: 26,
-      letterSpacing: -0.25,
+        svaTypography?.textStyle.authTinyLabel.fontFamily ??
+        typography.smallCaption.fontFamily,
+      fontSize: 10,
+      lineHeight: 14,
+      letterSpacing: 2.2,
+      textTransform: "uppercase",
+      opacity: 0.78,
     },
     slideQuote: {
-      ...typography.h3,
-      fontSize: 27,
-      lineHeight: 34,
-      letterSpacing: -0.35,
+      ...typography.h2,
+      lineHeight: 36,
     },
     slideFooter: {
       flexDirection: "row",
@@ -648,24 +736,15 @@ const styling = (
       gap: spacing.sm,
     },
     slideFooterText: {
-      fontFamily:
-        svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
-      fontSize: 10,
-      lineHeight: 12,
-      letterSpacing: 1.3,
-      textTransform: "uppercase",
-      fontWeight: "700",
-      opacity: 0.82,
+      ...typography.caption,
+      fontWeight: "600",
     },
     slideChevronBubble: {
-      width: 30,
-      height: 30,
-      borderRadius: 10,
+      width: 34,
+      height: 34,
+      borderRadius: 999,
       alignItems: "center",
       justifyContent: "center",
-      borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.14)",
     },
   });
 

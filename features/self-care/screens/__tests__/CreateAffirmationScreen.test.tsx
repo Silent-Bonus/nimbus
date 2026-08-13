@@ -5,11 +5,11 @@ import renderer, { act } from "react-test-renderer";
 import ThemeContext from "../../../../contexts/ThemeContext";
 import { getTheme } from "../../../../theme";
 import CreateAffirmationScreen from "../CreateAffirmationScreen";
+import { createAffirmation } from "@/features/self-care/services/affirmationService";
+import { queueCreatedAffirmation } from "@/features/self-care/data/affirmationCreationInbox";
 
 const mockBack = jest.fn();
 const mockSetOptions = jest.fn();
-const mockSetItem = jest.fn();
-const mockGetItem = jest.fn();
 const mockToastShow = jest.fn();
 
 jest.mock("expo-router", () => ({
@@ -31,9 +31,19 @@ jest.mock("@expo/vector-icons", () => {
   };
 });
 
-jest.mock("@react-native-async-storage/async-storage", () => ({
-  getItem: (...args: any[]) => mockGetItem(...args),
-  setItem: (...args: any[]) => mockSetItem(...args),
+jest.mock("@/features/self-care/services/affirmationService", () => {
+  const actual = jest.requireActual(
+    "@/features/self-care/services/affirmationService"
+  );
+
+  return {
+    ...actual,
+    createAffirmation: jest.fn(),
+  };
+});
+
+jest.mock("@/features/self-care/data/affirmationCreationInbox", () => ({
+  queueCreatedAffirmation: jest.fn(),
 }));
 
 jest.mock("@/components/ui/toast/useNimbusToast", () => ({
@@ -101,8 +111,35 @@ function renderScreen() {
 describe("CreateAffirmationScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetItem.mockResolvedValue(null);
-    mockSetItem.mockResolvedValue(undefined);
+    (createAffirmation as jest.Mock).mockResolvedValue({
+      card: {
+        id: "quiet-power-ii",
+        title: "Quiet Power ii",
+        tone: "Confidence",
+        toneCategory: "confidence",
+        quote: "Steady energy is stronger than rushed effort.",
+        detail: "A cleaner rhythm for focus, study, and follow-through.",
+        paletteKey: "confidence",
+      },
+      recommendation: {
+        id: "quiet-power-ii",
+        tone: "Confidence",
+        toneCategory: "confidence",
+        title: "Quiet Power ii",
+        affirmation: "Steady energy is stronger than rushed effort.",
+        detail: "A cleaner rhythm for focus, study, and follow-through.",
+        tag: "Focus",
+        palette: {
+          colors: ["#EAF4FF", "#BAD4F1"],
+          accent: "#2F628E",
+          accentSoft: "rgba(47, 98, 142, 0.18)",
+          text: "#132235",
+          tagBg: "rgba(255, 255, 255, 0.62)",
+          tagBorder: "rgba(19, 34, 53, 0.10)",
+          tagText: "#2F628E",
+        },
+      },
+    });
   });
 
   it("renders the custom affirmation form with three statement inputs", () => {
@@ -113,7 +150,7 @@ describe("CreateAffirmationScreen", () => {
     });
 
     expect(hasText(tree, "Create Affirmation")).toBe(true);
-    expect(hasText(tree, "CUSTOM DECK")).toBe(true);
+    expect(hasText(tree, "Quote detail")).toBe(true);
     expect(getStatementInputs(tree)).toHaveLength(3);
 
     const addButton = tree.root.findByProps({
@@ -145,7 +182,7 @@ describe("CreateAffirmationScreen", () => {
     expect(hasText(tree, "Maximum 7 reached")).toBe(true);
   });
 
-  it("saves the custom affirmation and returns to the affirmation screen", async () => {
+  it("submits the custom affirmation and returns to the affirmation screen", async () => {
     const tree = renderScreen();
 
     act(() => {
@@ -154,7 +191,12 @@ describe("CreateAffirmationScreen", () => {
       }).props.onChangeText("Soft Return");
       tree.root.findByProps({
         testID: "affirmation-tag-input",
-      }).props.onChangeText("calm, reset");
+      }).props.onChangeText("focus, study");
+      tree.root.findByProps({
+        testID: "affirmation-detail-input",
+      }).props.onChangeText(
+        "A cleaner rhythm for focus, study, and follow-through."
+      );
       tree.root.findByProps({
         testID: "affirmation-statement-input-0",
       }).props.onChangeText("I can move gently and still make progress.");
@@ -174,29 +216,30 @@ describe("CreateAffirmationScreen", () => {
       await createButton.props.onPress();
     });
 
-    expect(mockGetItem).toHaveBeenCalledWith("custom_affirmations_v1");
-    expect(mockSetItem).toHaveBeenCalledTimes(1);
+    expect(createAffirmation).toHaveBeenCalledWith({
+      title: "Soft Return",
+      tone: "confidence",
+      tags: ["focus", "study"],
+      statements: [
+        "I can move gently and still make progress.",
+        "My pace can be soft and still be strong.",
+        "What I build with care will hold.",
+      ],
+      quote_detail: "A cleaner rhythm for focus, study, and follow-through.",
+    });
+    expect(queueCreatedAffirmation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recommendation: expect.objectContaining({
+          id: "quiet-power-ii",
+        }),
+      })
+    );
     expect(mockBack).toHaveBeenCalled();
     expect(mockToastShow).toHaveBeenCalledWith(
       expect.objectContaining({
         variant: "success",
         title: "Affirmation saved",
-      })
-    );
-
-    const [, savedJson] = mockSetItem.mock.calls[0];
-    const savedDecks = JSON.parse(savedJson as string);
-    expect(savedDecks).toHaveLength(1);
-    expect(savedDecks[0]).toEqual(
-      expect.objectContaining({
-        title: "Soft Return",
-        tag: "calm",
-        tags: ["calm", "reset"],
-        statements: [
-          "I can move gently and still make progress.",
-          "My pace can be soft and still be strong.",
-          "What I build with care will hold.",
-        ],
+        message: '"Quiet Power ii" is ready in your library.',
       })
     );
   });

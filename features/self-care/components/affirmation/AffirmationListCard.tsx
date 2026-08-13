@@ -4,11 +4,11 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { AffirmationCard } from "@/features/self-care/utils/mindPractices";
 import {
-  getAffirmationRecommendationPaletteById,
+  getAffirmationRecommendationPalette,
   type AffirmationRecommendationPalette,
-} from "@/features/self-care/utils/affirmationLibrary";
+} from "@/features/self-care/utils/affirmationPresentation";
+import type { AffirmationCard } from "@/features/self-care/types/affirmation";
 import type {
   ColorSet,
   Spacing,
@@ -31,8 +31,8 @@ const AffirmationListCard = ({
     useContext(ThemeContext);
 
   const palette = useMemo<AffirmationRecommendationPalette>(
-    () => getAffirmationRecommendationPaletteById(item.id),
-    [item.id]
+    () => getAffirmationRecommendationPalette(item.toneCategory),
+    [item.toneCategory]
   );
 
   const styles = useMemo(
@@ -43,7 +43,7 @@ const AffirmationListCard = ({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Choose affirmation ${item.id}`}
+      accessibilityLabel={`Choose affirmation ${item.title}`}
       accessibilityState={{ selected }}
       accessibilityHint="Highlights this affirmation in the library"
       onPress={() => onPress(item)}
@@ -83,7 +83,7 @@ const AffirmationListCard = ({
               color={palette.tagText}
             />
             <Text style={[styles.toneText, { color: palette.tagText }]}>
-              {item.tone.toUpperCase()}
+              {item.tone}
             </Text>
           </View>
 
@@ -118,11 +118,17 @@ const AffirmationListCard = ({
         </View>
 
         <View style={styles.copyBlock}>
-          <Text style={[styles.quote, { color: palette.text }]} numberOfLines={2}>
-            {item.quote}
+          <Text
+            style={[styles.quote, { color: palette.text }]}
+            numberOfLines={2}
+          >
+            {item.title}
           </Text>
 
-          <Text style={[styles.detail, { color: palette.text }]} numberOfLines={2}>
+          <Text
+            style={[styles.detail, { color: palette.text }]}
+            numberOfLines={2}
+          >
             {item.detail}
           </Text>
         </View>
@@ -132,16 +138,9 @@ const AffirmationListCard = ({
             {selected ? "Selected" : "Open story"}
           </Text>
           <View
-            style={[
-              styles.chevronBubble,
-              { backgroundColor: palette.tagBg },
-            ]}
+            style={[styles.chevronBubble, { backgroundColor: palette.tagBg }]}
           >
-            <Ionicons
-              name="chevron-forward"
-              size={16}
-              color={palette.text}
-            />
+            <Ionicons name="chevron-forward" size={16} color={palette.text} />
           </View>
         </View>
       </View>

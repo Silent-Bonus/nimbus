@@ -5,7 +5,6 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -16,7 +15,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { router, useNavigation } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -25,6 +24,9 @@ import { useNimbusToast } from "@/components/ui/toast/useNimbusToast";
 import { NimbusButton } from "@/components/ui/theme-components/NimbusButton";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import ThemeContext from "@/contexts/ThemeContext";
+import { queueCreatedAffirmation } from "@/features/self-care/data/affirmationCreationInbox";
+import { createAffirmation } from "@/features/self-care/services/affirmationService";
+import { resolveAffirmationToneFromTags } from "@/features/self-care/utils/affirmationHelpers";
 import type {
   ColorSet,
   Spacing,
@@ -32,16 +34,6 @@ import type {
   TypographyTokens,
 } from "@/theme/types";
 
-type CustomAffirmationDeck = {
-  id: string;
-  title: string;
-  tag: string;
-  tags: string[];
-  statements: string[];
-  createdAt: number;
-};
-
-const STORAGE_KEY = "custom_affirmations_v1";
 const INITIAL_STATEMENT_COUNT = 3;
 const MAX_STATEMENTS = 7;
 
@@ -70,6 +62,7 @@ export const CreateAffirmationScreen = () => {
 
   const [title, setTitle] = useState("");
   const [tag, setTag] = useState("");
+  const [quoteDetail, setQuoteDetail] = useState("");
   const [statements, setStatements] = useState<string[]>(() => makeStatements());
   const [isSaving, setIsSaving] = useState(false);
 
@@ -82,6 +75,7 @@ export const CreateAffirmationScreen = () => {
   const canAddStatement = statements.length < MAX_STATEMENTS;
   const canCreate =
     title.trim().length > 0 &&
+    quoteDetail.trim().length > 0 &&
     statements.length >= INITIAL_STATEMENT_COUNT &&
     statements.every((statement) => statement.trim().length > 0);
 
@@ -109,51 +103,43 @@ export const CreateAffirmationScreen = () => {
   const handleCreate = useCallback(async () => {
     if (!canCreate || isSaving) return;
 
-    const deck: CustomAffirmationDeck = {
-      id: `custom-affirmation-${Date.now()}`,
+    const payload = {
       title: title.trim(),
-      tag: normalizedTags[0] ?? "",
+      tone: resolveAffirmationToneFromTags(normalizedTags),
       tags: normalizedTags,
       statements: statements.map((statement) => statement.trim()),
-      createdAt: Date.now(),
+      quote_detail: quoteDetail.trim(),
     };
 
     setIsSaving(true);
 
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      const parsed: unknown = raw ? JSON.parse(raw) : [];
-      const existing = Array.isArray(parsed) ? parsed : [];
-
-      await AsyncStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify([deck, ...existing].slice(0, 24))
-      );
-
+      const created = await createAffirmation(payload);
+      queueCreatedAffirmation(created);
       toast.show({
         variant: "success",
         title: "Affirmation saved",
-        message: "Your custom deck is ready.",
+        message: `"${created.card.title}" is ready in your library.`,
       });
       router.back();
     } catch (error) {
-      console.warn("Unable to save custom affirmation:", error);
+      console.warn("Unable to create custom affirmation:", error);
       toast.show({
         variant: "error",
-        title: "Couldn’t save affirmation",
+        title: "Couldn’t create affirmation",
         message: "Please try again in a moment.",
       });
     } finally {
       setIsSaving(false);
     }
-  }, [canCreate, isSaving, normalizedTags, statements, title, toast]);
+  }, [canCreate, isSaving, normalizedTags, quoteDetail, statements, title, toast]);
 
   return (
     <ScreenView bgColor={theme.background} style={styles.screen}>
       <View style={styles.root}>
         <AppHeader
           title="Create Affirmation"
-          subtitle="Start with a title, then stack three to seven lines."
+          subtitle="Start with a title and detail, then stack three to seven lines."
           onBack={() => router.back()}
           containerStyle={styles.header}
         />
@@ -176,44 +162,13 @@ export const CreateAffirmationScreen = () => {
                 style={[styles.heroGlow, { backgroundColor: theme.accent }]}
               />
 
-              <View style={styles.heroTopRow}>
-                <View style={styles.heroBadge}>
-                  <Ionicons
-                    name="pencil-outline"
-                    size={18}
-                    color={theme.accent}
-                  />
-                </View>
-
-                <View style={styles.heroCountChip}>
-                  <MaterialCommunityIcons
-                    name="cards-heart-outline"
-                    size={13}
-                    color={theme.textSecondary}
-                  />
-                  <Text style={styles.heroCountText}>
-                    {statements.length} / {MAX_STATEMENTS}
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={styles.heroEyebrow}>CUSTOM DECK</Text>
               <Text style={styles.heroTitle}>
                 Shape a private line set that sounds like you.
               </Text>
               <Text style={styles.heroSubtitle}>
-                Begin with a title, add three statements, then extend it to a
-                maximum of seven.
+                Begin with a title and detail, add three statements, then
+                extend it to a maximum of seven.
               </Text>
-
-              <View style={styles.heroMetaRow}>
-                <View style={styles.metaChip}>
-                  <Text style={styles.metaChipText}>Saved locally</Text>
-                </View>
-                <View style={styles.metaChip}>
-                  <Text style={styles.metaChipText}>Tap create when ready</Text>
-                </View>
-              </View>
             </View>
 
             <View style={styles.fieldCard}>
@@ -238,8 +193,10 @@ export const CreateAffirmationScreen = () => {
 
             <View style={styles.fieldCard}>
               <View style={styles.fieldHeader}>
-                <Text style={styles.fieldLabel}>Tag</Text>
-                <Text style={styles.fieldHint}>Optional. Separate labels with commas.</Text>
+                <Text style={styles.fieldLabel}>Tags</Text>
+                <Text style={styles.fieldHint}>
+                  Optional. Separate labels with commas.
+                </Text>
               </View>
 
               <TextInput
@@ -255,17 +212,34 @@ export const CreateAffirmationScreen = () => {
               />
             </View>
 
+            <View style={styles.fieldCard}>
+              <View style={styles.fieldHeader}>
+                <Text style={styles.fieldLabel}>Quote detail</Text>
+                <Text style={styles.fieldHint}>
+                  One short line that frames the deck.
+                </Text>
+              </View>
+
+              <TextInput
+                testID="affirmation-detail-input"
+                style={styles.detailInput}
+                value={quoteDetail}
+                onChangeText={setQuoteDetail}
+                placeholder="A cleaner rhythm for focus, study, and follow-through."
+                placeholderTextColor={theme.textSecondary}
+                multiline
+                autoCapitalize="sentences"
+                autoCorrect={false}
+                textAlignVertical="top"
+                returnKeyType="default"
+              />
+            </View>
+
             <View style={styles.sectionRow}>
               <View>
                 <Text style={styles.sectionEyebrow}>STATEMENTS</Text>
                 <Text style={styles.sectionTitle}>
                   Write the lines that will carry the mood.
-                </Text>
-              </View>
-
-              <View style={styles.countPill}>
-                <Text style={styles.countPillText}>
-                  {statements.length}/{MAX_STATEMENTS}
                 </Text>
               </View>
             </View>
@@ -347,7 +321,8 @@ export const CreateAffirmationScreen = () => {
             </Pressable>
 
             <Text style={styles.helperCopy}>
-              Every visible line must be filled before you create the deck.
+              Every visible line and the detail must be filled before you
+              create the deck.
             </Text>
           </ScrollView>
 
@@ -360,12 +335,9 @@ export const CreateAffirmationScreen = () => {
               disabled={!canCreate || isSaving}
               textStyle={svaTypography?.textStyle.button}
               accessibilityLabel="Create affirmation"
-              accessibilityHint="Saves the custom affirmation deck"
+              accessibilityHint="Submits the custom affirmation deck"
               style={styles.createButton}
             />
-            <Text style={styles.footerNote}>
-              Your custom deck is stored locally on this device.
-            </Text>
           </View>
         </KeyboardAvoidingView>
       </View>
@@ -423,52 +395,6 @@ const styling = (
       borderRadius: 999,
       opacity: 0.12,
     },
-    heroTopRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-    },
-    heroBadge: {
-      width: 40,
-      height: 40,
-      borderRadius: 14,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: "rgba(163, 190, 140, 0.12)",
-      borderWidth: 1,
-      borderColor: "rgba(163, 190, 140, 0.18)",
-    },
-    heroCountChip: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: theme.borderMuted ?? "rgba(255,255,255,0.08)",
-      backgroundColor: theme.surface,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-    },
-    heroCountText: {
-      fontFamily:
-        svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
-      fontSize: 10,
-      lineHeight: 12,
-      letterSpacing: 1.1,
-      textTransform: "uppercase",
-      color: theme.textSecondary,
-    },
-    heroEyebrow: {
-      fontFamily:
-        svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
-      fontSize: 10,
-      lineHeight: 14,
-      letterSpacing: 2.6,
-      textTransform: "uppercase",
-      color: theme.textSecondary,
-    },
     heroTitle: {
       ...(svaTypography?.textStyle.authTitle ?? {}),
       fontSize: 28,
@@ -480,30 +406,6 @@ const styling = (
       ...typography.body,
       color: theme.textSecondary,
       lineHeight: 22,
-    },
-    heroMetaRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 8,
-      marginTop: spacing.xs,
-    },
-    metaChip: {
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: theme.borderMuted ?? "rgba(255,255,255,0.08)",
-      backgroundColor: theme.surfaceMuted,
-    },
-    metaChipText: {
-      fontFamily:
-        svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
-      fontSize: 10,
-      lineHeight: 12,
-      letterSpacing: 1.1,
-      textTransform: "uppercase",
-      color: theme.textSecondary,
     },
     fieldCard: {
       borderRadius: 26,
@@ -546,6 +448,13 @@ const styling = (
       minHeight: 28,
       lineHeight: 22,
     },
+    detailInput: {
+      ...typography.body,
+      color: theme.textPrimary,
+      minHeight: 88,
+      paddingVertical: 0,
+      lineHeight: 22,
+    },
     sectionRow: {
       flexDirection: "row",
       alignItems: "flex-start",
@@ -568,24 +477,6 @@ const styling = (
       ...typography.h3,
       color: theme.textPrimary,
       lineHeight: 24,
-    },
-    countPill: {
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: 999,
-      backgroundColor: theme.surfaceMuted,
-      borderWidth: 1,
-      borderColor: theme.borderMuted ?? "rgba(255,255,255,0.08)",
-    },
-    countPillText: {
-      fontFamily:
-        svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
-      fontSize: 10,
-      lineHeight: 12,
-      letterSpacing: 1.1,
-      textTransform: "uppercase",
-      color: theme.textSecondary,
     },
     statementStack: {
       gap: spacing.sm,
@@ -683,11 +574,6 @@ const styling = (
     },
     createButton: {
       alignSelf: "stretch",
-    },
-    footerNote: {
-      ...typography.smallCaption,
-      color: theme.textSecondary,
-      textAlign: "center",
     },
   });
 
