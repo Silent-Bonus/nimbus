@@ -8,7 +8,7 @@ import type {
   Typography,
   TypographyTokens,
 } from "@/theme/types";
-import type { AffirmationRecommendation } from "@/features/self-care/utils/affirmationLibrary";
+import type { AffirmationRecommendation } from "@/features/self-care/utils/affirmationPresentation";
 import AffirmationRecommendationCard, {
   getAffirmationRecommendationCardWidth,
 } from "@/features/self-care/components/affirmation/AffirmationRecommendationCard";
@@ -46,10 +46,6 @@ const AffirmationRecommendationSection = ({
     <View style={styles.section}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>RECOMMENDED LINE</Text>
-        <Text style={styles.title}>Swipe a line that fits the moment.</Text>
-        <Text style={styles.subtitle}>
-          Color-led picks from the affirmation library.
-        </Text>
       </View>
 
       <FlatList
@@ -98,15 +94,6 @@ const styling = (
       color: theme.textSecondary,
       textTransform: "uppercase",
       marginBottom: 4,
-    },
-    title: {
-      ...typography.h3,
-      color: theme.textPrimary,
-      marginBottom: 4,
-    },
-    subtitle: {
-      ...typography.caption,
-      color: theme.textSecondary,
     },
     listContent: {
       paddingRight: spacing.md,

@@ -15,7 +15,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { router, useNavigation } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -26,32 +26,16 @@ import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import ThemeContext from "@/contexts/ThemeContext";
 import { queueCreatedAffirmation } from "@/features/self-care/data/affirmationCreationInbox";
 import { createAffirmation } from "@/features/self-care/services/affirmationService";
+import { resolveAffirmationToneFromTags } from "@/features/self-care/utils/affirmationHelpers";
 import type {
   ColorSet,
   Spacing,
   Typography,
   TypographyTokens,
 } from "@/theme/types";
-import type {
-  AffirmationTone,
-} from "@/features/self-care/utils/mindPractices";
 
 const INITIAL_STATEMENT_COUNT = 3;
 const MAX_STATEMENTS = 7;
-
-const AFFIRMATION_TONES: AffirmationTone[] = [
-  "calm",
-  "confidence",
-  "reset",
-  "sleep",
-];
-
-const TONE_KEYWORDS: Record<AffirmationTone, string[]> = {
-  calm: ["calm", "ground", "grounding", "breathe", "breath", "quiet"],
-  confidence: ["confidence", "focus", "study", "steady", "power", "progress"],
-  reset: ["reset", "restart", "release", "fresh", "clear"],
-  sleep: ["sleep", "rest", "night", "dream", "wind"],
-};
 
 const STATEMENT_ACCENTS = [
   "rgba(163, 190, 140, 0.16)",
@@ -68,20 +52,6 @@ const normalizeTagList = (value: string) =>
     .split(",")
     .map((tag) => tag.replace(/^#+/, "").trim().toLowerCase())
     .filter(Boolean);
-
-const resolveToneFromTags = (tags: string[]): AffirmationTone => {
-  for (const tone of AFFIRMATION_TONES) {
-    if (
-      tags.some(
-        (tag) => tag === tone || TONE_KEYWORDS[tone].includes(tag.toLowerCase())
-      )
-    ) {
-      return tone;
-    }
-  }
-
-  return "confidence";
-};
 
 export const CreateAffirmationScreen = () => {
   const navigation = useNavigation();
@@ -135,7 +105,7 @@ export const CreateAffirmationScreen = () => {
 
     const payload = {
       title: title.trim(),
-      tone: resolveToneFromTags(normalizedTags),
+      tone: resolveAffirmationToneFromTags(normalizedTags),
       tags: normalizedTags,
       statements: statements.map((statement) => statement.trim()),
       quote_detail: quoteDetail.trim(),
@@ -148,8 +118,8 @@ export const CreateAffirmationScreen = () => {
       queueCreatedAffirmation(created);
       toast.show({
         variant: "success",
-        title: "Affirmation created",
-        message: created.message,
+        title: "Affirmation saved",
+        message: `"${created.card.title}" is ready in your library.`,
       });
       router.back();
     } catch (error) {
@@ -192,28 +162,6 @@ export const CreateAffirmationScreen = () => {
                 style={[styles.heroGlow, { backgroundColor: theme.accent }]}
               />
 
-              <View style={styles.heroTopRow}>
-                <View style={styles.heroBadge}>
-                  <Ionicons
-                    name="pencil-outline"
-                    size={18}
-                    color={theme.accent}
-                  />
-                </View>
-
-                <View style={styles.heroCountChip}>
-                  <MaterialCommunityIcons
-                    name="cards-heart-outline"
-                    size={13}
-                    color={theme.textSecondary}
-                  />
-                  <Text style={styles.heroCountText}>
-                    {statements.length} / {MAX_STATEMENTS}
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={styles.heroEyebrow}>CUSTOM DECK</Text>
               <Text style={styles.heroTitle}>
                 Shape a private line set that sounds like you.
               </Text>
@@ -221,15 +169,6 @@ export const CreateAffirmationScreen = () => {
                 Begin with a title and detail, add three statements, then
                 extend it to a maximum of seven.
               </Text>
-
-              <View style={styles.heroMetaRow}>
-                <View style={styles.metaChip}>
-                  <Text style={styles.metaChipText}>Saves to backend</Text>
-                </View>
-                <View style={styles.metaChip}>
-                  <Text style={styles.metaChipText}>Mock fallback ready</Text>
-                </View>
-              </View>
             </View>
 
             <View style={styles.fieldCard}>
@@ -301,12 +240,6 @@ export const CreateAffirmationScreen = () => {
                 <Text style={styles.sectionEyebrow}>STATEMENTS</Text>
                 <Text style={styles.sectionTitle}>
                   Write the lines that will carry the mood.
-                </Text>
-              </View>
-
-              <View style={styles.countPill}>
-                <Text style={styles.countPillText}>
-                  {statements.length}/{MAX_STATEMENTS}
                 </Text>
               </View>
             </View>
@@ -405,10 +338,6 @@ export const CreateAffirmationScreen = () => {
               accessibilityHint="Submits the custom affirmation deck"
               style={styles.createButton}
             />
-            <Text style={styles.footerNote}>
-              Uses the affirmation API first, with a mock fallback while
-              testing.
-            </Text>
           </View>
         </KeyboardAvoidingView>
       </View>
@@ -466,52 +395,6 @@ const styling = (
       borderRadius: 999,
       opacity: 0.12,
     },
-    heroTopRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-    },
-    heroBadge: {
-      width: 40,
-      height: 40,
-      borderRadius: 14,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: "rgba(163, 190, 140, 0.12)",
-      borderWidth: 1,
-      borderColor: "rgba(163, 190, 140, 0.18)",
-    },
-    heroCountChip: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: theme.borderMuted ?? "rgba(255,255,255,0.08)",
-      backgroundColor: theme.surface,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-    },
-    heroCountText: {
-      fontFamily:
-        svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
-      fontSize: 10,
-      lineHeight: 12,
-      letterSpacing: 1.1,
-      textTransform: "uppercase",
-      color: theme.textSecondary,
-    },
-    heroEyebrow: {
-      fontFamily:
-        svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
-      fontSize: 10,
-      lineHeight: 14,
-      letterSpacing: 2.6,
-      textTransform: "uppercase",
-      color: theme.textSecondary,
-    },
     heroTitle: {
       ...(svaTypography?.textStyle.authTitle ?? {}),
       fontSize: 28,
@@ -523,30 +406,6 @@ const styling = (
       ...typography.body,
       color: theme.textSecondary,
       lineHeight: 22,
-    },
-    heroMetaRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: 8,
-      marginTop: spacing.xs,
-    },
-    metaChip: {
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: theme.borderMuted ?? "rgba(255,255,255,0.08)",
-      backgroundColor: theme.surfaceMuted,
-    },
-    metaChipText: {
-      fontFamily:
-        svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
-      fontSize: 10,
-      lineHeight: 12,
-      letterSpacing: 1.1,
-      textTransform: "uppercase",
-      color: theme.textSecondary,
     },
     fieldCard: {
       borderRadius: 26,
@@ -618,24 +477,6 @@ const styling = (
       ...typography.h3,
       color: theme.textPrimary,
       lineHeight: 24,
-    },
-    countPill: {
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: 999,
-      backgroundColor: theme.surfaceMuted,
-      borderWidth: 1,
-      borderColor: theme.borderMuted ?? "rgba(255,255,255,0.08)",
-    },
-    countPillText: {
-      fontFamily:
-        svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
-      fontSize: 10,
-      lineHeight: 12,
-      letterSpacing: 1.1,
-      textTransform: "uppercase",
-      color: theme.textSecondary,
     },
     statementStack: {
       gap: spacing.sm,
@@ -733,11 +574,6 @@ const styling = (
     },
     createButton: {
       alignSelf: "stretch",
-    },
-    footerNote: {
-      ...typography.smallCaption,
-      color: theme.textSecondary,
-      textAlign: "center",
     },
   });
 

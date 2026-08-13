@@ -1,14 +1,11 @@
 import axios from "axios";
 
 import { API_ENDPOINTS } from "@/config/apiConfig";
-
-import {
-  getAffirmations,
-  getMockAffirmationDeck,
-} from "../affirmationService";
+import { getAffirmations } from "../affirmationService";
 
 jest.mock("axios", () => ({
   get: jest.fn(),
+  post: jest.fn(),
 }));
 
 const mockedAxios = axios as jest.Mocked<typeof axios>;
@@ -26,12 +23,15 @@ describe("affirmationService", () => {
         data: [
           {
             id: "quiet-power-ii",
-            tone: "confidence",
+            title: "Quiet Power ii",
+            tone: "Calmness",
+            tags: ["calm", "focus"],
             quotes: {
               quote_title: "Quiet Power ii",
-              tags: ["focus", "study"],
+              tags: ["calm", "focus"],
               quote_content: [
                 "Steady energy is stronger than rushed effort.",
+                "Calm repetition builds real confidence.",
               ],
             },
             quote_detail:
@@ -39,10 +39,12 @@ describe("affirmationService", () => {
           },
           {
             id: "quiet-power",
-            tone: "confidence",
+            title: "Quiet Power",
+            tone: "Wealth",
+            tags: ["wealth", "prosperity"],
             quotes: {
               quote_title: "Quiet Power",
-              tags: ["focus", "study"],
+              tags: ["wealth", "prosperity"],
               quote_content: [
                 "Steady energy is stronger than rushed effort.",
               ],
@@ -68,41 +70,78 @@ describe("affirmationService", () => {
     expect(mockedAxios.get).toHaveBeenCalledWith(
       API_ENDPOINTS.getAffirmations
     );
-    expect(deck.source).toBe("api");
-    expect(deck.message).toBe("Affirmations retrieved successfully.");
     expect(deck.cards).toEqual([
       {
         id: "quiet-power-ii",
-        tone: "confidence",
+        title: "Quiet Power ii",
+        tone: "Calmness",
+        toneCategory: "calm",
         quote: "Steady energy is stronger than rushed effort.",
+        storyQuote:
+          "Steady energy is stronger than rushed effort.\nCalm repetition builds real confidence.",
         detail: "A cleaner rhythm for focus, study, and follow-through.",
-        paletteKey: "steady-breath",
+        tags: ["calm", "focus"],
+        statements: [
+          "Steady energy is stronger than rushed effort.",
+          "Calm repetition builds real confidence.",
+        ],
+        paletteKey: "calm",
       },
       {
         id: "quiet-power",
-        tone: "confidence",
+        title: "Quiet Power",
+        tone: "Wealth",
+        toneCategory: "confidence",
         quote: "Steady energy is stronger than rushed effort.",
+        storyQuote: "Steady energy is stronger than rushed effort.",
         detail: "A cleaner rhythm for focus, study, and follow-through.",
-        paletteKey: "clear-steps",
+        tags: ["wealth", "prosperity"],
+        statements: ["Steady energy is stronger than rushed effort."],
+        paletteKey: "confidence",
       },
     ]);
     expect(deck.recommendations[0]).toMatchObject({
       id: "quiet-power-ii",
-      tone: "confidence",
+      tone: "Calmness",
+      toneCategory: "calm",
       title: "Quiet Power ii",
-      affirmation: "Steady energy is stronger than rushed effort.",
-      tag: "Focus",
+      affirmation:
+        "Steady energy is stronger than rushed effort.\nCalm repetition builds real confidence.",
+      tag: "Calmness",
     });
   });
 
-  it("falls back to the mock deck when the API request fails", async () => {
-    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
-    mockedAxios.get.mockRejectedValueOnce(new Error("network down"));
+  it("returns an empty deck when the API succeeds with no affirmations", async () => {
+    mockedAxios.get.mockResolvedValueOnce({
+      data: {
+        success: true,
+        message: "Affirmations retrieved successfully.",
+        data: [],
+        pagination: {
+          count: 0,
+          next: null,
+          previous: null,
+          page: 1,
+          page_size: 100,
+          total_pages: 0,
+          results_count: 0,
+        },
+      },
+    });
 
     const deck = await getAffirmations();
 
-    expect(deck).toEqual(getMockAffirmationDeck());
-    expect(deck.source).toBe("mock");
+    expect(deck).toEqual({
+      cards: [],
+      recommendations: [],
+    });
+  });
+
+  it("throws when the API request fails", async () => {
+    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    mockedAxios.get.mockRejectedValueOnce(new Error("network down"));
+
+    await expect(getAffirmations()).rejects.toThrow("network down");
     expect(warnSpy).toHaveBeenCalled();
 
     warnSpy.mockRestore();

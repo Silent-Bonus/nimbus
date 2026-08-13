@@ -67,7 +67,8 @@ describe("AffirmationRecommendationCard", () => {
       <AffirmationRecommendationCard
         item={{
           id: "steady-breath",
-          tone: "calm",
+          tone: "Calmness",
+          toneCategory: "calm",
           title: "Quiet Ground",
           affirmation: "I can move slowly and still arrive with clarity.",
           tag: "Calm",
@@ -91,7 +92,7 @@ describe("AffirmationRecommendationCard", () => {
     expect(
       hasText(tree, "I can move slowly and still arrive with clarity.")
     ).toBe(true);
-    expect(hasText(tree, "CALM")).toBe(true);
+    expect(hasText(tree, "Calmness")).toBe(true);
     expect(hasText(tree, "Selected")).toBe(true);
   });
 
@@ -101,7 +102,8 @@ describe("AffirmationRecommendationCard", () => {
       <AffirmationRecommendationCard
         item={{
           id: "clear-steps",
-          tone: "confidence",
+          tone: "Confidence",
+          toneCategory: "confidence",
           title: "Clear Path",
           affirmation: "My next step does not need to be perfect to be enough.",
           tag: "Confidence",

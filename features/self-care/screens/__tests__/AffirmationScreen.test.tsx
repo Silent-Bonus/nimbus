@@ -13,7 +13,6 @@ import {
 import {
   getAffirmations,
   getAffirmationBySlug,
-  getMockAffirmationDeck,
 } from "@/features/self-care/services/affirmationService";
 
 const mockBack = jest.fn();
@@ -101,6 +100,89 @@ const hasText = (tree: renderer.ReactTestRenderer, value: string) =>
         : node.props.children === value
     );
 
+const AFFIRMATION_DECK_FIXTURE = {
+  cards: [
+    {
+      id: "quiet-power-ii",
+      title: "Quiet Power ii",
+      tone: "Confidence",
+      toneCategory: "confidence",
+      quote: "Steady energy is stronger than rushed effort.",
+      storyQuote:
+        "Steady energy is stronger than rushed effort.\nCalm repetition builds real confidence.",
+      statements: [
+        "Steady energy is stronger than rushed effort.",
+        "Calm repetition builds real confidence.",
+      ],
+      tags: ["focus", "study"],
+      detail: "A cleaner rhythm for focus, study, and follow-through.",
+      paletteKey: "confidence",
+    },
+    {
+      id: "quiet-power",
+      title: "Quiet Power",
+      tone: "Calmness",
+      toneCategory: "calm",
+      quote: "I can move slowly and still arrive with clarity.",
+      storyQuote: "I can move slowly and still arrive with clarity.",
+      statements: ["I can move slowly and still arrive with clarity."],
+      tags: ["calm"],
+      detail: "A softer cadence for clear next steps.",
+      paletteKey: "calm",
+    },
+  ],
+  recommendations: [
+    {
+      id: "quiet-power-ii",
+      tone: "Confidence",
+      toneCategory: "confidence",
+      title: "Quiet Power ii",
+      affirmation:
+        "Steady energy is stronger than rushed effort.\nCalm repetition builds real confidence.",
+      detail: "A cleaner rhythm for focus, study, and follow-through.",
+      tag: "Focus",
+      palette: {
+        colors: ["#EFE8FF", "#CEBCFB"],
+        accent: "#6A55A4",
+        accentSoft: "rgba(106, 85, 164, 0.16)",
+        text: "#241A39",
+        tagBg: "rgba(255, 255, 255, 0.60)",
+        tagBorder: "rgba(36, 26, 57, 0.10)",
+        tagText: "#6A55A4",
+      },
+    },
+    {
+      id: "quiet-power",
+      tone: "Calmness",
+      toneCategory: "calm",
+      title: "Quiet Power",
+      affirmation: "I can move slowly and still arrive with clarity.",
+      detail: "A softer cadence for clear next steps.",
+      tag: "Calmness",
+      palette: {
+        colors: ["#EAF4FF", "#BAD4F1"],
+        accent: "#2F628E",
+        accentSoft: "rgba(47, 98, 142, 0.18)",
+        text: "#132235",
+        tagBg: "rgba(255, 255, 255, 0.62)",
+        tagBorder: "rgba(19, 34, 53, 0.10)",
+        tagText: "#2F628E",
+      },
+    },
+  ],
+};
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    void rej;
+  });
+
+  return { promise, resolve };
+}
+
 async function renderScreen() {
   let tree!: renderer.ReactTestRenderer;
 
@@ -121,23 +203,45 @@ async function renderScreen() {
   return tree;
 }
 
+function renderScreenImmediately() {
+  let tree!: renderer.ReactTestRenderer;
+
+  act(() => {
+    tree = renderer.create(
+      <ThemeContext.Provider value={themeValue as any}>
+        <AffirmationScreen />
+      </ThemeContext.Provider>
+    );
+  });
+
+  return tree;
+}
+
 describe("AffirmationScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockFocusEffect = undefined;
     consumeQueuedCreatedAffirmation();
-    (getAffirmations as jest.Mock).mockResolvedValue(getMockAffirmationDeck());
+    (getAffirmations as jest.Mock).mockResolvedValue(AFFIRMATION_DECK_FIXTURE);
     (getAffirmationBySlug as jest.Mock).mockResolvedValue({
       card: {
         id: "quiet-power",
-        tone: "confidence",
+        title: "Quiet Power",
+        tone: "Confidence",
+        toneCategory: "confidence",
         quote: "Steady energy is stronger than rushed effort.",
+        statements: [
+          "Steady energy is stronger than rushed effort.",
+          "Calm repetition builds real confidence.",
+        ],
+        tags: ["focus", "study"],
         detail: "Fetched detail for quiet-power.",
-        paletteKey: "quiet-power",
+        paletteKey: "confidence",
       },
       recommendation: {
         id: "quiet-power",
-        tone: "confidence",
+        tone: "Confidence",
+        toneCategory: "confidence",
         title: "Quiet Power",
         affirmation: "Steady energy is stronger than rushed effort.",
         detail: "Fetched detail for quiet-power.",
@@ -152,8 +256,6 @@ describe("AffirmationScreen", () => {
           tagText: "#6A55A4",
         },
       },
-      source: "api",
-      message: "Affirmation fetched successfully.",
     });
   });
 
@@ -168,11 +270,48 @@ describe("AffirmationScreen", () => {
     expect(hasText(tree, "Affirmations")).toBe(true);
     expect(hasText(tree, "RECOMMENDED LINE")).toBe(true);
     expect(hasText(tree, "Quiet Power ii")).toBe(true);
-    expect(hasText(tree, "Quiet Power")).toBe(true);
     expect(
-      hasText(tree, "Steady energy is stronger than rushed effort.")
+      hasText(
+        tree,
+        "Steady energy is stronger than rushed effort.\nCalm repetition builds real confidence."
+      )
     ).toBe(true);
-    expect(hasText(tree, "2 lines")).toBe(true);
+    expect(hasText(tree, "2 affirmations")).toBe(true);
+  });
+
+  it("shows a skeleton while the affirmation list is loading", () => {
+    const deferred = createDeferred<typeof AFFIRMATION_DECK_FIXTURE>();
+    (getAffirmations as jest.Mock).mockReturnValueOnce(deferred.promise);
+
+    const tree = renderScreenImmediately();
+
+    expect(
+      tree.root.findByProps({ testID: "affirmation-library-skeleton" })
+    ).toBeTruthy();
+  });
+
+  it("shows a retryable error state when the list request fails", async () => {
+    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    (getAffirmations as jest.Mock)
+      .mockRejectedValueOnce(new Error("backend timeout"))
+      .mockResolvedValueOnce(AFFIRMATION_DECK_FIXTURE);
+
+    const tree = await renderScreen();
+
+    expect(hasText(tree, "Couldn't load affirmations")).toBe(true);
+    expect(hasText(tree, "backend timeout")).toBe(true);
+
+    const retryButton = tree.root.findByProps({
+      testID: "affirmation-retry-button",
+    });
+
+    await act(async () => {
+      await retryButton.props.onPress();
+    });
+
+    expect(getAffirmations).toHaveBeenCalledTimes(2);
+    expect(hasText(tree, "Quiet Power ii")).toBe(true);
+    warnSpy.mockRestore();
   });
 
   it("adds a newly created affirmation back into the list on return", async () => {
@@ -181,14 +320,17 @@ describe("AffirmationScreen", () => {
     queueCreatedAffirmation({
       card: {
         id: "soft-return",
-        tone: "reset",
+        title: "Soft Return",
+        tone: "Reset",
+        toneCategory: "reset",
         quote: "I can move gently and still make progress.",
         detail: "A softer line for coming back to the work.",
-        paletteKey: "soft-return",
+        paletteKey: "reset",
       },
       recommendation: {
         id: "soft-return",
-        tone: "reset",
+        tone: "Reset",
+        toneCategory: "reset",
         title: "Soft Return",
         affirmation: "I can move gently and still make progress.",
         detail: "A softer line for coming back to the work.",
@@ -203,8 +345,6 @@ describe("AffirmationScreen", () => {
           tagText: "#A14668",
         },
       },
-      source: "api",
-      message: "Affirmation created successfully.",
     });
 
     await act(async () => {
@@ -213,14 +353,14 @@ describe("AffirmationScreen", () => {
     });
 
     expect(hasText(tree, "Soft Return")).toBe(true);
-    expect(hasText(tree, "3 lines")).toBe(true);
+    expect(hasText(tree, "3 affirmations")).toBe(true);
   });
 
   it("opens the story modal and fetches the clicked affirmation detail", async () => {
     const tree = await renderScreen();
 
     const card = tree.root.findByProps({
-      accessibilityLabel: "Choose affirmation quiet-power",
+      accessibilityLabel: "Choose affirmation Quiet Power",
     });
 
     await act(async () => {
@@ -228,14 +368,16 @@ describe("AffirmationScreen", () => {
     });
 
     expect(getAffirmationBySlug).toHaveBeenCalledWith("quiet-power");
-    expect(hasText(tree, "AFFIRMATION STORY")).toBe(true);
-    expect(hasText(tree, "02 / 02")).toBe(true);
+    expect(hasText(tree, "AFFIRMATION")).toBe(true);
+    expect(hasText(tree, "1/2")).toBe(true);
     expect(
       hasText(
         tree,
-        "Swipe horizontally through the selected line and the full deck."
+        "Open one affirmation and move through it statement by statement."
       )
     ).toBe(true);
+    expect(hasText(tree, "focus")).toBe(true);
+    expect(hasText(tree, "study")).toBe(true);
     expect(hasText(tree, "Fetched detail for quiet-power.")).toBe(true);
   });
 

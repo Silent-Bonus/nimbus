@@ -62,12 +62,14 @@ function renderCard(element: React.ReactElement) {
 }
 
 describe("AffirmationListCard", () => {
-  it("renders the affirmation copy and tone chip", () => {
+  it("renders the title, detail, and tone chip", () => {
     const tree = renderCard(
       <AffirmationListCard
         item={{
           id: "clear-steps",
-          tone: "confidence",
+          title: "Clear Path",
+          tone: "Confidence",
+          toneCategory: "confidence",
           quote: "My next step does not need to be perfect to be enough.",
           detail: "Use this when the mind wants to over-edit the moment.",
         }}
@@ -75,13 +77,14 @@ describe("AffirmationListCard", () => {
       />
     );
 
-    expect(hasText(tree, "My next step does not need to be perfect to be enough.")).toBe(
-      true
-    );
+    expect(hasText(tree, "Clear Path")).toBe(true);
     expect(hasText(tree, "Use this when the mind wants to over-edit the moment.")).toBe(
       true
     );
-    expect(hasText(tree, "CONFIDENCE")).toBe(true);
+    expect(hasText(tree, "Confidence")).toBe(true);
+    expect(
+      hasText(tree, "My next step does not need to be perfect to be enough.")
+    ).toBe(false);
   });
 
   it("calls onPress when tapped", () => {
@@ -90,7 +93,9 @@ describe("AffirmationListCard", () => {
       <AffirmationListCard
         item={{
           id: "open-space",
-          tone: "calm",
+          title: "Open Space",
+          tone: "Calmness",
+          toneCategory: "calm",
           quote: "I can make room for what is true without forcing it.",
           detail: "Let the shoulders soften before making a decision.",
         }}
@@ -99,7 +104,7 @@ describe("AffirmationListCard", () => {
     );
 
     const card = tree.root.findByProps({
-      accessibilityLabel: "Choose affirmation open-space",
+      accessibilityLabel: "Choose affirmation Open Space",
     });
 
     act(() => {

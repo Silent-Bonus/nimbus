@@ -114,14 +114,17 @@ describe("CreateAffirmationScreen", () => {
     (createAffirmation as jest.Mock).mockResolvedValue({
       card: {
         id: "quiet-power-ii",
-        tone: "confidence",
+        title: "Quiet Power ii",
+        tone: "Confidence",
+        toneCategory: "confidence",
         quote: "Steady energy is stronger than rushed effort.",
         detail: "A cleaner rhythm for focus, study, and follow-through.",
-        paletteKey: "clear-steps",
+        paletteKey: "confidence",
       },
       recommendation: {
         id: "quiet-power-ii",
-        tone: "confidence",
+        tone: "Confidence",
+        toneCategory: "confidence",
         title: "Quiet Power ii",
         affirmation: "Steady energy is stronger than rushed effort.",
         detail: "A cleaner rhythm for focus, study, and follow-through.",
@@ -136,8 +139,6 @@ describe("CreateAffirmationScreen", () => {
           tagText: "#2F628E",
         },
       },
-      source: "api",
-      message: "Affirmation created successfully.",
     });
   });
 
@@ -149,7 +150,6 @@ describe("CreateAffirmationScreen", () => {
     });
 
     expect(hasText(tree, "Create Affirmation")).toBe(true);
-    expect(hasText(tree, "CUSTOM DECK")).toBe(true);
     expect(hasText(tree, "Quote detail")).toBe(true);
     expect(getStatementInputs(tree)).toHaveLength(3);
 
@@ -238,8 +238,8 @@ describe("CreateAffirmationScreen", () => {
     expect(mockToastShow).toHaveBeenCalledWith(
       expect.objectContaining({
         variant: "success",
-        title: "Affirmation created",
-        message: "Affirmation created successfully.",
+        title: "Affirmation saved",
+        message: '"Quiet Power ii" is ready in your library.',
       })
     );
   });

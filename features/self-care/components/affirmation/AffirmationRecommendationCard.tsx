@@ -1,11 +1,5 @@
 import React, { useContext, useMemo } from "react";
-import {
-  Dimensions,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -16,7 +10,7 @@ import type {
   Typography,
   TypographyTokens,
 } from "@/theme/types";
-import type { AffirmationRecommendation } from "@/features/self-care/utils/affirmationLibrary";
+import type { AffirmationRecommendation } from "@/features/self-care/utils/affirmationPresentation";
 
 type AffirmationRecommendationCardProps = {
   item: AffirmationRecommendation;
@@ -83,7 +77,7 @@ const AffirmationRecommendationCard = ({
             ]}
           >
             <Text style={[styles.tagText, { color: item.palette.tagText }]}>
-              {item.tag.toUpperCase()}
+              {item.tone}
             </Text>
           </View>
 
@@ -121,7 +115,10 @@ const AffirmationRecommendationCard = ({
         </View>
 
         <View style={styles.copyBlock}>
-          <Text style={[styles.title, { color: item.palette.text }]} numberOfLines={2}>
+          <Text
+            style={[styles.title, { color: item.palette.text }]}
+            numberOfLines={2}
+          >
             {item.title}
           </Text>
 

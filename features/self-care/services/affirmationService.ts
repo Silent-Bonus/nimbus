@@ -2,21 +2,22 @@ import axios from "axios";
 
 import { API_ENDPOINTS } from "@/config/apiConfig";
 import {
-  AFFIRMATION_RECOMMENDATIONS,
-  type AffirmationRecommendation,
-} from "@/features/self-care/utils/affirmationLibrary";
+  buildAffirmationRecommendation,
+  buildAffirmationRecommendations,
+} from "@/features/self-care/utils/affirmationPresentation";
 import {
-  AFFIRMATION_CARDS,
   formatAffirmationToneLabel,
-  type AffirmationTone,
-} from "@/features/self-care/utils/mindPractices";
+  resolveAffirmationTone,
+} from "@/features/self-care/utils/affirmationHelpers";
 import type {
+  AffirmationApiCreateRequest,
+  AffirmationApiCreateResponse,
+  AffirmationApiDetailResponse,
   AffirmationApiItem,
-  AffirmationApiResponse,
+  AffirmationApiListResponse,
   AffirmationDeck,
+  AffirmationResolvedItem,
 } from "@/features/self-care/types/affirmation";
-
-const FALLBACK_SOURCE_MESSAGE = "Mock affirmations loaded for now.";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -36,11 +37,6 @@ function toTextList(value: unknown): string[] {
     .filter(Boolean);
 }
 
-function joinQuoteContent(value: unknown, fallback: string) {
-  const items = toTextList(value);
-  return items.length > 0 ? items.join(" ") : fallback;
-}
-
 function formatTagLabel(value: string) {
   const normalized = value.trim();
 
@@ -55,143 +51,136 @@ function formatTagLabel(value: string) {
     .join(" ");
 }
 
-function normalizeAffirmationTone(
-  tone: unknown,
-  tags: string[] = []
-): AffirmationTone {
-  if (typeof tone === "string") {
-    const normalizedTone = tone.trim().toLowerCase();
-    if (
-      normalizedTone === "calm" ||
-      normalizedTone === "confidence" ||
-      normalizedTone === "reset" ||
-      normalizedTone === "sleep"
-    ) {
-      return normalizedTone;
+function getNormalizedTags(item: AffirmationApiItem) {
+  return Array.from(
+    new Set([
+      ...toTextList(item.tags),
+      ...toTextList(item.quotes?.tags),
+    ])
+  );
+}
+
+function getQuoteLines(item: AffirmationApiItem) {
+  return toTextList(item.quotes?.quote_content);
+}
+
+function getPreviewQuote(lines: string[], fallback: string) {
+  return lines[0] ?? fallback;
+}
+
+function getStoryQuote(lines: string[], fallback: string) {
+  return lines.length > 0 ? lines.join("\n") : fallback;
+}
+
+function getAffirmationSeedId(index: number, id?: string | null) {
+  return id?.trim() || `affirmation-${index + 1}`;
+}
+
+function getApiErrorMessage(error: unknown, fallback: string) {
+  if (isRecord(error)) {
+    const responseData = isRecord(error.response) ? error.response.data : null;
+
+    if (isRecord(responseData) && typeof responseData.message === "string") {
+      const responseMessage = responseData.message.trim();
+
+      if (responseMessage) {
+        return responseMessage;
+      }
+    }
+
+    if (typeof error.message === "string" && error.message.trim()) {
+      return error.message;
     }
   }
 
-  const normalizedTags = tags.map((tag) => tag.trim().toLowerCase());
-
-  if (
-    normalizedTags.some((tag) =>
-      ["sleep", "rest", "night", "dream"].includes(tag)
-    )
-  ) {
-    return "sleep";
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
   }
 
-  if (
-    normalizedTags.some((tag) =>
-      ["reset", "restart", "release", "cleanse"].includes(tag)
-    )
-  ) {
-    return "reset";
-  }
-
-  if (
-    normalizedTags.some((tag) =>
-      ["calm", "ground", "breathe", "breath", "quiet"].includes(tag)
-    )
-  ) {
-    return "calm";
-  }
-
-  return "confidence";
-}
-
-function getPaletteSeed(index: number) {
-  return (
-    AFFIRMATION_RECOMMENDATIONS[index % AFFIRMATION_RECOMMENDATIONS.length] ??
-    AFFIRMATION_RECOMMENDATIONS[0]
-  );
+  return fallback;
 }
 
 function normalizeAffirmationApiItem(
   item: AffirmationApiItem,
   index: number
-): {
-  card: (typeof AFFIRMATION_CARDS)[number];
-  recommendation: AffirmationRecommendation;
-} {
-  const paletteSeed = getPaletteSeed(index);
-  const quoteTags = toTextList(item.quotes?.tags);
-  const tone = normalizeAffirmationTone(item.tone, quoteTags);
-  const id = toText(item.id, `${paletteSeed.id}-${index}`);
+): AffirmationResolvedItem {
+  const tags = getNormalizedTags(item);
+  const toneCategory = resolveAffirmationTone(item.tone, tags);
+  const id = toText(item.id, `${getAffirmationSeedId(index, item.id)}-${index}`);
+  const toneLabel = toText(item.tone, formatAffirmationToneLabel(toneCategory));
   const title = toText(
-    item.quotes?.quote_title,
-    formatAffirmationToneLabel(tone)
+    item.title ?? item.quotes?.quote_title,
+    toneLabel
   );
-  const quote = joinQuoteContent(
-    item.quotes?.quote_content,
-    title
-  );
+  const quoteLines = getQuoteLines(item);
+  const quote = getPreviewQuote(quoteLines, title);
+  const storyQuote = getStoryQuote(quoteLines, quote);
   const detail = toText(item.quote_detail, quote);
-  const tag = formatTagLabel(quoteTags[0] ?? tone);
+  const tag = formatTagLabel(tags[0] ?? toneLabel);
 
   return {
     card: {
       id,
-      tone,
+      title,
+      tone: toneLabel,
+      toneCategory,
       quote,
+      storyQuote,
       detail,
-      paletteKey: paletteSeed.id,
+      tags,
+      statements: quoteLines.length ? quoteLines : [quote],
+      paletteKey: toneCategory,
     },
     recommendation: {
-      id,
-      tone,
-      title,
-      affirmation: quote,
-      tag: tag || formatAffirmationToneLabel(tone),
-      palette: paletteSeed.palette,
+      ...buildAffirmationRecommendation({
+        id,
+        title,
+        tone: toneLabel,
+        toneCategory,
+        quote,
+        storyQuote,
+        detail,
+        paletteKey: toneCategory,
+      }),
+      tag: tag || toneLabel,
     },
-  };
-}
-
-function buildMockAffirmationDeck(): AffirmationDeck {
-  return {
-    cards: AFFIRMATION_CARDS.map((card, index) => ({
-      ...card,
-      paletteKey:
-        AFFIRMATION_RECOMMENDATIONS[index % AFFIRMATION_RECOMMENDATIONS.length]
-          ?.id ?? card.id,
-    })),
-    recommendations: AFFIRMATION_RECOMMENDATIONS,
-    source: "mock",
-    message: FALLBACK_SOURCE_MESSAGE,
   };
 }
 
 function normalizeAffirmationDeck(
-  payload: AffirmationApiResponse | null | undefined
+  payload: AffirmationApiListResponse | null | undefined
 ): AffirmationDeck | null {
-  if (!payload?.success || !Array.isArray(payload.data) || payload.data.length === 0) {
+  if (!payload?.success || !Array.isArray(payload.data)) {
     return null;
   }
 
   const normalized = payload.data
     .filter((item) => isRecord(item))
-    .map((item, index) => normalizeAffirmationApiItem(item as AffirmationApiItem, index));
-
-  if (!normalized.length) {
-    return null;
-  }
+    .map((item, index) =>
+      normalizeAffirmationApiItem(item as AffirmationApiItem, index)
+    );
 
   return {
     cards: normalized.map((item) => item.card),
-    recommendations: normalized.map((item) => item.recommendation),
-    source: "api",
-    message: payload.message,
+    recommendations: buildAffirmationRecommendations(
+      normalized.map((item) => item.card)
+    ),
   };
 }
 
-export function getMockAffirmationDeck(): AffirmationDeck {
-  return buildMockAffirmationDeck();
+function normalizeResolvedAffirmation(
+  payload: AffirmationApiDetailResponse | AffirmationApiCreateResponse | null | undefined
+): AffirmationResolvedItem | null {
+  if (!payload?.success || !payload.data || !isRecord(payload.data)) {
+    return null;
+  }
+
+  return normalizeAffirmationApiItem(payload.data as AffirmationApiItem, 0);
 }
 
 export async function getAffirmations(): Promise<AffirmationDeck> {
   try {
-    const response = await axios.get<AffirmationApiResponse>(
+    const response = await axios.get<AffirmationApiListResponse>(
       API_ENDPOINTS.getAffirmations
     );
 
@@ -199,9 +188,69 @@ export async function getAffirmations(): Promise<AffirmationDeck> {
     if (normalized) {
       return normalized;
     }
-  } catch (error) {
-    console.warn("Failed to load affirmations from API, using mock deck.", error);
-  }
 
-  return buildMockAffirmationDeck();
+    throw new Error(
+      toText(response.data?.message, "Unable to load affirmations right now.")
+    );
+  } catch (error) {
+    console.warn("Failed to load affirmations from API.", error);
+    throw new Error(
+      getApiErrorMessage(error, "Unable to load affirmations right now.")
+    );
+  }
+}
+
+export async function getAffirmationBySlug(
+  slug: string
+): Promise<AffirmationResolvedItem> {
+  try {
+    const response = await axios.get<AffirmationApiDetailResponse>(
+      API_ENDPOINTS.getAffirmationDetail(slug)
+    );
+
+    const normalized = normalizeResolvedAffirmation(response.data);
+    if (normalized) {
+      return normalized;
+    }
+
+    throw new Error(
+      toText(
+        response.data?.message,
+        "Unable to open this affirmation right now."
+      )
+    );
+  } catch (error) {
+    console.warn(`Failed to load affirmation detail for "${slug}".`, error);
+    throw new Error(
+      getApiErrorMessage(error, "Unable to open this affirmation right now.")
+    );
+  }
+}
+
+export async function createAffirmation(
+  payload: AffirmationApiCreateRequest
+): Promise<AffirmationResolvedItem> {
+  try {
+    const response = await axios.post<AffirmationApiCreateResponse>(
+      API_ENDPOINTS.createAffirmation,
+      payload
+    );
+
+    const normalized = normalizeResolvedAffirmation(response.data);
+    if (normalized) {
+      return normalized;
+    }
+
+    throw new Error(
+      toText(
+        response.data?.message,
+        "Unable to create the affirmation right now."
+      )
+    );
+  } catch (error) {
+    console.warn("Failed to create affirmation from API.", error);
+    throw new Error(
+      getApiErrorMessage(error, "Unable to create the affirmation right now.")
+    );
+  }
 }
