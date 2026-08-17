@@ -92,7 +92,7 @@ export const BreathWorkScreen = () => {
       setSelectedPatternId("");
 
       try {
-        const params =
+        const params: Parameters<typeof getWellnessContentList>[0] =
           selectedCategory === "all"
             ? { modality: "breathwork" }
             : {

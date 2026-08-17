@@ -6,13 +6,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import {
-  FlatList,
-  Platform,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { FlatList, Platform, StyleSheet, Text, View } from "react-native";
 import { router, useNavigation } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -26,15 +20,13 @@ import {
   MeditationListSkeleton,
 } from "@/features/self-care/components/meditation/MeditationSkeletonSections";
 import MeditationTemplateCard from "@/features/self-care/components/meditation/MeditationTemplateCard";
+
 import { getWellnessContentList } from "@/features/self-care/services/selfCareService";
 import {
   buildMeditationFilterOptions,
-  buildMeditationRouteParams,
   filterMeditationTemplates,
   formatMeditationTagLabel,
-  fallbackMeditationTemplates,
-  mapMeditationTemplate,
-  type MeditationTemplate,
+  mapMeditationList,
 } from "@/features/self-care/utils/meditationLibrary";
 import { ROUTES } from "@/constants/routes";
 import type {
@@ -43,16 +35,26 @@ import type {
   Typography,
   TypographyTokens,
 } from "@/theme/types";
+import type {
+  MeditationTemplateCardItem,
+  MeditationListItem,
+  WellnessContentItem,
+} from "@/features/self-care/types/wellnessContentTypes";
 
 export const MeditationScreen: React.FC = () => {
+  // Theme and navigation context used by the screen shell and cards.
   const navigation = useNavigation();
-  const { newTheme: theme, svaTypography, spacing, typography } =
-    useContext(ThemeContext);
+  const {
+    newTheme: theme,
+    svaTypography,
+    spacing,
+    typography,
+  } = useContext(ThemeContext);
 
-  const [templates, setTemplates] = useState<MeditationTemplate[]>(
-    fallbackMeditationTemplates
-  );
+  // Raw API items stay in state; UI templates are derived below.
+  const [contentItems, setContentItems] = useState<WellnessContentItem[]>([]);
   const [selectedTag, setSelectedTag] = useState<string>("all");
+  // Loading only tracks the list request for this screen.
   const [isLoading, setIsLoading] = useState(true);
 
   const styles = useMemo(
@@ -60,10 +62,13 @@ export const MeditationScreen: React.FC = () => {
     [theme, svaTypography, spacing, typography]
   );
 
+  // The screen renders its own branded header instead of the router header.
   useLayoutEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
+  // Fetch only meditation content and keep the mounted-state guard so late
+  // responses do not update state after unmount.
   useEffect(() => {
     let active = true;
 
@@ -71,23 +76,22 @@ export const MeditationScreen: React.FC = () => {
       setIsLoading(true);
 
       try {
+        // API params: request the meditation modality only.
         const result = await getWellnessContentList({ modality: "meditation" });
         const sourceItems =
           Array.isArray(result.data) && result.data.length > 0
             ? result.data
             : null;
 
-        const normalized = sourceItems
-          ? sourceItems.map((item, index) => mapMeditationTemplate(item, index))
-          : fallbackMeditationTemplates;
+        const normalized = sourceItems ? sourceItems : [];
 
         if (active) {
-          setTemplates(normalized);
+          setContentItems(normalized);
         }
       } catch (error) {
         console.warn("Unable to load meditation content:", error);
         if (active) {
-          setTemplates(fallbackMeditationTemplates);
+          setContentItems([]);
         }
       } finally {
         if (active) {
@@ -103,11 +107,20 @@ export const MeditationScreen: React.FC = () => {
     };
   }, []);
 
+  // Convert raw API items into UI-ready card data with normalized labels,
+  // fallback copy, and image handling.
+  const templates = useMemo(
+    () => contentItems.map(mapMeditationList),
+    [contentItems]
+  );
+
+  // Build pill filters from the mapped meditation categories.
   const filterOptions = useMemo(
     () => buildMeditationFilterOptions(templates),
     [templates]
   );
 
+  // Reset to "all" if the active filter disappears after new data loads.
   useEffect(() => {
     if (
       selectedTag !== "all" &&
@@ -117,18 +130,39 @@ export const MeditationScreen: React.FC = () => {
     }
   }, [filterOptions, selectedTag]);
 
+  // Apply the selected category filter to the mapped template list.
   const visibleTemplates = useMemo(
     () => filterMeditationTemplates(templates, selectedTag),
     [templates, selectedTag]
   );
 
+  // The featured card always uses the first visible item, falling back to the
+  // first available meditation if no filter result exists.
   const featuredTemplate = useMemo(
     () => visibleTemplates[0] ?? templates[0],
     [visibleTemplates, templates]
   );
 
-  const listTemplates = useMemo(
-    () => visibleTemplates,
+  const listEntries = useMemo(
+    () =>
+      visibleTemplates.map((template) => ({
+        template,
+        cardItem: {
+          id: template.id,
+          title: template.title,
+          description: template.description,
+          tags: template.tags
+            .slice(0, 2)
+            .map((tag) => formatMeditationTagLabel(tag)),
+          durationLabel: template.durationLabel,
+          image:
+            typeof template.image === "string"
+              ? { uri: template.image }
+              : template.image,
+          isLocked: template.isLocked,
+          rating: template.rating,
+        } satisfies MeditationTemplateCardItem,
+      })),
     [visibleTemplates]
   );
 
@@ -136,10 +170,14 @@ export const MeditationScreen: React.FC = () => {
     filterOptions.find((option) => option.value === selectedTag)?.label ??
     "All Modes";
 
-  const openMeditationDetail = useCallback((template: MeditationTemplate) => {
+  // Detail fetches from the API on mount, so this route only passes identifiers.
+  const openMeditationDetail = useCallback((template: MeditationListItem) => {
     router.push({
       pathname: ROUTES.AUTH.SELF_CARE_MEDITATION_DETAIL,
-      params: buildMeditationRouteParams(template),
+      params: {
+        meditationId: template.id,
+        meditationSlug: template.slug,
+      },
     });
   }, []);
 
@@ -175,8 +213,8 @@ export const MeditationScreen: React.FC = () => {
 
         <FlatList
           testID="meditation-library-list"
-          data={listTemplates}
-          keyExtractor={(item) => item.id}
+          data={listEntries}
+          keyExtractor={(item) => item.template.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[
             styles.listContent,
@@ -185,7 +223,9 @@ export const MeditationScreen: React.FC = () => {
           ListHeaderComponent={
             <>
               <View style={styles.featuredHeader}>
-                <Text style={styles.featuredEyebrow}>CURATED RECOMMENDATION</Text>
+                <Text style={styles.featuredEyebrow}>
+                  CURATED RECOMMENDATION
+                </Text>
                 <Text style={styles.featuredTitle}>
                   The first pull for the present moment.
                 </Text>
@@ -193,11 +233,23 @@ export const MeditationScreen: React.FC = () => {
 
               {featuredTemplate ? (
                 <View style={styles.featuredCardWrap}>
+                  {/** Featured card still expects an RN image source, so backend
+                   * image strings are wrapped at the render edge. */}
                   <NimbusUltraFeaturedCard
                     title={featuredTemplate.title}
-                    subtitle={`${featuredTemplate.durationLabel} · ${formatMeditationTagLabel(featuredTemplate.tag)}`}
+                    subtitle={`${
+                      featuredTemplate.durationLabel
+                    } · ${formatMeditationTagLabel(
+                      featuredTemplate.tags[0] ??
+                        featuredTemplate.category ??
+                        "curated"
+                    )}`}
                     description={featuredTemplate.description}
-                    image={featuredTemplate.image}
+                    image={
+                      typeof featuredTemplate.image === "string"
+                        ? { uri: featuredTemplate.image }
+                        : featuredTemplate.image
+                    }
                     badge="Curated pick"
                     tint="rgba(163,190,140,0.12)"
                     accent={theme.chart2 ?? theme.accent}
@@ -233,7 +285,7 @@ export const MeditationScreen: React.FC = () => {
                     color={theme.textSecondary}
                   />
                   <Text style={styles.countText}>
-                    {listTemplates.length} sessions
+                    {listEntries.length} sessions
                   </Text>
                 </View>
               </View>
@@ -241,8 +293,8 @@ export const MeditationScreen: React.FC = () => {
           }
           renderItem={({ item }) => (
             <MeditationTemplateCard
-              item={item}
-              onPress={() => openMeditationDetail(item)}
+              item={item.cardItem}
+              onPress={() => openMeditationDetail(item.template)}
             />
           )}
           ListEmptyComponent={
@@ -295,7 +347,8 @@ const styling = (
     },
     featuredEyebrow: {
       fontFamily:
-        svaTypography?.textStyle.authTinyLabel.fontFamily ?? "Inter_600SemiBold",
+        svaTypography?.textStyle.authTinyLabel.fontFamily ??
+        "Inter_600SemiBold",
       fontSize: 10,
       lineHeight: 14,
       letterSpacing: 2.2,
@@ -326,7 +379,8 @@ const styling = (
     },
     filterTextInactive: {
       fontFamily:
-        svaTypography?.textStyle.authTinyLabel.fontFamily ?? "Inter_600SemiBold",
+        svaTypography?.textStyle.authTinyLabel.fontFamily ??
+        "Inter_600SemiBold",
       fontSize: 11,
       letterSpacing: 1.1,
       color: theme.textSecondary,
@@ -343,7 +397,8 @@ const styling = (
     },
     sectionEyebrow: {
       fontFamily:
-        svaTypography?.textStyle.authTinyLabel.fontFamily ?? "Inter_600SemiBold",
+        svaTypography?.textStyle.authTinyLabel.fontFamily ??
+        "Inter_600SemiBold",
       fontSize: 10,
       lineHeight: 14,
       letterSpacing: 2.2,

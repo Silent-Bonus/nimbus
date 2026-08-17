@@ -5,11 +5,13 @@ import {
   JournalListResponse,
   JournalSubmitRequest,
   JournalSubmitResponse,
+  WellnessContentModality,
   WellnessContentDetailResponse,
-  MeditationVideoListResponse,
   WellnessContentResponse,
   WorkoutVideoListResponse,
 } from "@/features/self-care/types/selfCareTypes";
+
+// Jounaling API
 
 export const getJournalList = async (): Promise<JournalListResponse> => {
   try {
@@ -47,18 +49,7 @@ export const getJournalEntry = async (): Promise<JournalEntryListResponse> => {
   }
 };
 
-// TODO ADD API FOR DETAILS, SUBMIT, RESULT
-// export const getMentalTestList = async (): Promise<MentalTestListResponse> => {
-//   try {
-//     const response: AxiosResponse<MentalTestListResponse> = await axios.get(
-//       API_ENDPOINTS.getMentalTestList
-//     );
-//     console.log(response, "medical test");
-//     return response; // Return the list data
-//   } catch (error: any) {
-//     throw error.response ? error.response.data : error.message;
-//   }
-// };
+// Workout FLow Api
 
 export const getWorkoutVideo = async (): Promise<WorkoutVideoListResponse> => {
   try {
@@ -66,25 +57,6 @@ export const getWorkoutVideo = async (): Promise<WorkoutVideoListResponse> => {
       API_ENDPOINTS.getWorkoutVideoList
     );
     return response.data; // Return the list data
-  } catch (error: any) {
-    throw error.response ? error.response.data : error.message;
-  }
-};
-
-export const getSoundscapeContentList = async (params?: {
-  category?: string;
-}): Promise<WellnessContentResponse> => {
-  try {
-    const response: AxiosResponse<WellnessContentResponse> = await axios.get(
-      API_ENDPOINTS.getWellnessContent,
-      {
-        params: {
-          ...(params ?? {}),
-          modality: "soundscape",
-        },
-      }
-    );
-    return response.data;
   } catch (error: any) {
     throw error.response ? error.response.data : error.message;
   }
@@ -112,21 +84,29 @@ export const getWorkoutDetails = async (id: number | string): Promise<any> => {
   }
 };
 
-// filteration not working
-// card Color
-export const getMeditationAudioList =
-  async (): Promise<MeditationVideoListResponse> => {
-    try {
-      const response: AxiosResponse<MeditationVideoListResponse> =
-        await axios.get(API_ENDPOINTS.getMeditationList);
-      return response.data; // Return the list data
-    } catch (error: any) {
-      throw error.response ? error.response.data : error.message;
-    }
-  };
+// Wellness Content API
+
+export const getSoundscapeContentList = async (params?: {
+  category?: string;
+}): Promise<WellnessContentResponse> => {
+  try {
+    const response: AxiosResponse<WellnessContentResponse> = await axios.get(
+      API_ENDPOINTS.getWellnessContent,
+      {
+        params: {
+          ...(params ?? {}),
+          modality: "soundscape",
+        },
+      }
+    );
+    return response.data;
+  } catch (error: any) {
+    throw error.response ? error.response.data : error.message;
+  }
+};
 
 export const getWellnessContentList = async (params?: {
-  modality?: string;
+  modality?: WellnessContentModality;
   category?: string;
 }): Promise<WellnessContentResponse> => {
   try {
@@ -140,6 +120,7 @@ export const getWellnessContentList = async (params?: {
   }
 };
 
+// todo meditaion with slug
 export const getWellnessContentDetail = async (
   id: number | string
 ): Promise<WellnessContentDetailResponse> => {

@@ -6,10 +6,6 @@ import ThemeContext from "../../../../contexts/ThemeContext";
 import { getTheme } from "../../../../theme";
 import { ROUTES } from "../../../../constants/routes";
 import MeditationScreen from "../MeditationScreen";
-import {
-  buildMeditationRouteParams,
-  mapMeditationTemplate,
-} from "../../utils/meditationLibrary";
 import { getWellnessContentList } from "../../services/selfCareService";
 
 const mockPush = jest.fn();
@@ -135,7 +131,7 @@ describe("MeditationScreen", () => {
     });
   });
 
-  it("renders the API-backed meditation list and opens the featured meditation with hydrated params", async () => {
+  it("renders the API-backed meditation list and opens the featured meditation with id and slug", async () => {
     const tree = await renderScreen();
 
     expect(mockSetOptions).toHaveBeenCalledWith({
@@ -163,14 +159,21 @@ describe("MeditationScreen", () => {
 
     expect(mockPush).toHaveBeenCalledWith({
       pathname: ROUTES.AUTH.SELF_CARE_MEDITATION_DETAIL,
-      params: buildMeditationRouteParams(
-        mapMeditationTemplate(wellnessContent[0] as any, 0)
-      ),
+      params: {
+        meditationId: "1",
+        meditationSlug: "relaxing-meditation",
+      },
     });
   });
 
-  it("filters the library by tag and opens a library item with the API payload", async () => {
+  it("filters the library by category and opens a library item with the API payload", async () => {
     const tree = await renderScreen();
+
+    expect(() =>
+      tree.root.findByProps({
+        accessibilityLabel: "Beginner",
+      })
+    ).toThrow();
 
     const sleepFilter = tree.root.findByProps({
       accessibilityLabel: "Sleep",
@@ -194,9 +197,10 @@ describe("MeditationScreen", () => {
 
     expect(mockPush).toHaveBeenCalledWith({
       pathname: ROUTES.AUTH.SELF_CARE_MEDITATION_DETAIL,
-      params: buildMeditationRouteParams(
-        mapMeditationTemplate(wellnessContent[1] as any, 1)
-      ),
+      params: {
+        meditationId: "2",
+        meditationSlug: "sleep-soothing-meditation",
+      },
     });
   });
 });

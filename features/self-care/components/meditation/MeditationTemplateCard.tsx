@@ -3,14 +3,16 @@ import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import {
-  formatMeditationTagLabel,
-  type MeditationTemplate,
-} from "@/features/self-care/utils/meditationLibrary";
-import type { ColorSet, Spacing, Typography, TypographyTokens } from "@/theme/types";
+import type { MeditationTemplateCardItem } from "@/features/self-care/types/wellnessContentTypes";
+import type {
+  ColorSet,
+  Spacing,
+  Typography,
+  TypographyTokens,
+} from "@/theme/types";
 
 type MeditationTemplateCardProps = {
-  item: MeditationTemplate;
+  item: MeditationTemplateCardItem;
   onPress: () => void;
 };
 
@@ -18,8 +20,12 @@ export default function MeditationTemplateCard({
   item,
   onPress,
 }: MeditationTemplateCardProps) {
-  const { newTheme: theme, svaTypography, spacing, typography } =
-    useContext(ThemeContext);
+  const {
+    newTheme: theme,
+    svaTypography,
+    spacing,
+    typography,
+  } = useContext(ThemeContext);
 
   const styles = useMemo(
     () => styling(theme, svaTypography, spacing, typography),
@@ -41,13 +47,6 @@ export default function MeditationTemplateCard({
     >
       <Image source={item.image} style={styles.image} resizeMode="cover" />
       <View style={styles.imageOverlay} />
-      <View style={styles.badge}>
-        <Ionicons
-          name={item.isLocked ? "lock-closed" : "leaf-outline"}
-          size={12}
-          color={item.isLocked ? theme.textSecondary : theme.buttonPrimaryText}
-        />
-      </View>
 
       <View style={styles.content}>
         <View style={styles.topRow}>
@@ -60,24 +59,40 @@ export default function MeditationTemplateCard({
             </Text>
           </View>
 
-          <View style={styles.durationPill}>
-            <Text style={styles.durationText} numberOfLines={1}>
-              {item.durationLabel}
-            </Text>
+          <View style={styles.metaColumn}>
+            {typeof item.rating === "number" ? (
+              <View style={styles.ratingPill}>
+                <Ionicons
+                  name="star"
+                  size={12}
+                  color={theme.chart2 ?? theme.accent}
+                />
+                <Text style={styles.ratingText} numberOfLines={1}>
+                  {item.rating.toFixed(1)}
+                </Text>
+              </View>
+            ) : null}
+
+            <View style={styles.durationPill}>
+              <Text style={styles.durationText} numberOfLines={1}>
+                {item.durationLabel}
+              </Text>
+            </View>
           </View>
         </View>
 
         <View style={styles.bottomRow}>
           <View style={styles.tagsRow}>
-            <View style={styles.tagChip}>
-              <Text style={styles.tagText} numberOfLines={1}>
-                {formatMeditationTagLabel(item.tag)}
-              </Text>
-            </View>
-            {item.tags.slice(1, 2).map((tag) => (
-              <View key={`${item.id}-${tag}`} style={styles.tagChipMuted}>
-                <Text style={styles.tagTextMuted} numberOfLines={1}>
-                  {formatMeditationTagLabel(tag)}
+            {item.tags.map((tag, index) => (
+              <View
+                key={`${item.id}-${tag}-${index}`}
+                style={index === 0 ? styles.tagChip : styles.tagChipMuted}
+              >
+                <Text
+                  style={index === 0 ? styles.tagText : styles.tagTextMuted}
+                  numberOfLines={1}
+                >
+                  {tag}
                 </Text>
               </View>
             ))}
@@ -168,6 +183,11 @@ const styling = (
       gap: 12,
       marginBottom: 14,
     },
+    metaColumn: {
+      alignItems: "flex-end",
+      gap: 8,
+      marginTop: 2,
+    },
     copyBlock: {
       flex: 1,
       minWidth: 0,
@@ -188,6 +208,22 @@ const styling = (
       lineHeight: 23,
       color: theme.textSecondary,
       marginTop: 6,
+    },
+    ratingPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 999,
+      backgroundColor: theme.background,
+      borderWidth: 1,
+      borderColor: theme.borderMuted ?? "rgba(255,255,255,0.05)",
+    },
+    ratingText: {
+      ...typography.smallCaption,
+      color: theme.textSecondary,
+      letterSpacing: 0.4,
     },
     durationPill: {
       paddingHorizontal: 10,

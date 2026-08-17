@@ -268,16 +268,6 @@ describe("MeditationPlayerScreen", () => {
       await Promise.resolve();
     });
 
-    await act(async () => {
-      playbackStatusCallback?.({
-        isLoaded: true,
-        isPlaying: true,
-        positionMillis: 15000,
-        durationMillis: 180000,
-      });
-      await Promise.resolve();
-    });
-
     expect(mockCreateWellnessSessionFn).toHaveBeenCalledWith({
       activity_type: "meditation",
       content_type: "wellness_content.wellnesscontent",
@@ -327,6 +317,102 @@ describe("MeditationPlayerScreen", () => {
 
     expect(mockPauseWellnessSessionFn).toHaveBeenCalledTimes(2);
     expect(mockBack).toHaveBeenCalledTimes(1);
+  });
+
+  it("switches to pause immediately on the first play tap before the status callback catches up", async () => {
+    mockSound.playAsync.mockImplementationOnce(async () => undefined);
+
+    const tree = await renderScreen();
+
+    const playButton = tree.root.findByProps({
+      accessibilityLabel: "Play meditation",
+    });
+
+    await act(async () => {
+      await playButton.props.onPress();
+      await Promise.resolve();
+    });
+
+    expect(
+      tree.root.findByProps({
+        accessibilityLabel: "Pause meditation",
+      })
+    ).toBeTruthy();
+    expect(mockCreateWellnessSessionFn).toHaveBeenCalledWith({
+      activity_type: "meditation",
+      content_type: "wellness_content.wellnesscontent",
+      content_object_id: 1,
+      source: "manual",
+      metadata: {
+        entry_surface: "player_screen",
+        test_mode: true,
+      },
+    });
+  });
+
+  it("does not recreate the audio instance when playback starts", async () => {
+    const tree = await renderScreen();
+
+    const playButton = tree.root.findByProps({
+      accessibilityLabel: "Play meditation",
+    });
+
+    await act(async () => {
+      await playButton.props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mockCreateAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it("queues an early play tap while audio is still loading", async () => {
+    let resolveAudioLoad: (() => void) | undefined;
+
+    mockCreateAsync.mockImplementationOnce(
+      (source: any, options: any, onPlaybackStatusUpdate: any) =>
+        new Promise((resolve) => {
+          playbackStatusCallback = onPlaybackStatusUpdate;
+          resolveAudioLoad = () => {
+            onPlaybackStatusUpdate({
+              isLoaded: true,
+              isPlaying: Boolean(options?.shouldPlay),
+              positionMillis: 0,
+              durationMillis: 180000,
+            });
+            resolve({ sound: mockSound });
+          };
+        })
+    );
+
+    const tree = await renderScreen();
+
+    const playButton = tree.root.findByProps({
+      accessibilityLabel: "Play meditation",
+    });
+
+    await act(async () => {
+      await playButton.props.onPress();
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      resolveAudioLoad?.();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mockSound.playAsync).toHaveBeenCalledTimes(1);
+    expect(mockCreateWellnessSessionFn).toHaveBeenCalledWith({
+      activity_type: "meditation",
+      content_type: "wellness_content.wellnesscontent",
+      content_object_id: 1,
+      source: "manual",
+      metadata: {
+        entry_surface: "player_screen",
+        test_mode: true,
+      },
+    });
   });
 
   it("completes the session only when playback finishes naturally", async () => {

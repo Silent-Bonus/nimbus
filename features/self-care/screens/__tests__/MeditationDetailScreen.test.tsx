@@ -8,7 +8,7 @@ import { ROUTES } from "../../../../constants/routes";
 import MeditationDetailScreen from "../MeditationDetailScreen";
 import {
   buildMeditationRouteParams,
-  mapMeditationTemplate,
+  mapMeditationDetailItemTemplate,
 } from "../../utils/meditationLibrary";
 import {
   getWellnessContentDetail,
@@ -19,8 +19,13 @@ const mockPush = jest.fn();
 const mockBack = jest.fn();
 const mockSetOptions = jest.fn();
 const mockShare = jest.fn();
+const mockAddListener = jest.fn();
+let mockFocusListener: (() => void) | undefined;
 
-let mockParams = {
+let mockParams: {
+  meditationId: string;
+  meditationSlug?: string;
+} = {
   meditationId: "1",
 };
 
@@ -31,6 +36,17 @@ jest.mock("expo-router", () => ({
   },
   useNavigation: () => ({
     setOptions: mockSetOptions,
+    addListener: (event: string, callback: () => void) => {
+      mockAddListener(event);
+      if (event === "focus") {
+        mockFocusListener = callback;
+      }
+      return () => {
+        if (mockFocusListener === callback) {
+          mockFocusListener = undefined;
+        }
+      };
+    },
   }),
   useLocalSearchParams: () => mockParams,
 }));
@@ -194,8 +210,10 @@ async function renderScreen() {
 describe("MeditationDetailScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFocusListener = undefined;
     mockParams = {
       meditationId: "1",
+      meditationSlug: "relaxing-meditation",
     };
     mockGetWellnessContentDetail.mockResolvedValue({
       success: true,
@@ -245,7 +263,9 @@ describe("MeditationDetailScreen", () => {
     expect(mockSetOptions).toHaveBeenCalledWith({
       headerShown: false,
     });
-    expect(mockGetWellnessContentDetail).toHaveBeenCalledWith(1);
+    expect(mockGetWellnessContentDetail).toHaveBeenCalledWith(
+      "relaxing-meditation"
+    );
     expect(mockGetWellnessContentDetail).toHaveBeenCalledTimes(1);
 
     expect(hasText(tree, "Meditation Prelude")).toBe(true);
@@ -303,7 +323,7 @@ describe("MeditationDetailScreen", () => {
 
     expect(mockCreateWellnessSession).not.toHaveBeenCalled();
 
-    const expectedTemplate = mapMeditationTemplate(apiDetail as any, 0);
+    const expectedTemplate = mapMeditationDetailItemTemplate(apiDetail as any);
     const pushCall = mockPush.mock.calls.at(-1)?.[0];
 
     expect(pushCall).toEqual({
@@ -313,5 +333,27 @@ describe("MeditationDetailScreen", () => {
       }),
     });
     expect(mockPush).toHaveBeenCalledTimes(1);
+  });
+
+  it("resets the start button loading state when the detail screen regains focus", async () => {
+    const tree = await renderScreen();
+
+    const startButton = tree.root.findByProps({
+      accessibilityLabel: "Start Meditation",
+    });
+
+    await act(async () => {
+      startButton.props.onPress();
+      await Promise.resolve();
+    });
+
+    expect(tree.root.findByProps({ accessibilityLabel: "Start Meditation" }).props.loading).toBe(true);
+
+    act(() => {
+      mockFocusListener?.();
+    });
+
+    expect(tree.root.findByProps({ accessibilityLabel: "Start Meditation" }).props.loading).toBe(false);
+    expect(tree.root.findByProps({ accessibilityLabel: "Start Meditation" }).props.disabled).toBe(false);
   });
 });

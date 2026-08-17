@@ -33,11 +33,13 @@ function renderCard(element: React.ReactElement) {
 const hasText = (tree: renderer.ReactTestRenderer, value: string) =>
   tree.root
     .findAllByType(Text)
-    .some((node) =>
-      Array.isArray(node.props.children)
-        ? node.props.children.join("") === value
-        : node.props.children === value
-    );
+    .some((node) => {
+      const content = Array.isArray(node.props.children)
+        ? node.props.children.join("")
+        : String(node.props.children ?? "");
+
+      return content.includes(value);
+    });
 
 describe("MeditationTemplateCard", () => {
   it("renders the meditation list card metadata and open action", () => {
@@ -47,11 +49,9 @@ describe("MeditationTemplateCard", () => {
           id: "moonlit-reset",
           title: "Moonlit Reset",
           description: "A calm reset for the nervous system.",
-          tag: "calm",
-          tags: ["calm"],
+          tags: ["Calm"],
           durationLabel: "7 min",
           image: { uri: "https://example.com/moonlit.png" },
-          source: null,
           isLocked: false,
         }}
         onPress={jest.fn()}
@@ -73,11 +73,9 @@ describe("MeditationTemplateCard", () => {
           id: "sleep-drift",
           title: "Sleep Drift",
           description: "Let the body grow heavier.",
-          tag: "sleep",
-          tags: ["sleep"],
+          tags: ["Sleep"],
           durationLabel: "8 min",
           image: { uri: "https://example.com/sleep.png" },
-          source: null,
           isLocked: false,
         }}
         onPress={onPress}
@@ -102,11 +100,9 @@ describe("MeditationTemplateCard", () => {
           id: "stillness-anchor",
           title: "Stillness Anchor",
           description: "Use the breath to slow the edges of the day.",
-          tag: "breath",
-          tags: ["breath"],
+          tags: ["Breath"],
           durationLabel: "5 min",
           image: { uri: "https://example.com/stillness.png" },
-          source: null,
           isLocked: true,
         }}
         onPress={jest.fn()}

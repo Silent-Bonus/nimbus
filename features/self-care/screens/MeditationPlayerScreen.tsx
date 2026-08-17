@@ -9,7 +9,6 @@ import React, {
 import {
   ActivityIndicator,
   Platform,
-  Pressable,
   ScrollView,
   Share,
   StyleSheet,
@@ -26,22 +25,23 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ThemeContext from "@/contexts/ThemeContext";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import { ROUTES } from "@/constants/routes";
+import MeditationPlayerActionButton from "@/features/self-care/components/meditation/MeditationPlayerActionButton";
 import MeditationPlayerHeader from "@/features/self-care/components/meditation/MeditationPlayerHeader";
 import MeditationTransportControls from "@/features/self-care/components/meditation/MeditationTransportControls";
 import {
+  buildMeditationPlaybackTemplate,
   formatPlaybackRemaining,
   formatPlaybackTime,
   resolveMeditationPlaybackCover,
   resolveMeditationPlaybackSource,
   seekMillis,
+  type MeditationRouteParams,
 } from "@/features/self-care/utils/meditationPlayback";
 import {
   formatMeditationTagLabel,
-  hydrateMeditationTemplate,
-  mockMeditationRecommendations,
-  type MeditationRouteParams,
-  type MeditationTemplate,
+  normalizeMeditationTag,
 } from "@/features/self-care/utils/meditationLibrary";
+import type { MeditationItemDetail } from "@/features/self-care/types/wellnessContentTypes";
 import {
   completeWellnessSession,
   createWellnessSession,
@@ -57,12 +57,12 @@ import type {
 
 type MeditationPlayerParams = MeditationRouteParams;
 
-const parseParam = (value?: string | string[]) => {
-  if (Array.isArray(value)) return value[0];
-  return value;
-};
-
-const buildMeditationMeta = (template: MeditationTemplate) => {
+// Derives the short descriptor shown under the meditation title from the
+// first available tag/category so the player can render a consistent subtitle.
+const buildMeditationMeta = (template: MeditationItemDetail) => {
+  const primaryTag = normalizeMeditationTag(
+    template.tags[0] ?? template.category ?? ""
+  );
   const labels = {
     calm: "Deep calm",
     sleep: "Restorative",
@@ -72,46 +72,51 @@ const buildMeditationMeta = (template: MeditationTemplate) => {
     beginner: "Gentle entry",
   };
 
-  return labels[template.tag as keyof typeof labels] ?? "Curated meditation";
+  return labels[primaryTag as keyof typeof labels] ?? "Curated meditation";
 };
 
 export default function MeditationPlayerScreen() {
+  // Route params are converted once into the same template shape used across
+  // the meditation flow so the player does not depend on raw query strings.
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<MeditationPlayerParams>();
-  const { newTheme: theme, svaTypography, spacing, typography } =
-    useContext(ThemeContext);
-
-  const meditationId = parseParam(params.meditationId) ?? "moonlit-reset";
-  const fallbackMeditation = useMemo<MeditationTemplate>(() => {
-    return (
-      mockMeditationRecommendations.find(
-        (item) => item.id === meditationId || item.slug === meditationId
-      ) ?? mockMeditationRecommendations[0]
-    );
-  }, [meditationId]);
-
-  const template = hydrateMeditationTemplate(params, fallbackMeditation);
+  const {
+    newTheme: theme,
+    svaTypography,
+    spacing,
+    typography,
+  } = useContext(ThemeContext);
+  const template: MeditationItemDetail = buildMeditationPlaybackTemplate(params);
+  const meditationId = template.id;
 
   const meditationTitle = template.title ?? "Meditation";
   const meditationDescription = template.description;
   const meditationSessionNotes =
     template.guidance?.trim() || meditationDescription;
   const meditationDurationLabel = template.durationLabel;
-  const meditationMeta = useMemo(() => buildMeditationMeta(template), [template]);
+  const meditationMeta = useMemo(
+    () => buildMeditationMeta(template),
+    [template]
+  );
 
   const styles = useMemo(
     () => styling(theme, svaTypography, spacing, typography),
     [theme, svaTypography, spacing, typography]
   );
 
+  // Refs hold mutable playback/session state that must stay readable inside
+  // async callbacks without forcing the audio instance to be recreated.
   const soundRef = useRef<Audio.Sound | null>(null);
+  const pendingPlayOnReadyRef = useRef(false);
   const playbackPositionRef = useRef(0);
+  const playbackIntentRef = useRef<"play" | "pause" | null>(null);
   const hasCompletedSessionRef = useRef(false);
   const sessionStatusRef = useRef<
     "idle" | "creating" | "active" | "paused" | "completed"
   >("idle");
   const pauseSessionRef = useRef<(() => Promise<void>) | null>(null);
+  const completeSessionRef = useRef<(() => Promise<void>) | null>(null);
   const sessionCreatePromiseRef = useRef<Promise<string | null> | null>(null);
   const completionInFlightRef = useRef(false);
   const leavingScreenRef = useRef(false);
@@ -121,12 +126,26 @@ export default function MeditationPlayerScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
   const [ambientMode, setAmbientMode] = useState(false);
+  const [playbackIntent, setPlaybackIntent] = useState<
+    "play" | "pause" | null
+  >(null);
   const [sessionStatus, setSessionStatus] = useState<
     "idle" | "creating" | "active" | "paused" | "completed"
   >("idle");
   const [sessionRef, setSessionRef] = useState<string | null>(null);
 
-  const isPlaying = playbackStatus?.isLoaded ? playbackStatus.isPlaying : false;
+  // The player shows optimistic play/pause state immediately on tap, then
+  // falls back to the native audio status once Expo confirms the transition.
+  const isActuallyPlaying =
+    playbackStatus?.isLoaded ? playbackStatus.isPlaying : false;
+  const isPlaying =
+    playbackIntent === "play"
+      ? true
+      : playbackIntent === "pause"
+        ? false
+        : isActuallyPlaying ||
+          sessionStatus === "creating" ||
+          sessionStatus === "active";
   const positionMillis = playbackStatus?.isLoaded
     ? playbackStatus.positionMillis
     : 0;
@@ -137,7 +156,8 @@ export default function MeditationPlayerScreen() {
   const progress = Math.min(positionMillis / durationMillis, 1);
 
   const playbackSource = useMemo(
-    () => resolveMeditationPlaybackSource(meditationId, template.source ?? null),
+    () =>
+      resolveMeditationPlaybackSource(meditationId, template.source ?? null),
     [meditationId, template.source]
   );
   const heroImage = useMemo(
@@ -152,6 +172,9 @@ export default function MeditationPlayerScreen() {
   }, [navigation]);
 
   useEffect(() => {
+    pendingPlayOnReadyRef.current = false;
+    setPlaybackIntent(null);
+    playbackIntentRef.current = null;
     setSessionStatus("idle");
     setSessionRef(null);
     sessionStatusRef.current = "idle";
@@ -166,6 +189,12 @@ export default function MeditationPlayerScreen() {
     sessionStatusRef.current = sessionStatus;
   }, [sessionStatus]);
 
+  useEffect(() => {
+    playbackIntentRef.current = playbackIntent;
+  }, [playbackIntent]);
+
+  // Session creation is async, so callers resolve the session ref through the
+  // in-flight promise when the API has not finished yet.
   const resolveSessionRef = useCallback(async () => {
     if (sessionRef) {
       return sessionRef;
@@ -223,6 +252,8 @@ export default function MeditationPlayerScreen() {
     sessionCreatePromiseRef.current = promise;
   }, [sessionStatus, template.id]);
 
+  // Pausing/resuming the backend session is kept separate from audio control so
+  // the screen can pause on navigation changes and resume only when playback restarts.
   const pauseSession = useCallback(async () => {
     if (
       sessionStatus === "idle" ||
@@ -267,6 +298,31 @@ export default function MeditationPlayerScreen() {
     }
   }, [resolveSessionRef, sessionStatus]);
 
+  const startPlayback = useCallback(
+    async (sound: Audio.Sound) => {
+      // A completed session should never restart from the player screen.
+      if (sessionStatusRef.current === "completed") {
+        return;
+      }
+
+      // Resuming an existing paused session skips create and only restarts audio.
+      if (sessionStatusRef.current === "paused") {
+        await sound.playAsync();
+        void resumeSession();
+        return;
+      }
+
+      // First-time play starts the session request and audio in parallel so the
+      // button responds immediately instead of waiting for the API round trip.
+      ensureSessionStarted();
+      await sound.playAsync();
+      setSessionStatus((current) =>
+        current === "completed" ? current : "active"
+      );
+    },
+    [ensureSessionStarted, resumeSession]
+  );
+
   const completeSession = useCallback(async () => {
     if (completionInFlightRef.current || hasCompletedSessionRef.current) {
       return;
@@ -295,6 +351,10 @@ export default function MeditationPlayerScreen() {
     }
   }, [resolveSessionRef]);
 
+  useEffect(() => {
+    completeSessionRef.current = completeSession;
+  }, [completeSession]);
+
   const handlePlaybackStatusUpdate = useCallback(
     (status: AVPlaybackStatus) => {
       setPlaybackStatus(status);
@@ -303,18 +363,32 @@ export default function MeditationPlayerScreen() {
         return;
       }
 
+      const playbackIntent = playbackIntentRef.current;
+
+      // Once Expo confirms the requested transition, clear the optimistic intent
+      // so future UI state is driven by the native playback status again.
+      if (status.didJustFinish) {
+        setPlaybackIntent(null);
+      } else if (status.isPlaying && playbackIntent === "play") {
+        setPlaybackIntent(null);
+      } else if (!status.isPlaying && playbackIntent === "pause") {
+        setPlaybackIntent(null);
+      }
+
       playbackPositionRef.current = status.positionMillis;
 
       if (status.didJustFinish) {
-        void completeSession();
+        void completeSessionRef.current?.();
       }
     },
-    [completeSession]
+    []
   );
 
   useEffect(() => {
     let active = true;
 
+    // The sound instance is created once per audio source. Keeping this effect
+    // stable avoids reloading audio when play/pause state changes.
     const load = async () => {
       try {
         await Audio.setAudioModeAsync({
@@ -361,48 +435,72 @@ export default function MeditationPlayerScreen() {
       soundRef.current?.unloadAsync();
       soundRef.current = null;
     };
-  }, [handlePlaybackStatusUpdate, playbackSource]);
+  }, [playbackSource]);
 
-  const handleSeek = useCallback(async (delta: number) => {
+  useEffect(() => {
+    if (isLoading || !pendingPlayOnReadyRef.current) {
+      return;
+    }
+
+    // If the user tapped play before the sound finished loading, start
+    // playback as soon as the audio instance becomes available.
     const sound = soundRef.current;
-    if (!sound || !playbackStatus?.isLoaded) return;
+    if (!sound) {
+      return;
+    }
 
-    const nextPosition = seekMillis(
-      playbackStatus.positionMillis,
-      delta,
-      playbackStatus.durationMillis ?? 0
-    );
-    await sound.setPositionAsync(nextPosition);
-  }, [playbackStatus]);
+    pendingPlayOnReadyRef.current = false;
+    void startPlayback(sound).catch(() => {
+      setPlaybackIntent(null);
+    });
+  }, [isLoading, startPlayback]);
+
+  const handleSeek = useCallback(
+    async (delta: number) => {
+      const sound = soundRef.current;
+      if (!sound || !playbackStatus?.isLoaded) return;
+
+      const nextPosition = seekMillis(
+        playbackStatus.positionMillis,
+        delta,
+        playbackStatus.durationMillis ?? 0
+      );
+      await sound.setPositionAsync(nextPosition);
+    },
+    [playbackStatus]
+  );
 
   const handleTogglePlayPause = useCallback(async () => {
     const sound = soundRef.current;
-    if (!sound || sessionStatus === "completed") return;
+    if (sessionStatus === "completed") return;
 
+    // Pause uses the current sound immediately, then updates the backend
+    // session in the background.
     if (isPlaying) {
+      setPlaybackIntent("pause");
+      if (!sound) return;
       await sound.pauseAsync();
       void pauseSession();
       return;
     }
 
-    if (sessionStatus === "paused") {
-      await sound.playAsync();
-      void resumeSession();
+    // Early play taps are queued while the audio file is still loading so the
+    // user does not need to press the button a second time.
+    if (isLoading || !sound) {
+      pendingPlayOnReadyRef.current = true;
+      setPlaybackIntent("play");
       return;
     }
 
-    ensureSessionStarted();
-    await sound.playAsync();
-    setSessionStatus((current) =>
-      current === "completed" ? current : "active"
-    );
-  }, [
-    ensureSessionStarted,
-    isPlaying,
-    pauseSession,
-    resumeSession,
-    sessionStatus,
-  ]);
+    setPlaybackIntent("play");
+
+    try {
+      await startPlayback(sound);
+    } catch (error) {
+      setPlaybackIntent(null);
+      throw error;
+    }
+  }, [isLoading, isPlaying, pauseSession, sessionStatus, startPlayback]);
 
   const handleBack = useCallback(async () => {
     leavingScreenRef.current = true;
@@ -432,9 +530,7 @@ export default function MeditationPlayerScreen() {
   return (
     <ScreenView bgColor={theme.background} style={styles.screen}>
       <View style={styles.root}>
-        <MeditationPlayerHeader
-          onBack={() => void handleBack()}
-        />
+        <MeditationPlayerHeader onBack={() => void handleBack()} />
 
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -444,7 +540,11 @@ export default function MeditationPlayerScreen() {
           ]}
         >
           <View style={styles.heroCard}>
-            <Image source={heroImage} style={styles.heroImage} contentFit="cover" />
+            <Image
+              source={heroImage}
+              style={styles.heroImage}
+              contentFit="cover"
+            />
             <LinearGradient
               colors={["rgba(8, 9, 7, 0.02)", "rgba(8, 9, 7, 0.86)"]}
               style={StyleSheet.absoluteFill}
@@ -484,7 +584,9 @@ export default function MeditationPlayerScreen() {
 
           <View style={styles.progressBlock}>
             <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+              <View
+                style={[styles.progressFill, { width: `${progress * 100}%` }]}
+              />
             </View>
 
             <View style={styles.timeRow}>
@@ -494,7 +596,9 @@ export default function MeditationPlayerScreen() {
               <Text style={styles.timeText}>
                 {formatPlaybackRemaining(
                   positionMillis,
-                  playbackStatus?.isLoaded ? playbackStatus.durationMillis ?? 0 : 0
+                  playbackStatus?.isLoaded
+                    ? playbackStatus.durationMillis ?? 0
+                    : 0
                 )}
               </Text>
             </View>
@@ -503,6 +607,7 @@ export default function MeditationPlayerScreen() {
           <MeditationTransportControls
             isPlaying={isPlaying}
             disabled={isLoading}
+            playDisabled={false}
             onSeekBackward={() => handleSeek(-15000)}
             onTogglePlayPause={handleTogglePlayPause}
             onSeekForward={() => handleSeek(15000)}
@@ -530,24 +635,24 @@ export default function MeditationPlayerScreen() {
           </View>
 
           <View style={styles.actionRow}>
-            <PlayerActionButton
+            <MeditationPlayerActionButton
               icon={isFavorite ? "heart" : "heart-outline"}
               label={isFavorite ? "Saved" : "Save"}
               active={isFavorite}
               onPress={() => setIsFavorite((value) => !value)}
             />
-            <PlayerActionButton
+            <MeditationPlayerActionButton
               icon={ambientMode ? "radio-button-on-outline" : "radio-outline"}
               label="Ambient"
               active={ambientMode}
               onPress={() => setAmbientMode((value) => !value)}
             />
-            <PlayerActionButton
+            <MeditationPlayerActionButton
               icon="share-outline"
               label="Share"
               onPress={handleShare}
             />
-            <PlayerActionButton
+            <MeditationPlayerActionButton
               icon="list-outline"
               label="Library"
               onPress={handleOpenLibrary}
@@ -556,7 +661,10 @@ export default function MeditationPlayerScreen() {
 
           {isLoading ? (
             <View style={styles.loadingPill}>
-              <ActivityIndicator size="small" color={theme.chart2 ?? theme.accent} />
+              <ActivityIndicator
+                size="small"
+                color={theme.chart2 ?? theme.accent}
+              />
               <Text style={styles.loadingText}>Loading meditation…</Text>
             </View>
           ) : null}
@@ -565,78 +673,6 @@ export default function MeditationPlayerScreen() {
     </ScreenView>
   );
 }
-
-const PlayerActionButton = ({
-  icon,
-  label,
-  active,
-  onPress,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  active?: boolean;
-  onPress: () => void;
-}) => {
-  const { newTheme: theme, typography } = useContext(ThemeContext);
-  const styles = useMemo(
-    () => actionButtonStyles(theme, typography),
-    [theme, typography]
-  );
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.button,
-        active && styles.buttonActive,
-        pressed && styles.buttonPressed,
-      ]}
-    >
-      <Ionicons
-        name={icon}
-        size={18}
-        color={active ? theme.buttonPrimaryText : theme.textSecondary}
-      />
-      <Text style={[styles.label, active && styles.labelActive]} numberOfLines={1}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-};
-
-const actionButtonStyles = (theme: ColorSet, typography: Typography) =>
-  StyleSheet.create({
-    button: {
-      flex: 1,
-      minHeight: 64,
-      borderRadius: 18,
-      backgroundColor: theme.surfaceMuted,
-      borderWidth: 1,
-      borderColor: theme.borderMuted ?? "rgba(255,255,255,0.05)",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 8,
-      paddingHorizontal: 10,
-    },
-    buttonActive: {
-      backgroundColor: "rgba(163,190,140,0.14)",
-      borderColor: "rgba(163,190,140,0.22)",
-    },
-    buttonPressed: {
-      transform: [{ scale: 0.98 }],
-      opacity: 0.92,
-    },
-    label: {
-      ...typography.smallCaption,
-      color: theme.textSecondary,
-      letterSpacing: 1.1,
-    },
-    labelActive: {
-      color: theme.textPrimary,
-    },
-  });
 
 const styling = (
   theme: ColorSet,
@@ -668,10 +704,10 @@ const styling = (
       marginBottom: spacing.lg,
       shadowColor: theme.shadow,
       shadowOpacity: 0.28,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 8,
-  },
+      shadowRadius: 18,
+      shadowOffset: { width: 0, height: 10 },
+      elevation: 8,
+    },
     heroImage: {
       width: "100%",
       height: "100%",

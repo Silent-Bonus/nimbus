@@ -1,6 +1,12 @@
 // UI Types for Self-Care Module
 
 import { Meditations } from "@/features/tools/types/toolsTypes";
+import type {
+  WellnessContentModality,
+  WellnessContentPagination,
+} from "@/features/self-care/types/wellnessContentTypes";
+
+export * from "@/features/self-care/types/wellnessContentTypes";
 
 export interface WorkoutVideoListItem {
   id: number;
@@ -159,95 +165,7 @@ export interface MeditationVideoListResponse {
   success: boolean;
 }
 
-export interface WellnessContentItem {
-  id: number;
-  slug?: string;
-  title: string;
-  modality: string;
-  category: string;
-  duration: string;
-  image: string;
-  rating: number;
-  reviews: number;
-  tags: string[];
-  level: string;
-  dosha: string;
-  description?: string;
-}
-
-export interface WellnessContentBreathworkStep {
-  name: string;
-  color?: string;
-  sanskrit?: string;
-  frequency?: number;
-  hold_seconds?: number;
-  exhale_seconds?: number;
-  inhale_seconds?: number;
-}
-
-export interface WellnessContentMetadata extends Record<string, unknown> {
-  steps?: WellnessContentBreathworkStep[];
-}
-
-export interface WellnessContentPagination {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  page: number;
-  page_size: number;
-  total_pages: number;
-  results_count: number;
-}
-
-export interface WellnessContentResponse {
-  success: boolean;
-  message: string;
-  data: WellnessContentItem[];
-  pagination?: WellnessContentPagination;
-}
-
-export interface WellnessContentInstructor {
-  name: string;
-  role: string;
-  bio: string;
-  image: string;
-}
-
-export interface WellnessContentBenefit {
-  id: number;
-  title: string;
-  text: string;
-}
-
-export interface WellnessContentScientificSynthesis {
-  title: string;
-  text: string;
-  source: string;
-}
-
-export interface WellnessContentDetailItem extends WellnessContentItem {
-  audio?: string;
-  description?: string;
-  longDescription?: string;
-  guidance?: string;
-  date?: string;
-  metadata?: WellnessContentMetadata;
-  instructor?: WellnessContentInstructor;
-  benefits?: WellnessContentBenefit[];
-  tips?: string[];
-  scientificSynthesis?: WellnessContentScientificSynthesis;
-}
-
-export interface WellnessContentDetailResponse {
-  success: boolean;
-  message: string;
-  data: WellnessContentDetailItem;
-}
-
-export type WellnessSessionActivityType =
-  | "meditation"
-  | "soundscape"
-  | "breathwork";
+export type WellnessSessionActivityType = WellnessContentModality;
 
 export type WellnessSessionSource =
   | "manual"
