@@ -6,7 +6,7 @@ import type {
   WellnessContentDetailItem,
   WellnessContentItem,
   WellnessContentMetadata,
-} from "@/features/self-care/types/selfCareTypes";
+} from "@/features/self-care/types/wellnessContentTypes";
 
 export type BreathPhase = {
   label: string;

@@ -1,4 +1,5 @@
 import type { ImageSourcePropType } from "react-native";
+import type { Meditations } from "@/features/tools/types/toolsTypes";
 
 // Backend API types
 // These types model the wellness content payloads returned by the service layer.
@@ -58,8 +59,8 @@ export interface WellnessContentItem {
   modality: string;
   category: string;
   duration: number | string;
-  image: string;
-  metadata?: WellnessContentMetadata;
+  image: string | null;
+  metadata?: WellnessContentMetadata | null;
   rating: number;
   reviews: number;
   tags: string[];
@@ -67,6 +68,7 @@ export interface WellnessContentItem {
   dosha: string;
   description?: string;
   date?: string;
+  source?: string | null;
   isLocked?: boolean;
   is_locked?: boolean;
 }
@@ -133,9 +135,11 @@ export type MeditationTemplateCardItem = Pick<
   rating?: number;
 };
 
-// Backend aliases for meditation-specific wellness content responses.
-// export type MeditationWellnessContentListItem = WellnessContentItem;
-// export type MeditationWellnessContentDetailItem = WellnessContentDetailItem;
-// export type MeditationWellnessContent =
-//   | MeditationWellnessContentListItem
-//   | MeditationWellnessContentDetailItem;
+// Legacy featured-rail meditation type.
+export type EnrichedMeditation = Meditations & {
+  tag: string;
+  isLocked: boolean;
+  coachName: string;
+  durationLabel: string;
+  image: string | ImageSourcePropType;
+};

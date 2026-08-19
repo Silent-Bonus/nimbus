@@ -23,11 +23,10 @@ import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import ThemeContext from "@/contexts/ThemeContext";
 import {
   buildSoundscapeResonanceLabel,
-  buildSoundscapeSubtitle,
   getSoundscapeById,
   resolveSoundscapePlaybackSource,
-  type SoundscapeTrack,
 } from "@/features/self-care/utils/soundscapeLibrary";
+import type { SoundscapeTrack } from "@/features/self-care/types/soundscapeTypes";
 import { useAudioPlayback } from "@/features/self-care/hooks/useAudioPlayback";
 import {
   formatPlaybackRemaining,
@@ -50,10 +49,12 @@ const parseParam = (value?: string | string[]) => {
   return value;
 };
 
-const timerOptions = [null, 15, 30, 45] as const;
+const timerOptions = [null, 10, 20, 30] as const;
 const intensityVolumes = [0.45, 0.68, 0.9] as const;
 
 export default function SoundscapePlayerScreen() {
+  // Resolve the cached soundscape and shared theme/layout tokens used by the
+  // immersive player surface.
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
@@ -427,6 +428,13 @@ const styling = (
       color: theme.textSecondary,
       letterSpacing: 1.1,
     },
+    sideControlValue: {
+      ...typography.smallCaption,
+      fontSize: 12,
+      lineHeight: 16,
+      color: theme.textPrimary,
+      letterSpacing: 0.8,
+    },
     sideControlLabelActive: {
       color: theme.textPrimary,
     },
@@ -460,7 +468,7 @@ const styling = (
     progressMetaRow: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
+      justifyContent: "center",
       gap: spacing.sm,
       marginBottom: isCompactLayout ? 8 : 10,
     },
@@ -558,8 +566,10 @@ function SoundscapePlayerContent({
   isCompactLayout,
   onBack,
 }: SoundscapePlayerContentProps) {
+  // Display-only labels are derived once from the cached soundscape so the
+  // transport and header sections can stay presentation-focused.
   const subtitle = useMemo(
-    () => buildSoundscapeSubtitle(soundscape),
+    () => `${soundscape.durationLabel} · ${soundscape.category}`,
     [soundscape]
   );
   const resonanceLabel = useMemo(
@@ -575,9 +585,13 @@ function SoundscapePlayerContent({
     return Number.isFinite(numericId) ? numericId : null;
   }, [soundscape.id]);
 
+  // Player controls manage three local behaviors: the atmosphere toggle, the
+  // sleep timer, and the coarse playback volume preset.
   const [binauralEnabled, setBinauralEnabled] = useState(true);
   const [timerIndex, setTimerIndex] = useState(0);
   const [intensityIndex, setIntensityIndex] = useState(1);
+  // Session state stays separate from raw audio state because the playback
+  // service and the wellness-session API can progress independently.
   const [sessionStatus, setSessionStatus] =
     useState<SoundscapeSessionStatus>("idle");
   const [sessionRef, setSessionRef] = useState<string | null>(null);
@@ -602,6 +616,8 @@ function SoundscapePlayerContent({
   });
   const currentSound = soundRef.current;
 
+  // Opening a different soundscape resets the local session bookkeeping while
+  // reusing the same shared player implementation.
   useEffect(() => {
     setSessionStatus("idle");
     setSessionRef(null);
@@ -615,6 +631,8 @@ function SoundscapePlayerContent({
     sessionStatusRef.current = sessionStatus;
   }, [sessionStatus]);
 
+  // The atmosphere toggle only changes UI energy and output gain right now; it
+  // does not synthesize true binaural processing.
   const orbScale = binauralEnabled
     ? 1 + intensityIndex * 0.015 + (isPlaying ? 0.02 : 0)
     : 0.96;
@@ -627,6 +645,8 @@ function SoundscapePlayerContent({
     timerOptions[timerIndex] === null ? "OFF" : `${timerOptions[timerIndex]} MIN`;
   const intensityLabel = ["LOW", "MID", "HIGH"][intensityIndex];
 
+  // Timer and volume controls cycle through a fixed set of presets instead of
+  // opening separate pickers.
   const cycleTimer = () => {
     setTimerIndex((current) => (current + 1) % timerOptions.length);
   };
@@ -635,6 +655,8 @@ function SoundscapePlayerContent({
     setIntensityIndex((current) => (current + 1) % 3);
   };
 
+  // Session creation is async and may still be in flight when the user pauses,
+  // resumes, or exits, so downstream actions resolve the ref lazily.
   const resolveSessionRef = useCallback(async () => {
     if (sessionRef) {
       return sessionRef;
@@ -661,6 +683,8 @@ function SoundscapePlayerContent({
       return;
     }
 
+    // Create the wellness session only once per soundscape visit, then let the
+    // playback controls drive pause/resume/complete updates against that ref.
     setSessionStatus("creating");
 
     const promise = createWellnessSession({
@@ -714,6 +738,8 @@ function SoundscapePlayerContent({
     pauseSessionRef.current = pauseSession;
   }, [pauseSession]);
 
+  // Resume only applies after an existing session has been paused; fresh play
+  // presses go through session creation instead.
   const resumeSession = useCallback(async () => {
     if (sessionStatus !== "paused") {
       return;
@@ -768,6 +794,8 @@ function SoundscapePlayerContent({
     void completeSession();
   }, [completeSession, playbackStatus]);
 
+  // Navigating away while a session is active should leave the server-side
+  // session paused unless the handler already performed an explicit exit flow.
   useEffect(() => {
     return () => {
       if (leavingScreenRef.current) {
@@ -781,12 +809,15 @@ function SoundscapePlayerContent({
     };
   }, []);
 
+  // Volume preset changes apply immediately to the currently loaded sound.
   useEffect(() => {
     if (!currentSound || isLoading) return;
 
     void currentSound.setVolumeAsync(playbackVolume);
   }, [currentSound, isLoading, playbackVolume]);
 
+  // The sleep timer counts down from the moment the user selects a preset. When
+  // it elapses, playback stops, the session is paused, and the control resets.
   useEffect(() => {
     const selectedMinutes = timerOptions[timerIndex];
     if (!selectedMinutes) return undefined;
@@ -802,6 +833,8 @@ function SoundscapePlayerContent({
     return () => clearTimeout(timeout);
   }, [currentSound, timerIndex]);
 
+  // Play/pause coordinates local audio state with the wellness session state so
+  // pause/resume actions stay reflected in analytics and completion flows.
   const handlePlayPause = useCallback(async () => {
     if (isLoading || sessionStatus === "completed") {
       return;
@@ -834,6 +867,8 @@ function SoundscapePlayerContent({
     togglePlayPause,
   ]);
 
+  // Back navigation pauses both audio and session state before leaving the
+  // screen so the user can resume later without marking the session complete.
   const handleBack = useCallback(async () => {
     leavingScreenRef.current = true;
 
@@ -941,14 +976,14 @@ function SoundscapePlayerContent({
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Toggle binaural entrainment"
+            accessibilityLabel="Toggle enhanced atmosphere"
             onPress={() => setBinauralEnabled((value) => !value)}
             style={({ pressed }) => [
               styles.entrainmentRow,
               pressed && styles.buttonPressed,
             ]}
           >
-            <Text style={styles.entrainmentLabel}>BINAURAL ENTRAINMENT</Text>
+            <Text style={styles.entrainmentLabel}>ENHANCED ATMOSPHERE</Text>
             <View
               style={[
                 styles.toggleTrack,
@@ -985,10 +1020,10 @@ function SoundscapePlayerContent({
                   styles.sideControlLabel,
                   timerIndex > 0 && styles.sideControlLabelActive,
                 ]}
-                numberOfLines={1}
               >
-                TIMER
+                SLEEP TIMER
               </Text>
+              <Text style={styles.sideControlValue}>{timerLabel}</Text>
             </Pressable>
 
             <Pressable
@@ -1014,7 +1049,7 @@ function SoundscapePlayerContent({
 
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`Intensity ${intensityLabel}`}
+              accessibilityLabel={`Volume ${intensityLabel}`}
               onPress={cycleIntensity}
               style={({ pressed }) => [
                 styles.sideControl,
@@ -1034,16 +1069,15 @@ function SoundscapePlayerContent({
                 ]}
                 numberOfLines={1}
               >
-                INTENSITY
+                VOLUME
               </Text>
+              <Text style={styles.sideControlValue}>{intensityLabel}</Text>
             </Pressable>
           </View>
 
           <View style={styles.progressBlock}>
             <View style={styles.progressMetaRow}>
-              <Text style={styles.progressMeta}>0.0 HZ</Text>
               <Text style={styles.progressMeta}>{resonanceLabel}</Text>
-              <Text style={styles.progressMeta}>24.0 KHZ</Text>
             </View>
 
             <View style={styles.progressTrack}>

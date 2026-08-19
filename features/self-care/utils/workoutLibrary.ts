@@ -1,7 +1,7 @@
 import type { ImageSourcePropType } from "react-native";
 
 import type { PillFilterOption } from "@/components/ui/PillFilters";
-import type { WorkoutListItem } from "@/features/self-care/types/selfCareTypes";
+import type { WorkoutListItem } from "@/features/self-care/types/workoutTypes";
 
 export type WorkoutCategory = "cardio" | "strength" | "yoga" | "full_body";
 

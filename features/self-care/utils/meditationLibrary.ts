@@ -106,7 +106,7 @@ const buildMeditationList = (
   const durationValue = formatDurationLabel(item.duration);
   const normalizedRating =
     typeof item.rating === "number" && item.rating > 0 ? item.rating : 4.2;
-  // const source = item.audio?.trim() || item.source?.trim() || null;
+  const source = item.source?.trim() || null;
 
   return {
     id: String(item.id),
@@ -116,7 +116,7 @@ const buildMeditationList = (
     description,
     tags,
     image: item.image?.trim() || require("../../../assets/images/mt.jpg"),
-    // source,
+    source,
     isLocked: Boolean(item.isLocked ?? item.is_locked),
     category: normalizeMeditationCategory(item.category) || undefined,
     rating: normalizedRating,
@@ -233,6 +233,7 @@ export const mapMeditationDetailItemTemplate = (
 
   return {
     ...listTemplate,
+    source: item.audio?.trim() || listTemplate.source || null,
     longDescription: item.longDescription?.trim() || undefined,
     guidance: item.guidance?.trim() || undefined,
     date: item.date?.trim() || undefined,

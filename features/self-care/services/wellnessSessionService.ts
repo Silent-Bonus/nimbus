@@ -15,7 +15,7 @@ import type {
   WellnessSessionPauseResumeResponse,
   WellnessSessionRequest,
   WellnessSummaryResponse,
-} from "@/features/self-care/types/selfCareTypes";
+} from "@/features/self-care/types/wellnessSessionTypes";
 
 export const createWellnessSession = async (
   data: WellnessSessionRequest

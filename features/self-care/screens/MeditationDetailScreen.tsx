@@ -25,6 +25,10 @@ import { NimbusButton } from "@/components/ui/theme-components/NimbusButton";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import ThemeContext from "@/contexts/ThemeContext";
 import { ROUTES } from "@/constants/routes";
+import {
+  readFavoriteIds,
+  toggleFavoriteId,
+} from "@/features/self-care/services/favoritesStorage";
 import { getWellnessContentDetail } from "@/features/self-care/services/selfCareService";
 import {
   parseMeditationRouteParams,
@@ -137,6 +141,36 @@ export default function MeditationDetailScreen() {
     setIsStartingMeditation(false);
   }, [meditationId]);
 
+  // Meditation favorites are persisted through the shared favorites storage so
+  // future meditation list/detail surfaces can reuse the same saved ids.
+  useEffect(() => {
+    let active = true;
+
+    if (!meditation?.id) {
+      setIsFavorite(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    const loadFavoriteState = async () => {
+      try {
+        const ids = await readFavoriteIds("meditation");
+        if (active) {
+          setIsFavorite(ids.includes(meditation.id));
+        }
+      } catch (error) {
+        console.warn("Unable to load meditation favorites:", error);
+      }
+    };
+
+    void loadFavoriteState();
+
+    return () => {
+      active = false;
+    };
+  }, [meditation?.id]);
+
   // Keep render logic simple by deriving section data once from the fetched item.
   const benefits = useMemo<WellnessContentBenefit[]>(
     () => meditation?.benefits ?? [],
@@ -155,6 +189,17 @@ export default function MeditationDetailScreen() {
       message: `${meditation.title} · ${meditation.description}`,
     });
   };
+
+  const handleToggleFavorite = useCallback(async () => {
+    if (!meditation) return;
+
+    try {
+      const nextFavorites = await toggleFavoriteId("meditation", meditation.id);
+      setIsFavorite(nextFavorites.includes(meditation.id));
+    } catch (error) {
+      console.warn("meditation favorite toggle failed", error);
+    }
+  }, [meditation]);
 
   // The player screen still expects route params, so map the fetched detail
   // back into that transport shape before navigating.
@@ -230,7 +275,7 @@ export default function MeditationDetailScreen() {
               accessibilityLabel: isFavorite
                 ? "Remove from favorites"
                 : "Add to favorites",
-              onPress: () => setIsFavorite((value) => !value),
+              onPress: () => void handleToggleFavorite(),
             },
             {
               icon: "share-outline",

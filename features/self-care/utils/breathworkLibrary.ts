@@ -22,7 +22,7 @@ import type {
 } from "@/features/self-care/types/breathworkTypes";
 import type {
   WellnessContentBenefit,
-} from "@/features/self-care/types/selfCareTypes";
+} from "@/features/self-care/types/wellnessContentTypes";
 
 const BREATH_WORK_HERO_IMAGE = require("../../../assets/images/mt.jpg");
 const BREATH_WORK_DETAIL_CACHE = new Map<string, BreathWorkDetail>();
@@ -773,7 +773,7 @@ export const mapBreathworkDetail = (
     longDescription,
     guidance,
     date: item.date?.trim() || fallbackDetail.date,
-    metadata: item.metadata,
+    metadata: item.metadata ?? undefined,
     instructor: item.instructor ?? fallbackDetail.instructor,
     scientificSynthesis: item.scientificSynthesis ?? fallbackDetail.scientificSynthesis,
   };

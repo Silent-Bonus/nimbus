@@ -1,15 +1,17 @@
 import axios, { AxiosResponse } from "axios";
 import { API_ENDPOINTS } from "@/config/apiConfig";
 import {
-  JournalEntryListResponse,
-  JournalListResponse,
-  JournalSubmitRequest,
-  JournalSubmitResponse,
-  WellnessContentModality,
+  type JournalEntryListResponse,
+  type JournalListResponse,
+  type JournalSubmitRequest,
+  type JournalSubmitResponse,
+} from "@/features/self-care/types/journalTypes";
+import type {
   WellnessContentDetailResponse,
+  WellnessContentModality,
   WellnessContentResponse,
-  WorkoutVideoListResponse,
-} from "@/features/self-care/types/selfCareTypes";
+} from "@/features/self-care/types/wellnessContentTypes";
+import type { WorkoutVideoListResponse } from "@/features/self-care/types/workoutTypes";
 
 // Jounaling API
 
@@ -78,27 +80,6 @@ export const getWorkouts = async (params?: {
 export const getWorkoutDetails = async (id: number | string): Promise<any> => {
   try {
     const response = await axios.get(API_ENDPOINTS.getWorkoutDetails(id));
-    return response.data;
-  } catch (error: any) {
-    throw error.response ? error.response.data : error.message;
-  }
-};
-
-// Wellness Content API
-
-export const getSoundscapeContentList = async (params?: {
-  category?: string;
-}): Promise<WellnessContentResponse> => {
-  try {
-    const response: AxiosResponse<WellnessContentResponse> = await axios.get(
-      API_ENDPOINTS.getWellnessContent,
-      {
-        params: {
-          ...(params ?? {}),
-          modality: "soundscape",
-        },
-      }
-    );
     return response.data;
   } catch (error: any) {
     throw error.response ? error.response.data : error.message;

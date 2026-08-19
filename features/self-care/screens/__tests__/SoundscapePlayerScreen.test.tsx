@@ -28,14 +28,19 @@ const mockSessionRef = "soundscape-session-123";
 
 const cachedSoundscape = toSoundscapeTrack(
   {
-    id: "5",
+    id: 5,
     title: "528Hz: DNA Integrity",
+    modality: "soundscape",
     duration: "10 min",
     description: "A calm frequency bed for restoration.",
     image: "https://example.com/soundscapes/528.jpg",
     source: "https://example.com/soundscapes/528.mp3",
     category: "Frequency",
+    rating: 0,
+    reviews: 0,
     tags: ["Frequency"],
+    level: "All Levels",
+    dosha: "All",
   },
   0
 );
@@ -238,7 +243,9 @@ describe("SoundscapePlayerScreen", () => {
     expect(hasText(tree, "NOW PLAYING")).toBe(true);
     expect(hasText(tree, "SVA LABORATORY SOUNDSCAPE")).toBe(true);
     expect(hasText(tree, "528Hz: DNA Integrity")).toBe(true);
-    expect(hasText(tree, "BINAURAL ENTRAINMENT")).toBe(true);
+    expect(hasText(tree, "ENHANCED ATMOSPHERE")).toBe(true);
+    expect(hasText(tree, "OFF")).toBe(true);
+    expect(hasText(tree, "MID")).toBe(true);
     expect(hasText(tree, "RESONATING AT 528.00 HZ")).toBe(true);
     expect(
       tree.root.findByProps({
@@ -357,7 +364,7 @@ describe("SoundscapePlayerScreen", () => {
     expect(mockPauseWellnessSession).not.toHaveBeenCalled();
   });
 
-  it("applies intensity and binaural changes and stops on timer expiry", async () => {
+  it("applies volume and atmosphere changes and stops on timer expiry", async () => {
     jest.useFakeTimers();
 
     try {
@@ -366,7 +373,7 @@ describe("SoundscapePlayerScreen", () => {
       expect(mockSound.setVolumeAsync).toHaveBeenCalledWith(0.68);
 
       const intensityButton = tree.root.findByProps({
-        accessibilityLabel: "Intensity MID",
+        accessibilityLabel: "Volume MID",
       });
 
       await act(async () => {
@@ -376,7 +383,7 @@ describe("SoundscapePlayerScreen", () => {
       expect(mockSound.setVolumeAsync).toHaveBeenLastCalledWith(0.9);
 
       const binauralToggle = tree.root.findByProps({
-        accessibilityLabel: "Toggle binaural entrainment",
+        accessibilityLabel: "Toggle enhanced atmosphere",
       });
 
       await act(async () => {
@@ -393,14 +400,16 @@ describe("SoundscapePlayerScreen", () => {
         await timerButton.props.onPress();
       });
 
+      expect(hasText(tree, "10 MIN")).toBe(true);
+
       expect(
         tree.root.findByProps({
-          accessibilityLabel: "Sleep timer 15 MIN",
+          accessibilityLabel: "Sleep timer 10 MIN",
         }).props.accessibilityRole
       ).toBe("button");
 
       await act(async () => {
-        jest.advanceTimersByTime(15 * 60 * 1000);
+        jest.advanceTimersByTime(10 * 60 * 1000);
         await Promise.resolve();
       });
 
@@ -411,6 +420,7 @@ describe("SoundscapePlayerScreen", () => {
           accessibilityLabel: "Sleep timer OFF",
         }).props.accessibilityRole
       ).toBe("button");
+      expect(hasText(tree, "OFF")).toBe(true);
     } finally {
       jest.useRealTimers();
     }

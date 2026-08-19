@@ -2,8 +2,8 @@ import React from "react";
 import { Text } from "react-native";
 import renderer, { act } from "react-test-renderer";
 
-import ThemeContext from "../../../../../contexts/ThemeContext";
-import { getTheme } from "../../../../../theme";
+import ThemeContext from "../../../contexts/ThemeContext";
+import { getTheme } from "../../../theme";
 import ProtocolTemplateCard from "../ProtocolTemplateCard";
 
 jest.mock("expo-image", () => {

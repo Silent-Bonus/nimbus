@@ -20,6 +20,8 @@ const mockBack = jest.fn();
 const mockSetOptions = jest.fn();
 const mockShare = jest.fn();
 const mockAddListener = jest.fn();
+const mockGetItem = jest.fn();
+const mockSetItem = jest.fn();
 let mockFocusListener: (() => void) | undefined;
 
 let mockParams: {
@@ -53,6 +55,11 @@ jest.mock("expo-router", () => ({
 
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+
+jest.mock("@react-native-async-storage/async-storage", () => ({
+  getItem: (...args: any[]) => mockGetItem(...args),
+  setItem: (...args: any[]) => mockSetItem(...args),
 }));
 
 jest.mock("expo-image", () => {
@@ -211,6 +218,8 @@ describe("MeditationDetailScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockFocusListener = undefined;
+    mockGetItem.mockResolvedValue("[]");
+    mockSetItem.mockResolvedValue(undefined);
     mockParams = {
       meditationId: "1",
       meditationSlug: "relaxing-meditation",
@@ -287,9 +296,16 @@ describe("MeditationDetailScreen", () => {
       accessibilityLabel: "Add to favorites",
     });
 
-    act(() => {
+    await act(async () => {
       favoriteButton.props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
     });
+
+    expect(mockSetItem).toHaveBeenLastCalledWith(
+      "meditation_favorites_v1",
+      JSON.stringify(["1"])
+    );
 
     expect(
       tree.root.findByProps({
@@ -301,8 +317,9 @@ describe("MeditationDetailScreen", () => {
       accessibilityLabel: "Share meditation",
     });
 
-    act(() => {
+    await act(async () => {
       shareButton.props.onPress();
+      await Promise.resolve();
     });
 
     expect(mockShare).toHaveBeenCalledWith({

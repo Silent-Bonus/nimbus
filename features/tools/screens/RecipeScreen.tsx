@@ -11,6 +11,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { router, useNavigation } from "expo-router";
 
+import ProtocolTemplateCard from "@/components/common/ProtocolTemplateCard";
 import { ScreenView } from "@/components/ui/Themed";
 import PillFilters, {
   type PillFilterOption,
@@ -18,7 +19,6 @@ import PillFilters, {
 import ThemeContext from "@/contexts/ThemeContext";
 import ScreenHeader from "@/components/layout/ScreenHeader";
 import EmptyState from "@/features/tools/components/common/EmptyState";
-import ProtocolTemplateCard from "@/features/tools/components/common/ProtocolTemplateCard";
 import { RoutineSkeletonGrid } from "@/features/tools/components/common/RoutineSkeletonGrid";
 import { ROUTES } from "@/constants/routes";
 import {
