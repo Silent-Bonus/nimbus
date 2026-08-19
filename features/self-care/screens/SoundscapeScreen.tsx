@@ -261,7 +261,6 @@ export const SoundscapeScreen = () => {
             title="Acoustic Formulas"
             subtitle={FAVORITES_SUBTITLE}
             onBack={handleBack}
-            titleStyle={styles.headerTitle}
             subtitleStyle={styles.headerSubtitle}
             containerStyle={styles.header}
           />
@@ -279,7 +278,6 @@ export const SoundscapeScreen = () => {
           title="Acoustic Formulas"
           subtitle={FAVORITES_SUBTITLE}
           onBack={handleBack}
-          titleStyle={styles.headerTitle}
           subtitleStyle={styles.headerSubtitle}
           containerStyle={styles.header}
         />
@@ -383,9 +381,6 @@ const styling = (
     },
     header: {
       marginBottom: spacing.sm,
-    },
-    headerTitle: {
-      ...(typography?.textStyle?.authTitle ?? {}),
     },
     headerSubtitle: {
       ...(typography?.textStyle?.authTinyLabel ?? {}),

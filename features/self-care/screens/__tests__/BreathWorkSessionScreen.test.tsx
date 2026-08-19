@@ -11,7 +11,7 @@ import {
   buildBreathWorkRouteParams,
   mapBreathworkDetail,
 } from "../../utils/breathworkLibrary";
-import type { BreathWorkRouteParams } from "../../types/breathworkTypes";
+import type { BreathWorkRouteParams } from "../../utils/breathworkPlayback";
 import BreathWorkSessionScreen from "../BreathWorkSessionScreen";
 
 const mockBack = jest.fn();
@@ -228,7 +228,7 @@ describe("BreathWorkSessionScreen", () => {
     jest.clearAllMocks();
     jest.useFakeTimers();
     clearBreathWorkDetailCache();
-    const cachedDetail = mapBreathworkDetail(apiDetail, 0, null);
+    const cachedDetail = mapBreathworkDetail(apiDetail, 0);
     cacheBreathWorkDetail(cachedDetail);
     mockParams = {
       ...buildBreathWorkRouteParams(cachedDetail),
@@ -277,11 +277,7 @@ describe("BreathWorkSessionScreen", () => {
     });
     expect(mockGetWellnessContentDetail).not.toHaveBeenCalled();
     expect(mockParams.breathworkId).toBe("1");
-    expect(mockParams.breathworkTitle).toBe("Release Path");
-    expect(mockParams.breathworkDescription).toBe(apiDetail.description);
-    expect(mockParams.breathworkImage).toBe(apiDetail.image);
-    expect(mockParams.breathworkTone).toBe("release");
-    expect(mockParams.breathworkCategory).toBe("Relaxation");
+    expect(mockParams.breathworkSlug).toBe(apiDetail.slug);
 
     expect(hasText(tree, "Breath Session")).toBe(true);
     expect(
@@ -332,7 +328,7 @@ describe("BreathWorkSessionScreen", () => {
     expect(
       hasText(tree, "Hold gently and keep the frame steady.")
     ).toBe(true);
-    expect(hasText(tree, apiDetail.description)).toBe(false);
+    expect(hasText(tree, apiDetail.description)).toBe(true);
 
     act(() => {
       tree.unmount();

@@ -3,14 +3,14 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { BreathPattern } from "@/features/self-care/types/breathworkTypes";
+import type { BreathPattern } from "@/features/self-care/types/wellnessContentTypes";
 import type {
   ColorSet,
   Spacing,
   Typography,
   TypographyTokens,
 } from "@/theme/types";
-import type { BreathRecommendation } from "@/features/self-care/types/breathworkTypes";
+import type { BreathRecommendation } from "@/features/self-care/types/wellnessContentTypes";
 
 type BreathStackCardProps = {
   item: BreathPattern;

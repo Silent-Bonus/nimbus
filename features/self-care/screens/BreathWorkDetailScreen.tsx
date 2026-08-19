@@ -31,63 +31,35 @@ import { getWellnessContentDetail } from "@/features/self-care/services/selfCare
 import {
   cacheBreathWorkDetail,
   buildBreathWorkRouteParams,
+  getCachedBreathWorkDetail,
   mapBreathworkDetail,
-  hydrateBreathWorkDetail,
 } from "@/features/self-care/utils/breathworkLibrary";
-import type { BreathWorkRouteParams } from "@/features/self-care/types/breathworkTypes";
+import {
+  parseBreathWorkRouteParams,
+  type BreathWorkRouteParams,
+} from "@/features/self-care/utils/breathworkPlayback";
+import type { BreathWorkDetail } from "@/features/self-care/types/wellnessContentTypes";
 import type { ColorSet, Spacing, Typography } from "@/theme/types";
 
 type BreathWorkDetailParams = BreathWorkRouteParams;
-
-const parseParam = (value?: string | string[]) => {
-  if (Array.isArray(value)) return value[0];
-  return value;
-};
 
 export default function BreathWorkDetailScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<BreathWorkDetailParams>();
   const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
-  const breathworkId = parseParam(params.breathworkId);
-
-  const routeBreathworkParams = useMemo(
-    () => ({
-      breathworkId,
-      breathworkTitle: parseParam(params.breathworkTitle),
-      breathworkDescription: parseParam(params.breathworkDescription),
-      breathworkDurationLabel: parseParam(params.breathworkDurationLabel),
-      breathworkImage: parseParam(params.breathworkImage),
-      breathworkTags: parseParam(params.breathworkTags),
-      breathworkCategory: parseParam(params.breathworkCategory),
-      breathworkRating: parseParam(params.breathworkRating),
-      breathworkReviews: parseParam(params.breathworkReviews),
-      breathworkLevel: parseParam(params.breathworkLevel),
-      breathworkDosha: parseParam(params.breathworkDosha),
-      breathworkTone: parseParam(params.breathworkTone),
-      breathworkSource: parseParam(params.breathworkSource),
-    }),
-    [
-      breathworkId,
-      params.breathworkCategory,
-      params.breathworkDescription,
-      params.breathworkDosha,
-      params.breathworkDurationLabel,
-      params.breathworkImage,
-      params.breathworkLevel,
-      params.breathworkRating,
-      params.breathworkReviews,
-      params.breathworkSource,
-      params.breathworkTags,
-      params.breathworkTitle,
-      params.breathworkTone,
-    ]
+  const { breathworkId, breathworkSlug } = parseBreathWorkRouteParams(params);
+  const detailIdentifier = breathworkId || breathworkSlug;
+  const [detail, setDetail] = useState<BreathWorkDetail | null>(() =>
+    detailIdentifier
+      ? getCachedBreathWorkDetail(detailIdentifier) ?? null
+      : null
   );
-  const fallbackDetail = useMemo(
-    () => hydrateBreathWorkDetail(routeBreathworkParams),
-    [routeBreathworkParams]
-  );
-  const [detail, setDetail] = useState(fallbackDetail);
+  const heroMeta = detail
+    ? `${detail.durationLabel} · ${(
+        detail.category ?? detail.styleLabel
+      ).toUpperCase()}`
+    : "";
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isStartingBreathWork, setIsStartingBreathWork] = useState(false);
@@ -103,13 +75,24 @@ export default function BreathWorkDetailScreen() {
   }, [navigation]);
 
   useEffect(() => {
-    let active = true;
+    const unsubscribe = navigation.addListener("focus", () => {
+      hasLaunchedBreathWorkRef.current = false;
+      setIsStartingBreathWork(false);
+    });
 
-    setDetail(fallbackDetail);
+    return unsubscribe;
+  }, [navigation]);
+
+  useEffect(() => {
+    let active = true;
+    const cachedDetail = detailIdentifier
+      ? getCachedBreathWorkDetail(detailIdentifier)
+      : undefined;
+
+    setDetail(cachedDetail ?? null);
     setLoadError(null);
 
-    const numericId = Number(breathworkId);
-    if (!Number.isFinite(numericId)) {
+    if (!detailIdentifier) {
       setIsLoading(false);
       return () => {
         active = false;
@@ -118,17 +101,14 @@ export default function BreathWorkDetailScreen() {
 
     setIsLoading(true);
 
-    void getWellnessContentDetail(numericId)
+    void getWellnessContentDetail(detailIdentifier)
       .then((response) => {
         if (!active) {
           return;
         }
 
-        const mappedDetail = mapBreathworkDetail(
-          response.data,
-          0,
-          fallbackDetail
-        );
+        // Detail mapping now comes directly from the API payload.
+        const mappedDetail = mapBreathworkDetail(response.data, 0);
 
         cacheBreathWorkDetail(mappedDetail);
         setDetail(mappedDetail);
@@ -137,6 +117,7 @@ export default function BreathWorkDetailScreen() {
         console.warn("Unable to load breathwork details:", error);
         if (active) {
           setLoadError("Unable to load the latest breathwork details.");
+          setDetail(cachedDetail ?? null);
         }
       })
       .finally(() => {
@@ -148,15 +129,17 @@ export default function BreathWorkDetailScreen() {
     return () => {
       active = false;
     };
-  }, [breathworkId, fallbackDetail]);
+  }, [detailIdentifier]);
 
   useEffect(() => {
+    // Clear launch guards when the selected breathwork changes so the CTA can
+    // be pressed again after navigating back from the session screen.
     hasLaunchedBreathWorkRef.current = false;
     setIsStartingBreathWork(false);
-  }, [breathworkId]);
+  }, [detailIdentifier]);
 
   const handleStartBreathWork = useCallback(() => {
-    if (isStartingBreathWork || hasLaunchedBreathWorkRef.current) {
+    if (!detail || isStartingBreathWork || hasLaunchedBreathWorkRef.current) {
       return;
     }
 
@@ -167,6 +150,8 @@ export default function BreathWorkDetailScreen() {
     hasLaunchedBreathWorkRef.current = true;
     setIsStartingBreathWork(true);
 
+    // The session screen now receives only identifiers and resolves the latest
+    // breathwork detail from cache or the backend on mount.
     router.push({
       pathname: ROUTES.AUTH.SELF_CARE_BREATHWORK_SESSION,
       params: {
@@ -192,179 +177,199 @@ export default function BreathWorkDetailScreen() {
             { paddingBottom: insets.bottom + spacing.xl * 2.5 },
           ]}
         >
-          <View
-            style={[styles.heroCard, { borderColor: detail.palette.accent }]}
-          >
-            <Image
-              source={detail.image}
-              style={styles.heroImage}
-              contentFit="cover"
-            />
-            <LinearGradient
-              colors={["rgba(9, 11, 8, 0.02)", "rgba(9, 11, 8, 0.84)"]}
-              style={StyleSheet.absoluteFill}
-            />
-
-            <View
-              pointerEvents="none"
-              style={[
-                styles.heroGlowPrimary,
-                { backgroundColor: detail.palette.accentSoft },
-              ]}
-            />
-            <View pointerEvents="none" style={styles.heroGlowSecondary} />
-
-            <View style={styles.heroCopy}>
-              <Text style={styles.heroKicker}>CURATED BREATHWORK</Text>
-              <Text style={styles.heroTitle} numberOfLines={2}>
-                {detail.title}
-              </Text>
-              <Text style={styles.heroSubtext}>{detail.subtitle}</Text>
-              {isLoading ? (
-                <View style={styles.loadingChip}>
-                  <ActivityIndicator
-                    size="small"
-                    color={theme.chart2 ?? theme.accent}
-                  />
-                  <Text style={styles.loadingChipText}>
-                    Refreshing details
-                  </Text>
-                </View>
-              ) : null}
-            </View>
-          </View>
-
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionLabel}>DESCRIPTION</Text>
+          {detail ? (
+            <>
               <View
                 style={[
-                  styles.sectionPill,
-                  {
-                    backgroundColor: detail.palette.tagBg,
-                    borderColor: detail.palette.tagBorder,
-                  },
+                  styles.heroCard,
+                  { borderColor: detail.palette.accent },
                 ]}
               >
-                <Text
+                <Image
+                  source={detail.image}
+                  style={styles.heroImage}
+                  contentFit="cover"
+                />
+                <LinearGradient
+                  colors={["rgba(9, 11, 8, 0.02)", "rgba(9, 11, 8, 0.84)"]}
+                  style={StyleSheet.absoluteFill}
+                />
+
+                <View
+                  pointerEvents="none"
                   style={[
-                    styles.sectionPillText,
-                    { color: detail.palette.tagText },
+                    styles.heroGlowPrimary,
+                    { backgroundColor: detail.palette.accentSoft },
                   ]}
-                >
-                  {(detail.category ?? detail.toneLabel).toUpperCase()}
-                </Text>
-              </View>
-            </View>
-            <Text style={styles.sectionBody}>{detail.description}</Text>
-          </View>
+                />
+                <View pointerEvents="none" style={styles.heroGlowSecondary} />
 
-          <View style={styles.sectionCard}>
-            <Text style={styles.sectionLabel}>CONTEXT</Text>
-            <View style={styles.sectionContent}>
-              <Text style={styles.sectionBody}>{detail.context}</Text>
-            </View>
-          </View>
-
-          <View style={styles.sectionCard}>
-            <Text style={styles.sectionLabel}>STEPS TO PERFORM</Text>
-            <View style={styles.sectionContent}>
-              <View style={styles.listStack}>
-                {detail.steps.map((step, index) => (
-                  <View key={step} style={styles.stepRow}>
-                    <View
-                      style={[
-                        styles.stepNumber,
-                        {
-                          backgroundColor: detail.palette.tagBg,
-                          borderColor: detail.palette.tagBorder,
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.stepNumberText,
-                          { color: detail.palette.tagText },
-                        ]}
-                      >
-                        {index + 1}
+                <View style={styles.heroCopy}>
+                  <Text style={styles.heroKicker}>CURATED BREATHWORK</Text>
+                  <Text style={styles.heroTitle} numberOfLines={2}>
+                    {detail.title}
+                  </Text>
+                  <Text style={styles.heroSubtext}>{heroMeta}</Text>
+                  {isLoading ? (
+                    <View style={styles.loadingChip}>
+                      <ActivityIndicator
+                        size="small"
+                        color={theme.chart2 ?? theme.accent}
+                      />
+                      <Text style={styles.loadingChipText}>
+                        Refreshing details
                       </Text>
                     </View>
-                    <Text style={styles.stepText}>{step}</Text>
-                  </View>
-                ))}
+                  ) : null}
+                </View>
               </View>
-            </View>
-          </View>
 
-          <View style={styles.sectionCard}>
-            <Text style={styles.sectionLabel}>BENEFITS</Text>
-            <View style={styles.sectionContent}>
-              <View style={styles.listStack}>
-                {detail.benefits.map((benefit) => (
-                  <View key={benefit.id} style={styles.bulletRow}>
-                    <View
+              <View style={styles.sectionCard}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionLabel}>DESCRIPTION</Text>
+                  <View
+                    style={[
+                      styles.sectionPill,
+                      {
+                        backgroundColor: detail.palette.tagBg,
+                        borderColor: detail.palette.tagBorder,
+                      },
+                    ]}
+                  >
+                    <Text
                       style={[
-                        styles.bulletIcon,
-                        { backgroundColor: detail.palette.accentSoft },
+                        styles.sectionPillText,
+                        { color: detail.palette.tagText },
                       ]}
                     >
-                      <Ionicons
-                        name="checkmark"
-                        size={12}
-                        color={detail.palette.accent}
-                      />
-                    </View>
-                    <View style={styles.benefitCopy}>
-                      <Text style={styles.benefitTitle}>{benefit.title}</Text>
-                      <Text style={styles.listText}>{benefit.text}</Text>
+                      {(detail.category ?? detail.styleLabel).toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles.sectionBody}>{detail.description}</Text>
+              </View>
+
+              {detail.steps.length > 0 ? (
+                <View style={styles.sectionCard}>
+                  <Text style={styles.sectionLabel}>STEPS TO PERFORM</Text>
+                  <View style={styles.sectionContent}>
+                    <View style={styles.listStack}>
+                      {detail.steps.map((step, index) => (
+                        <View key={step} style={styles.stepRow}>
+                          <View
+                            style={[
+                              styles.stepNumber,
+                              {
+                                backgroundColor: detail.palette.tagBg,
+                                borderColor: detail.palette.tagBorder,
+                              },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.stepNumberText,
+                                { color: detail.palette.tagText },
+                              ]}
+                            >
+                              {index + 1}
+                            </Text>
+                          </View>
+                          <Text style={styles.stepText}>{step}</Text>
+                        </View>
+                      ))}
                     </View>
                   </View>
-                ))}
-              </View>
-            </View>
-          </View>
+                </View>
+              ) : null}
 
-          <View style={styles.sectionCard}>
-            <Text style={styles.sectionLabel}>TIPS</Text>
-            <View style={styles.sectionContent}>
-              <View style={styles.listStack}>
-                {detail.tips.map((tip) => (
-                  <View key={tip} style={styles.tipRow}>
-                    <View
-                      style={[
-                        styles.tipIcon,
-                        {
-                          backgroundColor: detail.palette.tagBg,
-                          borderColor: detail.palette.tagBorder,
-                        },
-                      ]}
-                    />
-                    <Text style={styles.listText}>{tip}</Text>
+              {detail.benefits.length > 0 ? (
+                <View style={styles.sectionCard}>
+                  <Text style={styles.sectionLabel}>BENEFITS</Text>
+                  <View style={styles.sectionContent}>
+                    <View style={styles.listStack}>
+                      {detail.benefits.map((benefit) => (
+                        <View key={benefit.id} style={styles.bulletRow}>
+                          <View
+                            style={[
+                              styles.bulletIcon,
+                              { backgroundColor: detail.palette.accentSoft },
+                            ]}
+                          >
+                            <Ionicons
+                              name="checkmark"
+                              size={12}
+                              color={detail.palette.accent}
+                            />
+                          </View>
+                          <View style={styles.benefitCopy}>
+                            <Text style={styles.benefitTitle}>
+                              {benefit.title}
+                            </Text>
+                            <Text style={styles.listText}>{benefit.text}</Text>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
                   </View>
-                ))}
-              </View>
-            </View>
-          </View>
+                </View>
+              ) : null}
 
-          <NimbusButton
-            label="Open Breath Work"
-            onPress={handleStartBreathWork}
-            loading={isStartingBreathWork}
-            disabled={isStartingBreathWork}
-            accessibilityLabel="Open Breath Work"
-            accessibilityHint="Opens the selected breathwork session"
-            leftIcon={
-              <Ionicons
-                name="play"
-                size={18}
-                color={theme.buttonPrimaryText}
+              {detail.tips.length > 0 ? (
+                <View style={styles.sectionCard}>
+                  <Text style={styles.sectionLabel}>TIPS</Text>
+                  <View style={styles.sectionContent}>
+                    <View style={styles.listStack}>
+                      {detail.tips.map((tip) => (
+                        <View key={tip} style={styles.tipRow}>
+                          <View
+                            style={[
+                              styles.tipIcon,
+                              {
+                                backgroundColor: detail.palette.tagBg,
+                                borderColor: detail.palette.tagBorder,
+                              },
+                            ]}
+                          />
+                          <Text style={styles.listText}>{tip}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+              ) : null}
+
+              <NimbusButton
+                label="Open Breath Work"
+                onPress={handleStartBreathWork}
+                loading={isStartingBreathWork}
+                disabled={isStartingBreathWork}
+                accessibilityLabel="Open Breath Work"
+                accessibilityHint="Opens the selected breathwork session"
+                leftIcon={
+                  <Ionicons
+                    name="play"
+                    size={18}
+                    color={theme.buttonPrimaryText}
+                  />
+                }
+                style={[
+                  styles.startButton,
+                  { backgroundColor: detail.palette.accent },
+                ]}
               />
-            }
-            style={[styles.startButton, { backgroundColor: detail.palette.accent }]}
-          />
+            </>
+          ) : (
+            <View style={styles.loadingState}>
+              <ActivityIndicator size="large" color={theme.accent} />
+              <Text style={styles.loadingTitle}>
+                {isLoading
+                  ? "Loading breathwork detail..."
+                  : loadError ?? "Breathwork detail is unavailable."}
+              </Text>
+            </View>
+          )}
 
-          {loadError ? (
+          {detail && loadError ? (
             <View style={styles.errorCard}>
               <View style={styles.errorHeaderRow}>
                 <Text style={styles.errorTitle}>Detail unavailable</Text>
@@ -477,6 +482,17 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       ...typography.smallCaption,
       color: theme.textPrimary,
       letterSpacing: 0.8,
+    },
+    loadingState: {
+      minHeight: 240,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: spacing.md,
+    },
+    loadingTitle: {
+      ...typography.body,
+      color: theme.textPrimary,
+      textAlign: "center",
     },
     startButton: {
       alignSelf: "stretch",

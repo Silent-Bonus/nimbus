@@ -9,7 +9,7 @@ import type {
   Typography,
   TypographyTokens,
 } from "@/theme/types";
-import type { BreathRecommendation } from "@/features/self-care/types/breathworkTypes";
+import type { BreathRecommendation } from "@/features/self-care/types/wellnessContentTypes";
 
 type BreathRecommendationCardProps = {
   item: BreathRecommendation;

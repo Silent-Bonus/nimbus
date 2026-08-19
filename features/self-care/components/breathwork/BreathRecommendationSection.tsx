@@ -3,7 +3,7 @@ import { Dimensions, FlatList, StyleSheet, View } from "react-native";
 
 import ThemeContext from "@/contexts/ThemeContext";
 import type { Spacing } from "@/theme/types";
-import type { BreathRecommendation } from "@/features/self-care/types/breathworkTypes";
+import type { BreathRecommendation } from "@/features/self-care/types/wellnessContentTypes";
 import BreathRecommendationCard, {
   getBreathRecommendationCardWidth,
 } from "@/features/self-care/components/breathwork/BreathRecommendationCard";

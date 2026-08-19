@@ -7,6 +7,7 @@ import React, {
   useState,
 } from "react";
 import {
+  ActivityIndicator,
   Animated,
   Easing,
   Platform,
@@ -37,32 +38,35 @@ import {
 import {
   cacheBreathWorkDetail,
   getCachedBreathWorkDetail,
-  hydrateBreathWorkDetail,
   mapBreathworkDetail,
 } from "@/features/self-care/utils/breathworkLibrary";
 import {
-  BREATH_PATTERNS,
+  createFallbackBreathPhases,
   getBreathMotionVariant,
   resolveBreathworkColor,
 } from "@/features/self-care/utils/breathworkUtils";
 import type {
   BreathPhase,
-  BreathWorkRouteParams,
-} from "@/features/self-care/types/breathworkTypes";
+  BreathWorkDetail,
+} from "@/features/self-care/types/wellnessContentTypes";
+import {
+  parseBreathWorkRouteParams,
+  type BreathWorkRouteParams,
+} from "@/features/self-care/utils/breathworkPlayback";
 import { makeBreathWorkSessionStyles } from "@/features/self-care/styles/breathwork/breathWorkSessionStyles";
 
 type BreathWorkSessionParams = BreathWorkRouteParams;
 
-const parseParam = (value?: string | string[]) => {
-  if (Array.isArray(value)) return value[0];
-  return value;
-};
-
 const MINIMUM_ROUNDS = 5;
+const DEFAULT_PHASE: BreathPhase = { label: "Inhale", seconds: 4 };
 
+// Builds the compact subtitle shown in the header so users can see the full
+// inhale / hold / exhale cadence without reading the longer instruction copy.
 const formatPhaseTimeline = (phases: BreathPhase[]) =>
   phases.map((phase) => `${phase.label} ${phase.seconds}s`).join(" · ");
 
+// Returns the live coaching line for the current phase. This keeps the prompt
+// logic in one place instead of scattering label checks through the component.
 const getPhaseCue = (
   phase: BreathPhase,
   phaseIndex: number,
@@ -90,67 +94,52 @@ const getPhaseCue = (
   return `Stay with the ${phase.label.toLowerCase()} for ${phase.seconds} seconds.`;
 };
 
+const triggerSelectionHaptic = () => {
+  if (Platform.OS !== "web") {
+    void Haptics.selectionAsync().catch(() => {});
+  }
+};
+
 export default function BreathWorkSessionScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const params = useLocalSearchParams<BreathWorkSessionParams>();
   const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
-  const breathworkId = parseParam(params.breathworkId);
+  const { breathworkId, breathworkSlug } = parseBreathWorkRouteParams(params);
+  const detailIdentifier = breathworkSlug || breathworkId;
 
-  const routeBreathworkParams = useMemo(
-    () => ({
-      breathworkId,
-      breathworkTitle: parseParam(params.breathworkTitle),
-      breathworkDescription: parseParam(params.breathworkDescription),
-      breathworkDurationLabel: parseParam(params.breathworkDurationLabel),
-      breathworkImage: parseParam(params.breathworkImage),
-      breathworkTags: parseParam(params.breathworkTags),
-      breathworkCategory: parseParam(params.breathworkCategory),
-      breathworkRating: parseParam(params.breathworkRating),
-      breathworkReviews: parseParam(params.breathworkReviews),
-      breathworkLevel: parseParam(params.breathworkLevel),
-      breathworkDosha: parseParam(params.breathworkDosha),
-      breathworkTone: parseParam(params.breathworkTone),
-      breathworkSource: parseParam(params.breathworkSource),
-    }),
-    [
-      breathworkId,
-      params.breathworkCategory,
-      params.breathworkDescription,
-      params.breathworkDosha,
-      params.breathworkDurationLabel,
-      params.breathworkImage,
-      params.breathworkLevel,
-      params.breathworkRating,
-      params.breathworkReviews,
-      params.breathworkSource,
-      params.breathworkTags,
-      params.breathworkTitle,
-      params.breathworkTone,
-    ]
+  const [detail, setDetail] = useState<BreathWorkDetail | null>(() =>
+    detailIdentifier ? getCachedBreathWorkDetail(detailIdentifier) ?? null : null
   );
-  const fallbackDetail = useMemo(
-    () => hydrateBreathWorkDetail(routeBreathworkParams),
-    [routeBreathworkParams]
-  );
-  const [detail, setDetail] = useState(fallbackDetail);
+  const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const phases =
-    detail.phases.length ? detail.phases : BREATH_PATTERNS[0].phases;
+  const phases = detail
+    ? detail.phases.length > 0
+      ? detail.phases
+      : createFallbackBreathPhases(detail.style)
+    : [];
+  const heroMeta = detail
+    ? `${detail.durationLabel} · ${(
+        detail.category ?? detail.styleLabel
+      ).toUpperCase()}`
+    : "";
+
+  // Motion treatment is derived from stable content identifiers so the same
+  // breathwork consistently renders with the same animated visual language.
   const motionVariant = useMemo(() => {
     const motionKey = [
-      detail.slug,
-      detail.title,
-      detail.category,
-      detail.toneLabel,
-      detail.id,
+      detail?.slug,
+      detail?.title,
+      detail?.category,
+      detail?.styleLabel,
+      detail?.id,
     ]
       .filter(Boolean)
       .join(" ");
 
     return getBreathMotionVariant(motionKey);
-  }, [detail.category, detail.id, detail.slug, detail.title, detail.toneLabel]);
+  }, [detail?.category, detail?.id, detail?.slug, detail?.title, detail?.styleLabel]);
   const phaseTimeline = useMemo(() => formatPhaseTimeline(phases), [phases]);
 
   const [phaseIndex, setPhaseIndex] = useState(0);
@@ -166,15 +155,43 @@ export default function BreathWorkSessionScreen() {
   const sessionStatusRef = useRef<"idle" | "creating" | "active" | "paused" | "completed">("idle");
   const sessionCreatePromiseRef = useRef<Promise<string | null> | null>(null);
   const pauseSessionRef = useRef<(() => Promise<void>) | null>(null);
-  const completionInFlightRef = useRef(false);
   const leavingScreenRef = useRef(false);
   const phaseProgress = useRef(new Animated.Value(0)).current;
   const phaseIndexRef = useRef(0);
   const elapsedSecondsRef = useRef(0);
+  const initialPhase = phases[0] ?? DEFAULT_PHASE;
 
   const styles = useMemo(
     () => makeBreathWorkSessionStyles(theme, spacing, typography),
     [theme, spacing, typography]
+  );
+
+  const resetCycleProgress = useCallback(() => {
+    phaseIndexRef.current = 0;
+    setPhaseIndex(0);
+    setSecondsRemaining(initialPhase.seconds);
+    setRoundCount(0);
+    elapsedSecondsRef.current = 0;
+    phaseProgress.stopAnimation();
+    phaseProgress.setValue(0);
+  }, [initialPhase.seconds, phaseProgress]);
+
+  const resetLocalSessionState = useCallback(
+    (
+      nextStatus: "idle" | "creating" | "active" | "paused" | "completed" = "idle",
+      completed = false
+    ) => {
+      resetCycleProgress();
+      setHasStarted(false);
+      setHasCompletedSession(completed);
+      setIsCompletingSession(false);
+      setSessionStatus(nextStatus);
+      setSessionRef(null);
+      sessionStatusRef.current = nextStatus;
+      sessionCreatePromiseRef.current = null;
+      leavingScreenRef.current = false;
+    },
+    [resetCycleProgress]
   );
 
   useEffect(() => {
@@ -183,40 +200,38 @@ export default function BreathWorkSessionScreen() {
 
   useEffect(() => {
     let active = true;
-
-    setDetail(fallbackDetail);
-    setLoadError(null);
-
-    const cachedDetail = breathworkId
-      ? getCachedBreathWorkDetail(breathworkId)
+    const cachedDetail = detailIdentifier
+      ? getCachedBreathWorkDetail(detailIdentifier)
       : undefined;
 
+    setDetail(cachedDetail ?? null);
+    setLoadError(null);
+    setIsLoading(true);
+
     if (cachedDetail) {
-      setDetail(cachedDetail);
+      setIsLoading(false);
 
       return () => {
         active = false;
       };
     }
 
-    const numericId = Number(breathworkId);
-    if (!Number.isFinite(numericId)) {
+    if (!detailIdentifier) {
+      setIsLoading(false);
       return () => {
         active = false;
       };
     }
 
-    void getWellnessContentDetail(numericId)
+    void getWellnessContentDetail(detailIdentifier)
       .then((response) => {
         if (!active) {
           return;
         }
 
-        const mappedDetail = mapBreathworkDetail(
-          response.data,
-          0,
-          fallbackDetail
-        );
+        // Normalize the backend payload into the session-ready breathwork shape
+        // so steps, benefits, palette, and phases all stay consistent.
+        const mappedDetail = mapBreathworkDetail(response.data, 0);
 
         cacheBreathWorkDetail(mappedDetail);
         setDetail(mappedDetail);
@@ -225,42 +240,38 @@ export default function BreathWorkSessionScreen() {
         console.warn("Unable to load breathwork details:", error);
         if (active) {
           setLoadError("Unable to load the latest breathwork details.");
+          setDetail(cachedDetail ?? null);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setIsLoading(false);
         }
       });
 
     return () => {
       active = false;
     };
-  }, [breathworkId, fallbackDetail]);
+  }, [detailIdentifier]);
 
   useEffect(() => {
-    phaseIndexRef.current = 0;
-    setPhaseIndex(0);
-    setSecondsRemaining(phases[0]?.seconds ?? 0);
-    setRoundCount(0);
-    setHasStarted(false);
-    setHasCompletedSession(false);
-    setIsCompletingSession(false);
-    setSessionStatus("idle");
-    setSessionRef(null);
-    sessionStatusRef.current = "idle";
-    sessionCreatePromiseRef.current = null;
-    completionInFlightRef.current = false;
-    leavingScreenRef.current = false;
-    elapsedSecondsRef.current = 0;
-    phaseProgress.stopAnimation();
-    phaseProgress.setValue(0);
-  }, [detail.id, phaseProgress, phases]);
+    // Fully reset the session state whenever the underlying breathwork changes.
+    // This prevents timers, round counts, or in-flight refs from bleeding
+    // across two different breathwork sessions.
+    resetLocalSessionState();
+  }, [detail?.id, resetLocalSessionState]);
 
   useEffect(() => {
     sessionStatusRef.current = sessionStatus;
   }, [sessionStatus]);
 
   useEffect(() => {
-    if (!hasStarted) {
+    if (!hasStarted || phases.length === 0) {
       return undefined;
     }
 
+    // Animate one linear progress sweep for the currently active phase. The
+    // interval below advances the phase; this animation only visualizes it.
     const currentPhase = phases[phaseIndex] ?? phases[0];
     if (!currentPhase) return undefined;
 
@@ -282,10 +293,12 @@ export default function BreathWorkSessionScreen() {
   }, [hasStarted, phaseIndex, phases, phaseProgress]);
 
   useEffect(() => {
-    if (!hasStarted) {
+    if (!hasStarted || phases.length === 0) {
       return undefined;
     }
 
+    // Drive the breath cycle one second at a time so phase transitions can
+    // update haptics, round count, and CTA state in lockstep.
     const timer = setInterval(() => {
       setSecondsRemaining((current) => {
         elapsedSecondsRef.current += 1;
@@ -302,13 +315,11 @@ export default function BreathWorkSessionScreen() {
           setRoundCount((value) => value + 1);
         }
 
-        if (Platform.OS !== "web") {
-          void Haptics.selectionAsync().catch(() => {});
-          if (nextIndex === 0) {
-            void Haptics.impactAsync(
-              Haptics.ImpactFeedbackStyle.Light
-            ).catch(() => {});
-          }
+        triggerSelectionHaptic();
+        if (Platform.OS !== "web" && nextIndex === 0) {
+          void Haptics.impactAsync(
+            Haptics.ImpactFeedbackStyle.Light
+          ).catch(() => {});
         }
 
         return phases[nextIndex]?.seconds ?? 0;
@@ -321,14 +332,12 @@ export default function BreathWorkSessionScreen() {
   }, [hasStarted, phases]);
 
   const currentPhase = useMemo(
-    () => phases[phaseIndex] ?? phases[0] ?? { label: "Inhale", seconds: 4 },
-    [phases, phaseIndex]
+    () => phases[phaseIndex] ?? initialPhase,
+    [initialPhase, phaseIndex, phases]
   );
   const hasCompletedMinimumRounds = roundCount >= MINIMUM_ROUNDS;
   const preStartGuide =
-    detail.description?.trim() ||
-    detail.subtitle?.trim() ||
-    "Tap play to begin this rhythm.";
+    detail?.description?.trim() || "Tap play to begin this rhythm.";
   const phaseCue = hasCompletedSession
     ? `You completed ${MINIMUM_ROUNDS} rounds and marked this breathwork complete.`
     : hasStarted
@@ -360,6 +369,8 @@ export default function BreathWorkSessionScreen() {
   const canTriggerPrimaryAction =
     !hasCompletedSession && (!hasStarted || hasCompletedMinimumRounds);
 
+  // Session creation is async and can race with the user pressing complete or
+  // leaving the screen, so every mutation resolves through one shared ref.
   const resolveSessionRef = useCallback(async () => {
     if (sessionRef) {
       return sessionRef;
@@ -379,6 +390,7 @@ export default function BreathWorkSessionScreen() {
 
   const ensureSessionStarted = useCallback(() => {
     if (
+      !detail ||
       sessionStatus !== "idle" ||
       sessionCreatePromiseRef.current ||
       !Number.isFinite(Number(detail.id))
@@ -388,6 +400,8 @@ export default function BreathWorkSessionScreen() {
 
     setSessionStatus("creating");
 
+    // The backend session starts on first play, not on screen mount, so
+    // passive visits to the session screen do not create false activity.
     const promise = createWellnessSession({
       activity_type: "breathwork",
       content_type: "wellness_content.wellnesscontent",
@@ -415,7 +429,7 @@ export default function BreathWorkSessionScreen() {
       });
 
     sessionCreatePromiseRef.current = promise;
-  }, [detail.id, sessionStatus]);
+  }, [detail, sessionStatus]);
 
   const pauseSession = useCallback(async () => {
     if (
@@ -426,6 +440,7 @@ export default function BreathWorkSessionScreen() {
       return;
     }
 
+    // Pause is reused for back navigation, restart, and unmount cleanup.
     const resolvedSessionRef = await resolveSessionRef();
     if (!resolvedSessionRef) {
       return;
@@ -448,18 +463,12 @@ export default function BreathWorkSessionScreen() {
       return;
     }
 
+    // Start flips the local cycle immediately and lets session creation finish
+    // in parallel so the first tap always feels responsive.
     ensureSessionStarted();
     setHasStarted(true);
-
-    if (Platform.OS !== "web") {
-      void Haptics.selectionAsync().catch(() => {});
-    }
-  }, [
-    ensureSessionStarted,
-    detail.id,
-    hasCompletedSession,
-    isCompletingSession,
-  ]);
+    triggerSelectionHaptic();
+  }, [ensureSessionStarted, hasCompletedSession, isCompletingSession]);
 
   const handleCompleteBreathwork = useCallback(async () => {
     if (
@@ -471,14 +480,13 @@ export default function BreathWorkSessionScreen() {
       return;
     }
 
-    if (Platform.OS !== "web") {
-      void Haptics.selectionAsync().catch(() => {});
-    }
+    triggerSelectionHaptic();
 
     setIsCompletingSession(true);
-    completionInFlightRef.current = true;
 
     try {
+      // Completion sends the elapsed duration gathered locally because this
+      // screen owns the breathing timer and round progression state.
       const resolvedSessionRef = await resolveSessionRef();
 
       if (resolvedSessionRef) {
@@ -489,33 +497,26 @@ export default function BreathWorkSessionScreen() {
         console.warn("Missing breathwork session ref while completing session.");
       }
 
-      setHasStarted(false);
-      setHasCompletedSession(true);
-      setSessionStatus("completed");
-      phaseIndexRef.current = 0;
-      setPhaseIndex(0);
-      setSecondsRemaining(phases[0]?.seconds ?? 0);
-      phaseProgress.stopAnimation();
-      phaseProgress.setValue(0);
+      resetLocalSessionState("completed", true);
     } catch (error) {
       console.warn("Unable to complete breathwork session:", error);
     } finally {
       setIsCompletingSession(false);
-      completionInFlightRef.current = false;
     }
   }, [
     hasCompletedMinimumRounds,
     hasCompletedSession,
     hasStarted,
     isCompletingSession,
-    phaseProgress,
     resolveSessionRef,
-    phases,
+    resetLocalSessionState,
   ]);
 
   const handleBack = useCallback(async () => {
     leavingScreenRef.current = true;
 
+    // Exiting an active session should pause it before navigating away so the
+    // backend state matches the stopped UI state.
     if (sessionStatus !== "idle" && sessionStatus !== "completed") {
       await pauseSession();
     }
@@ -524,31 +525,14 @@ export default function BreathWorkSessionScreen() {
   }, [pauseSession, sessionStatus]);
 
   const handleRestart = useCallback(async () => {
+    // Restart behaves like a brand-new local session. If a backend session is
+    // active, pause it first and then clear all local counters and refs.
     if (sessionStatus === "active" || sessionStatus === "creating") {
       await pauseSession();
     }
-
-    phaseIndexRef.current = 0;
-    setPhaseIndex(0);
-    setSecondsRemaining(phases[0]?.seconds ?? 0);
-    setRoundCount(0);
-    setHasStarted(false);
-    setHasCompletedSession(false);
-    setIsCompletingSession(false);
-    setSessionStatus("idle");
-    setSessionRef(null);
-    sessionStatusRef.current = "idle";
-    sessionCreatePromiseRef.current = null;
-    completionInFlightRef.current = false;
-    leavingScreenRef.current = false;
-    elapsedSecondsRef.current = 0;
-    phaseProgress.stopAnimation();
-    phaseProgress.setValue(0);
-
-    if (Platform.OS !== "web") {
-      void Haptics.selectionAsync().catch(() => {});
-    }
-  }, [pauseSession, phaseProgress, phases, sessionStatus]);
+    resetLocalSessionState();
+    triggerSelectionHaptic();
+  }, [pauseSession, resetLocalSessionState, sessionStatus]);
 
   useEffect(() => {
     return () => {
@@ -556,6 +540,8 @@ export default function BreathWorkSessionScreen() {
         return;
       }
 
+      // If the component disappears for any reason other than the explicit back
+      // flow above, still pause the backend session before unmounting.
       const currentStatus = sessionStatusRef.current;
       if (currentStatus === "active" || currentStatus === "creating") {
         void pauseSessionRef.current?.();
@@ -572,7 +558,7 @@ export default function BreathWorkSessionScreen() {
       <View style={styles.root}>
         <AppHeader
           title="Breath Session"
-          subtitle={phaseTimeline}
+          subtitle={detail ? phaseTimeline : "Loading breathwork..."}
           onBack={() => void handleBack()}
           rightActions={[
             {
@@ -591,73 +577,79 @@ export default function BreathWorkSessionScreen() {
             { paddingBottom: insets.bottom + spacing.xl * 2.5 },
           ]}
         >
-          <View style={[styles.heroCard, { borderColor: detail.palette.accent }]}>
-            <Image
-              source={detail.image}
-              style={styles.heroImage}
-              contentFit="cover"
-            />
-            <LinearGradient
-              colors={["rgba(8, 10, 7, 0.02)", "rgba(8, 10, 7, 0.86)"]}
-              style={StyleSheet.absoluteFill}
-            />
+          {detail ? (
+            <>
+              <View
+                style={[styles.heroCard, { borderColor: detail.palette.accent }]}
+              >
+                <Image
+                  source={detail.image}
+                  style={styles.heroImage}
+                  contentFit="cover"
+                />
+                <LinearGradient
+                  colors={["rgba(8, 10, 7, 0.02)", "rgba(8, 10, 7, 0.86)"]}
+                  style={StyleSheet.absoluteFill}
+                />
 
-            <View
-              pointerEvents="none"
-              style={[
-                styles.heroGlowPrimary,
-                { backgroundColor: detail.palette.accentSoft },
-              ]}
-            />
-            <View pointerEvents="none" style={styles.heroGlowSecondary} />
+                <View
+                  pointerEvents="none"
+                  style={[
+                    styles.heroGlowPrimary,
+                    { backgroundColor: detail.palette.accentSoft },
+                  ]}
+                />
+                <View pointerEvents="none" style={styles.heroGlowSecondary} />
 
-            <View style={styles.heroCopy}>
-              <Text style={styles.heroKicker}>CURATED BREATHWORK</Text>
-              <Text style={styles.heroTitle} numberOfLines={2}>
-                {detail.title}
-              </Text>
-              <Text style={styles.heroSubtext}>{detail.subtitle}</Text>
-            </View>
-          </View>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={
-              phaseActionLabel === "Mark Complete"
-                ? "Mark breathwork complete"
-                : phaseActionLabel === "Completed"
-                  ? "Breathwork completed"
-                  : "Start breathwork"
-            }
-            accessibilityHint="Starts the selected breathwork pattern"
-            disabled={!canTriggerPrimaryAction || isCompletingSession}
-            onPress={
-              !canTriggerPrimaryAction
-                ? undefined
-                : !hasStarted
-                  ? handleStart
-                  : handleCompleteBreathwork
-            }
-            style={({ pressed }) => [
-              styles.phaseCard,
-              {
-                borderColor: theme.border ?? theme.borderMuted,
-              },
-              pressed && canTriggerPrimaryAction && styles.phaseCardPressed,
-              (!canTriggerPrimaryAction || hasCompletedSession) &&
-                styles.phaseCardDisabled,
-            ]}
-          >
-            <View style={styles.phaseTopRow}>
-              <View style={styles.phaseTitleBlock}>
-                <Text style={styles.phaseLabel}>
-                  {hasCompletedSession ? "COMPLETED" : currentPhase.label.toUpperCase()}
-                </Text>
-                <Text style={styles.phaseStartPrompt}>
-                  {phaseActionPrompt}
-                </Text>
+                <View style={styles.heroCopy}>
+                  <Text style={styles.heroKicker}>CURATED BREATHWORK</Text>
+                  <Text style={styles.heroTitle} numberOfLines={2}>
+                    {detail.title}
+                  </Text>
+                  <Text style={styles.heroSubtext}>{heroMeta}</Text>
+                </View>
               </View>
-            </View>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  phaseActionLabel === "Mark Complete"
+                    ? "Mark breathwork complete"
+                    : phaseActionLabel === "Completed"
+                      ? "Breathwork completed"
+                      : "Start breathwork"
+                }
+                accessibilityHint="Starts the selected breathwork pattern"
+                disabled={!canTriggerPrimaryAction || isCompletingSession}
+                onPress={
+                  !canTriggerPrimaryAction
+                    ? undefined
+                    : !hasStarted
+                      ? handleStart
+                      : handleCompleteBreathwork
+                }
+                style={({ pressed }) => [
+                  styles.phaseCard,
+                  {
+                    borderColor: theme.border ?? theme.borderMuted,
+                  },
+                  pressed && canTriggerPrimaryAction && styles.phaseCardPressed,
+                  (!canTriggerPrimaryAction || hasCompletedSession) &&
+                    styles.phaseCardDisabled,
+                ]}
+              >
+                <View style={styles.phaseTopRow}>
+                  <View style={styles.phaseTitleBlock}>
+                    <Text style={styles.phaseLabel}>
+                      {hasCompletedSession
+                        ? "COMPLETED"
+                        : currentPhase.label.toUpperCase()}
+                    </Text>
+                    <Text style={styles.phaseStartPrompt}>
+                      {phaseActionPrompt}
+                    </Text>
+                  </View>
+                </View>
 
             <View style={styles.phaseCuePanel}>
               <Text style={styles.phaseCueLabel}>SESSION GUIDE</Text>
@@ -752,29 +744,34 @@ export default function BreathWorkSessionScreen() {
                 </Text>
               </View>
             </View>
-          </Pressable>
+              </Pressable>
 
-          <View style={[styles.motionCard, { borderColor: theme.border ?? theme.borderMuted }]}>
-            <BreathMotionCanvas
-              motionVariant={motionVariant}
-              phases={phases}
-              currentPhase={currentPhase}
-              phaseIndex={phaseIndex}
-              phaseProgress={phaseProgress}
-              motionSize={motionSize}
-              accent={detail.palette.accent}
-              shadow={theme.shadow}
-              typography={typography}
-              textSecondary={theme.textSecondary}
-              surface={theme.surface}
-              motionCoreStart={motionCoreStart}
-              motionCoreEnd={motionCoreEnd}
-              motionGlow={motionGlow}
-              motionFrameBorder={motionFrameBorder}
-            />
-          </View>
+              <View
+                style={[
+                  styles.motionCard,
+                  { borderColor: theme.border ?? theme.borderMuted },
+                ]}
+              >
+                <BreathMotionCanvas
+                  motionVariant={motionVariant}
+                  phases={phases}
+                  currentPhase={currentPhase}
+                  phaseIndex={phaseIndex}
+                  phaseProgress={phaseProgress}
+                  motionSize={motionSize}
+                  accent={detail.palette.accent}
+                  shadow={theme.shadow}
+                  typography={typography}
+                  textSecondary={theme.textSecondary}
+                  surface={theme.surface}
+                  motionCoreStart={motionCoreStart}
+                  motionCoreEnd={motionCoreEnd}
+                  motionGlow={motionGlow}
+                  motionFrameBorder={motionFrameBorder}
+                />
+              </View>
 
-          <View style={styles.sequenceCard}>
+              <View style={styles.sequenceCard}>
             <Text style={styles.sequenceLabel}>SEQUENCE</Text>
             <View style={styles.sequenceRow}>
               {phases.map((phase, index) => {
@@ -825,25 +822,40 @@ export default function BreathWorkSessionScreen() {
                 );
               })}
             </View>
-          </View>
+              </View>
 
-          <View style={styles.insightCard}>
+              <View style={styles.insightCard}>
             <Text style={styles.insightLabel}>WHY THIS RHYTHM</Text>
-            <Text style={styles.insightText}>{detail.context}</Text>
-            <Text style={styles.insightSubtext}>
-              {detail.benefits[0]?.text}
-            </Text>
-            <View style={styles.tipRow}>
-              <Ionicons
-                name="sparkles-outline"
-                size={16}
-                color={detail.palette.accent}
-              />
-              <Text style={styles.tipText}>{detail.tips[0]}</Text>
+            <Text style={styles.insightText}>{detail.description}</Text>
+            {detail.benefits[0]?.text ? (
+              <Text style={styles.insightSubtext}>
+                {detail.benefits[0].text}
+              </Text>
+            ) : null}
+            {detail.tips[0] ? (
+              <View style={styles.tipRow}>
+                <Ionicons
+                  name="sparkles-outline"
+                  size={16}
+                  color={detail.palette.accent}
+                />
+                <Text style={styles.tipText}>{detail.tips[0]}</Text>
+              </View>
+            ) : null}
+              </View>
+            </>
+          ) : (
+            <View style={styles.loadingState}>
+              <ActivityIndicator size="large" color={theme.accent} />
+              <Text style={styles.loadingTitle}>
+                {isLoading
+                  ? "Loading breathwork session..."
+                  : loadError ?? "Breathwork detail is unavailable."}
+              </Text>
             </View>
-          </View>
+          )}
 
-          {loadError ? (
+          {detail && loadError ? (
             <View style={styles.errorCard}>
               <View style={styles.errorHeaderRow}>
                 <Text style={styles.errorTitle}>Detail unavailable</Text>

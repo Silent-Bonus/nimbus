@@ -103,6 +103,17 @@ export const makeBreathWorkSessionStyles = (
       color: theme.textPrimary,
       letterSpacing: 0.8,
     },
+    loadingState: {
+      minHeight: 240,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: spacing.md,
+    },
+    loadingTitle: {
+      ...typography.body,
+      color: theme.textPrimary,
+      textAlign: "center",
+    },
     motionCard: {
       borderRadius: 32,
       borderWidth: 1,

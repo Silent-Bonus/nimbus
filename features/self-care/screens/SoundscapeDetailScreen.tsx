@@ -88,9 +88,7 @@ export default function SoundscapeDetailScreen() {
   const benefits = soundscape?.benefits ?? [];
   const subtitle = useMemo(
     () =>
-      soundscape
-        ? `${soundscape.durationLabel} · ${soundscape.category}`
-        : "",
+      soundscape ? `${soundscape.durationLabel} · ${soundscape.category}` : "",
     [soundscape]
   );
   const ratingLabel = useMemo(() => {
@@ -242,7 +240,6 @@ export default function SoundscapeDetailScreen() {
           subtitle="A quiet threshold before the sound begins."
           onBack={handleBack}
           rightActions={headerActions}
-          titleStyle={styles.headerTitle}
           subtitleStyle={styles.headerSubtitle}
           containerStyle={styles.header}
         />
@@ -446,7 +443,9 @@ export default function SoundscapeDetailScreen() {
                       </View>
                       <View style={styles.benefitCopy}>
                         {benefit.title ? (
-                          <Text style={styles.benefitTitle}>{benefit.title}</Text>
+                          <Text style={styles.benefitTitle}>
+                            {benefit.title}
+                          </Text>
                         ) : null}
                         {benefit.text ? (
                           <Text style={styles.benefitText}>{benefit.text}</Text>
@@ -496,15 +495,6 @@ const styling = (
     },
     header: {
       marginBottom: spacing.md,
-    },
-    headerTitle: {
-      fontFamily:
-        svaTypography?.textStyle.displayMedium.fontFamily ??
-        "CormorantGaramond_500Medium",
-      fontSize: 34,
-      lineHeight: 34,
-      letterSpacing: -0.8,
-      color: theme.text.primary,
     },
     headerSubtitle: {
       fontFamily:

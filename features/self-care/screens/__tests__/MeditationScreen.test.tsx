@@ -115,20 +115,25 @@ async function renderScreen() {
 describe("MeditationScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetWellnessContentList.mockResolvedValue({
-      success: true,
-      message: "Wellness content retrieved successfully.",
-      data: wellnessContent as any,
-      pagination: {
-        count: 2,
-        next: null,
-        previous: null,
-        page: 1,
-        page_size: 100,
-        total_pages: 1,
-        results_count: 2,
-      },
-    });
+    mockGetWellnessContentList.mockImplementation((params) =>
+      Promise.resolve({
+        success: true,
+        message: "Wellness content retrieved successfully.",
+        data:
+          params?.category === "sleep"
+            ? ([wellnessContent[1]] as any)
+            : (wellnessContent as any),
+        pagination: {
+          count: params?.category === "sleep" ? 1 : 2,
+          next: null,
+          previous: null,
+          page: 1,
+          page_size: 100,
+          total_pages: 1,
+          results_count: params?.category === "sleep" ? 1 : 2,
+        },
+      })
+    );
   });
 
   it("renders the API-backed meditation list and opens the featured meditation with id and slug", async () => {
@@ -179,10 +184,16 @@ describe("MeditationScreen", () => {
       accessibilityLabel: "Sleep",
     });
 
-    act(() => {
+    await act(async () => {
       sleepFilter.props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
     });
 
+    expect(mockGetWellnessContentList).toHaveBeenNthCalledWith(2, {
+      modality: "meditation",
+      category: "sleep",
+    });
     expect(hasText(tree, "Sleep collection")).toBe(true);
     expect(hasText(tree, "Sleep Soothing Meditation")).toBe(true);
     expect(hasText(tree, "Relaxing Meditation")).toBe(false);

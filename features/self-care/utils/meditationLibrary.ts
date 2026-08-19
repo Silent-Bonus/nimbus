@@ -1,6 +1,7 @@
 import type {
   MeditationListItem,
   MeditationItemDetail,
+  WellnessCategoryOption,
   WellnessContentDetailItem,
   WellnessContentItem,
 } from "@/features/self-care/types/wellnessContentTypes";
@@ -245,7 +246,7 @@ export const mapMeditationDetailItemTemplate = (
 
 export const buildMeditationFilterOptions = (
   templates: MeditationListItem[]
-): Array<{ label: string; value: string }> => {
+): WellnessCategoryOption[] => {
   const categories = Array.from(
     new Set(
       templates
@@ -261,17 +262,6 @@ export const buildMeditationFilterOptions = (
       value: normalizeMeditationTag(category),
     })),
   ];
-};
-
-export const filterMeditationTemplates = (
-  templates: MeditationListItem[],
-  selectedTag: string
-): MeditationListItem[] => {
-  if (selectedTag === "all") return templates;
-  return templates.filter(
-    (template) =>
-      normalizeMeditationTag(template.category?.trim() ?? "") === selectedTag
-  );
 };
 
 export const buildMeditationRouteParams = (

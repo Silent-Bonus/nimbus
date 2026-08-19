@@ -24,7 +24,6 @@ import MeditationTemplateCard from "@/features/self-care/components/meditation/M
 import { getWellnessContentList } from "@/features/self-care/services/selfCareService";
 import {
   buildMeditationFilterOptions,
-  filterMeditationTemplates,
   formatMeditationTagLabel,
   mapMeditationList,
 } from "@/features/self-care/utils/meditationLibrary";
@@ -38,6 +37,7 @@ import type {
 import type {
   MeditationTemplateCardItem,
   MeditationListItem,
+  WellnessCategoryOption,
   WellnessContentItem,
 } from "@/features/self-care/types/wellnessContentTypes";
 
@@ -53,7 +53,10 @@ export const MeditationScreen: React.FC = () => {
 
   // Raw API items stay in state; UI templates are derived below.
   const [contentItems, setContentItems] = useState<WellnessContentItem[]>([]);
-  const [selectedTag, setSelectedTag] = useState<string>("all");
+  const [categoryOptions, setCategoryOptions] = useState<
+    WellnessCategoryOption[]
+  >([{ label: "All Modes", value: "all" }]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   // Loading only tracks the list request for this screen.
   const [isLoading, setIsLoading] = useState(true);
 
@@ -67,17 +70,25 @@ export const MeditationScreen: React.FC = () => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
-  // Fetch only meditation content and keep the mounted-state guard so late
-  // responses do not update state after unmount.
+  // Fetch meditation content for the active category. Filter pills are derived
+  // from the full unfiltered response and kept stable in local state.
   useEffect(() => {
     let active = true;
 
     const loadMeditationContent = async () => {
       setIsLoading(true);
+      setContentItems([]);
 
       try {
-        // API params: request the meditation modality only.
-        const result = await getWellnessContentList({ modality: "meditation" });
+        const params: Parameters<typeof getWellnessContentList>[0] =
+          selectedCategory === "all"
+            ? { modality: "meditation" }
+            : {
+                modality: "meditation",
+                category: selectedCategory,
+              };
+
+        const result = await getWellnessContentList(params);
         const sourceItems =
           Array.isArray(result.data) && result.data.length > 0
             ? result.data
@@ -87,6 +98,14 @@ export const MeditationScreen: React.FC = () => {
 
         if (active) {
           setContentItems(normalized);
+
+          // Preserve the full category row from the unfiltered response so the
+          // user can always switch between server-backed categories.
+          if (selectedCategory === "all") {
+            setCategoryOptions(
+              buildMeditationFilterOptions(normalized.map(mapMeditationList))
+            );
+          }
         }
       } catch (error) {
         console.warn("Unable to load meditation content:", error);
@@ -105,7 +124,7 @@ export const MeditationScreen: React.FC = () => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [selectedCategory]);
 
   // Convert raw API items into UI-ready card data with normalized labels,
   // fallback copy, and image handling.
@@ -114,27 +133,19 @@ export const MeditationScreen: React.FC = () => {
     [contentItems]
   );
 
-  // Build pill filters from the mapped meditation categories.
-  const filterOptions = useMemo(
-    () => buildMeditationFilterOptions(templates),
-    [templates]
-  );
-
   // Reset to "all" if the active filter disappears after new data loads.
   useEffect(() => {
     if (
-      selectedTag !== "all" &&
-      !filterOptions.some((option) => option.value === selectedTag)
+      selectedCategory !== "all" &&
+      !categoryOptions.some((option) => option.value === selectedCategory)
     ) {
-      setSelectedTag("all");
+      setSelectedCategory("all");
     }
-  }, [filterOptions, selectedTag]);
+  }, [categoryOptions, selectedCategory]);
 
-  // Apply the selected category filter to the mapped template list.
-  const visibleTemplates = useMemo(
-    () => filterMeditationTemplates(templates, selectedTag),
-    [templates, selectedTag]
-  );
+  // Server-side category filtering means the visible list is simply the
+  // current response mapped into meditation templates.
+  const visibleTemplates = templates;
 
   // The featured card always uses the first visible item, falling back to the
   // first available meditation if no filter result exists.
@@ -167,7 +178,8 @@ export const MeditationScreen: React.FC = () => {
   );
 
   const selectedLabel =
-    filterOptions.find((option) => option.value === selectedTag)?.label ??
+    categoryOptions.find((option) => option.value === selectedCategory)
+      ?.label ??
     "All Modes";
 
   // Detail fetches from the API on mount, so this route only passes identifiers.
@@ -259,9 +271,9 @@ export const MeditationScreen: React.FC = () => {
               ) : null}
 
               <PillFilters
-                options={filterOptions}
-                selectedValue={selectedTag}
-                onChange={setSelectedTag}
+                options={categoryOptions}
+                selectedValue={selectedCategory}
+                onChange={setSelectedCategory}
                 scrollable
                 contentContainerStyle={styles.filterRow}
                 selectedPillStyle={styles.filterPillActive}
