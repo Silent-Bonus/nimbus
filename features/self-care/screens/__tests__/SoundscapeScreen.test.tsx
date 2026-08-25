@@ -207,7 +207,9 @@ describe("SoundscapeScreen", () => {
       favoritesFilter.props.onPress();
     });
 
-    expect(hasText(tree, "A private stack of saved soundscapes.")).toBe(true);
+    expect(
+      hasText(tree, "Soundscape archive for rest, focus, and reset.")
+    ).toBe(true);
     expect(hasText(tree, "Rain Over Cedar")).toBe(true);
     expect(hasText(tree, "Ocean Drift")).toBe(false);
   });

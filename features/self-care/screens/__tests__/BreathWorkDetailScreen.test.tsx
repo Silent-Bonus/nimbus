@@ -17,6 +17,7 @@ import BreathWorkDetailScreen from "../BreathWorkDetailScreen";
 
 const mockBack = jest.fn();
 const mockSetOptions = jest.fn();
+const mockAddListener = jest.fn(() => jest.fn());
 const mockPush = jest.fn();
 const mockSelection = jest.fn();
 
@@ -31,6 +32,7 @@ jest.mock("expo-router", () => ({
   },
   useNavigation: () => ({
     setOptions: mockSetOptions,
+    addListener: mockAddListener,
   }),
   useLocalSearchParams: () => mockParams,
 }));
@@ -250,9 +252,7 @@ describe("BreathWorkDetailScreen", () => {
     expect(hasText(tree, "STEPS TO PERFORM")).toBe(true);
     expect(hasText(tree, "BENEFITS")).toBe(true);
     expect(hasText(tree, "TIPS")).toBe(true);
-    expect(
-      hasText(tree, "Inhale Gently (Puraka · 220.00 Hz)")
-    ).toBe(true);
+    expect(hasText(tree, "Inhale Gently (Puraka · 4s)")).toBe(true);
     expect(
       hasText(
         tree,

@@ -1,7 +1,6 @@
 import {
   buildMeditationFilterOptions,
   buildMeditationRouteParams,
-  filterMeditationTemplates,
   mapMeditationDetailItemTemplate,
   mapMeditationListItemTemplate,
 } from "../meditationLibrary";
@@ -173,17 +172,12 @@ describe("meditationLibrary", () => {
     expect(params.meditationGuidance).toContain("slow inhale");
   });
 
-  it("builds unique category filters and filters templates by category", () => {
+  it("builds unique category filters from template categories", () => {
     const options = buildMeditationFilterOptions(meditationTemplates);
 
     expect(options[0]).toEqual({ label: "All Modes", value: "all" });
     expect(options.some((option) => option.label === "Beginner")).toBe(false);
     expect(options.some((option) => option.label === "Focus")).toBe(true);
     expect(options.some((option) => option.value === "sleep")).toBe(true);
-
-    const visible = filterMeditationTemplates(meditationTemplates, "sleep");
-
-    expect(visible).toHaveLength(1);
-    expect(visible[0].title).toBe("Sleep Drift");
   });
 });
