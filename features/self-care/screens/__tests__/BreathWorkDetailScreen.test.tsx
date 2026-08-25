@@ -8,7 +8,6 @@ import { getTheme } from "../../../../theme";
 import {
   clearBreathWorkDetailCache,
   buildBreathWorkRouteParams,
-  getBreathWorkDetailById,
   mapBreathworkDetail,
 } from "../../utils/breathworkLibrary";
 import {
@@ -18,6 +17,7 @@ import BreathWorkDetailScreen from "../BreathWorkDetailScreen";
 
 const mockBack = jest.fn();
 const mockSetOptions = jest.fn();
+const mockAddListener = jest.fn(() => jest.fn());
 const mockPush = jest.fn();
 const mockSelection = jest.fn();
 
@@ -32,6 +32,7 @@ jest.mock("expo-router", () => ({
   },
   useNavigation: () => ({
     setOptions: mockSetOptions,
+    addListener: mockAddListener,
   }),
   useLocalSearchParams: () => mockParams,
 }));
@@ -240,7 +241,7 @@ describe("BreathWorkDetailScreen", () => {
     expect(mockSetOptions).toHaveBeenCalledWith({
       headerShown: false,
     });
-    expect(mockGetWellnessContentDetail).toHaveBeenCalledWith(1);
+    expect(mockGetWellnessContentDetail).toHaveBeenCalledWith("1");
 
     expect(hasText(tree, "Breath Prelude")).toBe(true);
     expect(
@@ -248,23 +249,14 @@ describe("BreathWorkDetailScreen", () => {
     ).toBe(true);
     expect(hasText(tree, "Release Path")).toBe(true);
     expect(hasText(tree, "DESCRIPTION")).toBe(true);
-    expect(hasText(tree, "CONTEXT")).toBe(true);
     expect(hasText(tree, "STEPS TO PERFORM")).toBe(true);
     expect(hasText(tree, "BENEFITS")).toBe(true);
     expect(hasText(tree, "TIPS")).toBe(true);
-    expect(
-      hasText(tree, "Inhale Gently (Puraka · 220.00 Hz)")
-    ).toBe(true);
+    expect(hasText(tree, "Inhale Gently (Puraka · 4s)")).toBe(true);
     expect(
       hasText(
         tree,
         "A gentle release sequence for easing tension."
-      )
-    ).toBe(true);
-    expect(
-      hasText(
-        tree,
-        "Use a slow inhale and a longer exhale so the body can unwind naturally."
       )
     ).toBe(true);
     expect(
@@ -306,11 +298,7 @@ describe("BreathWorkDetailScreen", () => {
       pathname: ROUTES.AUTH.SELF_CARE_BREATHWORK_SESSION,
       params: expect.objectContaining({
         ...buildBreathWorkRouteParams(
-          mapBreathworkDetail(
-            apiDetail,
-            0,
-            getBreathWorkDetailById("release-breath")
-          )
+          mapBreathworkDetail(apiDetail, 0)
         ),
       }),
     });

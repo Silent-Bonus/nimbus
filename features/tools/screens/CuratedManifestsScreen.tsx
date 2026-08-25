@@ -11,12 +11,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "expo-router";
 import { router } from "expo-router";
 
+import ProtocolTemplateCard from "@/components/common/ProtocolTemplateCard";
 import { ScreenView } from "@/components/ui/Themed";
 import PillFilters from "@/components/ui/PillFilters";
 import ThemeContext from "@/contexts/ThemeContext";
 import ScreenHeader from "@/components/layout/ScreenHeader";
 import EmptyState from "@/features/tools/components/common/EmptyState";
-import ProtocolTemplateCard from "@/features/tools/components/common/ProtocolTemplateCard";
 import { ROUTES } from "@/constants/routes";
 import {
   CURATED_MANIFESTS,

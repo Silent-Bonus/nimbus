@@ -2,75 +2,96 @@ import type {
   BreathMotionVariant,
   BreathPattern,
   BreathPhase,
-  BreathTone,
-  BreathWorkDetail,
-} from "@/features/self-care/types/breathworkTypes";
+  BreathworkStyle,
+} from "@/features/self-care/types/wellnessContentTypes";
 
-export type {
-  BreathMotionVariant,
-  BreathPattern,
-  BreathPhase,
-  BreathRecommendation,
-  BreathRecommendationPalette,
-  BreathTone,
-  BreathWorkCategoryOption,
-  BreathWorkDetail,
-  BreathWorkMetadataStep,
-  BreathWorkRouteParams,
-  RawBreathWorkDetailItem,
-  RawBreathWorkTemplate,
-} from "@/features/self-care/types/breathworkTypes";
-
-export const BREATH_PATTERNS: BreathPattern[] = [
-  {
+// Breathwork list responses do not carry a normalized presentation model yet.
+// These defaults keep the library and placeholder detail screens functional
+// until the backend sends a richer breathwork schema.
+const BREATHWORK_STYLE_DEFAULTS: Record<
+  BreathworkStyle,
+  Omit<BreathPattern, "style" | "phases">
+> = {
+  grounding: {
     id: "box-breath",
-    tone: "grounding",
     title: "Box Breath",
     description: "Equal counts to settle the body and sharpen attention.",
     benefit: "A square rhythm that helps the mind feel organized again.",
-    phases: [
-      { label: "Inhale", seconds: 4 },
-      { label: "Hold", seconds: 4 },
-      { label: "Exhale", seconds: 4 },
-      { label: "Hold", seconds: 4 },
-    ],
   },
-  {
+  steady: {
     id: "coherent-breath",
-    tone: "steady",
     title: "Coherent Breath",
     description: "A smooth 5 in and 5 out to create a calm internal tempo.",
     benefit: "Useful when the nervous system wants a little more space.",
-    phases: [
-      { label: "Inhale", seconds: 5 },
-      { label: "Exhale", seconds: 5 },
-    ],
   },
-  {
+  release: {
     id: "release-breath",
-    tone: "release",
     title: "Release Breath",
     description: "Longer exhale to soften tension and loosen the edges.",
     benefit: "Helps the exhale carry more of the effort than the inhale.",
-    phases: [
-      { label: "Inhale", seconds: 4 },
-      { label: "Exhale", seconds: 6 },
-    ],
   },
-  {
+  sleep: {
     id: "sleep-breath",
-    tone: "sleep",
     title: "Sleep Breath",
     description: "A slower loop designed to prepare the body for rest.",
     benefit: "Use this when the evening needs a quieter landing.",
-    phases: [
-      { label: "Inhale", seconds: 4 },
-      { label: "Hold", seconds: 2 },
-      { label: "Exhale", seconds: 6 },
-      { label: "Hold", seconds: 2 },
-    ],
   },
-];
+};
+
+const BREATHWORK_STYLE_PHASES: Record<BreathworkStyle, BreathPhase[]> = {
+  grounding: [
+    { label: "Inhale", seconds: 4 },
+    { label: "Hold", seconds: 4 },
+    { label: "Exhale", seconds: 4 },
+    { label: "Hold", seconds: 4 },
+  ],
+  steady: [
+    { label: "Inhale", seconds: 5 },
+    { label: "Exhale", seconds: 5 },
+  ],
+  release: [
+    { label: "Inhale", seconds: 4 },
+    { label: "Exhale", seconds: 6 },
+  ],
+  sleep: [
+    { label: "Inhale", seconds: 4 },
+    { label: "Hold", seconds: 2 },
+    { label: "Exhale", seconds: 6 },
+    { label: "Hold", seconds: 2 },
+  ],
+};
+
+const cloneBreathPhases = (phases: BreathPhase[]) =>
+  phases.map((phase) => ({ ...phase }));
+
+export const createFallbackBreathPhases = (
+  style: BreathworkStyle = "grounding"
+): BreathPhase[] =>
+  cloneBreathPhases(
+    BREATHWORK_STYLE_PHASES[style] ?? BREATHWORK_STYLE_PHASES.grounding
+  );
+
+// Builds a lightweight fallback breath pattern from the resolved style so the
+// UI can still render before detail data arrives from the backend.
+export const createFallbackBreathPattern = (
+  style: BreathworkStyle = "grounding",
+  overrides?: Partial<Omit<BreathPattern, "style">>
+): BreathPattern => {
+  const defaults =
+    BREATHWORK_STYLE_DEFAULTS[style] ?? BREATHWORK_STYLE_DEFAULTS.grounding;
+
+  return {
+    id: overrides?.id?.trim() || defaults.id,
+    style,
+    title: overrides?.title?.trim() || defaults.title,
+    description: overrides?.description?.trim() || defaults.description,
+    benefit: overrides?.benefit?.trim() || defaults.benefit,
+    phases:
+      overrides?.phases && overrides.phases.length > 0
+        ? cloneBreathPhases(overrides.phases)
+        : createFallbackBreathPhases(style),
+  };
+};
 
 export const BREATH_MOTION_VARIANTS: Record<string, BreathMotionVariant> = {
   "box-breath": "box",
@@ -122,17 +143,17 @@ export const formatBreathCadence = (pattern: BreathPattern) =>
 
 export const filterBreathPatterns = <T extends BreathPattern>(
   items: T[],
-  selectedTone: BreathTone | "all"
+  selectedStyle: BreathworkStyle | "all"
 ) => {
-  if (selectedTone === "all") {
+  if (selectedStyle === "all") {
     return items;
   }
 
-  return items.filter((item) => item.tone === selectedTone);
+  return items.filter((item) => item.style === selectedStyle);
 };
 
-export const formatBreathToneLabel = (tone: BreathTone) =>
-  tone.charAt(0).toUpperCase() + tone.slice(1);
+export const formatBreathStyleLabel = (style: BreathworkStyle) =>
+  style.charAt(0).toUpperCase() + style.slice(1);
 
 export const resolveBreathworkColor = (
   color: string | undefined,
@@ -148,6 +169,8 @@ export const resolveBreathworkColor = (
   return trimmed;
 };
 
+// Motion is a presentation choice, not backend content, so we map from the
+// most stable identifier or title tokens available.
 export const getBreathMotionVariant = (
   patternId: string,
   fallback: BreathMotionVariant = "orb"
@@ -175,16 +198,6 @@ export const getBreathMotionVariant = (
   return fallback;
 };
 
-const BREATH_PATTERN_BY_TONE: Record<BreathPattern["tone"], BreathPattern> = {
-  grounding: BREATH_PATTERNS[0],
-  steady: BREATH_PATTERNS[1],
-  release: BREATH_PATTERNS[2],
-  sleep: BREATH_PATTERNS[3],
-};
-
-export const getBreathPatternByTone = (tone: BreathPattern["tone"]) =>
-  BREATH_PATTERN_BY_TONE[tone] ?? BREATH_PATTERNS[0];
-
 export const normalizeBreathworkCategoryValue = (value: string) =>
   value
     .trim()
@@ -192,14 +205,3 @@ export const normalizeBreathworkCategoryValue = (value: string) =>
     .replace(/&/g, "and")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
-
-export const filterBreathWorkDetails = (
-  items: BreathWorkDetail[],
-  selectedTone: BreathPattern["tone"] | "all"
-) => {
-  if (selectedTone === "all") {
-    return items;
-  }
-
-  return items.filter((item) => item.tone === selectedTone);
-};

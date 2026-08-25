@@ -8,6 +8,7 @@ import type { ColorSet, Spacing } from "@/theme/types";
 type MeditationTransportControlsProps = {
   isPlaying: boolean;
   disabled?: boolean;
+  playDisabled?: boolean;
   onSeekBackward: () => void;
   onTogglePlayPause: () => void;
   onSeekForward: () => void;
@@ -16,6 +17,7 @@ type MeditationTransportControlsProps = {
 export default function MeditationTransportControls({
   isPlaying,
   disabled,
+  playDisabled,
   onSeekBackward,
   onTogglePlayPause,
   onSeekForward,
@@ -47,12 +49,12 @@ export default function MeditationTransportControls({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={isPlaying ? "Pause meditation" : "Play meditation"}
-        disabled={disabled}
+        disabled={playDisabled}
         onPress={onTogglePlayPause}
         style={({ pressed }) => [
           styles.playButton,
-          pressed && !disabled && styles.playPressed,
-          disabled && styles.disabled,
+          pressed && !playDisabled && styles.playPressed,
+          playDisabled && styles.disabled,
         ]}
       >
         <Ionicons

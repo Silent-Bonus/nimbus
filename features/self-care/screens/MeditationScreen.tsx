@@ -6,13 +6,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import {
-  FlatList,
-  Platform,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { FlatList, Platform, StyleSheet, Text, View } from "react-native";
 import { router, useNavigation } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -26,15 +20,12 @@ import {
   MeditationListSkeleton,
 } from "@/features/self-care/components/meditation/MeditationSkeletonSections";
 import MeditationTemplateCard from "@/features/self-care/components/meditation/MeditationTemplateCard";
+
 import { getWellnessContentList } from "@/features/self-care/services/selfCareService";
 import {
   buildMeditationFilterOptions,
-  buildMeditationRouteParams,
-  filterMeditationTemplates,
   formatMeditationTagLabel,
-  fallbackMeditationTemplates,
-  mapMeditationTemplate,
-  type MeditationTemplate,
+  mapMeditationList,
 } from "@/features/self-care/utils/meditationLibrary";
 import { ROUTES } from "@/constants/routes";
 import type {
@@ -43,16 +34,30 @@ import type {
   Typography,
   TypographyTokens,
 } from "@/theme/types";
+import type {
+  MeditationTemplateCardItem,
+  MeditationListItem,
+  WellnessCategoryOption,
+  WellnessContentItem,
+} from "@/features/self-care/types/wellnessContentTypes";
 
 export const MeditationScreen: React.FC = () => {
+  // Theme and navigation context used by the screen shell and cards.
   const navigation = useNavigation();
-  const { newTheme: theme, svaTypography, spacing, typography } =
-    useContext(ThemeContext);
+  const {
+    newTheme: theme,
+    svaTypography,
+    spacing,
+    typography,
+  } = useContext(ThemeContext);
 
-  const [templates, setTemplates] = useState<MeditationTemplate[]>(
-    fallbackMeditationTemplates
-  );
-  const [selectedTag, setSelectedTag] = useState<string>("all");
+  // Raw API items stay in state; UI templates are derived below.
+  const [contentItems, setContentItems] = useState<WellnessContentItem[]>([]);
+  const [categoryOptions, setCategoryOptions] = useState<
+    WellnessCategoryOption[]
+  >([{ label: "All Modes", value: "all" }]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  // Loading only tracks the list request for this screen.
   const [isLoading, setIsLoading] = useState(true);
 
   const styles = useMemo(
@@ -60,34 +65,52 @@ export const MeditationScreen: React.FC = () => {
     [theme, svaTypography, spacing, typography]
   );
 
+  // The screen renders its own branded header instead of the router header.
   useLayoutEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
+  // Fetch meditation content for the active category. Filter pills are derived
+  // from the full unfiltered response and kept stable in local state.
   useEffect(() => {
     let active = true;
 
     const loadMeditationContent = async () => {
       setIsLoading(true);
+      setContentItems([]);
 
       try {
-        const result = await getWellnessContentList({ modality: "meditation" });
+        const params: Parameters<typeof getWellnessContentList>[0] =
+          selectedCategory === "all"
+            ? { modality: "meditation" }
+            : {
+                modality: "meditation",
+                category: selectedCategory,
+              };
+
+        const result = await getWellnessContentList(params);
         const sourceItems =
           Array.isArray(result.data) && result.data.length > 0
             ? result.data
             : null;
 
-        const normalized = sourceItems
-          ? sourceItems.map((item, index) => mapMeditationTemplate(item, index))
-          : fallbackMeditationTemplates;
+        const normalized = sourceItems ? sourceItems : [];
 
         if (active) {
-          setTemplates(normalized);
+          setContentItems(normalized);
+
+          // Preserve the full category row from the unfiltered response so the
+          // user can always switch between server-backed categories.
+          if (selectedCategory === "all") {
+            setCategoryOptions(
+              buildMeditationFilterOptions(normalized.map(mapMeditationList))
+            );
+          }
         }
       } catch (error) {
         console.warn("Unable to load meditation content:", error);
         if (active) {
-          setTemplates(fallbackMeditationTemplates);
+          setContentItems([]);
         }
       } finally {
         if (active) {
@@ -101,45 +124,72 @@ export const MeditationScreen: React.FC = () => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [selectedCategory]);
 
-  const filterOptions = useMemo(
-    () => buildMeditationFilterOptions(templates),
-    [templates]
+  // Convert raw API items into UI-ready card data with normalized labels,
+  // fallback copy, and image handling.
+  const templates = useMemo(
+    () => contentItems.map(mapMeditationList),
+    [contentItems]
   );
 
+  // Reset to "all" if the active filter disappears after new data loads.
   useEffect(() => {
     if (
-      selectedTag !== "all" &&
-      !filterOptions.some((option) => option.value === selectedTag)
+      selectedCategory !== "all" &&
+      !categoryOptions.some((option) => option.value === selectedCategory)
     ) {
-      setSelectedTag("all");
+      setSelectedCategory("all");
     }
-  }, [filterOptions, selectedTag]);
+  }, [categoryOptions, selectedCategory]);
 
-  const visibleTemplates = useMemo(
-    () => filterMeditationTemplates(templates, selectedTag),
-    [templates, selectedTag]
-  );
+  // Server-side category filtering means the visible list is simply the
+  // current response mapped into meditation templates.
+  const visibleTemplates = templates;
 
+  // The featured card always uses the first visible item, falling back to the
+  // first available meditation if no filter result exists.
   const featuredTemplate = useMemo(
     () => visibleTemplates[0] ?? templates[0],
     [visibleTemplates, templates]
   );
 
-  const listTemplates = useMemo(
-    () => visibleTemplates,
+  const listEntries = useMemo(
+    () =>
+      visibleTemplates.map((template) => ({
+        template,
+        cardItem: {
+          id: template.id,
+          title: template.title,
+          description: template.description,
+          tags: template.tags
+            .slice(0, 2)
+            .map((tag) => formatMeditationTagLabel(tag)),
+          durationLabel: template.durationLabel,
+          image:
+            typeof template.image === "string"
+              ? { uri: template.image }
+              : template.image,
+          isLocked: template.isLocked,
+          rating: template.rating,
+        } satisfies MeditationTemplateCardItem,
+      })),
     [visibleTemplates]
   );
 
   const selectedLabel =
-    filterOptions.find((option) => option.value === selectedTag)?.label ??
+    categoryOptions.find((option) => option.value === selectedCategory)
+      ?.label ??
     "All Modes";
 
-  const openMeditationDetail = useCallback((template: MeditationTemplate) => {
+  // Detail fetches from the API on mount, so this route only passes identifiers.
+  const openMeditationDetail = useCallback((template: MeditationListItem) => {
     router.push({
       pathname: ROUTES.AUTH.SELF_CARE_MEDITATION_DETAIL,
-      params: buildMeditationRouteParams(template),
+      params: {
+        meditationId: template.id,
+        meditationSlug: template.slug,
+      },
     });
   }, []);
 
@@ -175,8 +225,8 @@ export const MeditationScreen: React.FC = () => {
 
         <FlatList
           testID="meditation-library-list"
-          data={listTemplates}
-          keyExtractor={(item) => item.id}
+          data={listEntries}
+          keyExtractor={(item) => item.template.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[
             styles.listContent,
@@ -185,7 +235,9 @@ export const MeditationScreen: React.FC = () => {
           ListHeaderComponent={
             <>
               <View style={styles.featuredHeader}>
-                <Text style={styles.featuredEyebrow}>CURATED RECOMMENDATION</Text>
+                <Text style={styles.featuredEyebrow}>
+                  CURATED RECOMMENDATION
+                </Text>
                 <Text style={styles.featuredTitle}>
                   The first pull for the present moment.
                 </Text>
@@ -193,11 +245,23 @@ export const MeditationScreen: React.FC = () => {
 
               {featuredTemplate ? (
                 <View style={styles.featuredCardWrap}>
+                  {/** Featured card still expects an RN image source, so backend
+                   * image strings are wrapped at the render edge. */}
                   <NimbusUltraFeaturedCard
                     title={featuredTemplate.title}
-                    subtitle={`${featuredTemplate.durationLabel} · ${formatMeditationTagLabel(featuredTemplate.tag)}`}
+                    subtitle={`${
+                      featuredTemplate.durationLabel
+                    } · ${formatMeditationTagLabel(
+                      featuredTemplate.tags[0] ??
+                        featuredTemplate.category ??
+                        "curated"
+                    )}`}
                     description={featuredTemplate.description}
-                    image={featuredTemplate.image}
+                    image={
+                      typeof featuredTemplate.image === "string"
+                        ? { uri: featuredTemplate.image }
+                        : featuredTemplate.image
+                    }
                     badge="Curated pick"
                     tint="rgba(163,190,140,0.12)"
                     accent={theme.chart2 ?? theme.accent}
@@ -207,9 +271,9 @@ export const MeditationScreen: React.FC = () => {
               ) : null}
 
               <PillFilters
-                options={filterOptions}
-                selectedValue={selectedTag}
-                onChange={setSelectedTag}
+                options={categoryOptions}
+                selectedValue={selectedCategory}
+                onChange={setSelectedCategory}
                 scrollable
                 contentContainerStyle={styles.filterRow}
                 selectedPillStyle={styles.filterPillActive}
@@ -233,7 +297,7 @@ export const MeditationScreen: React.FC = () => {
                     color={theme.textSecondary}
                   />
                   <Text style={styles.countText}>
-                    {listTemplates.length} sessions
+                    {listEntries.length} sessions
                   </Text>
                 </View>
               </View>
@@ -241,8 +305,8 @@ export const MeditationScreen: React.FC = () => {
           }
           renderItem={({ item }) => (
             <MeditationTemplateCard
-              item={item}
-              onPress={() => openMeditationDetail(item)}
+              item={item.cardItem}
+              onPress={() => openMeditationDetail(item.template)}
             />
           )}
           ListEmptyComponent={
@@ -295,7 +359,8 @@ const styling = (
     },
     featuredEyebrow: {
       fontFamily:
-        svaTypography?.textStyle.authTinyLabel.fontFamily ?? "Inter_600SemiBold",
+        svaTypography?.textStyle.authTinyLabel.fontFamily ??
+        "Inter_600SemiBold",
       fontSize: 10,
       lineHeight: 14,
       letterSpacing: 2.2,
@@ -326,7 +391,8 @@ const styling = (
     },
     filterTextInactive: {
       fontFamily:
-        svaTypography?.textStyle.authTinyLabel.fontFamily ?? "Inter_600SemiBold",
+        svaTypography?.textStyle.authTinyLabel.fontFamily ??
+        "Inter_600SemiBold",
       fontSize: 11,
       letterSpacing: 1.1,
       color: theme.textSecondary,
@@ -343,7 +409,8 @@ const styling = (
     },
     sectionEyebrow: {
       fontFamily:
-        svaTypography?.textStyle.authTinyLabel.fontFamily ?? "Inter_600SemiBold",
+        svaTypography?.textStyle.authTinyLabel.fontFamily ??
+        "Inter_600SemiBold",
       fontSize: 10,
       lineHeight: 14,
       letterSpacing: 2.2,

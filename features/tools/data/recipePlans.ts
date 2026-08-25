@@ -1,5 +1,5 @@
 import type { ImageSourcePropType } from "react-native";
-import type { ProtocolTemplateCardItem } from "@/features/tools/components/common/ProtocolTemplateCard";
+import type { ProtocolTemplateCardItem } from "@/components/common/ProtocolTemplateCard";
 
 export type RecipePlanNutrition = {
   calories: string;

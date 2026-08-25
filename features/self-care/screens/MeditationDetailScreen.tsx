@@ -25,222 +25,58 @@ import { NimbusButton } from "@/components/ui/theme-components/NimbusButton";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import ThemeContext from "@/contexts/ThemeContext";
 import { ROUTES } from "@/constants/routes";
+import {
+  readFavoriteIds,
+  toggleFavoriteId,
+} from "@/features/self-care/services/favoritesStorage";
 import { getWellnessContentDetail } from "@/features/self-care/services/selfCareService";
+import {
+  parseMeditationRouteParams,
+  type MeditationRouteParams,
+} from "@/features/self-care/utils/meditationPlayback";
 import {
   buildMeditationRouteParams,
   formatMeditationTagLabel,
-  hydrateMeditationTemplate,
-  mapMeditationTemplate,
-  mockMeditationRecommendations,
-  type MeditationRouteParams,
-  type MeditationTemplate,
+  mapMeditationDetailItemTemplate,
 } from "@/features/self-care/utils/meditationLibrary";
-import type { ColorSet, Spacing, Typography, TypographyTokens } from "@/theme/types";
-
-type MeditationDetailParams = MeditationRouteParams;
-
-type BenefitItem = {
-  id: number | string;
-  title: string;
-  text: string;
-};
+import type {
+  MeditationItemDetail,
+  WellnessContentBenefit,
+} from "@/features/self-care/types/wellnessContentTypes";
+import type {
+  ColorSet,
+  Spacing,
+  Typography,
+  TypographyTokens,
+} from "@/theme/types";
 
 const HERO_IMAGE = require("../../../assets/images/mt.jpg");
 
-const parseParam = (value?: string | string[]) => {
-  if (Array.isArray(value)) return value[0];
-  return value;
-};
-
-const isNumericId = (value: string) => /^\d+$/.test(value.trim());
-
-const buildFallbackBenefits = (template: MeditationTemplate): BenefitItem[] => {
-  switch (template.tag) {
-    case "sleep":
-      return [
-        {
-          id: "sleep-1",
-          title: "Restorative winding down",
-          text: "Slows the system before the evening gives way to rest.",
-        },
-        {
-          id: "sleep-2",
-          title: "Gentler breath rhythm",
-          text: "Encourages a softer pace that feels easier to release into sleep.",
-        },
-        {
-          id: "sleep-3",
-          title: "Quiet transition",
-          text: "Carries a calmer cadence into the next stretch of the day.",
-        },
-      ];
-    case "focus":
-      return [
-        {
-          id: "focus-1",
-          title: "Attentional clarity",
-          text: "Returns the mind to one point at a time without force.",
-        },
-        {
-          id: "focus-2",
-          title: "Deeper work prep",
-          text: "Sets a steadier cadence before study or deep work.",
-        },
-        {
-          id: "focus-3",
-          title: "Less mental noise",
-          text: "Creates space for attention to settle without friction.",
-        },
-      ];
-    case "breath":
-      return [
-        {
-          id: "breath-1",
-          title: "Breath as anchor",
-          text: "Uses the inhale and exhale as a precise focus point.",
-        },
-        {
-          id: "breath-2",
-          title: "Slower internal tempo",
-          text: "Lengthens each cycle to create a calmer rhythm.",
-        },
-        {
-          id: "breath-3",
-          title: "Grounded presence",
-          text: "Eases the body into a more supported state.",
-        },
-      ];
-    case "release":
-      return [
-        {
-          id: "release-1",
-          title: "Tension softening",
-          text: "Lets the shoulders and jaw relax without needing to solve anything.",
-        },
-        {
-          id: "release-2",
-          title: "Gentler exhale",
-          text: "Uses the breath to move the day out of the body with care.",
-        },
-        {
-          id: "release-3",
-          title: "Room to unwind",
-          text: "Opens a little more space around the edges of effort.",
-        },
-      ];
-    case "beginner":
-      return [
-        {
-          id: "beginner-1",
-          title: "Low-friction entry",
-          text: "Starts with a simple rhythm that stays easy to return to.",
-        },
-        {
-          id: "beginner-2",
-          title: "Confidence builder",
-          text: "Helps new meditators settle without asking too much too soon.",
-        },
-        {
-          id: "beginner-3",
-          title: "Steady repetition",
-          text: "Reinforces the basics so the practice feels approachable.",
-        },
-      ];
-    case "calm":
-    default:
-      return [
-        {
-          id: "calm-1",
-          title: "Nervous system reset",
-          text: "Supports a quieter pause before the next transition.",
-        },
-        {
-          id: "calm-2",
-          title: "Soft, premium pacing",
-          text: "Creates a deliberate stillness that feels unhurried.",
-        },
-        {
-          id: "calm-3",
-          title: "Softer internal tone",
-          text: "Helps the rest of the day feel less sharp around the edges.",
-        },
-      ];
-  }
-};
-
 export default function MeditationDetailScreen() {
+  // Screen shell dependencies: navigation, route params, and theme tokens.
   const navigation = useNavigation();
-  const params = useLocalSearchParams<MeditationDetailParams>();
-  const { newTheme: theme, svaTypography, spacing, typography } =
-    useContext(ThemeContext);
+  const params = useLocalSearchParams<MeditationRouteParams>();
+  const {
+    newTheme: theme,
+    svaTypography,
+    spacing,
+    typography,
+  } = useContext(ThemeContext);
+
+  // Local UI state for detail loading, optimistic actions, and fetched data.
   const [isFavorite, setIsFavorite] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isStartingMeditation, setIsStartingMeditation] = useState(false);
+  const [meditation, setMeditation] = useState<MeditationItemDetail | null>(
+    null
+  );
   const hasLaunchedMeditationRef = useRef(false);
 
-  const meditationId = parseParam(params.meditationId) ?? "";
-  const meditationTitleParam = parseParam(params.meditationTitle);
-  const meditationDescriptionParam = parseParam(params.meditationDescription);
-  const meditationDurationLabelParam = parseParam(
-    params.meditationDurationLabel
-  );
-  const meditationImageParam = parseParam(params.meditationImage);
-  const meditationTagsParam = parseParam(params.meditationTags);
-  const meditationCategoryParam = parseParam(params.meditationCategory);
-  const meditationRatingParam = parseParam(params.meditationRating);
-  const meditationReviewsParam = parseParam(params.meditationReviews);
-  const meditationLevelParam = parseParam(params.meditationLevel);
-  const meditationDoshaParam = parseParam(params.meditationDosha);
-  const meditationSourceParam = parseParam(params.meditationSource);
-
-  const fallbackMeditation = useMemo<MeditationTemplate>(() => {
-    return (
-      mockMeditationRecommendations.find(
-        (item) => item.id === meditationId || item.slug === meditationId
-      ) ?? mockMeditationRecommendations[0]
-    );
-  }, [meditationId]);
-
-  const routeMeditationParams = useMemo<MeditationDetailParams>(
-    () => ({
-      meditationId,
-      meditationTitle: meditationTitleParam,
-      meditationDescription: meditationDescriptionParam,
-      meditationDurationLabel: meditationDurationLabelParam,
-      meditationImage: meditationImageParam,
-      meditationTags: meditationTagsParam,
-      meditationCategory: meditationCategoryParam,
-      meditationRating: meditationRatingParam,
-      meditationReviews: meditationReviewsParam,
-      meditationLevel: meditationLevelParam,
-      meditationDosha: meditationDoshaParam,
-      meditationSource: meditationSourceParam,
-    }),
-    [
-      meditationId,
-      meditationTitleParam,
-      meditationDescriptionParam,
-      meditationDurationLabelParam,
-      meditationImageParam,
-      meditationTagsParam,
-      meditationCategoryParam,
-      meditationRatingParam,
-      meditationReviewsParam,
-      meditationLevelParam,
-      meditationDoshaParam,
-      meditationSourceParam,
-    ]
-  );
-
-  const initialMeditation = useMemo(
-    () => hydrateMeditationTemplate(routeMeditationParams, fallbackMeditation),
-    [fallbackMeditation, routeMeditationParams]
-  );
-
-  const [meditation, setMeditation] = useState<MeditationTemplate>(
-    initialMeditation
-  );
+  // Detail routes may provide both identifiers. Prefer slug for the fetch and
+  // fall back to the numeric id for older entry points.
+  const { meditationId, meditationSlug } = parseMeditationRouteParams(params);
+  const detailIdentifier = meditationSlug || meditationId;
 
   const styles = useMemo(
     () => styling(theme, svaTypography, spacing, typography),
@@ -252,12 +88,23 @@ export default function MeditationDetailScreen() {
   }, [navigation]);
 
   useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      hasLaunchedMeditationRef.current = false;
+      setIsStartingMeditation(false);
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  // Fetch the latest meditation detail whenever the routed identifier changes.
+  // The mounted guard prevents late responses from overwriting newer state.
+  useEffect(() => {
     let active = true;
 
-    setMeditation(initialMeditation);
+    setMeditation(null);
     setLoadError(null);
 
-    if (!isNumericId(meditationId)) {
+    if (!detailIdentifier) {
       setIsLoading(false);
       return () => {
         active = false;
@@ -266,10 +113,10 @@ export default function MeditationDetailScreen() {
 
     setIsLoading(true);
 
-    void getWellnessContentDetail(Number(meditationId))
+    void getWellnessContentDetail(detailIdentifier)
       .then((response) => {
         if (!active) return;
-        setMeditation(mapMeditationTemplate(response.data, 0));
+        setMeditation(mapMeditationDetailItemTemplate(response.data));
       })
       .catch((error) => {
         console.warn("Unable to load meditation details:", error);
@@ -286,36 +133,82 @@ export default function MeditationDetailScreen() {
     return () => {
       active = false;
     };
-  }, [initialMeditation, meditationId]);
+  }, [detailIdentifier]);
 
+  // Reset the CTA guard when a different meditation is opened.
   useEffect(() => {
     hasLaunchedMeditationRef.current = false;
     setIsStartingMeditation(false);
   }, [meditationId]);
 
-  const benefits = useMemo<BenefitItem[]>(
-    () =>
-      meditation.benefits?.length
-        ? meditation.benefits.map((benefit) => ({
-            id: benefit.id,
-            title: benefit.title,
-            text: benefit.text,
-          }))
-        : buildFallbackBenefits(meditation),
+  // Meditation favorites are persisted through the shared favorites storage so
+  // future meditation list/detail surfaces can reuse the same saved ids.
+  useEffect(() => {
+    let active = true;
+
+    if (!meditation?.id) {
+      setIsFavorite(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    const loadFavoriteState = async () => {
+      try {
+        const ids = await readFavoriteIds("meditation");
+        if (active) {
+          setIsFavorite(ids.includes(meditation.id));
+        }
+      } catch (error) {
+        console.warn("Unable to load meditation favorites:", error);
+      }
+    };
+
+    void loadFavoriteState();
+
+    return () => {
+      active = false;
+    };
+  }, [meditation?.id]);
+
+  // Keep render logic simple by deriving section data once from the fetched item.
+  const benefits = useMemo<WellnessContentBenefit[]>(
+    () => meditation?.benefits ?? [],
     [meditation]
   );
 
   const ratingLabel =
-    typeof meditation.rating === "number" ? meditation.rating.toFixed(1) : "4.9";
+    typeof meditation?.rating === "number"
+      ? meditation.rating.toFixed(1)
+      : "4.9";
 
   const handleShare = async () => {
+    if (!meditation) return;
+
     await Share.share({
       message: `${meditation.title} · ${meditation.description}`,
     });
   };
 
+  const handleToggleFavorite = useCallback(async () => {
+    if (!meditation) return;
+
+    try {
+      const nextFavorites = await toggleFavoriteId("meditation", meditation.id);
+      setIsFavorite(nextFavorites.includes(meditation.id));
+    } catch (error) {
+      console.warn("meditation favorite toggle failed", error);
+    }
+  }, [meditation]);
+
+  // The player screen still expects route params, so map the fetched detail
+  // back into that transport shape before navigating.
   const handleStartMeditation = useCallback(() => {
-    if (isStartingMeditation || hasLaunchedMeditationRef.current) {
+    if (
+      !meditation ||
+      isStartingMeditation ||
+      hasLaunchedMeditationRef.current
+    ) {
       return;
     }
 
@@ -330,6 +223,45 @@ export default function MeditationDetailScreen() {
     });
   }, [isStartingMeditation, meditation]);
 
+  // Until the detail payload exists, render a dedicated loading or error state
+  // instead of a placeholder meditation object.
+  if (!meditation) {
+    return (
+      <ScreenView bgColor={theme.background} style={styles.screen}>
+        <View style={styles.root}>
+          <AppHeader
+            title="Meditation Prelude"
+            subtitle="A quiet threshold before the session begins."
+            onBack={() => router.back()}
+            containerStyle={styles.header}
+          />
+
+          <View style={styles.stateCard}>
+            {isLoading ? (
+              <>
+                <ActivityIndicator
+                  size="small"
+                  color={theme.chart2 ?? theme.accent}
+                />
+                <Text style={styles.stateTitle}>Loading meditation</Text>
+                <Text style={styles.stateText}>
+                  Fetching the latest wellness content details.
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.errorTitle}>Detail unavailable</Text>
+                <Text style={styles.errorText}>
+                  {loadError ?? "Unable to load the latest meditation details."}
+                </Text>
+              </>
+            )}
+          </View>
+        </View>
+      </ScreenView>
+    );
+  }
+
   return (
     <ScreenView bgColor={theme.background} style={styles.screen}>
       <View style={styles.root}>
@@ -343,7 +275,7 @@ export default function MeditationDetailScreen() {
               accessibilityLabel: isFavorite
                 ? "Remove from favorites"
                 : "Add to favorites",
-              onPress: () => setIsFavorite((value) => !value),
+              onPress: () => void handleToggleFavorite(),
             },
             {
               icon: "share-outline",
@@ -446,7 +378,7 @@ export default function MeditationDetailScreen() {
 
             {meditation.tags.length > 0 ? (
               <View style={styles.tagsRow}>
-                {meditation.tags.slice(0, 4).map((tag) => (
+                {meditation.tags.slice(0, 4).map((tag: any) => (
                   <View key={tag} style={styles.tagChip}>
                     <Text style={styles.tagText}>
                       #{formatMeditationTagLabel(tag).toUpperCase()}
@@ -508,40 +440,42 @@ export default function MeditationDetailScreen() {
             </View>
           ) : null}
 
-          <View style={styles.benefitCard}>
-            <View style={styles.cardHeaderRow}>
-              <Text style={styles.cardLabel}>BENEFITS</Text>
-              <View style={styles.miniPill}>
-                <Ionicons
-                  name="sparkles-outline"
-                  size={14}
-                  color={theme.textSecondary}
-                />
-                <Text style={styles.miniPillText}>
-                  {benefits.length} insights
-                </Text>
+          {benefits.length > 0 ? (
+            <View style={styles.benefitCard}>
+              <View style={styles.cardHeaderRow}>
+                <Text style={styles.cardLabel}>BENEFITS</Text>
+                <View style={styles.miniPill}>
+                  <Ionicons
+                    name="sparkles-outline"
+                    size={14}
+                    color={theme.textSecondary}
+                  />
+                  <Text style={styles.miniPillText}>
+                    {benefits.length} insights
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.benefitList}>
+                {benefits.map((benefit) => (
+                  <View key={benefit.id} style={styles.benefitRow}>
+                    <View style={styles.benefitIcon}>
+                      <Ionicons
+                        name="checkmark"
+                        size={14}
+                        color={theme.background}
+                      />
+                    </View>
+
+                    <View style={styles.benefitCopy}>
+                      <Text style={styles.benefitTitle}>{benefit.title}</Text>
+                      <Text style={styles.benefitText}>{benefit.text}</Text>
+                    </View>
+                  </View>
+                ))}
               </View>
             </View>
-
-            <View style={styles.benefitList}>
-              {benefits.map((benefit) => (
-                <View key={benefit.id} style={styles.benefitRow}>
-                  <View style={styles.benefitIcon}>
-                    <Ionicons
-                      name="checkmark"
-                      size={14}
-                      color={theme.background}
-                    />
-                  </View>
-
-                  <View style={styles.benefitCopy}>
-                    <Text style={styles.benefitTitle}>{benefit.title}</Text>
-                    <Text style={styles.benefitText}>{benefit.text}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </View>
+          ) : null}
 
           {meditation.scientificSynthesis ? (
             <View style={styles.scienceCard}>
@@ -557,22 +491,11 @@ export default function MeditationDetailScreen() {
                 {meditation.scientificSynthesis.text}
               </Text>
               <Text style={styles.scienceSource}>
-                Source: {meditation.scientificSynthesis.source}
+                {meditation.scientificSynthesis.source
+                  ? `Source: ${meditation.scientificSynthesis.source}`
+                  : ""}
+                {/* {meditation.scientificSynthesis.source} */}
               </Text>
-            </View>
-          ) : null}
-
-          {loadError ? (
-            <View style={styles.errorCard}>
-              <View style={styles.cardHeaderRow}>
-                <Text style={styles.errorTitle}>Detail unavailable</Text>
-                <Ionicons
-                  name="warning-outline"
-                  size={16}
-                  color="#F7C48B"
-                />
-              </View>
-              <Text style={styles.errorText}>{loadError}</Text>
             </View>
           ) : null}
 
@@ -663,7 +586,8 @@ const styling = (
     },
     heroKicker: {
       fontFamily:
-        svaTypography?.textStyle.authTinyLabel.fontFamily ?? "Inter_600SemiBold",
+        svaTypography?.textStyle.authTinyLabel.fontFamily ??
+        "Inter_600SemiBold",
       fontSize: 10,
       lineHeight: 14,
       letterSpacing: 2.4,
@@ -810,14 +734,22 @@ const styling = (
       shadowOffset: { width: 0, height: 10 },
       elevation: 5,
     },
-    errorCard: {
+    stateCard: {
       borderRadius: 28,
-      backgroundColor: "rgba(247, 196, 139, 0.08)",
+      backgroundColor: theme.surface,
       borderWidth: 1,
-      borderColor: "rgba(247, 196, 139, 0.18)",
+      borderColor: theme.borderMuted ?? "rgba(255,255,255,0.05)",
       paddingHorizontal: 18,
       paddingVertical: 18,
       marginBottom: spacing.lg,
+      alignItems: "center",
+      justifyContent: "center",
+      minHeight: 180,
+      shadowColor: theme.shadow,
+      shadowOpacity: 0.18,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 10 },
+      elevation: 5,
     },
     cardHeaderRow: {
       flexDirection: "row",
@@ -828,7 +760,8 @@ const styling = (
     },
     cardLabel: {
       fontFamily:
-        svaTypography?.textStyle.authTinyLabel.fontFamily ?? "Inter_600SemiBold",
+        svaTypography?.textStyle.authTinyLabel.fontFamily ??
+        "Inter_600SemiBold",
       fontSize: 10,
       lineHeight: 14,
       letterSpacing: 2.2,
@@ -920,7 +853,8 @@ const styling = (
     },
     instructorRole: {
       fontFamily:
-        svaTypography?.textStyle.authTinyLabel.fontFamily ?? "Inter_600SemiBold",
+        svaTypography?.textStyle.authTinyLabel.fontFamily ??
+        "Inter_600SemiBold",
       fontSize: 11,
       lineHeight: 14,
       letterSpacing: 1.2,
@@ -974,7 +908,8 @@ const styling = (
     },
     scienceSource: {
       fontFamily:
-        svaTypography?.textStyle.authTinyLabel.fontFamily ?? "Inter_600SemiBold",
+        svaTypography?.textStyle.authTinyLabel.fontFamily ??
+        "Inter_600SemiBold",
       fontSize: 11,
       lineHeight: 16,
       color: theme.textSecondary,
@@ -988,6 +923,19 @@ const styling = (
       ...typography.body,
       color: "#F4D8B5",
       marginTop: 8,
+      textAlign: "center",
+    },
+    stateTitle: {
+      ...typography.h3,
+      color: theme.textPrimary,
+      marginTop: 12,
+      textAlign: "center",
+    },
+    stateText: {
+      ...typography.body,
+      color: theme.textSecondary,
+      marginTop: 8,
+      textAlign: "center",
     },
     ctaButton: {
       width: "100%",

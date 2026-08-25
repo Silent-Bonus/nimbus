@@ -9,7 +9,7 @@ import {
 import type {
   BreathMotionVariant,
   BreathPhase,
-} from "@/features/self-care/types/breathworkTypes";
+} from "@/features/self-care/types/wellnessContentTypes";
 import { resolveBreathworkColor } from "@/features/self-care/utils/breathworkUtils";
 import type { Typography } from "@/theme/types";
 

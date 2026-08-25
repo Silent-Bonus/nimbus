@@ -2,7 +2,7 @@
 
 import React from "react";
 import NimbusUltraFeaturedCard from "@/components/layout/NimbusUltraFeaturedCard";
-import { EnrichedMeditation } from "@/features/self-care/types/selfCareTypes";
+import type { EnrichedMeditation } from "@/features/self-care/types/wellnessContentTypes";
 
 interface MeditationFeaturedCardProps {
   data: EnrichedMeditation;

@@ -13,7 +13,7 @@ const mockSetOptions = jest.fn();
 const mockAddListener = jest.fn(() => jest.fn());
 const mockGetItem = jest.fn();
 const mockSetItem = jest.fn();
-const mockGetSoundscapeContentList = jest.fn();
+const mockGetWellnessContentList = jest.fn();
 
 jest.mock("expo-router", () => ({
   router: {
@@ -33,8 +33,8 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
 }));
 
 jest.mock("@/features/self-care/services/selfCareService", () => ({
-  getSoundscapeContentList: (...args: any[]) =>
-    mockGetSoundscapeContentList(...args),
+  getWellnessContentList: (...args: any[]) =>
+    mockGetWellnessContentList(...args),
 }));
 
 jest.mock("@expo/vector-icons", () => {
@@ -147,27 +147,45 @@ describe("SoundscapeScreen", () => {
     jest.clearAllMocks();
     mockGetItem.mockResolvedValue("[]");
     mockSetItem.mockResolvedValue(undefined);
-    mockGetSoundscapeContentList.mockResolvedValue({ data: rawTracks });
+    mockGetWellnessContentList.mockResolvedValue({ data: rawTracks });
   });
 
-  it("shows the favorites tag filter and filters the library to saved soundscapes", async () => {
+  it("shows favorites and category filters, then filters the library correctly", async () => {
     const tree = await renderScreen();
 
     expect(mockSetOptions).toHaveBeenCalledWith({
       headerShown: false,
     });
-    expect(mockGetSoundscapeContentList).toHaveBeenCalledTimes(1);
+    expect(mockGetWellnessContentList).toHaveBeenCalledTimes(1);
+    expect(mockGetWellnessContentList).toHaveBeenCalledWith({
+      modality: "soundscape",
+    });
     expect(tree.root.findAllByProps({ accessibilityLabel: "Show favorites" })).toHaveLength(0);
     expect(tree.root.findByProps({ accessibilityLabel: "Favorites" })).toBeTruthy();
+    expect(tree.root.findByProps({ accessibilityLabel: "Nature" })).toBeTruthy();
+    expect(tree.root.findByProps({ accessibilityLabel: "Sleep" })).toBeTruthy();
     expect(hasText(tree, "Rain Over Cedar")).toBe(true);
     expect(hasText(tree, "Ocean Drift")).toBe(true);
+
+    const natureFilter = tree.root.findByProps({
+      accessibilityLabel: "Nature",
+    });
+
+    act(() => {
+      natureFilter.props.onPress();
+    });
+
+    expect(hasText(tree, "Rain Over Cedar")).toBe(true);
+    expect(hasText(tree, "Ocean Drift")).toBe(false);
 
     const favoriteTag = tree.root.findByProps({
       accessibilityLabel: "Add Rain Over Cedar to favorites",
     });
 
-    act(() => {
+    await act(async () => {
       favoriteTag.props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
     });
 
     expect(mockSetItem).toHaveBeenLastCalledWith(
@@ -189,7 +207,9 @@ describe("SoundscapeScreen", () => {
       favoritesFilter.props.onPress();
     });
 
-    expect(hasText(tree, "A private stack of saved soundscapes.")).toBe(true);
+    expect(
+      hasText(tree, "Soundscape archive for rest, focus, and reset.")
+    ).toBe(true);
     expect(hasText(tree, "Rain Over Cedar")).toBe(true);
     expect(hasText(tree, "Ocean Drift")).toBe(false);
   });

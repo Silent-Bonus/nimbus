@@ -6,10 +6,6 @@ import ThemeContext from "../../../../contexts/ThemeContext";
 import { getTheme } from "../../../../theme";
 import { ROUTES } from "../../../../constants/routes";
 import MeditationScreen from "../MeditationScreen";
-import {
-  buildMeditationRouteParams,
-  mapMeditationTemplate,
-} from "../../utils/meditationLibrary";
 import { getWellnessContentList } from "../../services/selfCareService";
 
 const mockPush = jest.fn();
@@ -119,23 +115,28 @@ async function renderScreen() {
 describe("MeditationScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetWellnessContentList.mockResolvedValue({
-      success: true,
-      message: "Wellness content retrieved successfully.",
-      data: wellnessContent as any,
-      pagination: {
-        count: 2,
-        next: null,
-        previous: null,
-        page: 1,
-        page_size: 100,
-        total_pages: 1,
-        results_count: 2,
-      },
-    });
+    mockGetWellnessContentList.mockImplementation((params) =>
+      Promise.resolve({
+        success: true,
+        message: "Wellness content retrieved successfully.",
+        data:
+          params?.category === "sleep"
+            ? ([wellnessContent[1]] as any)
+            : (wellnessContent as any),
+        pagination: {
+          count: params?.category === "sleep" ? 1 : 2,
+          next: null,
+          previous: null,
+          page: 1,
+          page_size: 100,
+          total_pages: 1,
+          results_count: params?.category === "sleep" ? 1 : 2,
+        },
+      })
+    );
   });
 
-  it("renders the API-backed meditation list and opens the featured meditation with hydrated params", async () => {
+  it("renders the API-backed meditation list and opens the featured meditation with id and slug", async () => {
     const tree = await renderScreen();
 
     expect(mockSetOptions).toHaveBeenCalledWith({
@@ -163,23 +164,36 @@ describe("MeditationScreen", () => {
 
     expect(mockPush).toHaveBeenCalledWith({
       pathname: ROUTES.AUTH.SELF_CARE_MEDITATION_DETAIL,
-      params: buildMeditationRouteParams(
-        mapMeditationTemplate(wellnessContent[0] as any, 0)
-      ),
+      params: {
+        meditationId: "1",
+        meditationSlug: "relaxing-meditation",
+      },
     });
   });
 
-  it("filters the library by tag and opens a library item with the API payload", async () => {
+  it("filters the library by category and opens a library item with the API payload", async () => {
     const tree = await renderScreen();
+
+    expect(() =>
+      tree.root.findByProps({
+        accessibilityLabel: "Beginner",
+      })
+    ).toThrow();
 
     const sleepFilter = tree.root.findByProps({
       accessibilityLabel: "Sleep",
     });
 
-    act(() => {
+    await act(async () => {
       sleepFilter.props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
     });
 
+    expect(mockGetWellnessContentList).toHaveBeenNthCalledWith(2, {
+      modality: "meditation",
+      category: "sleep",
+    });
     expect(hasText(tree, "Sleep collection")).toBe(true);
     expect(hasText(tree, "Sleep Soothing Meditation")).toBe(true);
     expect(hasText(tree, "Relaxing Meditation")).toBe(false);
@@ -194,9 +208,10 @@ describe("MeditationScreen", () => {
 
     expect(mockPush).toHaveBeenCalledWith({
       pathname: ROUTES.AUTH.SELF_CARE_MEDITATION_DETAIL,
-      params: buildMeditationRouteParams(
-        mapMeditationTemplate(wellnessContent[1] as any, 1)
-      ),
+      params: {
+        meditationId: "2",
+        meditationSlug: "sleep-soothing-meditation",
+      },
     });
   });
 });

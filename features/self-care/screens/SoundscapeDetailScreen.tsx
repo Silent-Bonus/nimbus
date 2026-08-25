@@ -14,7 +14,6 @@ import {
   Text,
   View,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -27,16 +26,18 @@ import { NimbusButton } from "@/components/ui/theme-components/NimbusButton";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import ThemeContext from "@/contexts/ThemeContext";
 import { ROUTES } from "@/constants/routes";
+import {
+  readFavoriteIds,
+  toggleFavoriteId,
+} from "@/features/self-care/services/favoritesStorage";
 import { getWellnessContentDetail } from "@/features/self-care/services/selfCareService";
 import {
   cacheSoundscapeTracks,
-  buildSoundscapeBenefits,
-  buildSoundscapeSubtitle,
   formatSoundscapeTagLabel,
   getSoundscapeById,
   toSoundscapeTrack,
-  type SoundscapeTrack,
 } from "@/features/self-care/utils/soundscapeLibrary";
+import type { SoundscapeTrack } from "@/features/self-care/types/soundscapeTypes";
 import type {
   Spacing,
   SvaColorSet,
@@ -48,16 +49,18 @@ type SoundscapeDetailParams = {
   soundscapeId?: string | string[];
 };
 
-const FAVORITES_KEY = "soundscape_favorites_v1";
-
 const parseParam = (value?: string | string[]) => {
   if (Array.isArray(value)) return value[0];
   return value;
 };
 
+// Soundscape detail routes currently pass a numeric id from the library flow.
+// The detail fetch only runs when that identifier can be used by the backend.
 const isNumericId = (value: string) => /^\d+$/.test(value.trim());
 
 export default function SoundscapeDetailScreen() {
+  // The screen tries to render immediately from the in-memory soundscape cache,
+  // then refreshes from the wellness detail API when the route id is fetchable.
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<SoundscapeDetailParams>();
@@ -71,8 +74,10 @@ export default function SoundscapeDetailScreen() {
     [svaColors, svaTypography, spacing, typography]
   );
 
-  const [soundscape, setSoundscape] = useState<SoundscapeTrack | null>(() =>
-    getSoundscapeById(soundscapeId) ?? null
+  // Cached soundscape data keeps the transition from library to detail fast,
+  // while the later API refresh fills in the latest backend content.
+  const [soundscape, setSoundscape] = useState<SoundscapeTrack | null>(
+    () => getSoundscapeById(soundscapeId) ?? null
   );
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -80,14 +85,21 @@ export default function SoundscapeDetailScreen() {
 
   const favoriteSet = useMemo(() => new Set(favoriteIds), [favoriteIds]);
   const isFavorite = soundscape ? favoriteSet.has(soundscape.id) : false;
-  const benefits = useMemo(
-    () => (soundscape ? buildSoundscapeBenefits(soundscape) : []),
-    [soundscape]
-  );
+  const benefits = soundscape?.benefits ?? [];
   const subtitle = useMemo(
-    () => (soundscape ? buildSoundscapeSubtitle(soundscape) : ""),
+    () =>
+      soundscape ? `${soundscape.durationLabel} · ${soundscape.category}` : "",
     [soundscape]
   );
+  const ratingLabel = useMemo(() => {
+    if (typeof soundscape?.rating !== "number") {
+      return "4";
+    }
+
+    return Number.isInteger(soundscape.rating)
+      ? String(soundscape.rating)
+      : soundscape.rating.toFixed(1);
+  }, [soundscape?.rating]);
 
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
@@ -96,14 +108,13 @@ export default function SoundscapeDetailScreen() {
   useEffect(() => {
     let active = true;
 
+    // Favorites are local-only state shared with the library screen via the
+    // same AsyncStorage key so the bookmark action stays in sync across screens.
     const loadFavorites = async () => {
       try {
-        const raw = await AsyncStorage.getItem(FAVORITES_KEY);
-        if (!raw) return;
-
-        const parsed: unknown = JSON.parse(raw);
-        if (active && Array.isArray(parsed)) {
-          setFavoriteIds(parsed.map(String));
+        const ids = await readFavoriteIds("soundscape");
+        if (active) {
+          setFavoriteIds(ids);
         }
       } catch (error) {
         console.warn("Unable to load soundscape favorites:", error);
@@ -120,6 +131,8 @@ export default function SoundscapeDetailScreen() {
   useEffect(() => {
     let active = true;
 
+    // Reset from cache first on every route change so the screen can show
+    // previously visited content immediately while the network refresh runs.
     setSoundscape(getSoundscapeById(soundscapeId) ?? null);
     setLoadError(null);
 
@@ -132,11 +145,15 @@ export default function SoundscapeDetailScreen() {
 
     setIsLoading(true);
 
+    // Numeric ids fetch the latest detail payload, then map it back into the
+    // shared soundscape track shape used by detail and player flows.
     const loadSoundscapeDetails = async () => {
       try {
         const response = await getWellnessContentDetail(Number(soundscapeId));
         if (!active) return;
 
+        // Reuse the library mapper so detail and player screens read the same
+        // normalized soundscape shape from cache and API responses.
         const mappedSoundscape = toSoundscapeTrack(response.data, 0);
         setSoundscape(mappedSoundscape);
         cacheSoundscapeTracks([mappedSoundscape]);
@@ -159,16 +176,14 @@ export default function SoundscapeDetailScreen() {
     };
   }, [soundscapeId]);
 
+  // Favorite toggles update both local state and persisted storage so the next
+  // library/detail visit reflects the same saved state.
   const handleToggleFavorite = useCallback(async () => {
     if (!soundscape) return;
 
     try {
-      const nextFavorites = isFavorite
-        ? favoriteIds.filter((id) => id !== soundscape.id)
-        : [soundscape.id, ...favoriteIds];
-
+      const nextFavorites = await toggleFavoriteId("soundscape", soundscape.id);
       setFavoriteIds(nextFavorites);
-      await AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(nextFavorites));
     } catch (error) {
       console.warn("soundscape favorite toggle failed", error);
     }
@@ -186,6 +201,8 @@ export default function SoundscapeDetailScreen() {
     router.back();
   }, []);
 
+  // The player only needs the normalized soundscape id because the player
+  // screen resolves the rest of the content from the shared cache.
   const handleStartSoundscape = useCallback(() => {
     if (!soundscape) return;
 
@@ -223,7 +240,6 @@ export default function SoundscapeDetailScreen() {
           subtitle="A quiet threshold before the sound begins."
           onBack={handleBack}
           rightActions={headerActions}
-          titleStyle={styles.headerTitle}
           subtitleStyle={styles.headerSubtitle}
           containerStyle={styles.header}
         />
@@ -241,10 +257,13 @@ export default function SoundscapeDetailScreen() {
               <View style={styles.heroTextBlock}>
                 <Text style={styles.heroKicker}>CURATED SOUNDSCAPE</Text>
                 <Text style={styles.heroTitle} numberOfLines={2}>
-                  {isLoading ? "Refreshing soundscape" : "Soundscape unavailable"}
+                  {isLoading
+                    ? "Refreshing soundscape"
+                    : "Soundscape unavailable"}
                 </Text>
                 <Text style={styles.heroSubtext}>
-                  {loadError ?? "Open a soundscape detail screen to load the latest content."}
+                  {loadError ??
+                    "Open a soundscape detail screen to load the latest content."}
                 </Text>
 
                 <View style={styles.loadingChip}>
@@ -261,7 +280,9 @@ export default function SoundscapeDetailScreen() {
                     />
                   )}
                   <Text style={styles.loadingChipText}>
-                    {isLoading ? "Loading soundscape" : "Waiting for soundscape"}
+                    {isLoading
+                      ? "Loading soundscape"
+                      : "Waiting for soundscape"}
                   </Text>
                 </View>
               </View>
@@ -296,6 +317,20 @@ export default function SoundscapeDetailScreen() {
                 </Text>
                 <Text style={styles.heroSubtext}>{subtitle}</Text>
 
+                <View style={styles.heroMetaRow}>
+                  <View
+                    style={styles.heroMetaPill}
+                    accessibilityLabel={`Soundscape rating ${ratingLabel}`}
+                  >
+                    <Ionicons
+                      name="star"
+                      size={12}
+                      color={svaColors.brand.primary}
+                    />
+                    <Text style={styles.heroMetaText}>{ratingLabel}</Text>
+                  </View>
+                </View>
+
                 {isLoading ? (
                   <View style={styles.loadingChip}>
                     <ActivityIndicator
@@ -316,53 +351,111 @@ export default function SoundscapeDetailScreen() {
                 <Text style={styles.cardMeta}>{soundscape.category}</Text>
               </View>
 
-              <Text style={styles.descriptionText}>{soundscape.description}</Text>
+              <Text style={styles.descriptionText}>
+                {soundscape.description}
+              </Text>
+
+              {soundscape.frequencyHz || soundscape.moodLabel ? (
+                <View style={styles.signalRow}>
+                  {soundscape.frequencyHz ? (
+                    <View style={styles.signalChip}>
+                      <Text style={styles.signalText}>
+                        {soundscape.frequencyHz.toFixed(2)} HZ
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  {soundscape.moodLabel ? (
+                    <View style={styles.signalChip}>
+                      <Text style={styles.signalText}>
+                        {soundscape.moodLabel.toUpperCase()}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              ) : null}
 
               {loadError ? (
                 <Text style={styles.errorText}>{loadError}</Text>
               ) : null}
 
-              <View style={styles.tagsRow}>
-                {soundscape.tags.slice(0, 3).map((tag) => (
-                  <View key={tag} style={styles.tagChip}>
-                    <Text style={styles.tagText}>
-                      #{formatSoundscapeTagLabel(tag).toUpperCase()}
+              {soundscape.tags.length > 0 ? (
+                <View style={styles.tagsRow}>
+                  {soundscape.tags.slice(0, 3).map((tag) => (
+                    <View key={tag} style={styles.tagChip}>
+                      <Text style={styles.tagText}>
+                        #{formatSoundscapeTagLabel(tag).toUpperCase()}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+
+            {soundscape.longDescription ? (
+              <View style={styles.detailCard}>
+                <View style={styles.cardHeaderRow}>
+                  <Text style={styles.cardLabel}>DEEPER LISTENING</Text>
+                  <View style={styles.miniPill}>
+                    <Ionicons
+                      name="ear-outline"
+                      size={14}
+                      color={svaColors.text.secondary}
+                    />
+                    <Text style={styles.miniPillText}>EXTENDED NOTES</Text>
+                  </View>
+                </View>
+
+                <Text style={styles.descriptionText}>
+                  {soundscape.longDescription}
+                </Text>
+              </View>
+            ) : null}
+
+            {benefits.length > 0 ? (
+              <View style={styles.benefitCard}>
+                <View style={styles.cardHeaderRow}>
+                  <Text style={styles.cardLabel}>WHY IT HELPS</Text>
+                  <View style={styles.miniPill}>
+                    <Ionicons
+                      name="musical-notes-outline"
+                      size={14}
+                      color={svaColors.text.secondary}
+                    />
+                    <Text style={styles.miniPillText}>
+                      {soundscape.category.toUpperCase()}
                     </Text>
                   </View>
-                ))}
-              </View>
-            </View>
+                </View>
 
-            <View style={styles.benefitCard}>
-              <View style={styles.cardHeaderRow}>
-                <Text style={styles.cardLabel}>WHY IT HELPS</Text>
-                <View style={styles.miniPill}>
-                  <Ionicons
-                    name="musical-notes-outline"
-                    size={14}
-                    color={svaColors.text.secondary}
-                  />
-                  <Text style={styles.miniPillText}>
-                    {soundscape.category.toUpperCase()}
-                  </Text>
+                <View style={styles.benefitList}>
+                  {benefits.map((benefit) => (
+                    <View
+                      key={`${benefit.id}-${benefit.title}`}
+                      style={styles.benefitRow}
+                    >
+                      <View style={styles.benefitIcon}>
+                        <Ionicons
+                          name="checkmark"
+                          size={14}
+                          color={svaColors.bg.base}
+                        />
+                      </View>
+                      <View style={styles.benefitCopy}>
+                        {benefit.title ? (
+                          <Text style={styles.benefitTitle}>
+                            {benefit.title}
+                          </Text>
+                        ) : null}
+                        {benefit.text ? (
+                          <Text style={styles.benefitText}>{benefit.text}</Text>
+                        ) : null}
+                      </View>
+                    </View>
+                  ))}
                 </View>
               </View>
-
-              <View style={styles.benefitList}>
-                {benefits.map((benefit) => (
-                  <View key={benefit} style={styles.benefitRow}>
-                    <View style={styles.benefitIcon}>
-                      <Ionicons
-                        name="checkmark"
-                        size={14}
-                        color={svaColors.bg.base}
-                      />
-                    </View>
-                    <Text style={styles.benefitText}>{benefit}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
+            ) : null}
 
             <NimbusButton
               label={ctaLabel}
@@ -402,15 +495,6 @@ const styling = (
     },
     header: {
       marginBottom: spacing.md,
-    },
-    headerTitle: {
-      fontFamily:
-        svaTypography?.textStyle.displayMedium.fontFamily ??
-        "CormorantGaramond_500Medium",
-      fontSize: 34,
-      lineHeight: 34,
-      letterSpacing: -0.8,
-      color: theme.text.primary,
     },
     headerSubtitle: {
       fontFamily:
@@ -493,6 +577,29 @@ const styling = (
       marginTop: 10,
       letterSpacing: 0.3,
     },
+    heroMetaRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+      marginTop: 14,
+    },
+    heroMetaPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 7,
+      borderRadius: 999,
+      backgroundColor: "rgba(9, 11, 8, 0.38)",
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.12)",
+      alignSelf: "flex-start",
+    },
+    heroMetaText: {
+      ...typography.smallCaption,
+      color: theme.text.primary,
+      letterSpacing: 1,
+    },
     loadingChip: {
       flexDirection: "row",
       alignItems: "center",
@@ -540,6 +647,20 @@ const styling = (
       shadowOffset: { width: 0, height: 10 },
       elevation: 5,
     },
+    detailCard: {
+      borderRadius: 28,
+      backgroundColor: theme.surface.base,
+      borderWidth: 1,
+      borderColor: theme.border.subtle,
+      paddingHorizontal: 18,
+      paddingVertical: 18,
+      marginBottom: spacing.lg,
+      shadowColor: theme.shadow.default,
+      shadowOpacity: 0.18,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 10 },
+      elevation: 5,
+    },
     cardHeaderRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -576,6 +697,26 @@ const styling = (
       marginTop: spacing.sm,
       textTransform: "uppercase",
       letterSpacing: 1.2,
+    },
+    signalRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 10,
+      marginTop: 16,
+    },
+    signalChip: {
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 999,
+      backgroundColor: "rgba(255,255,255,0.06)",
+      borderWidth: 1,
+      borderColor: theme.border.subtle,
+    },
+    signalText: {
+      ...typography.smallCaption,
+      color: theme.text.secondary,
+      textTransform: "uppercase",
+      letterSpacing: 1.1,
     },
     tagsRow: {
       flexDirection: "row",
@@ -628,6 +769,20 @@ const styling = (
       justifyContent: "center",
       backgroundColor: theme.brand.primary,
       marginTop: 2,
+    },
+    benefitCopy: {
+      flex: 1,
+      gap: 4,
+    },
+    benefitTitle: {
+      fontFamily:
+        svaTypography?.textStyle.authTinyLabel.fontFamily ??
+        "Inter_600SemiBold",
+      fontSize: 12,
+      lineHeight: 16,
+      letterSpacing: 1.1,
+      textTransform: "uppercase",
+      color: theme.text.primary,
     },
     benefitText: {
       flex: 1,

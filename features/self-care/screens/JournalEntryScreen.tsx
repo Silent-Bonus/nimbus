@@ -25,7 +25,7 @@ import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import { ROUTES } from "@/constants/routes";
 import { submitJournalEntry } from "@/features/self-care/services/selfCareService";
 import { useNimbusToast } from "@/components/ui/toast/useNimbusToast";
-import type { JournalSubmitRequest } from "@/features/self-care/types/selfCareTypes";
+import type { JournalSubmitRequest } from "@/features/self-care/types/journalTypes";
 
 type JournalStep = {
   id: string;

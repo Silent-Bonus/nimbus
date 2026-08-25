@@ -1,17 +1,22 @@
 import {
-  BREATH_PATTERNS,
+  createFallbackBreathPattern,
   filterBreathPatterns,
   formatBreathCadence,
-  formatBreathToneLabel,
+  formatBreathStyleLabel,
   getBreathMotionVariant,
 } from "../breathworkUtils";
 
 describe("breathworkUtils", () => {
   it("formats breath cadences for the active pattern", () => {
-    expect(BREATH_PATTERNS[0].title).toBe("Box Breath");
-    expect(formatBreathCadence(BREATH_PATTERNS[0])).toBe("4 - 4 - 4 - 4");
-    expect(formatBreathToneLabel("release")).toBe("Release");
-    expect(filterBreathPatterns(BREATH_PATTERNS, "steady")).toHaveLength(1);
+    const groundingPattern = createFallbackBreathPattern("grounding");
+    const steadyPattern = createFallbackBreathPattern("steady");
+
+    expect(groundingPattern.title).toBe("Box Breath");
+    expect(formatBreathCadence(groundingPattern)).toBe("4 - 4 - 4 - 4");
+    expect(formatBreathStyleLabel("release")).toBe("Release");
+    expect(
+      filterBreathPatterns([groundingPattern, steadyPattern], "steady")
+    ).toHaveLength(1);
   });
 
   it("maps breath patterns to the intended motion variant", () => {

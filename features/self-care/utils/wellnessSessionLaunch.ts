@@ -2,7 +2,7 @@ import { createWellnessSession } from "@/features/self-care/services/wellnessSes
 import type {
   WellnessSessionCreateResponse,
   WellnessSessionRequest,
-} from "@/features/self-care/types/selfCareTypes";
+} from "@/features/self-care/types/wellnessSessionTypes";
 
 type LaunchKey = string;
 

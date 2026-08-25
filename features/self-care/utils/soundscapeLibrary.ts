@@ -1,45 +1,42 @@
 import type { ImageSourcePropType } from "react-native";
 
-import type { TrackType } from "@/constants/data/soundtrack";
+import type {
+  SoundscapeContentItem,
+  SoundscapeListInput,
+  SoundscapeTrack,
+} from "@/features/self-care/types/soundscapeTypes";
+import type { WellnessContentBenefit } from "@/features/self-care/types/wellnessContentTypes";
 
 const FALLBACK_IMAGE = require("../../../assets/images/mt.jpg");
 const FALLBACK_SOURCE = require("../../../assets/dump/lightRain.mp3");
-
-export type SoundscapeRawTrack = {
-  id?: string | string[];
-  slug?: string;
-  title?: string;
-  name?: string;
-  duration?: unknown;
-  description?: string;
-  longDescription?: string;
-  guidance?: string;
-  date?: string;
-  image?: unknown;
-  source?: unknown;
-  audio?: unknown;
-  category?: string;
-  rating?: number;
-  reviews?: number;
-  level?: string;
-  dosha?: string;
-  modality?: string;
-  isLocked?: boolean;
-  is_locked?: boolean;
-  tags?: unknown;
-};
-
-export type SoundscapeTrack = TrackType & {
-  durationLabel: string;
-  tags: string[];
-  filterTags: string[];
-  frequencyHz: number | null;
-};
+const DEFAULT_SOUNDSCAPE_RATING = 4;
+const DEFAULT_SOUNDSCAPE_MOOD = "Test mood";
 
 const SOUNDSCAPE_CACHE = new Map<string, SoundscapeTrack>();
 
 export const normalizeKey = (value: string) =>
-  value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+const normalizeText = (value: unknown): string | undefined => {
+  if (typeof value !== "string") return undefined;
+
+  const trimmed = value.trim();
+  return trimmed || undefined;
+};
+
+const normalizeIdentifier = (value: unknown): string | undefined => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  return normalizeText(value);
+};
+
+const normalizeNumber = (value: unknown): number | undefined =>
+  typeof value === "number" && Number.isFinite(value) ? value : undefined;
 
 const formatTagLabel = (value?: string | null) => {
   if (!value) return "Curated";
@@ -59,12 +56,19 @@ const formatTagLabel = (value?: string | null) => {
 
 const formatDurationLabel = (duration: unknown) => {
   if (typeof duration === "number" && Number.isFinite(duration)) {
+    if (duration <= 0) return "3 min";
     return `${duration} min`;
   }
 
   if (typeof duration === "string") {
     const trimmed = duration.trim();
     if (!trimmed) return "3 min";
+
+    const numericValue = Number.parseFloat(trimmed);
+    if (Number.isFinite(numericValue) && numericValue <= 0) {
+      return "3 min";
+    }
+
     if (/\d/.test(trimmed)) return trimmed;
     return `${trimmed} min`;
   }
@@ -72,7 +76,11 @@ const formatDurationLabel = (duration: unknown) => {
   return "3 min";
 };
 
-const detectMoodTag = (title: string, description: string, category: string) => {
+const detectMoodTag = (
+  title: string,
+  description: string,
+  category: string
+) => {
   const blob = `${title} ${description} ${category}`.toLowerCase();
 
   if (/(rain|storm|wave|ocean|river|stream|brook|water|sea)/.test(blob)) {
@@ -84,7 +92,11 @@ const detectMoodTag = (title: string, description: string, category: string) => 
   if (/(focus|study|work|clarity|concentr|productiv|brain)/.test(blob)) {
     return "Focus";
   }
-  if (/(binaural|frequency|hz|resonance|pulse|alpha|beta|theta|delta|gamma)/.test(blob)) {
+  if (
+    /(binaural|frequency|hz|resonance|pulse|alpha|beta|theta|delta|gamma)/.test(
+      blob
+    )
+  ) {
     return "Frequency";
   }
   if (/(breath|breathing|meditat|calm|relax|soothe)/.test(blob)) {
@@ -122,146 +134,125 @@ const resolveAudioSource = (source: unknown) => {
   return source;
 };
 
+const normalizeBenefits = (
+  benefits?: WellnessContentBenefit[]
+): WellnessContentBenefit[] | undefined => {
+  if (!Array.isArray(benefits)) return undefined;
+
+  const normalized = benefits
+    .map((benefit) => ({
+      id: benefit.id,
+      title: benefit.title.trim(),
+      text: benefit.text.trim(),
+    }))
+    .filter(
+      (benefit) =>
+        Number.isFinite(benefit.id) ||
+        Boolean(benefit.title) ||
+        Boolean(benefit.text)
+    );
+
+  return normalized.length > 0 ? normalized : undefined;
+};
+
 export const toSoundscapeTrack = (
-  item: SoundscapeRawTrack | unknown,
+  item: SoundscapeContentItem,
   index: number
 ): SoundscapeTrack => {
-  const record =
-    item && typeof item === "object" ? (item as SoundscapeRawTrack) : {};
-  const title = String(record.title ?? `Soundscape ${index + 1}`);
-  const description = String(record.description ?? "");
-  const category = formatTagLabel(String(record.category ?? "Curated"));
+  // Shared mapper for soundscape wellness content.
+  // Consumed by:
+  // - resolveSoundscapeTracks(...) for the soundscape library screen
+  // - SoundscapeDetailScreen when the detail API returns one item
+  // - cached/test setup that needs the normalized player/detail shape
+  const record = item;
+  const title =
+    normalizeText(record.title) ?? `Soundscape ${index + 1}`;
+  const category = formatTagLabel(normalizeText(record.category) ?? "Curated");
   const durationLabel = formatDurationLabel(record.duration);
-  const moodTag = detectMoodTag(title, description, category);
   const sourceTags = Array.isArray(record.tags)
     ? record.tags
-        .map((tag) => formatTagLabel(String(tag)))
+        .map((tag) => formatTagLabel(normalizeText(tag) ?? String(tag)))
         .filter(Boolean)
     : [];
-  const tags = uniqueStrings([category, moodTag, ...sourceTags]);
+  const tags = uniqueStrings(sourceTags);
+  const baseDescription =
+    normalizeText(record.description) ??
+    normalizeText(record.longDescription) ??
+    normalizeText(record.guidance);
+  const supportingTags = tags.filter(
+    (tag) => normalizeKey(tag) !== normalizeKey(category)
+  );
+  const tagSummary =
+    supportingTags.length > 0 ? supportingTags.slice(0, 2).join(" and ") : null;
+  const dosha = normalizeText(record.dosha);
+  const description =
+    baseDescription ??
+    (tagSummary && dosha
+      ? `${title} is a ${category.toLowerCase()} soundscape created for ${tagSummary.toLowerCase()} with ${dosha.toLowerCase()} support.`
+      : tagSummary
+        ? `${title} is a ${category.toLowerCase()} soundscape created for ${tagSummary.toLowerCase()} and gentle reset.`
+        : dosha
+          ? `${title} is a ${category.toLowerCase()} soundscape with ${dosha.toLowerCase()} support and a restorative ambient layer.`
+          : `${title} is a ${category.toLowerCase()} soundscape designed to slow the room down and support a steadier reset.`);
+  const moodTag = detectMoodTag(title, description, category);
+  const filterTags = uniqueStrings([category, moodTag]);
+  const normalizedRating = normalizeNumber(record.rating);
   const idValue = Array.isArray(record.id) ? record.id[0] : record.id;
-  const resolvedId = idValue ?? record.slug ?? `${normalizeKey(title)}-${index}`;
+  const resolvedId =
+    normalizeIdentifier(idValue) ??
+    normalizeText(record.slug) ??
+    `${normalizeKey(title)}-${index}`;
 
   return {
     ...(record ?? {}),
     id: String(resolvedId),
     title,
-    name: record.name ?? title,
     duration: durationLabel,
     durationLabel,
     description,
+    longDescription: normalizeText(record.longDescription),
     image: resolveImageSource(record.image),
     source: resolveAudioSource(record.source ?? record.audio),
     category,
     isLocked: Boolean(record.isLocked ?? record.is_locked),
     tags,
-    filterTags: tags,
+    filterTags,
     frequencyHz: extractFrequencyHz(title),
+    rating:
+      typeof normalizedRating === "number" && normalizedRating > 0
+        ? normalizedRating
+        : DEFAULT_SOUNDSCAPE_RATING,
+    moodLabel: DEFAULT_SOUNDSCAPE_MOOD,
+    benefits: normalizeBenefits(record.benefits),
   };
 };
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
-
-export const extractSoundscapeRawTracks = (
-  result: unknown
-): SoundscapeRawTrack[] | null => {
-  if (!isRecord(result)) {
-    return Array.isArray(result) ? (result as SoundscapeRawTrack[]) : null;
-  }
-
-  if (Array.isArray(result.data)) {
-    return result.data as SoundscapeRawTrack[];
-  }
-
-  if (Array.isArray(result.items)) {
-    return result.items as SoundscapeRawTrack[];
-  }
-
-  if (Array.isArray(result.results)) {
-    return result.results as SoundscapeRawTrack[];
-  }
-
-  return null;
-};
-
-export const resolveSoundscapeTracks = (result: unknown): SoundscapeTrack[] => {
-  const rawTracks = extractSoundscapeRawTracks(result);
-  if (!rawTracks || rawTracks.length === 0) {
-    return [];
-  }
-
-  return rawTracks.map((item, index) => toSoundscapeTrack(item, index));
+export const resolveSoundscapeTracks = (
+  result: SoundscapeListInput
+): SoundscapeTrack[] => {
+  // Library responses arrive as WellnessContentResponse, but tests may still
+  // pass a direct array. Both are normalized through the same mapper above.
+  const items = Array.isArray(result) ? result : result?.data ?? [];
+  return items.map((item, index) => toSoundscapeTrack(item, index));
 };
 
 type CacheableSoundscapeTrack = {
   id: string;
-  name?: string | null;
 };
 
-export const cacheSoundscapeTracks = (
-  tracks: CacheableSoundscapeTrack[]
-) => {
+export const cacheSoundscapeTracks = (tracks: CacheableSoundscapeTrack[]) => {
   tracks.forEach((track) => {
-    const keys = [track.id, track.name]
-      .map((key) => key?.trim())
-      .filter((key): key is string => Boolean(key));
-
-    keys.forEach((key) => {
-      SOUNDSCAPE_CACHE.set(key, track as SoundscapeTrack);
-    });
+    const key = track.id.trim();
+    if (!key) return;
+    SOUNDSCAPE_CACHE.set(key, track as SoundscapeTrack);
   });
 };
 
 export const getSoundscapeById = (soundscapeId?: string | null) =>
-  (soundscapeId ? SOUNDSCAPE_CACHE.get(soundscapeId) : undefined);
+  soundscapeId ? SOUNDSCAPE_CACHE.get(soundscapeId) : undefined;
 
-export const buildSoundscapeSubtitle = (soundscape: SoundscapeTrack) =>
-  `${soundscape.durationLabel} · ${soundscape.category}`;
-
-export const buildSoundscapeBenefits = (soundscape: SoundscapeTrack) => {
-  const blob = `${soundscape.title} ${soundscape.description} ${soundscape.category}`.toLowerCase();
-
-  if (/(sleep|dream|night|rest|nap|lullaby)/.test(blob)) {
-    return [
-      "Lower the pace before the night settles in.",
-      "Let the room feel softer without asking for effort.",
-      "Move the body toward a slower, quieter reset.",
-    ];
-  }
-
-  if (/(rain|storm|wave|ocean|river|stream|brook|water|sea)/.test(blob)) {
-    return [
-      "Wrap the session in an organic, grounded texture.",
-      "Keep attention anchored in a calm natural rhythm.",
-      "Build a quiet background for restoration.",
-    ];
-  }
-
-  if (/(focus|study|work|clarity|concentr|productiv|brain)/.test(blob)) {
-    return [
-      "Clear a small corridor for concentration.",
-      "Give the mind one steady cadence to return to.",
-      "Reduce friction before deep work or study.",
-    ];
-  }
-
-  if (/(release|soften|relax|calm|breath|meditat)/.test(blob)) {
-    return [
-      "Let tension soften without needing to be solved.",
-      "Create a slower internal tempo for the body.",
-      "Support a more spacious exhale through the session.",
-    ];
-  }
-
-  return [
-    "Keep the session simple and premium.",
-    "Support a steadier internal rhythm.",
-    "Create a quiet backdrop for presence.",
-  ];
-};
-
-export const formatSoundscapeTagLabel = (value: string) => formatTagLabel(value);
+export const formatSoundscapeTagLabel = (value: string) =>
+  formatTagLabel(value);
 
 export const buildSoundscapeResonanceLabel = (soundscape: SoundscapeTrack) =>
   soundscape.frequencyHz

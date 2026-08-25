@@ -12,6 +12,8 @@ const mockPush = jest.fn();
 const mockBack = jest.fn();
 const mockSetOptions = jest.fn();
 const mockShare = jest.fn();
+const mockGetItem = jest.fn();
+const mockSetItem = jest.fn();
 
 let mockParams = {
   soundscapeId: "1",
@@ -30,6 +32,11 @@ jest.mock("expo-router", () => ({
 
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+
+jest.mock("@react-native-async-storage/async-storage", () => ({
+  getItem: (...args: any[]) => mockGetItem(...args),
+  setItem: (...args: any[]) => mockSetItem(...args),
 }));
 
 jest.mock("expo-image", () => {
@@ -123,6 +130,8 @@ async function renderScreen() {
 describe("SoundscapeDetailScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetItem.mockResolvedValue("[]");
+    mockSetItem.mockResolvedValue(undefined);
     mockParams = {
       soundscapeId: "1",
     };
@@ -133,12 +142,22 @@ describe("SoundscapeDetailScreen", () => {
       message: "Wellness content retrieved successfully.",
       data: {
         id: 1,
-        title: "Rain Over Cedar",
+        title: "Rain Over Cedar 528 Hz",
         duration: "10 min",
         category: "Nature",
         image: "https://example.com/rain.jpg",
         audio: "https://example.com/rain.mp3",
-        description: "Late rain, cedar hush, and low-frequency calm.",
+        description: "Late rain, cedar hush, and low-frequency calm for sleep.",
+        longDescription:
+          "A longer drifting layer of cedar rain and low movement designed for unhurried settling.",
+        rating: 0,
+        benefits: [
+          {
+            id: 26,
+            title: "testing 1",
+            text: "added this to test for soundscape where it is coming or not",
+          },
+        ],
         tags: ["Nature", "Sleep"],
         isLocked: false,
       } as any,
@@ -158,9 +177,30 @@ describe("SoundscapeDetailScreen", () => {
     expect(mockGetWellnessContentDetail).toHaveBeenCalledWith(1);
 
     expect(hasText(tree, "Soundscape Prelude")).toBe(true);
-    expect(hasText(tree, "Rain Over Cedar")).toBe(true);
+    expect(hasText(tree, "Rain Over Cedar 528 Hz")).toBe(true);
     expect(hasText(tree, "ABOUT THIS SOUNDSCAPE")).toBe(true);
+    expect(
+      tree.root.findByProps({
+        accessibilityLabel: "Soundscape rating 4",
+      }).props.accessibilityLabel
+    ).toBe("Soundscape rating 4");
+    expect(hasText(tree, "528.00 HZ")).toBe(true);
+    expect(hasText(tree, "TEST MOOD")).toBe(true);
+    expect(hasText(tree, "DEEPER LISTENING")).toBe(true);
+    expect(
+      hasText(
+        tree,
+        "A longer drifting layer of cedar rain and low movement designed for unhurried settling."
+      )
+    ).toBe(true);
     expect(hasText(tree, "WHY IT HELPS")).toBe(true);
+    expect(hasText(tree, "testing 1")).toBe(true);
+    expect(
+      hasText(
+        tree,
+        "added this to test for soundscape where it is coming or not"
+      )
+    ).toBe(true);
     expect(hasText(tree, "Start Soundscape")).toBe(true);
   });
 
@@ -171,9 +211,16 @@ describe("SoundscapeDetailScreen", () => {
       accessibilityLabel: "Add to favorites",
     });
 
-    act(() => {
+    await act(async () => {
       favoriteButton.props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
     });
+
+    expect(mockSetItem).toHaveBeenLastCalledWith(
+      "soundscape_favorites_v1",
+      JSON.stringify(["1"])
+    );
 
     expect(
       tree.root.findByProps({
@@ -185,12 +232,14 @@ describe("SoundscapeDetailScreen", () => {
       accessibilityLabel: "Share soundscape",
     });
 
-    act(() => {
+    await act(async () => {
       shareButton.props.onPress();
+      await Promise.resolve();
     });
 
     expect(mockShare).toHaveBeenCalledWith({
-      message: "Rain Over Cedar · Late rain, cedar hush, and low-frequency calm.",
+      message:
+        "Rain Over Cedar 528 Hz · Late rain, cedar hush, and low-frequency calm for sleep.",
     });
   });
 

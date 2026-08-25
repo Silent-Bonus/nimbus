@@ -3,7 +3,6 @@ import axios from "axios";
 import { API_ENDPOINTS } from "@/config/apiConfig";
 
 import {
-  getSoundscapeContentList,
   getWellnessContentDetail,
   getWellnessContentList,
 } from "../selfCareService";
@@ -22,7 +21,7 @@ import {
 import type {
   WellnessSessionFeedbackRequest,
   WellnessSessionRequest,
-} from "../../types/selfCareTypes";
+} from "../../types/wellnessSessionTypes";
 
 jest.mock("axios", () => ({
   get: jest.fn(),
@@ -105,7 +104,7 @@ describe("selfCareService", () => {
       },
     });
 
-    const result = await getSoundscapeContentList();
+    const result = await getWellnessContentList({ modality: "soundscape" });
 
     expect(mockedAxios.get).toHaveBeenCalledWith(API_ENDPOINTS.getWellnessContent, {
       params: { modality: "soundscape" },

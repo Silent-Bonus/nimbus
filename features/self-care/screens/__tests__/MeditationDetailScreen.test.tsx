@@ -8,7 +8,7 @@ import { ROUTES } from "../../../../constants/routes";
 import MeditationDetailScreen from "../MeditationDetailScreen";
 import {
   buildMeditationRouteParams,
-  mapMeditationTemplate,
+  mapMeditationDetailItemTemplate,
 } from "../../utils/meditationLibrary";
 import {
   getWellnessContentDetail,
@@ -19,8 +19,15 @@ const mockPush = jest.fn();
 const mockBack = jest.fn();
 const mockSetOptions = jest.fn();
 const mockShare = jest.fn();
+const mockAddListener = jest.fn();
+const mockGetItem = jest.fn();
+const mockSetItem = jest.fn();
+let mockFocusListener: (() => void) | undefined;
 
-let mockParams = {
+let mockParams: {
+  meditationId: string;
+  meditationSlug?: string;
+} = {
   meditationId: "1",
 };
 
@@ -31,12 +38,28 @@ jest.mock("expo-router", () => ({
   },
   useNavigation: () => ({
     setOptions: mockSetOptions,
+    addListener: (event: string, callback: () => void) => {
+      mockAddListener(event);
+      if (event === "focus") {
+        mockFocusListener = callback;
+      }
+      return () => {
+        if (mockFocusListener === callback) {
+          mockFocusListener = undefined;
+        }
+      };
+    },
   }),
   useLocalSearchParams: () => mockParams,
 }));
 
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+
+jest.mock("@react-native-async-storage/async-storage", () => ({
+  getItem: (...args: any[]) => mockGetItem(...args),
+  setItem: (...args: any[]) => mockSetItem(...args),
 }));
 
 jest.mock("expo-image", () => {
@@ -194,8 +217,12 @@ async function renderScreen() {
 describe("MeditationDetailScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFocusListener = undefined;
+    mockGetItem.mockResolvedValue("[]");
+    mockSetItem.mockResolvedValue(undefined);
     mockParams = {
       meditationId: "1",
+      meditationSlug: "relaxing-meditation",
     };
     mockGetWellnessContentDetail.mockResolvedValue({
       success: true,
@@ -245,7 +272,9 @@ describe("MeditationDetailScreen", () => {
     expect(mockSetOptions).toHaveBeenCalledWith({
       headerShown: false,
     });
-    expect(mockGetWellnessContentDetail).toHaveBeenCalledWith(1);
+    expect(mockGetWellnessContentDetail).toHaveBeenCalledWith(
+      "relaxing-meditation"
+    );
     expect(mockGetWellnessContentDetail).toHaveBeenCalledTimes(1);
 
     expect(hasText(tree, "Meditation Prelude")).toBe(true);
@@ -267,9 +296,16 @@ describe("MeditationDetailScreen", () => {
       accessibilityLabel: "Add to favorites",
     });
 
-    act(() => {
+    await act(async () => {
       favoriteButton.props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
     });
+
+    expect(mockSetItem).toHaveBeenLastCalledWith(
+      "meditation_favorites_v1",
+      JSON.stringify(["1"])
+    );
 
     expect(
       tree.root.findByProps({
@@ -281,8 +317,9 @@ describe("MeditationDetailScreen", () => {
       accessibilityLabel: "Share meditation",
     });
 
-    act(() => {
+    await act(async () => {
       shareButton.props.onPress();
+      await Promise.resolve();
     });
 
     expect(mockShare).toHaveBeenCalledWith({
@@ -303,7 +340,7 @@ describe("MeditationDetailScreen", () => {
 
     expect(mockCreateWellnessSession).not.toHaveBeenCalled();
 
-    const expectedTemplate = mapMeditationTemplate(apiDetail as any, 0);
+    const expectedTemplate = mapMeditationDetailItemTemplate(apiDetail as any);
     const pushCall = mockPush.mock.calls.at(-1)?.[0];
 
     expect(pushCall).toEqual({
@@ -313,5 +350,27 @@ describe("MeditationDetailScreen", () => {
       }),
     });
     expect(mockPush).toHaveBeenCalledTimes(1);
+  });
+
+  it("resets the start button loading state when the detail screen regains focus", async () => {
+    const tree = await renderScreen();
+
+    const startButton = tree.root.findByProps({
+      accessibilityLabel: "Start Meditation",
+    });
+
+    await act(async () => {
+      startButton.props.onPress();
+      await Promise.resolve();
+    });
+
+    expect(tree.root.findByProps({ accessibilityLabel: "Start Meditation" }).props.loading).toBe(true);
+
+    act(() => {
+      mockFocusListener?.();
+    });
+
+    expect(tree.root.findByProps({ accessibilityLabel: "Start Meditation" }).props.loading).toBe(false);
+    expect(tree.root.findByProps({ accessibilityLabel: "Start Meditation" }).props.disabled).toBe(false);
   });
 });

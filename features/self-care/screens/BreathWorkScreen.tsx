@@ -33,9 +33,9 @@ import {
   mapBreathworkContent,
 } from "@/features/self-care/utils/breathworkLibrary";
 import type {
-  BreathWorkCategoryOption,
-  BreathWorkDetail,
-} from "@/features/self-care/types/breathworkTypes";
+  BreathWorkListItem,
+  WellnessCategoryOption,
+} from "@/features/self-care/types/wellnessContentTypes";
 import type {
   ColorSet,
   Spacing,
@@ -54,17 +54,20 @@ export const BreathWorkScreen = () => {
     typography,
   } = useContext(ThemeContext);
 
-  const [breathworkDetails, setBreathworkDetails] = useState<BreathWorkDetail[]>(
-    []
-  );
+  // This screen renders breathwork cards directly, so state stores the
+  // already-mapped UI list model instead of the raw wellness API payload.
+  const [contentItems, setContentItems] = useState<BreathWorkListItem[]>([]);
+
   const [categoryOptions, setCategoryOptions] = useState<
-    BreathWorkCategoryOption[]
+    WellnessCategoryOption[]
   >([{ label: "All", value: "all" }]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+
   const [selectedCategory, setSelectedCategory] =
     useState<BreathCategorySelection>("all");
-  const [selectedPatternId, setSelectedPatternId] = useState<string>("");
+  const [selectedBreathworkId, setSelectedBreathworkId] =
+    useState<string>("");
 
   const styles = useMemo(
     () => styling(theme, svaTypography, spacing, typography),
@@ -77,8 +80,10 @@ export const BreathWorkScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
+      // Reset transient UI state whenever the library regains focus so the
+      // screen always re-enters from a neutral "all categories" view.
       setSelectedCategory("all");
-      setSelectedPatternId("");
+      setSelectedBreathworkId("");
     }, [])
   );
 
@@ -86,13 +91,15 @@ export const BreathWorkScreen = () => {
     let isActive = true;
 
     const loadBreathwork = async () => {
+      // The list endpoint supports category filtering, so the active pill value
+      // can be sent directly when the user narrows the library.
       setIsLoading(true);
       setLoadError(null);
-      setBreathworkDetails([]);
-      setSelectedPatternId("");
+      setContentItems([]);
+      setSelectedBreathworkId("");
 
       try {
-        const params =
+        const params: Parameters<typeof getWellnessContentList>[0] =
           selectedCategory === "all"
             ? { modality: "breathwork" }
             : {
@@ -106,14 +113,16 @@ export const BreathWorkScreen = () => {
           return;
         }
 
-        const mappedDetails = (result.data ?? []).map((item, index) =>
-          mapBreathworkContent(item, index)
-        );
+        const normalizedItems = Array.isArray(result.data)
+          ? result.data.map((item, index) => mapBreathworkContent(item, index))
+          : [];
 
-        setBreathworkDetails(mappedDetails);
+        setContentItems(normalizedItems);
 
+        // Category options are derived from the full dataset once and then used
+        // to drive subsequent filtered requests.
         if (selectedCategory === "all") {
-          setCategoryOptions(buildBreathWorkCategoryOptions(mappedDetails));
+          setCategoryOptions(buildBreathWorkCategoryOptions(normalizedItems));
         }
       } catch (error) {
         if (!isActive) {
@@ -125,7 +134,7 @@ export const BreathWorkScreen = () => {
             ? error.message
             : "Unable to load breathwork right now."
         );
-        setBreathworkDetails([]);
+        setContentItems([]);
       } finally {
         if (isActive) {
           setIsLoading(false);
@@ -140,96 +149,96 @@ export const BreathWorkScreen = () => {
     };
   }, [selectedCategory]);
 
-  const visibleDetails = breathworkDetails;
-
-  const activeDetail = useMemo(
+  // The active card powers the recommendation rail highlight, quote card, and
+  // fallback detail target when a tapped recommendation is no longer visible.
+  const activeItem = useMemo(
     () =>
-      visibleDetails.find((item) => item.id === selectedPatternId) ??
-      visibleDetails[0],
-    [selectedPatternId, visibleDetails]
+      contentItems.find((item) => item.id === selectedBreathworkId) ??
+      contentItems[0],
+    [contentItems, selectedBreathworkId]
   );
 
   const visibleRecommendations = useMemo(
-    () => visibleDetails.map((item) => buildBreathWorkRecommendation(item)),
-    [visibleDetails]
+    () =>
+      contentItems
+        .slice(0, 2)
+        .map((item) => buildBreathWorkRecommendation(item)),
+    [contentItems]
   );
 
   useEffect(() => {
-    if (isLoading || visibleDetails.length === 0) {
+    // Keep one valid selection in sync with the currently visible list so
+    // recommendation taps and card highlighting remain stable after reloads.
+    if (isLoading || contentItems.length === 0) {
       return;
     }
 
-    if (!visibleDetails.some((pattern) => pattern.id === selectedPatternId)) {
-      setSelectedPatternId(visibleDetails[0]?.id ?? "");
+    if (!contentItems.some((pattern) => pattern.id === selectedBreathworkId)) {
+      setSelectedBreathworkId(contentItems[0]?.id ?? "");
     }
-  }, [isLoading, selectedPatternId, visibleDetails]);
+  }, [contentItems, isLoading, selectedBreathworkId]);
 
-  const handleSelectPattern = useCallback((detail: BreathWorkDetail) => {
-    setSelectedPatternId(detail.id);
+  const openBreathworkDetail = useCallback((item: BreathWorkListItem) => {
+    setSelectedBreathworkId(item.id);
+    // The detail screen hydrates immediately from route params, then refreshes
+    // itself from the backend for the latest copy and structure.
     router.push({
       pathname: ROUTES.AUTH.SELF_CARE_BREATHWORK_DETAIL,
-      params: buildBreathWorkRouteParams(detail),
+      params: buildBreathWorkRouteParams(item),
     });
   }, []);
 
-  const handlePlayPattern = useCallback((detail: BreathWorkDetail) => {
-    setSelectedPatternId(detail.id);
+  const openBreathworkSession = useCallback((item: BreathWorkListItem) => {
+    setSelectedBreathworkId(item.id);
+    // Session routes now use the same identifier-only payload as detail so the
+    // player can fetch the latest content on mount.
     router.push({
       pathname: ROUTES.AUTH.SELF_CARE_BREATHWORK_SESSION,
-      params: buildBreathWorkRouteParams(detail),
+      params: buildBreathWorkRouteParams(item),
     });
   }, []);
+
+  const resolveRecommendationItem = useCallback(
+    (item: (typeof visibleRecommendations)[number]) =>
+      contentItems.find((candidate) => candidate.id === item.id) ?? activeItem,
+    [activeItem, contentItems]
+  );
 
   const handleSelectRecommendation = useCallback(
     (item: (typeof visibleRecommendations)[number]) => {
-      const detail =
-        visibleDetails.find((candidate) => candidate.id === item.id) ??
-        activeDetail;
+      const selectedItem = resolveRecommendationItem(item);
 
-      if (!detail) {
+      if (!selectedItem) {
         return;
       }
 
-      setSelectedPatternId(detail.id);
-      router.push({
-        pathname: ROUTES.AUTH.SELF_CARE_BREATHWORK_DETAIL,
-        params: buildBreathWorkRouteParams(detail),
-      });
+      openBreathworkDetail(selectedItem);
     },
-    [activeDetail, visibleDetails]
+    [openBreathworkDetail, resolveRecommendationItem]
   );
 
   const handlePlayRecommendation = useCallback(
     (item: (typeof visibleRecommendations)[number]) => {
-      const detail =
-        visibleDetails.find((candidate) => candidate.id === item.id) ??
-        activeDetail;
+      const selectedItem = resolveRecommendationItem(item);
 
-      if (!detail) {
+      if (!selectedItem) {
         return;
       }
 
-      setSelectedPatternId(detail.id);
-      router.push({
-        pathname: ROUTES.AUTH.SELF_CARE_BREATHWORK_SESSION,
-        params: buildBreathWorkRouteParams(detail),
-      });
+      openBreathworkSession(selectedItem);
     },
-    [activeDetail, visibleDetails]
+    [openBreathworkSession, resolveRecommendationItem]
   );
 
   const selectedCategoryLabel =
     selectedCategory === "all"
       ? "All categories"
-      : categoryOptions.find((option) => option.value === selectedCategory)?.label ??
-        selectedCategory;
+      : categoryOptions.find((option) => option.value === selectedCategory)
+          ?.label ?? selectedCategory;
 
   const handleSelectCategory = useCallback((value: string) => {
     setSelectedCategory(value);
   }, []);
-
-  const quoteCopy =
-    activeDetail?.mantra ?? activeDetail?.benefits[0]?.text ?? "";
 
   return (
     <ScreenView bgColor={theme.background} style={styles.screen}>
@@ -243,7 +252,7 @@ export const BreathWorkScreen = () => {
 
         <FlatList
           testID="breathwork-library-list"
-          data={visibleDetails}
+          data={contentItems}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
@@ -251,7 +260,7 @@ export const BreathWorkScreen = () => {
             <>
               <BreathRecommendationSection
                 items={visibleRecommendations}
-                selectedId={activeDetail?.id ?? ""}
+                selectedId={activeItem?.id ?? ""}
                 onSelect={handleSelectRecommendation}
                 onPlay={handlePlayRecommendation}
               />
@@ -284,8 +293,8 @@ export const BreathWorkScreen = () => {
                     color={theme.textSecondary}
                   />
                   <Text style={styles.countText}>
-                    {visibleDetails.length} rhythm
-                    {visibleDetails.length === 1 ? "" : "s"}
+                    {contentItems.length} rhythm
+                    {contentItems.length === 1 ? "" : "s"}
                   </Text>
                 </View>
               </View>
@@ -295,46 +304,46 @@ export const BreathWorkScreen = () => {
             <BreathStackCard
               item={buildBreathWorkPattern(item)}
               recommendation={buildBreathWorkRecommendation(item)}
-              onPress={() => handleSelectPattern(item)}
-              onPlay={() => handlePlayPattern(item)}
-              selected={item.id === activeDetail?.id}
+              onPress={() => openBreathworkDetail(item)}
+              onPlay={() => openBreathworkSession(item)}
+              selected={item.id === activeItem?.id}
             />
           )}
           ListFooterComponent={
-            activeDetail ? (
+            activeItem ? (
               <View
                 style={[
                   styles.quoteCard,
-                  { borderColor: activeDetail.palette.accent },
+                  { borderColor: activeItem.palette.accent },
                 ]}
               >
                 <View
                   style={[
                     styles.quoteIconWrap,
                     {
-                      backgroundColor: activeDetail.palette.tagBg,
-                      borderColor: activeDetail.palette.accent,
+                      backgroundColor: activeItem.palette.tagBg,
+                      borderColor: activeItem.palette.accent,
                     },
                   ]}
                 >
                   <MaterialCommunityIcons
                     name="repeat"
                     size={18}
-                    color={activeDetail.palette.tagText}
+                    color={activeItem.palette.tagText}
                   />
                 </View>
 
-                <Text
+                {/* <Text
                   style={[
                     styles.quoteText,
-                    { color: activeDetail.palette.text },
+                    { color: activeItem.palette.text },
                   ]}
                 >
                   {`"${quoteCopy}"`}
-                </Text>
+                </Text> */}
 
                 <Text style={styles.quoteMeta} numberOfLines={1}>
-                  {activeDetail.title}
+                  {activeItem.title}
                 </Text>
               </View>
             ) : null
