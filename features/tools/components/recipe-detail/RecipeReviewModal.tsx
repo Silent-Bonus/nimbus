@@ -16,7 +16,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ThemeContext from "@/contexts/ThemeContext";
 import { submitRecipeReview } from "@/features/tools/services/toolService";
-import type { RecipeReviewPayload } from "@/features/tools/types/toolsTypes";
+import type {
+  RecipeReviewPayload,
+  RecipeReviewResponse,
+} from "@/features/tools/types/toolsTypes";
 
 type ReviewFormState = {
   reviewText: string;
@@ -40,6 +43,7 @@ type RecipeReviewModalProps = {
   recipeId?: number | string | null;
   recipeTitle?: string;
   onClose: () => void;
+  onSubmitSuccess?: (response: RecipeReviewResponse) => void;
 };
 
 const INITIAL_FORM: ReviewFormState = {
@@ -126,6 +130,7 @@ const RecipeReviewModal: React.FC<RecipeReviewModalProps> = ({
   recipeId,
   recipeTitle,
   onClose,
+  onSubmitSuccess,
 }) => {
   const { newTheme, spacing, svaColors, svaTypography, typography } =
     useContext(ThemeContext);
@@ -259,6 +264,7 @@ const RecipeReviewModal: React.FC<RecipeReviewModalProps> = ({
     try {
       const response = await submitRecipeReview(recipeId, payload);
       submittedSuccessfully = true;
+      onSubmitSuccess?.(response);
       setFeedback({
         variant: "success",
         message:

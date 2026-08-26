@@ -16,7 +16,9 @@ const RecipeProcessList: React.FC<RecipeProcessListProps> = ({ steps }) => {
     <View style={styles.wrap}>
       {steps.map((step, index) => (
         <View key={step} style={styles.row}>
-          <Text style={styles.stepIndex}>{String(index + 1).padStart(2, "0")}</Text>
+          <Text style={styles.stepIndex}>
+            {String(index + 1).padStart(2, "0")}
+          </Text>
           <Text style={styles.stepText}>{step}</Text>
         </View>
       ))}
@@ -54,7 +56,8 @@ const styling = (
       color: colors.text.secondary,
       fontSize: 14,
       lineHeight: 22,
-      fontFamily: typography?.textStyle?.authBody?.fontFamily ?? "Outfit_400Regular",
+      fontFamily:
+        typography?.textStyle?.authBody?.fontFamily ?? "Outfit_400Regular",
     },
   });
 

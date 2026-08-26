@@ -1,10 +1,4 @@
-import React, {
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import {
   ActivityIndicator,
@@ -41,6 +35,7 @@ import {
 import ProcessingModal from "@/components/ui/modal/ProcessingModal";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import type { Spacing, SvaColorSet, TypographyTokens } from "@/theme/types";
+import type { RecipeReviewResponse } from "@/features/tools/types/toolsTypes";
 
 const getStringParam = (value: unknown): string | null => {
   if (!value) return null;
@@ -213,6 +208,36 @@ const formatMinutes = (value?: number | null) => {
   }
 
   return `${Number(value)} min`;
+};
+
+const getReviewCountFromResponse = (
+  response: RecipeReviewResponse,
+  fallbackCount?: number
+) => {
+  const fallback = Math.max(1, Number(fallbackCount ?? 0));
+  const candidates = [response, response?.data];
+
+  for (const candidate of candidates) {
+    if (!candidate || typeof candidate !== "object") {
+      continue;
+    }
+
+    const possibleCount = (candidate as {
+      reviews_count?: unknown;
+      reviewsCount?: unknown;
+    }).reviews_count ??
+      (candidate as {
+        reviews_count?: unknown;
+        reviewsCount?: unknown;
+      }).reviewsCount;
+
+    const normalizedCount = Number(possibleCount);
+    if (Number.isFinite(normalizedCount) && normalizedCount > 0) {
+      return normalizedCount;
+    }
+  }
+
+  return fallback;
 };
 
 const toStringArray = (value: unknown): string[] => {
@@ -449,9 +474,11 @@ const normalizeRecipeFromApi = (
     ingredientsJson: ingredients,
     process:
       steps.length > 0
-        ? steps.map((step) =>
-            step.description ? `${step.title}: ${step.description}` : step.title
-          )
+        ? steps.map((step) => {
+            return step.description
+              ? `${step.title}: ${step.description}`
+              : step.title;
+          })
         : fallback.process,
     stepsJson: steps,
     tips,
@@ -479,16 +506,13 @@ const RecipeDetailScreen: React.FC = () => {
     [params.recipeData]
   );
 
-  const fallbackDetail = useMemo(
-    () => {
-      const emptyRecipePlan = createEmptyRecipePlan(idParam ?? "");
+  const fallbackDetail = useMemo(() => {
+    const emptyRecipePlan = createEmptyRecipePlan(idParam ?? "");
 
-      return recipePreview
-        ? normalizeRecipeFromApi(recipePreview, emptyRecipePlan)
-        : emptyRecipePlan;
-    },
-    [idParam, recipePreview]
-  );
+    return recipePreview
+      ? normalizeRecipeFromApi(recipePreview, emptyRecipePlan)
+      : emptyRecipePlan;
+  }, [idParam, recipePreview]);
 
   const [detail, setDetail] = useState<RecipePlanDetail>(fallbackDetail);
   const [isFavorite, setIsFavorite] = useState(fallbackDetail.favorite);
@@ -695,6 +719,13 @@ const RecipeDetailScreen: React.FC = () => {
     });
   };
 
+  const onReviewSubmitSuccess = (response: RecipeReviewResponse) => {
+    setDetail((current) => ({
+      ...current,
+      reviewsCount: getReviewCountFromResponse(response, current.reviewsCount),
+    }));
+  };
+
   return (
     <ScreenView bgColor={svaColors.bg.base} style={styles.screen}>
       <View style={styles.root}>
@@ -715,7 +746,10 @@ const RecipeDetailScreen: React.FC = () => {
                   onPress: onToggleFavorite,
                 },
                 {
-                  icon: "star-outline",
+                  icon:
+                    detail.reviewsCount && Number(detail.reviewsCount) > 0
+                      ? "star"
+                      : "star-outline",
                   accessibilityLabel: "Open review form",
                   onPress: onOpenReview,
                 },
@@ -761,10 +795,12 @@ const RecipeDetailScreen: React.FC = () => {
               />
 
               {detail.id ? (
-                <RecipeMealPlanButton
-                  label={detail.ctaLabel}
-                  onPress={onAddToMealPlan}
-                />
+                <View style={styles.ctaWrap}>
+                  <RecipeMealPlanButton
+                    label={detail.ctaLabel}
+                    onPress={onAddToMealPlan}
+                  />
+                </View>
               ) : null}
             </ScrollView>
           </>
@@ -783,6 +819,7 @@ const RecipeDetailScreen: React.FC = () => {
           visible={isReviewModalVisible}
           recipeId={reviewRecipeId}
           recipeTitle={detail.title}
+          onSubmitSuccess={onReviewSubmitSuccess}
           onClose={() => setIsReviewModalVisible(false)}
         />
       </View>
@@ -828,8 +865,12 @@ const styling = (
       fontWeight: "700",
     },
     content: {
+      paddingBottom: spacing.xl,
       // paddingHorizontal: spacing.lg,
       gap: spacing.xl,
+    },
+    ctaWrap: {
+      paddingBottom: spacing.xxl,
     },
     description: {
       color: colors.text.secondary,
