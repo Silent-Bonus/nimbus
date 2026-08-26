@@ -14,20 +14,16 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  type TextStyle,
-  type ImageSourcePropType,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useNavigation } from "expo-router";
 import { Image as ExpoImage } from "expo-image";
 
+import AppHeader from "@/components/layout/AppHeader";
 import ProtocolTemplateCard from "@/components/common/ProtocolTemplateCard";
 import { ScreenView } from "@/components/ui/Themed";
-import PillFilters, {
-  type PillFilterOption,
-} from "@/components/ui/PillFilters";
+import PillFilters from "@/components/ui/PillFilters";
 import ThemeContext from "@/contexts/ThemeContext";
-import ScreenHeader from "@/components/layout/ScreenHeader";
 import EmptyState from "@/features/tools/components/common/EmptyState";
 import { RoutineSkeletonGrid } from "@/features/tools/components/common/RoutineSkeletonGrid";
 import { ROUTES } from "@/constants/routes";
@@ -35,197 +31,39 @@ import {
   getFavoriteRecipeList,
   getRecipeCategories,
   getRecipeList,
-} from "@/features/tools/services/toolService";
-import { type RecipeCardItem } from "@/features/tools/data/recipePlans";
-import type { RecipeCategory } from "@/features/tools/types/toolsTypes";
-import type { Spacing, SvaColorSet, Typography } from "@/theme/types";
-
-const SEARCH_MIN_LENGTH = 3;
-
-const STATIC_FILTER_OPTIONS = [
-  { label: "All", value: "all" },
-  { label: "Favorites", value: "favorites" },
-] as const satisfies readonly PillFilterOption<string>[];
-
-const getFilterLabel = (
-  value: string,
-  options: readonly PillFilterOption<string>[]
-) => options.find((option) => option.value === value)?.label ?? "Recipes";
-
-const isCategoryFilter = (value: string) =>
-  value !== "all" && value !== "favorites";
-
-const buildCategoryFilterOptions = (
-  categories: RecipeCategory[]
-): PillFilterOption<string>[] => {
-  const uniqueCategories = categories.reduce<RecipeCategory[]>(
-    (acc, category) => {
-      const slug = category.slug?.trim();
-
-      if (!slug) {
-        return acc;
-      }
-
-      if (acc.some((item) => item.slug === slug)) {
-        return acc;
-      }
-
-      acc.push({ ...category, slug });
-      return acc;
-    },
-    []
-  );
-
-  return uniqueCategories
-    .sort((a, b) => {
-      const sortOrderDiff = (a.sort_order ?? 0) - (b.sort_order ?? 0);
-
-      if (sortOrderDiff !== 0) {
-        return sortOrderDiff;
-      }
-
-      return (a.name || a.slug || "").localeCompare(b.name || b.slug || "");
-    })
-    .map((category) => {
-      const label = category.name?.trim() || category.slug;
-
-      return {
-        label,
-        value: category.slug,
-        accessibilityLabel: `${label} recipes`,
-      };
-    });
-};
-
-const getRecipeCategoryLabel = (category: unknown, fallback: string) => {
-  if (typeof category === "string") {
-    return category || fallback;
-  }
-
-  if (category && typeof category === "object") {
-    const candidate = category as { name?: string; slug?: string };
-    return candidate.name || candidate.slug || fallback;
-  }
-
-  return fallback;
-};
-
-const buildRecipeCardItem = (
-  item: Record<string, any>,
-  fallbackTag: string
-): RecipeCardItem => {
-  const title = item?.title || item?.name || "Untitled Recipe";
-  const categoryLabel = getRecipeCategoryLabel(
-    item?.category || item?.meal_slot || item?.filterKey,
-    fallbackTag
-  );
-  const durationLabel =
-    item?.total_time_minutes != null && Number(item.total_time_minutes) > 0
-      ? `${item.total_time_minutes} min`
-      : item?.prep_time ||
-        item?.prepTime ||
-        item?.time ||
-        item?.meta_info?.time ||
-        item?.meta_info?.duration ||
-        null;
-  const ratingLabel =
-    item?.avg_rating && item.avg_rating !== "0.00"
-      ? `${item.avg_rating} ★`
-      : item?.reviews_count
-      ? `${item.reviews_count} reviews`
-      : null;
-
-  let tags = [categoryLabel, durationLabel, ratingLabel]
-    .filter(Boolean)
-    .slice(0, 2) as string[];
-
-  if (tags.length === 1) {
-    tags =
-      tags[0] === fallbackTag ? [tags[0], "Fresh"] : [tags[0], fallbackTag];
-  }
-
-  return {
-    id: String(item?.id ?? title),
-    title,
-    image: resolveImageSource(item?.image || item?.imageUri),
-    imageFit: item?.imageFit,
-    favorite: Boolean(
-      item?.favorite ?? item?.is_favorited ?? item?.is_favorite ?? false
-    ),
-    tags: tags.length > 0 ? tags : [fallbackTag, "Fresh"],
-    raw: item,
-  };
-};
-
-function resolveImageSource(image: unknown): ImageSourcePropType {
-  if (!image) {
-    return require("@/assets/images/mt.jpg");
-  }
-
-  if (typeof image === "string") {
-    return { uri: image };
-  }
-
-  return image as ImageSourcePropType;
-}
-
-const getRemoteImageUri = (image: ImageSourcePropType): string | null => {
-  if (typeof image === "number") {
-    return null;
-  }
-
-  if (Array.isArray(image)) {
-    const first = image[0];
-    return first ? getRemoteImageUri(first) : null;
-  }
-
-  if (image && typeof image === "object") {
-    const candidate = image as { uri?: unknown };
-    return typeof candidate.uri === "string" ? candidate.uri : null;
-  }
-
-  return null;
-};
-
-const buildRecipePreviewData = (item: RecipeCardItem) => {
-  const raw = item.raw as Record<string, any>;
-
-  return JSON.stringify({
-    id: raw?.id ?? item.id,
-    slug: raw?.slug ?? null,
-    title: item.title,
-    short_description: raw?.short_description ?? raw?.description ?? null,
-    meal_slot: raw?.meal_slot ?? raw?.filterKey ?? null,
-    category: raw?.category ?? null,
-    difficulty_level: raw?.difficulty_level ?? "",
-    total_time_minutes: raw?.total_time_minutes ?? 0,
-    avg_rating: raw?.avg_rating ?? "0.00",
-    reviews_count: raw?.reviews_count ?? 0,
-    favorites_count: raw?.favorites_count ?? 0,
-    is_favorited:
-      raw?.is_favorited ?? raw?.favorite ?? raw?.is_favorite ?? item.favorite,
-    image:
-      typeof raw?.image === "string"
-        ? raw.image
-        : typeof raw?.imageUri === "string"
-        ? raw.imageUri
-        : null,
-  });
-};
+} from "@/features/tools/services/recipeService";
+import type {
+  Spacing,
+  SvaColorSet,
+  Typography,
+  TypographyTokens,
+} from "@/theme/types";
+import type { RecipeCardItem } from "@/features/tools/types/recipeTypes";
+import {
+  SEARCH_MIN_LENGTH,
+  STATIC_RECIPE_FILTER_OPTIONS,
+  buildRecipeCardItem,
+  buildRecipeCategoryFilterOptions,
+  buildRecipePreviewData,
+  getRemoteRecipeImageUri,
+  getRecipeFilterLabel,
+  isRecipeCategoryFilter,
+} from "@/features/tools/utils/recipeList";
 
 export const RecipeScreen: React.FC = () => {
   const navigation = useNavigation();
-  const { svaColors, spacing, typography } = useContext(ThemeContext);
+  const { svaColors, svaTypography, spacing, typography } =
+    useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(svaColors, spacing, typography),
-    [spacing, svaColors, typography]
+    () => styling(svaColors, svaTypography, spacing, typography),
+    [spacing, svaColors, svaTypography, typography]
   );
   const searchInputRef = useRef<TextInput>(null);
 
   const [query, setQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
   const [categoryFilters, setCategoryFilters] = useState<
-    PillFilterOption<string>[]
+    ReturnType<typeof buildRecipeCategoryFilterOptions>
   >([]);
   const [baseRecipes, setBaseRecipes] = useState<RecipeCardItem[]>([]);
   const [searchRecipes, setSearchRecipes] = useState<RecipeCardItem[]>([]);
@@ -233,7 +71,7 @@ export const RecipeScreen: React.FC = () => {
   const [searchLoading, setSearchLoading] = useState(false);
   const deferredQuery = useDeferredValue(query);
   const filterOptions = useMemo(
-    () => [...STATIC_FILTER_OPTIONS, ...categoryFilters],
+    () => [...STATIC_RECIPE_FILTER_OPTIONS, ...categoryFilters],
     [categoryFilters]
   );
   const trimmedQuery = deferredQuery.trim();
@@ -256,7 +94,7 @@ export const RecipeScreen: React.FC = () => {
         if (!active) return;
 
         if (Array.isArray(data)) {
-          setCategoryFilters(buildCategoryFilterOptions(data));
+          setCategoryFilters(buildRecipeCategoryFilterOptions(data));
         } else {
           console.error(
             "Recipe category API did not return data array:",
@@ -288,7 +126,7 @@ export const RecipeScreen: React.FC = () => {
           selectedFilter === "favorites"
             ? await getFavoriteRecipeList()
             : await getRecipeList(
-                isCategoryFilter(selectedFilter)
+                isRecipeCategoryFilter(selectedFilter)
                   ? { category: selectedFilter }
                   : undefined
               );
@@ -334,7 +172,7 @@ export const RecipeScreen: React.FC = () => {
       try {
         setSearchLoading(true);
 
-        const requestParams = isCategoryFilter(selectedFilter)
+        const requestParams = isRecipeCategoryFilter(selectedFilter)
           ? { category: selectedFilter, search: trimmedQuery }
           : { search: trimmedQuery };
 
@@ -369,6 +207,7 @@ export const RecipeScreen: React.FC = () => {
       }
     };
 
+    // Debounce search requests so the list stays stable while the user is typing.
     const timer = setTimeout(() => {
       loadSearchRecipes();
     }, 300);
@@ -381,7 +220,7 @@ export const RecipeScreen: React.FC = () => {
 
   useEffect(() => {
     const uris = visibleRecipes
-      .map((item) => getRemoteImageUri(item.image))
+      .map((item) => getRemoteRecipeImageUri(item.image))
       .filter((uri): uri is string => Boolean(uri))
       .slice(0, 12);
 
@@ -389,6 +228,7 @@ export const RecipeScreen: React.FC = () => {
       return;
     }
 
+    // Warm the first visible remote images to reduce perceived card load time.
     void ExpoImage.prefetch(uris);
   }, [visibleRecipes]);
 
@@ -397,35 +237,33 @@ export const RecipeScreen: React.FC = () => {
   }, []);
 
   const handleItemClick = useCallback((item: RecipeCardItem) => {
+    const raw = item.raw as { slug?: string | null };
+
     router.push({
       pathname: ROUTES.AUTH.TOOLS_RECIPE_DETAIL,
-      params: { id: item.id, recipeData: buildRecipePreviewData(item) },
+      params: {
+        id: item.id,
+        slug: raw?.slug ?? undefined,
+        recipeData: buildRecipePreviewData(item),
+      },
     });
   }, []);
 
-  const renderHeader = useMemo(
+  const renderListHeader = useMemo(
     () => (
-      <View style={styles.headerBlock}>
-        <ScreenHeader
-          title="Recipe Plan"
-          subtitle="Find recipes that support your routine and nourish you."
-          onBack={() => navigation.goBack()}
-          containerStyle={styles.headerContainer}
-          titleStyle={styles.headerTitle}
-        />
-
+      <View style={styles.controlsBlock}>
         <View style={styles.searchBar}>
           <Ionicons
             name="search-outline"
             size={18}
-            color={svaColors.text.primary}
+            color={svaColors.text.secondary}
           />
           <TextInput
             ref={searchInputRef}
             value={query}
             onChangeText={setQuery}
             placeholder="Search recipes, ingredients, tags"
-            placeholderTextColor={svaColors.text.primary}
+            placeholderTextColor={svaColors.text.secondary}
             autoCapitalize="none"
             autoCorrect={false}
             spellCheck={false}
@@ -453,19 +291,23 @@ export const RecipeScreen: React.FC = () => {
           options={filterOptions}
           selectedValue={selectedFilter}
           onChange={handleFilterPress}
+          style={styles.filtersContainer}
           contentContainerStyle={styles.filtersRow}
+          selectedPillStyle={styles.filterPillSelected}
+          inactivePillStyle={styles.filterPillInactive}
+          selectedLabelStyle={styles.filterLabelSelected}
+          inactiveLabelStyle={styles.filterLabelInactive}
+          labelStyle={styles.filterLabel}
         />
       </View>
     ),
     [
       filterOptions,
       handleFilterPress,
-      navigation,
       query,
       selectedFilter,
       styles,
       svaColors.brand.primary,
-      svaColors.text.primary,
       svaColors.text.secondary,
     ]
   );
@@ -490,7 +332,7 @@ export const RecipeScreen: React.FC = () => {
               ? "No favorite recipes found."
               : selectedFilter === "all"
               ? "No recipes found."
-              : `No ${getFilterLabel(
+              : `No ${getRecipeFilterLabel(
                   selectedFilter,
                   filterOptions
                 ).toLowerCase()} recipes found.`
@@ -526,26 +368,36 @@ export const RecipeScreen: React.FC = () => {
 
   return (
     <ScreenView bgColor={svaColors.bg.base} padding={0} style={styles.screen}>
-      <FlatList
-        data={visibleRecipes}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-        columnWrapperStyle={styles.columnWrapper}
-        ListHeaderComponent={renderHeader}
-        ListHeaderComponentStyle={styles.listHeaderComponent}
-        ListEmptyComponent={renderEmpty}
-        renderItem={renderRecipeCard}
-      />
+      <View style={styles.root}>
+        <AppHeader
+          title="Recipe Plan"
+          subtitle="Find recipes that support your routine and nourish you."
+          onBack={() => navigation.goBack()}
+          containerStyle={styles.header}
+          subtitleStyle={styles.headerSubtitle}
+        />
+
+        <FlatList
+          data={visibleRecipes}
+          keyExtractor={(item) => item.id}
+          numColumns={2}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+          columnWrapperStyle={styles.columnWrapper}
+          ListHeaderComponent={renderListHeader}
+          ListEmptyComponent={renderEmpty}
+          renderItem={renderRecipeCard}
+        />
+      </View>
     </ScreenView>
   );
 };
 
 const styling = (
   colors: SvaColorSet,
+  svaTypography: TypographyTokens | undefined,
   spacing: Spacing,
   typography: Typography
 ) =>
@@ -554,20 +406,26 @@ const styling = (
       flex: 1,
       backgroundColor: colors.bg.base,
     },
-    listContent: {
+    root: {
+      flex: 1,
       paddingHorizontal: spacing.md,
+    },
+    header: {
+      marginBottom: spacing.sm,
+    },
+    headerSubtitle: {
+      ...(svaTypography?.textStyle?.authTinyLabel ?? {}),
+      lineHeight: 16,
+      minHeight: 32,
+      textTransform: "uppercase",
+      color: colors.text.secondary,
+    },
+    listContent: {
+      paddingTop: spacing.xs,
       paddingBottom: Platform.OS === "ios" ? 120 : 140,
     },
-    listHeaderComponent: {
+    controlsBlock: {
       marginBottom: spacing.md,
-    },
-    headerBlock: {},
-    headerContainer: {
-      marginBottom: spacing.md,
-    },
-    headerTitle: {
-      ...(typography.h2 as TextStyle),
-      color: colors.text.primary,
     },
     searchBar: {
       flexDirection: "row",
@@ -578,7 +436,7 @@ const styling = (
       borderRadius: 18,
       height: 54,
       paddingHorizontal: spacing.md,
-      marginBottom: spacing.md,
+      marginBottom: spacing.sm,
     },
     searchInput: {
       flex: 1,
@@ -587,15 +445,46 @@ const styling = (
       paddingVertical: 0,
       marginLeft: spacing.sm,
       color: colors.text.primary,
-      fontSize: 15,
-      fontFamily: "Outfit_400Regular",
+      ...(svaTypography?.textStyle?.input ?? typography.body),
       textAlignVertical: "center",
     },
     clearButton: {
       marginLeft: spacing.xs,
     },
+    filtersContainer: {
+      height: 72,
+      marginBottom: spacing.sm,
+    },
     filtersRow: {
-      paddingBottom: spacing.xs,
+      minHeight: 72,
+      paddingTop: spacing.md,
+      paddingBottom: spacing.md,
+      paddingRight: spacing.md,
+    },
+    filterLabel: {
+      ...(svaTypography?.textStyle?.authTinyLabel ?? {}),
+      fontSize: 11,
+      lineHeight: 16,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
+    },
+    filterLabelSelected: {
+      color: colors.text.inverse,
+    },
+    filterLabelInactive: {
+      color: colors.text.secondary,
+    },
+    filterPillSelected: {
+      backgroundColor: colors.brand.primary,
+      borderColor: colors.brand.primary,
+      shadowOpacity: 0,
+      shadowRadius: 0,
+      shadowOffset: { width: 0, height: 0 },
+      elevation: 0,
+    },
+    filterPillInactive: {
+      backgroundColor: colors.surface.base,
+      borderColor: colors.border.default,
     },
     columnWrapper: {
       justifyContent: "space-between",

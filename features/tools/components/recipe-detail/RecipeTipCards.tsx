@@ -3,11 +3,11 @@ import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { RecipePlanTip } from "@/features/tools/data/recipePlans";
+import type { RecipeTip } from "@/features/tools/types/recipeTypes";
 import type { Spacing, SvaColorSet, TypographyTokens } from "@/theme/types";
 
 type RecipeTipCardsProps = {
-  tips: RecipePlanTip[];
+  tips: RecipeTip[];
 };
 
 const RecipeTipCards: React.FC<RecipeTipCardsProps> = ({ tips }) => {

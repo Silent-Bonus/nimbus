@@ -15,11 +15,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import { submitRecipeReview } from "@/features/tools/services/toolService";
+import { submitRecipeReview } from "@/features/tools/services/recipeService";
 import type {
   RecipeReviewPayload,
   RecipeReviewResponse,
-} from "@/features/tools/types/toolsTypes";
+} from "@/features/tools/types/recipeTypes";
 
 type ReviewFormState = {
   reviewText: string;
