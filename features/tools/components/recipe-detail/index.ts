@@ -6,4 +6,5 @@ export { default as RecipeTipCards } from "./RecipeTipCards";
 export { default as RecipeWisdomCard } from "./RecipeWisdomCard";
 export { default as RecipeMealPlanButton } from "./RecipeMealPlanButton";
 export { default as RecipeReviewModal } from "./RecipeReviewModal";
+export { default as RecipeDetailLoadingSections } from "./RecipeDetailLoadingSections";
 export type { RecipeNutritionStat } from "./RecipeDetailHero";

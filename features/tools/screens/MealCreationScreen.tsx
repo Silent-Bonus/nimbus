@@ -20,7 +20,7 @@ import StyledButton from "@/components/ui/theme-components/StyledButton";
 import DateInput from "@/components/ui/picker/DateInput";
 import DatePickerSheet from "@/components/ui/picker/DatePickerSheet";
 import { FilterPill } from "@/features/self-care/components/workout/FilterPill";
-import { searchRecipes } from "@/features/tools/services/toolService";
+import { searchRecipes } from "@/features/tools/services/recipeService";
 import {
   addMealItem,
   bulkUpdateMealPlan,

@@ -1,5 +1,6 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
@@ -28,6 +29,7 @@ type ProtocolTemplateCardProps = {
   onPress: () => void;
   style?: StyleProp<ViewStyle>;
   showTags?: boolean;
+  titleNumberOfLines?: number;
   accessibilityLabel?: string;
 };
 
@@ -52,12 +54,18 @@ const ProtocolTemplateCard: React.FC<ProtocolTemplateCardProps> = ({
   onPress,
   style,
   showTags = true,
+  titleNumberOfLines = 2,
   accessibilityLabel,
 }) => {
   const { svaColors, svaTypography, spacing } = useContext(ThemeContext);
   const styles = styling(svaColors, svaTypography, spacing);
+  const [imageLoading, setImageLoading] = useState(true);
 
   const imageSource: ImageSourcePropType = item.image;
+
+  useEffect(() => {
+    setImageLoading(true);
+  }, [item.image, item.title]);
 
   return (
     <View style={[styles.shadowWrap, style]}>
@@ -75,8 +83,20 @@ const ProtocolTemplateCard: React.FC<ProtocolTemplateCardProps> = ({
               item.imageFit === "contain" && styles.imageContain,
             ]}
             contentFit={item.imageFit ?? "cover"}
+            cachePolicy="memory-disk"
             transition={250}
+            onLoadStart={() => setImageLoading(true)}
+            onLoad={() => setImageLoading(false)}
+            onError={() => setImageLoading(false)}
           />
+          {imageLoading ? (
+            <View pointerEvents="none" style={styles.imageLoadingOverlay}>
+              <ActivityIndicator
+                size="small"
+                color={svaColors.brand.primary}
+              />
+            </View>
+          ) : null}
           <LinearGradient
             colors={["rgba(10, 12, 9, 0.05)", "rgba(10, 12, 9, 0.58)"]}
             style={StyleSheet.absoluteFill}
@@ -85,7 +105,7 @@ const ProtocolTemplateCard: React.FC<ProtocolTemplateCardProps> = ({
         </View>
 
         <View style={[styles.body, !showTags && styles.bodyCompact]}>
-          <Text style={styles.title} numberOfLines={2}>
+          <Text style={styles.title} numberOfLines={titleNumberOfLines}>
             {item.title}
           </Text>
 
@@ -155,6 +175,12 @@ const styling = (
       backgroundColor: "rgba(163, 190, 140, 0.12)",
       top: -30,
       right: -30,
+    },
+    imageLoadingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "rgba(21, 25, 19, 0.28)",
     },
     body: {
       flex: 1,

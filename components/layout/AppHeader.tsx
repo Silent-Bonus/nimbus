@@ -14,6 +14,7 @@ type RightAction = {
   icon?: keyof typeof Ionicons.glyphMap;
   onPress: () => void;
   accessibilityLabel?: string;
+  iconColor?: string;
 };
 
 export type HeaderRightAction = {
@@ -21,6 +22,7 @@ export type HeaderRightAction = {
   onPress: () => void;
   accessibilityLabel?: string;
   badge?: number | boolean;
+  iconColor?: string;
 };
 
 interface AppHeaderProps {
@@ -91,7 +93,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
               <Ionicons
                 name={action.icon ?? "ellipsis-horizontal"}
                 size={20}
-                color={newTheme.textPrimary}
+                color={action.iconColor ?? newTheme.textPrimary}
                 style={{ opacity: 0.9 }}
               />
               {!!("badge" in action && action.badge) && <View style={styles.badge} />}

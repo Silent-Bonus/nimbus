@@ -1,8 +1,7 @@
-import React, { useContext } from "react";
-import { StyleSheet, TextStyle, ViewStyle } from "react-native";
+import React from "react";
+import type { TextStyle, ViewStyle } from "react-native";
 
 import AppHeader, { HeaderRightAction } from "@/components/layout/AppHeader";
-import ThemeContext from "@/contexts/ThemeContext";
 
 type ScreenHeaderProps = {
   title: string;
@@ -23,51 +22,18 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   titleStyle,
   subtitleStyle,
 }) => {
-  const { svaColors, svaTypography } = useContext(ThemeContext);
-  const mergedTitleStyle = StyleSheet.flatten([
-    styles.title,
-    {
-      color: svaColors.text.primary,
-      fontFamily:
-        svaTypography?.textStyle.authTitle.fontFamily ??
-        "CormorantGaramond_500Medium",
-    },
-    titleStyle,
-  ]);
-  const mergedSubtitleStyle = StyleSheet.flatten([
-    styles.subtitle,
-    {
-      color: svaColors.text.secondary,
-    },
-    subtitleStyle,
-  ]);
-  const mergedContainerStyle = StyleSheet.flatten([containerStyle]);
-
+  // Keep the legacy ScreenHeader API as a thin wrapper while screens converge on AppHeader.
   return (
     <AppHeader
       title={title}
       subtitle={subtitle}
       onBack={onBack}
       rightActions={rightActions}
-      titleStyle={mergedTitleStyle}
-      subtitleStyle={mergedSubtitleStyle}
-      containerStyle={mergedContainerStyle}
+      titleStyle={titleStyle}
+      subtitleStyle={subtitleStyle}
+      containerStyle={containerStyle}
     />
   );
 };
-
-const styles = StyleSheet.create({
-  title: {
-    fontSize: 30,
-    lineHeight: 34,
-    letterSpacing: -0.4,
-  },
-  subtitle: {
-    fontSize: 11,
-    lineHeight: 16,
-    letterSpacing: 1.4,
-    textTransform: "uppercase",
-  },
-});
 
 export default ScreenHeader;
