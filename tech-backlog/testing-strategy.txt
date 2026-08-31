@@ -1,0 +1,34 @@
+Nimbus Project: Automation Testing Strategy
+Date: February 13, 2026
+
+1. Overview
+To maintain the "Ultra Premium" standard of Nimbus, we will implement a two-tier testing strategy:
+- Component-Level Testing (Unit/Integration): Ensuring individual UI elements and logic blocks work in isolation.
+- End-to-End (E2E) Testing: Ensuring critical user journeys (Onboarding, Habit Creation, Payment) work seamlessly across the entire stack.
+
+2. Component-Level Testing (Unit & Integration)
+- Tool: React Native Testing Library (RNTL) + Jest.
+- Focus:
+    - Theme Consistency: Verify components correctly consume ThemeContext and apply expected styles.
+    - Interaction Logic: Test button presses, form inputs, and modal toggles.
+    - Component Props: Ensure modular components (like AppHeader) handle various prop configurations (badges, multiple icons) without crashing.
+- Target Directory: `components/**/__tests__/*.test.tsx`
+
+3. End-to-End (E2E) Testing
+- Tool: Maestro (Recommended for React Native/Expo) or Detox.
+- Objectives:
+    - User Authentication: Test Login -> OTP -> Dashboard flow.
+    - Habit Lifecycle: Test the new "Create Modal" -> Custom Ritual -> Save Habit flow.
+    - Premium Features: Verify that "Ultra Premium" features (Nourish Plan, AI Therapy) are accessible for subscribed users.
+- Flow: Define `.yaml` flows for Maestro to simulate real user interactions on physical devices or simulators.
+
+4. Implementation Plan (Short-Term)
+- Scaffold Jest: Ensure `jest-expo` is configured in `package.json`.
+- Mocking: Create global mocks for `expo-router`, `Ionicons`, and `ThemeContext`.
+- First Milestone: 
+    - Test `AppHeader.tsx` for multiple right-action rendering.
+    - Test `CreateActionModal.tsx` for correct navigation triggers.
+
+5. CI/CD Integration
+- Run Jest tests on every Pull Request via GitHub Actions.
+- Run E2E "Smoke Tests" before any deployment to EAS (Expo Application Services).

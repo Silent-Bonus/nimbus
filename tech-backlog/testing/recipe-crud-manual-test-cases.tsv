@@ -1,0 +1,44 @@
+Module	Area	CRUD	TC ID	Test Scenario	Precondition	Steps	Expected Result	Priority
+Recipe	List	Read	RCP-R-01	Load recipe list successfully	User is on recipe module	Open recipe main screen	Recipe cards load successfully with title image and tags	High
+Recipe	List	Read	RCP-R-02	Show loading state on slow API	API response is delayed	Open recipe main screen	Loading skeleton is shown until recipes load	High
+Recipe	List	Read	RCP-R-03	Show error state when recipe API fails	Recipe list API is unavailable	Open recipe main screen	Error state is shown and screen does not crash	High
+Recipe	List	Read	RCP-R-04	Retry after list API failure	Initial API call fails and retry is available	Open screen then tap retry after failure	Recipe list loads successfully after retry	High
+Recipe	List	Read	RCP-R-05	Render recipe image from valid backend URL	Recipe has valid remote image URL	Open recipe main screen	Correct recipe image is displayed on the card	High
+Recipe	List	Read	RCP-R-06	Show fallback image when image URL is missing	Recipe image field is null or empty	Open recipe main screen	Fallback image is displayed instead of blank image area	High
+Recipe	List	Read	RCP-R-07	Show fallback image when image URL is broken	Recipe has invalid expired or inaccessible image URL	Open recipe main screen	Fallback image is displayed and layout remains stable	High
+Recipe	List	Read	RCP-R-08	Load empty state when no recipes exist	API returns empty data set	Open recipe main screen	Empty state message and illustration are shown	Medium
+Recipe	List	Read	RCP-R-09	Search recipes with valid keyword	Recipes exist with searchable titles	Enter valid search term	Matching recipes are shown and non-matching items are hidden	High
+Recipe	List	Read	RCP-R-10	Search with no matching result	Recipes exist but term does not match	Enter unmatched search term	No results state is shown clearly	Medium
+Recipe	List	Read	RCP-R-11	Filter recipes by category	Categories and recipes exist	Select a category filter	Only recipes for selected category are shown	High
+Recipe	List	Read	RCP-R-12	Open favorites filter	Favorited recipes exist	Select favorites filter	Only favorited recipes are shown	Medium
+Recipe	Detail	Read	RCP-R-13	Open recipe detail from list	Recipe exists in list	Tap a recipe card	Correct recipe detail screen opens	High
+Recipe	Detail	Read	RCP-R-14	Validate detail content accuracy	Recipe detail exists	Open recipe detail	Title image category timing ingredients and steps match backend data	High
+Recipe	Detail	Read	RCP-R-15	Show fallback image on detail when image missing	Recipe detail has no image	Open recipe detail	Fallback image is displayed on detail screen	High
+Recipe	Detail	Read	RCP-R-16	Handle deleted or invalid recipe detail	Recipe ID or slug is invalid	Open old or invalid recipe link	Error or not found state is shown	Medium
+Recipe	Create	Create	RCP-C-01	Create recipe with all valid fields	User has create access	Enter all valid fields and save	Recipe is created successfully and available in list/detail	High
+Recipe	Create	Create	RCP-C-02	Create recipe with minimum required fields	User has create access	Fill only mandatory fields and save	Recipe is created successfully according to product rules	Medium
+Recipe	Create	Create	RCP-C-03	Create recipe with valid remote image URL	User has create access	Enter valid HTTPS image URL and save	Recipe is created and image renders in list/detail	High
+Recipe	Create	Create	RCP-C-04	Create recipe without image	User has create access	Leave image blank and save	Recipe is created and fallback image is shown	High
+Recipe	Create	Create	RCP-C-05	Create recipe with invalid image URL	User has create access	Enter invalid image URL and save	System either blocks save with validation or allows save and shows fallback image per product rule	High
+Recipe	Create	Create	RCP-C-06	Create recipe with missing required field	User has create access	Leave mandatory field blank and save	Save is blocked and validation message is shown	High
+Recipe	Create	Create	RCP-C-07	Create recipe with duplicate title	User has create access	Use an existing recipe title and save	System follows defined duplicate rule and shows proper response	Medium
+Recipe	Create	Create	RCP-C-08	Create recipe with long content	User has create access	Enter long valid title description steps and save	Recipe saves successfully and UI handles long content correctly	Low
+Recipe	Update	Update	RCP-U-01	Update recipe title	Recipe exists and user has edit access	Edit title and save	Updated title appears in list and detail	High
+Recipe	Update	Update	RCP-U-02	Update description or steps	Recipe exists and user has edit access	Edit recipe content and save	Updated content appears correctly on detail screen	High
+Recipe	Update	Update	RCP-U-03	Update category or meal slot	Recipe exists and user has edit access	Change category or meal slot and save	Recipe appears under the correct filter/category	Medium
+Recipe	Update	Update	RCP-U-04	Update recipe image URL	Recipe exists and user has edit access	Replace image URL and save	New image is displayed in list and detail	High
+Recipe	Update	Update	RCP-U-05	Remove recipe image on update	Recipe exists and has image	Clear image field and save	Fallback image is shown after update	High
+Recipe	Update	Update	RCP-U-06	Update with invalid required field	Recipe exists and user has edit access	Remove required data and save	Update is blocked with validation message	High
+Recipe	Update	Update	RCP-U-07	Cancel edit without saving	Recipe exists and user has edit access	Modify fields then cancel or navigate back	Original recipe data remains unchanged	Medium
+Recipe	Delete	Delete	RCP-D-01	Delete recipe successfully	Recipe exists and user has delete access	Delete recipe and confirm	Recipe is deleted successfully	High
+Recipe	Delete	Delete	RCP-D-02	Show delete confirmation	Recipe exists and user has delete access	Trigger delete action	Confirmation prompt is shown before deletion	High
+Recipe	Delete	Delete	RCP-D-03	Cancel delete action	Recipe exists and user has delete access	Start delete then cancel	Recipe remains unchanged	Medium
+Recipe	Delete	Delete	RCP-D-04	Verify deleted recipe removed from list	Recipe was deleted	Return to recipe list	Deleted recipe no longer appears	High
+Recipe	Delete	Delete	RCP-D-05	Verify deleted recipe cannot be opened	Recipe was deleted	Open old detail URL or saved route	Error or not found state is shown	Medium
+Recipe	Delete	Delete	RCP-D-06	Handle delete API failure	Backend delete fails	Try deleting recipe	Error is shown and recipe remains available	Medium
+Recipe	UX	Data	RCP-X-01	Handle expired signed image URL	Recipe image uses signed URL and expires	Open recipe list after URL expiry	Fallback image is shown instead of broken image	High
+Recipe	UX	Data	RCP-X-02	Keep layout stable while image loads	Network is slow	Open recipe list	Cards render correctly without layout shift or overlap	Medium
+Recipe	UX	Data	RCP-X-03	Render special characters correctly	Recipe has special characters in title or description	Open list and detail	Content displays correctly without encoding issue	Low
+Recipe	UX	Data	RCP-X-04	Handle large ingredient and step count	Recipe contains many ingredients and steps	Open recipe detail	Screen remains scrollable readable and stable	Medium
+Recipe	UX	Data	RCP-X-05	Offline behavior after opening module	Device is offline	Open recipe list or detail	App shows correct cached content or proper network error per expected behavior	Medium
+Recipe	UX	Data	RCP-X-06	Validate favorites state consistency	Favorite toggle exists	Favorite or unfavorite a recipe then refresh	State remains consistent after refresh	Medium

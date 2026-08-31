@@ -1,0 +1,3 @@
+ for test - npm test
+
+ for ios - npx expo start --ios
