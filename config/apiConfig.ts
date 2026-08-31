@@ -45,9 +45,22 @@ export const API_ENDPOINTS = {
   getArticleDetails: `${BASE_URL}/api/v1/media/media-assets/`,
   getSoundscapeList: `${BASE_URL}/api/v1/media/media-assets/?type=soundscape`,
 
-  getJournalList: `${BASE_URL}/api/v1/assesments/journal-templates/`,
-  submitJournal: `${BASE_URL}/api/v1/assesments/journal-entries/`,
-  getJournalEntry: `${BASE_URL}/api/v1/assesments/journal-entries/`,
+  getReflectionList: `${BASE_URL}/api/v1/reflect/templates/`,
+  getReflectionCategories: `${BASE_URL}/api/v1/reflect/categories/`,
+  getReflectionDetail: (templateId: string) =>
+    `${BASE_URL}/api/v1/reflect/templates/${templateId}/`,
+  startReflectionSession: `${BASE_URL}/api/v1/reflect/sessions/`,
+  getReflectionSessionList: `${BASE_URL}/api/v1/reflect/sessions/`,
+  getReflectionSession: (sessionId: number | string) =>
+    `${BASE_URL}/api/v1/reflect/sessions/${sessionId}/`,
+  abandonReflectionSession: (sessionId: number | string) =>
+    `${BASE_URL}/api/v1/reflect/sessions/${sessionId}/abandon/`,
+  saveReflectionSessionStep: (sessionId: number | string, stepNumber: number) =>
+    `${BASE_URL}/api/v1/reflect/sessions/${sessionId}/steps/${stepNumber}/`,
+  completeReflectionSession: (sessionId: number | string) =>
+    `${BASE_URL}/api/v1/reflect/sessions/${sessionId}/complete/`,
+  submitReflection: `${BASE_URL}/api/v1/assesments/journal-entries/`,
+  getReflectionEntries: `${BASE_URL}/api/v1/assesments/journal-entries/`,
 
   getWorkoutVideoList: `${BASE_URL}/api/v1/media/media-assets/?type=video`,
   getNewsletterList: `${BASE_URL}/api/v1/newsletter/`,

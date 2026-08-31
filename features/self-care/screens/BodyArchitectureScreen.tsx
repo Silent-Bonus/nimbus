@@ -77,7 +77,7 @@ export default function BodyArchitectureScreen() {
   );
 
   const handleSealToChronicle = () => {
-    router.push(ROUTES.AUTH.SELF_CARE_JOURNALING);
+    router.push(ROUTES.AUTH.SELF_CARE_REFLECTIONS);
   };
 
   return (

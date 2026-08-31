@@ -4,7 +4,7 @@ import renderer, { act } from "react-test-renderer";
 
 import ThemeContext from "../../../../../contexts/ThemeContext";
 import { getTheme } from "../../../../../theme";
-import JournalEntryCard from "../JournalEntryCard";
+import ReflectionEntryCard from "../ReflectionEntryCard";
 
 const theme = getTheme("sva");
 const themeValue = {
@@ -40,10 +40,10 @@ function renderCard(element: React.ReactElement) {
   );
 }
 
-describe("JournalEntryCard", () => {
-  it("renders the journal metadata and tag chips", () => {
+describe("ReflectionEntryCard", () => {
+  it("renders the reflection metadata and tag chips", () => {
     const tree = renderCard(
-      <JournalEntryCard
+      <ReflectionEntryCard
         item={{
           id: "journal-1",
           title: "The Morning Light",
@@ -71,7 +71,7 @@ describe("JournalEntryCard", () => {
   it("calls onPress when the card is tapped", () => {
     const onPress = jest.fn();
     const tree = renderCard(
-      <JournalEntryCard
+      <ReflectionEntryCard
         item={{
           id: "journal-2",
           title: "Midnight Reverie",
@@ -95,7 +95,7 @@ describe("JournalEntryCard", () => {
 
   it("exposes an accessible label for the card action", () => {
     const tree = renderCard(
-      <JournalEntryCard
+      <ReflectionEntryCard
         item={{
           id: "journal-3",
           title: "Fragmented Waters",

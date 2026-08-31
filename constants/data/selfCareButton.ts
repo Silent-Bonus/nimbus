@@ -39,7 +39,7 @@ export const buttons: NavigationButtonType[] = [
     id: 4,
     label: "Reflect",
     action: "navigate",
-    screen: ROUTES.AUTH.SELF_CARE_REFLECTION,
+    screen: ROUTES.AUTH.SELF_CARE_REFLECTIONS,
     iconName: "book-open-variant",
   },
   // {

@@ -59,12 +59,13 @@ export const ROUTES = {
     // Self Care
     SELF_CARE_THINGS_TO_DO: "/(auth)/self-care/thingsToDo",
     SELF_CARE_SLEEP: "/(auth)/self-care/sleep",
-    SELF_CARE_REFLECTION: "/(auth)/self-care/reflection",
-    SELF_CARE_JOURNALING: "/(auth)/self-care/journaling",
-    SELF_CARE_JOURNAL_DETAIL: "/(auth)/self-care/journal/detail/[journalId]",
-    SELF_CARE_JOURNAL_ENTRY: "/(auth)/self-care/journal/[journalId]",
-    SELF_CARE_JOURNAL_SUBMISSION: "/(auth)/self-care/journal/submission",
-    SELF_CARE_JOURNAL_ARCHIVE: "/(auth)/self-care/journal/archive",
+    SELF_CARE_REFLECTIONS: "/(auth)/self-care/reflections",
+    SELF_CARE_REFLECTION_DETAIL:
+      "/(auth)/self-care/reflections/detail/[journalSlug]",
+    SELF_CARE_REFLECTION_ENTRY: "/(auth)/self-care/reflections/[journalId]",
+    SELF_CARE_REFLECTION_SUBMISSION:
+      "/(auth)/self-care/reflections/submission",
+    SELF_CARE_REFLECTION_ARCHIVE: "/(auth)/self-care/reflections/archive",
     SELF_CARE_AFFIRMATION: "/(auth)/self-care/affirmation",
     SELF_CARE_CREATE_AFFIRMATION: "/(auth)/self-care/create-affirmation",
     SELF_CARE_BREATHWORK: "/(auth)/self-care/breathwork",

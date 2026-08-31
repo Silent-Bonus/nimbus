@@ -48,9 +48,9 @@ const SECTION_DATA: SectionConfig[] = [
     chipIcon: "brain",
     actions: [
       {
-        label: "Journaling",
+        label: "Reflection",
         icon: "book-edit-outline",
-        route: ROUTES.AUTH.SELF_CARE_JOURNALING,
+        route: ROUTES.AUTH.SELF_CARE_REFLECTIONS,
       },
       {
         label: "Meditation",

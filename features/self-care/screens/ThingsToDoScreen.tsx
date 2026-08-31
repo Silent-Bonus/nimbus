@@ -26,7 +26,7 @@ const activities = [
     image: require("@/assets/images/mentalTest/adhdTest.png"),
   },
   {
-    text: "Write a journal",
+    text: "Write a reflection",
     image: require("@/assets/images/mentalTest/adhdTest.png"),
   },
 ];

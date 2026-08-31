@@ -15,29 +15,41 @@ import ThemeContext from "@/contexts/ThemeContext";
 import PillFilters from "@/components/ui/PillFilters";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import { ROUTES } from "@/constants/routes";
-import { getJournalEntry } from "@/features/self-care/services/selfCareService";
-import JournalEntryCard from "@/features/self-care/components/journaling/JournalEntryCard";
 import {
-  fallbackCardData,
-  mapJournalEntry,
-  type JournalCard,
-  type RawJournalEntry,
-} from "@/features/self-care/utils/journaling";
+  getReflectionSessionList,
+} from "@/features/self-care/services/selfCareService";
+import ReflectionEntryCard from "@/features/self-care/components/reflection/ReflectionEntryCard";
+import type {
+  ReflectionSessionState,
+} from "@/features/self-care/types/reflectionTypes";
 import {
-  filterJournalArchiveEntries,
-  JOURNAL_ARCHIVE_FILTERS,
-  type JournalArchiveFilter,
-} from "@/features/self-care/utils/journalArchive";
+  buildReflectionSessionStatusQuery,
+  type ReflectionSessionFilter,
+} from "@/features/self-care/utils/reflectionArchive";
+import {
+  mapReflectionSessionToCard,
+  normalizeReflectionSessionStatus,
+  type ReflectionCard,
+} from "@/features/self-care/utils/reflections";
 
-export const JournalArchiveScreen = () => {
+const REFLECTION_SESSION_FILTERS: readonly {
+  label: string;
+  value: ReflectionSessionFilter;
+}[] = [
+  { label: "All", value: "all" },
+  { label: "In Progress", value: "in_progress" },
+  { label: "Completed", value: "completed" },
+];
+
+export const ReflectionArchiveScreen = () => {
   const navigation = useNavigation();
   const { newTheme: theme, svaTypography, spacing, typography } =
     useContext(ThemeContext);
 
   const [loading, setLoading] = useState(true);
-  const [journals, setJournals] = useState<JournalCard[]>(fallbackCardData);
+  const [reflections, setReflections] = useState<ReflectionCard[]>([]);
   const [selectedFilter, setSelectedFilter] =
-    useState<JournalArchiveFilter>("pastWeek");
+    useState<ReflectionSessionFilter>("all");
 
   const styles = useMemo(
     () => styling(theme, svaTypography, spacing, typography),
@@ -48,53 +60,74 @@ export const JournalArchiveScreen = () => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
-  const loadJournalEntries = useCallback(async () => {
+  const loadReflectionSessions = useCallback(async () => {
     setLoading(true);
     try {
-      const response: any = await getJournalEntry();
-      const rawEntries: RawJournalEntry[] = Array.isArray(response)
-        ? response
-        : Array.isArray(response?.data)
-          ? response.data
-          : [];
+      // The archive filter drives the server query so completed and active
+      // buckets stay aligned with backend session state instead of relying
+      // only on client-side filtering.
+      const response = await getReflectionSessionList(
+        selectedFilter === "all"
+          ? undefined
+          : {
+              status: buildReflectionSessionStatusQuery(selectedFilter),
+            }
+      );
+      const sessions: ReflectionSessionState[] = Array.isArray(response?.data)
+        ? response.data
+        : [];
 
-      const mapped = rawEntries
-        .map(mapJournalEntry)
+      const mapped = sessions
+        .map(mapReflectionSessionToCard)
         .sort((a, b) => {
           const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
           const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
           return bTime - aTime;
         });
 
-      setJournals(mapped.length ? mapped : fallbackCardData);
+      setReflections(mapped);
     } catch (error) {
-      console.log("Failed to load archive entries:", error);
-      setJournals(fallbackCardData);
+      console.log("Failed to load reflection sessions:", error);
+      setReflections([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedFilter]);
 
   useEffect(() => {
-    loadJournalEntries();
-  }, [loadJournalEntries]);
+    loadReflectionSessions();
+  }, [loadReflectionSessions]);
 
-  const visibleJournals = useMemo(
-    () => filterJournalArchiveEntries(journals, selectedFilter),
-    [journals, selectedFilter]
-  );
+  const visibleReflections = useMemo(() => {
+    if (selectedFilter === "all") {
+      return reflections;
+    }
 
-  const handleOpenJournal = (item: JournalCard) => {
+    return reflections.filter((reflection) => {
+      return normalizeReflectionSessionStatus(reflection.status) === selectedFilter;
+    });
+  }, [reflections, selectedFilter]);
+
+  const handleOpenReflection = (item: ReflectionCard) => {
+    // Completed sessions are fully review-driven now, so the review screen
+    // only needs the session id and can fetch the latest summary/responses.
+    if (normalizeReflectionSessionStatus(item.status) === "completed") {
+      router.push({
+        pathname: ROUTES.AUTH.SELF_CARE_REFLECTION_SUBMISSION,
+        params: {
+          journalSessionId: item.id,
+        },
+      });
+      return;
+    }
+
+    // Active archive items still go through detail first so the template
+    // context is restored before resuming the session entry flow.
     router.push({
-      pathname: ROUTES.AUTH.SELF_CARE_JOURNAL_SUBMISSION,
+      pathname: ROUTES.AUTH.SELF_CARE_REFLECTION_DETAIL,
       params: {
-        journalId: item.id,
-        journalTitle: item.title,
-        journalSummary: item.description,
-        journalTags: item.tags.join(","),
-        journalThemeTag: item.tags[0] ?? "reflection",
-        questionCount: String(Math.max(item.questionCount ?? 0, 3)),
-        sealedAtLabel: item.dateLabel,
+        journalSlug: item.slug ?? item.templateId ?? item.id,
+        journalSessionId: item.id,
       },
     });
   };
@@ -103,26 +136,26 @@ export const JournalArchiveScreen = () => {
     <ScreenView bgColor={theme.background} style={styles.screen}>
       <View style={styles.root}>
         <AppHeader
-          title="Chronicle Archive"
-          subtitle="Past seals, sorted by time."
+          title="Reflection Archive"
+          subtitle="Resume active sessions or revisit completed ones."
           onBack={() => router.back()}
           rightAction={{
             icon: "journal-outline",
-            accessibilityLabel: "Open journal library",
-            onPress: () => router.push(ROUTES.AUTH.SELF_CARE_JOURNALING),
+            accessibilityLabel: "Open reflection library",
+            onPress: () => router.push(ROUTES.AUTH.SELF_CARE_REFLECTIONS),
           }}
           containerStyle={styles.header}
         />
 
         <FlatList
-          data={visibleJournals}
+          data={visibleReflections}
           keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
           ListHeaderComponent={
             <>
               <PillFilters
-                options={JOURNAL_ARCHIVE_FILTERS}
+                options={REFLECTION_SESSION_FILTERS}
                 selectedValue={selectedFilter}
                 onChange={setSelectedFilter}
                 scrollable
@@ -137,7 +170,7 @@ export const JournalArchiveScreen = () => {
                 <View style={styles.loadingRow}>
                   <ActivityIndicator size="small" color={theme.accent} />
                   <Text style={styles.loadingText}>
-                    Restoring sealed entries...
+                    Loading reflection sessions...
                   </Text>
                 </View>
               ) : (
@@ -148,17 +181,17 @@ export const JournalArchiveScreen = () => {
                     color={theme.textSecondary}
                   />
                   <Text style={styles.countText}>
-                    {visibleJournals.length} sealed
-                    {visibleJournals.length === 1 ? "" : "s"} in this window
+                    {visibleReflections.length} session
+                    {visibleReflections.length === 1 ? "" : "s"} in this view
                   </Text>
                 </View>
               )}
             </>
           }
           renderItem={({ item }) => (
-            <JournalEntryCard
+            <ReflectionEntryCard
               item={item}
-              onPress={() => handleOpenJournal(item)}
+              onPress={() => handleOpenReflection(item)}
             />
           )}
           ListEmptyComponent={
@@ -168,9 +201,9 @@ export const JournalArchiveScreen = () => {
                 size={40}
                 color={theme.textSecondary}
               />
-              <Text style={styles.emptyTitle}>No sealed entries here.</Text>
+              <Text style={styles.emptyTitle}>No reflection sessions here.</Text>
               <Text style={styles.emptyText}>
-                Try a different time window or seal a new journal.
+                Try a different status or start a new reflection.
               </Text>
             </View>
           }
@@ -264,4 +297,4 @@ const styling = (theme: any, svaTypography: any, spacing: any, typography: any) 
     },
   });
 
-export default JournalArchiveScreen;
+export default ReflectionArchiveScreen;
