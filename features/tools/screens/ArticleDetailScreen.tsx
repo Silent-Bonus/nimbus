@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import {
   ActivityIndicator,
@@ -10,15 +10,16 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Ionicons } from "@expo/vector-icons";
 
 import AppHeader from "@/components/layout/AppHeader";
+import ProcessingModal from "@/components/ui/modal/ProcessingModal";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
-import { NimbusButton } from "@/components/ui/theme-components/NimbusButton";
 import ThemeContext from "@/contexts/ThemeContext";
 import { ROUTES } from "@/constants/routes";
-import { getNewsletterDetails } from "@/features/tools/services/toolService";
+import {
+  addNewsletterFavorite,
+  getNewsletterDetails,
+} from "@/features/tools/services/toolService";
 import {
   ArticleBodyCopy,
   ArticleContextCard,
@@ -27,14 +28,38 @@ import {
   ArticlePullQuote,
   ArticleRecommendationCard,
   ArticleReflectionCard,
+  ArticleReviewModal,
+  ArticleReviewPanel,
 } from "@/features/tools/components/article-detail";
 import {
   type ArticleDetail,
   type ArticleReflectionPrompt,
 } from "@/features/tools/data/articleDetails";
+import type {
+  NewsletterReviewSummary,
+  NewsletterReviewCreateResponse,
+} from "@/features/tools/types/toolsTypes";
 import type { Spacing, SvaColorSet, TypographyTokens } from "@/theme/types";
 
-const FAVORITES_KEY = "favorites_v1";
+type ReviewSummaryState = {
+  avgRating: number | null;
+  avgClarityScore: number | null;
+  avgHelpfulnessScore: number | null;
+  reviewsCount: number;
+  recommendationCount: number;
+  recommendationRate: number | null;
+};
+
+type FavoriteModalStatus = "loading" | "success" | "error";
+
+type FavoriteModalState = {
+  visible: boolean;
+  status: FavoriteModalStatus;
+  title: string;
+  subtitle?: string;
+  message: string;
+  actionLabel?: string;
+};
 
 const getStringParam = (value: unknown): string | null => {
   if (!value) return null;
@@ -85,6 +110,98 @@ const pickText = (...values: unknown[]) => {
 
   return "";
 };
+
+const buildActionErrorMessage = (error: unknown) => {
+  if (typeof error === "string") {
+    if (/<!doctype html>|<html/i.test(error)) {
+      return "Unable to complete this request right now.";
+    }
+
+    return error;
+  }
+
+  if (error && typeof error === "object") {
+    const candidate = error as {
+      message?: unknown;
+      detail?: unknown;
+      error?: unknown;
+      non_field_errors?: unknown;
+    };
+
+    if (typeof candidate.message === "string" && candidate.message.trim()) {
+      return candidate.message;
+    }
+
+    if (typeof candidate.detail === "string" && candidate.detail.trim()) {
+      return candidate.detail;
+    }
+
+    if (typeof candidate.error === "string" && candidate.error.trim()) {
+      return candidate.error;
+    }
+
+    if (Array.isArray(candidate.non_field_errors)) {
+      const firstMessage = candidate.non_field_errors.find(
+        (item) => typeof item === "string" && item.trim()
+      );
+
+      if (typeof firstMessage === "string") {
+        return firstMessage;
+      }
+    }
+  }
+
+  return "Unable to complete this request right now.";
+};
+
+const toFiniteNumber = (value: unknown): number | null => {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number.parseFloat(value)
+        : Number.NaN;
+
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const buildReviewSummaryState = (
+  reviewSummary?: NewsletterReviewSummary | null,
+  apiArticle?: Record<string, any> | null
+): ReviewSummaryState => ({
+  avgRating:
+    toFiniteNumber(reviewSummary?.avg_rating) ??
+    toFiniteNumber(apiArticle?.avg_rating),
+  avgClarityScore: toFiniteNumber(reviewSummary?.avg_clarity_score),
+  avgHelpfulnessScore: toFiniteNumber(reviewSummary?.avg_helpfulness_score),
+  reviewsCount: Number(
+    reviewSummary?.reviews_count ?? apiArticle?.reviews_count ?? 0
+  ),
+  recommendationCount: Number(reviewSummary?.recommendation_count ?? 0),
+  recommendationRate: toFiniteNumber(reviewSummary?.recommendation_rate),
+});
+
+const decodeHtmlEntities = (value: string) =>
+  value
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'");
+
+const htmlToPlainText = (value: string) =>
+  decodeHtmlEntities(value)
+    .replace(/<\s*br\s*\/?>/gi, "\n")
+    .replace(/<\s*li[^>]*>/gi, "- ")
+    .replace(/<\/\s*(p|div|section|article|ul|ol|li|h[1-6])\s*>/gi, "\n\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\r/g, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n[ \t]+/g, "\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 
 const isCallToActionHeading = (value: string) =>
   /^(the\s+)?call\s+to\s+action(?:\s*\(cta\))?$/i.test(value);
@@ -248,7 +365,8 @@ const splitArticleContent = (value: unknown, title?: string) => {
     return [];
   }
 
-  const chunks = value
+  const normalizedValue = /<[^>]+>/.test(value) ? htmlToPlainText(value) : value;
+  const chunks = normalizedValue
     .split(/\n{2,}/)
     .map((chunk) => chunk.trim())
     .filter(Boolean);
@@ -280,6 +398,10 @@ const normalizeArticleFromApi = (
     apiArticle?.content || apiArticle?.body || apiArticle?.email_content,
     apiArticle?.title
   );
+  const promoSource =
+    apiArticle?.promo && typeof apiArticle.promo === "object"
+      ? apiArticle.promo
+      : null;
   const content =
     Array.isArray(sectionSource) && sectionSource.length > 0
       ? sectionSource
@@ -329,7 +451,14 @@ const normalizeArticleFromApi = (
     fallback.reflectionPrompt.prompt
   );
   const callToAction = normalizeCallToActionPrompt(
-    apiArticle?.callToAction ?? apiArticle?.call_to_action,
+    promoSource
+      ? {
+          title: promoSource.title,
+          description: promoSource.body,
+          helper: promoSource.body,
+          action_label: promoSource.cta_label,
+        }
+      : apiArticle?.callToAction ?? apiArticle?.call_to_action,
     {
       ...fallback.callToAction,
     }
@@ -403,7 +532,10 @@ const normalizeArticleFromApi = (
     recommendation: fallback.recommendation,
     tags: fallback.tags,
     favorite: Boolean(
-      apiArticle?.favorite ?? apiArticle?.is_favorite ?? fallback.favorite
+      apiArticle?.favorite ??
+        apiArticle?.is_favorite ??
+        apiArticle?.is_favorited ??
+        fallback.favorite
     ),
     saveLabel: apiArticle?.saveLabel || fallback.saveLabel,
   };
@@ -431,6 +563,23 @@ const ArticleDetailScreen: React.FC = () => {
   const [detail, setDetail] = useState<ArticleDetail>(fallbackDetail);
   const [isSaved, setIsSaved] = useState(fallbackDetail.favorite);
   const [loading, setLoading] = useState(true);
+  const [favoriteModal, setFavoriteModal] = useState<FavoriteModalState>({
+    visible: false,
+    status: "loading",
+    title: "",
+    message: "",
+  });
+  const [reviewSlug, setReviewSlug] = useState<string | null>(slugParam);
+  const [isReviewModalVisible, setIsReviewModalVisible] = useState(false);
+  const [reviewSummary, setReviewSummary] = useState<ReviewSummaryState>({
+    avgRating: null,
+    avgClarityScore: null,
+    avgHelpfulnessScore: null,
+    reviewsCount: 0,
+    recommendationCount: 0,
+    recommendationRate: null,
+  });
+  const favoriteRequestInFlight = useRef(false);
 
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
@@ -446,6 +595,8 @@ const ArticleDetailScreen: React.FC = () => {
         if (!active) return;
         setDetail(fallbackArticle);
         setIsSaved(fallbackArticle.favorite);
+        setReviewSlug(null);
+        setReviewSummary(buildReviewSummaryState());
         setLoading(false);
         return;
       }
@@ -461,6 +612,10 @@ const ArticleDetailScreen: React.FC = () => {
           if (!active) return;
           setDetail(normalized);
           setIsSaved(normalized.favorite);
+          setReviewSlug(pickText(slugParam, apiArticle?.slug) || null);
+          setReviewSummary(
+            buildReviewSummaryState(apiArticle?.review_summary, apiArticle)
+          );
           return;
         }
 
@@ -469,11 +624,15 @@ const ArticleDetailScreen: React.FC = () => {
         if (!active) return;
         setDetail(fallbackArticle);
         setIsSaved(fallbackArticle.favorite);
+        setReviewSlug(slugParam ?? null);
+        setReviewSummary(buildReviewSummaryState());
       } catch (error) {
         console.warn("[ArticleDetail] load failed", error);
         if (!active) return;
         setDetail(fallbackArticle);
         setIsSaved(fallbackArticle.favorite);
+        setReviewSlug(slugParam ?? null);
+        setReviewSummary(buildReviewSummaryState());
       } finally {
         if (active) {
           setLoading(false);
@@ -486,50 +645,59 @@ const ArticleDetailScreen: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [detailLookupKey, fallbackDetail]);
+  }, [detailLookupKey, fallbackDetail, slugParam]);
 
-  useEffect(() => {
-    let active = true;
-
-    const checkIfSaved = async () => {
-      if (!detail.id) return;
-      try {
-        const raw = await AsyncStorage.getItem(FAVORITES_KEY);
-        const favs = raw ? JSON.parse(raw) : [];
-        if (!active) return;
-        setIsSaved(Array.isArray(favs) ? favs.map(String).includes(detail.id) : false);
-      } catch (error) {
-        console.warn("[ArticleDetail] favorite check failed", error);
-      }
-    };
-
-    void checkIfSaved();
-
-    return () => {
-      active = false;
-    };
-  }, [detail.id]);
+  const closeFavoriteModal = () => {
+    setFavoriteModal((current) => ({ ...current, visible: false }));
+  };
 
   const onToggleSave = async () => {
-    if (!detail.id) {
+    if (!reviewSlug || favoriteModal.visible || favoriteRequestInFlight.current) {
       return;
     }
 
+    const loadingTitle = isSaved ? "Refreshing favorites" : "Adding to favorites";
+    const loadingMessage = isSaved
+      ? "Checking your favorite status for this newsletter..."
+      : "Saving this newsletter to your favorites...";
+
+    setFavoriteModal({
+      visible: true,
+      status: "loading",
+      title: loadingTitle,
+      subtitle: "Please wait while we sync your favorites.",
+      message: loadingMessage,
+    });
+    favoriteRequestInFlight.current = true;
+
     try {
-      const raw = await AsyncStorage.getItem(FAVORITES_KEY);
-      let favs: string[] = raw ? JSON.parse(raw) : [];
-      if (!Array.isArray(favs)) favs = [];
+      const response = await addNewsletterFavorite(reviewSlug);
+      const resolvedFavorite = Boolean(response?.data?.is_favorited ?? true);
+      const successMessage =
+        response?.message?.trim() ||
+        "Newsletter added to favorites successfully.";
 
-      if (favs.includes(detail.id)) {
-        favs = favs.filter((item) => item !== detail.id);
-      } else {
-        favs = [detail.id, ...favs];
-      }
-
-      await AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(favs));
-      setIsSaved((current) => !current);
+      setIsSaved(resolvedFavorite);
+      setFavoriteModal({
+        visible: true,
+        status: "success",
+        title: resolvedFavorite ? "Added to favorites" : "Favorites updated",
+        subtitle: "Your favorites list has been updated.",
+        message: successMessage,
+        actionLabel: "Done",
+      });
     } catch (error) {
-      console.warn("[ArticleDetail] save toggle failed", error);
+      console.warn("[ArticleDetail] favorite update failed", error);
+      setFavoriteModal({
+        visible: true,
+        status: "error",
+        title: "Unable to update favorite",
+        subtitle: "Please try again.",
+        message: buildActionErrorMessage(error),
+        actionLabel: "Close",
+      });
+    } finally {
+      favoriteRequestInFlight.current = false;
     }
   };
 
@@ -543,6 +711,81 @@ const ArticleDetailScreen: React.FC = () => {
       console.warn("[ArticleDetail] share failed", error);
     }
   };
+
+  const onOpenReview = () => {
+    if (!reviewSlug) {
+      Alert.alert(
+        "Review unavailable",
+        "Please wait for the newsletter details to finish loading."
+      );
+      return;
+    }
+
+    setIsReviewModalVisible(true);
+  };
+
+  const onReviewSubmitSuccess = (response: NewsletterReviewCreateResponse) => {
+    const createdReview = response?.data;
+
+    if (!createdReview) {
+      return;
+    }
+
+    setReviewSummary((current) => {
+      const nextCount = current.reviewsCount + 1;
+      const currentAverage = current.avgRating ?? 0;
+      const currentClarity = current.avgClarityScore ?? 0;
+      const currentHelpfulness = current.avgHelpfulnessScore ?? 0;
+      const currentRecommendationCount = current.recommendationCount;
+      const nextAverage =
+        current.reviewsCount > 0 && Number.isFinite(currentAverage)
+          ? ((currentAverage * current.reviewsCount) + createdReview.rating) /
+            nextCount
+          : createdReview.rating;
+      const nextClarity =
+        current.reviewsCount > 0 && Number.isFinite(currentClarity)
+          ? ((currentClarity * current.reviewsCount) +
+              createdReview.clarity_score) /
+            nextCount
+          : createdReview.clarity_score;
+      const nextHelpfulness =
+        current.reviewsCount > 0 && Number.isFinite(currentHelpfulness)
+          ? ((currentHelpfulness * current.reviewsCount) +
+              createdReview.helpfulness_score) /
+            nextCount
+          : createdReview.helpfulness_score;
+      const nextRecommendationCount =
+        currentRecommendationCount + (createdReview.would_recommend ? 1 : 0);
+      const nextRecommendationRate =
+        nextCount > 0 ? nextRecommendationCount / nextCount : 0;
+
+      return {
+        avgRating: nextAverage,
+        avgClarityScore: nextClarity,
+        avgHelpfulnessScore: nextHelpfulness,
+        reviewsCount: nextCount,
+        recommendationCount: nextRecommendationCount,
+        recommendationRate: nextRecommendationRate,
+      };
+    });
+  };
+
+  const favoriteModalMessage = useMemo(() => {
+    if (favoriteModal.status !== "success") {
+      return favoriteModal.message;
+    }
+
+    return (
+      <View style={styles.favoriteResultWrap}>
+        <Text style={styles.favoriteResultMessage}>{favoriteModal.message}</Text>
+        <View style={styles.favoriteResultPill}>
+          <Text style={styles.favoriteResultPillText}>
+            {isSaved ? "Saved in favorites" : "Favorite updated"}
+          </Text>
+        </View>
+      </View>
+    );
+  }, [favoriteModal.message, favoriteModal.status, isSaved, styles]);
 
   const onRecommendationPress = () => {
     if (!detail.recommendation.id) {
@@ -564,108 +807,132 @@ const ArticleDetailScreen: React.FC = () => {
 
   return (
     <ScreenView bgColor={svaColors.bg.base} padding={0} style={styles.screen}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.content,
-          { paddingBottom: insets.bottom + spacing.xl * 2.5 },
-        ]}
-      >
-        <AppHeader
-          title=""
-          subtitle=""
-          onBack={() => router.back()}
-          rightActions={[
-            {
-              icon: isSaved ? "bookmark" : "bookmark-outline",
-              accessibilityLabel: "Toggle save",
-              onPress: onToggleSave,
-            },
-            {
-              icon: "share-outline",
-              accessibilityLabel: "Share article",
-              onPress: onShare,
-            },
+      <>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: insets.bottom + spacing.xl * 2.5 },
           ]}
-          containerStyle={styles.header}
-          titleStyle={styles.hiddenHeaderText}
-          subtitleStyle={styles.hiddenHeaderText}
-        />
+        >
+          <AppHeader
+            title=""
+            subtitle=""
+            onBack={() => router.back()}
+            rightActions={[
+              {
+                icon: isSaved ? "bookmark" : "bookmark-outline",
+                accessibilityLabel: "Toggle save",
+                onPress: onToggleSave,
+              },
+              {
+                icon:
+                  reviewSummary.reviewsCount > 0 ? "star" : "star-outline",
+                accessibilityLabel: "Open review form",
+                onPress: onOpenReview,
+              },
+              {
+                icon: "share-outline",
+                accessibilityLabel: "Share article",
+                onPress: onShare,
+              },
+            ]}
+            containerStyle={styles.header}
+            titleStyle={styles.hiddenHeaderText}
+            subtitleStyle={styles.hiddenHeaderText}
+          />
 
-        {loading ? (
-          <View style={styles.loadingWrap}>
-            <ActivityIndicator size="large" color={svaColors.brand.primary} />
-          </View>
-        ) : (
-          <>
-            <ArticleDetailHero
-              image={detail.heroImage}
-              title={detail.title}
-              subtitle={detail.subtitle}
-              category={detail.category}
-              readingTime={detail.readingTime}
-              authorName={detail.authorName}
-              authorRole={detail.authorRole}
-            />
-
-            <ArticleDetailSection eyebrow="Context">
-              <ArticleContextCard
-                primaryLabel={detail.contextCard.primaryLabel}
-                primaryValue={detail.contextCard.primaryValue}
-                secondaryLabel={detail.contextCard.secondaryLabel}
-                secondaryValue={detail.contextCard.secondaryValue}
-                description={detail.contextCard.description}
-              />
-            </ArticleDetailSection>
-
-            <ArticleDetailSection eyebrow="Content">
-              <ArticleBodyCopy paragraphs={detail.content} />
-            </ArticleDetailSection>
-
-            <ArticlePullQuote quote={detail.pullQuote} />
-
-            <ArticleReflectionCard
-              eyebrow={detail.callToAction.eyebrow}
-              title={detail.callToAction.title}
-              prompt={detail.callToAction.prompt}
-              helper={detail.callToAction.helper}
-              actionLabel={detail.callToAction.actionLabel}
-              onActionPress={onCallToActionPress}
-            />
-
-            <ArticleDetailSection eyebrow={detail.recommendationLabel}>
-              <ArticleRecommendationCard
-                title={detail.recommendation.title}
-                subtitle={detail.recommendation.subtitle}
-                tag={detail.recommendation.tag}
-                image={detail.recommendation.image}
-                imageFit={detail.recommendation.imageFit}
-                onPress={onRecommendationPress}
-              />
-            </ArticleDetailSection>
-
-            <View style={styles.footerBadge}>
-              <Text style={styles.footerBadgeText}>
-                {detail.category.toUpperCase()} · HUMAN OS
-              </Text>
+          {loading ? (
+            <View style={styles.loadingWrap}>
+              <ActivityIndicator size="large" color={svaColors.brand.primary} />
             </View>
+          ) : (
+            <>
+              <ArticleDetailHero
+                image={detail.heroImage}
+                title={detail.title}
+                subtitle={detail.subtitle}
+                category={detail.category}
+                readingTime={detail.readingTime}
+                authorName={detail.authorName}
+                authorRole={detail.authorRole}
+              />
 
-            <NimbusButton
-              label={isSaved ? "Saved" : detail.saveLabel}
-              onPress={onToggleSave}
-              variant="outline"
-              leftIcon={
-                <Ionicons
-                  name={isSaved ? "bookmark" : "bookmark-outline"}
-                  size={18}
-                  color={svaColors.brand.primary}
+              <ArticleDetailSection eyebrow="Context">
+                <ArticleContextCard
+                  primaryLabel={detail.contextCard.primaryLabel}
+                  primaryValue={detail.contextCard.primaryValue}
+                  secondaryLabel={detail.contextCard.secondaryLabel}
+                  secondaryValue={detail.contextCard.secondaryValue}
+                  description={detail.contextCard.description}
                 />
-              }
-              style={styles.saveButton}
-            />
-          </>
-        )}
-      </ScrollView>
+              </ArticleDetailSection>
+
+              <ArticleDetailSection eyebrow="Content">
+                <ArticleBodyCopy paragraphs={detail.content} />
+              </ArticleDetailSection>
+
+              <ArticlePullQuote quote={detail.pullQuote} />
+
+              <ArticleDetailSection eyebrow="Reviews">
+                <ArticleReviewPanel
+                  summary={{
+                    avg_rating: reviewSummary.avgRating ?? 0,
+                    avg_clarity_score: reviewSummary.avgClarityScore ?? 0,
+                    avg_helpfulness_score: reviewSummary.avgHelpfulnessScore ?? 0,
+                    reviews_count: reviewSummary.reviewsCount,
+                    recommendation_count: reviewSummary.recommendationCount,
+                    recommendation_rate: reviewSummary.recommendationRate ?? 0,
+                  }}
+                />
+              </ArticleDetailSection>
+
+              <ArticleReflectionCard
+                eyebrow={detail.callToAction.eyebrow}
+                title={detail.callToAction.title}
+                prompt={detail.callToAction.prompt}
+                helper={detail.callToAction.helper}
+                actionLabel={detail.callToAction.actionLabel}
+                onActionPress={onCallToActionPress}
+              />
+
+              <ArticleDetailSection eyebrow={detail.recommendationLabel}>
+                <ArticleRecommendationCard
+                  title={detail.recommendation.title}
+                  subtitle={detail.recommendation.subtitle}
+                  tag={detail.recommendation.tag}
+                  image={detail.recommendation.image}
+                  imageFit={detail.recommendation.imageFit}
+                  onPress={onRecommendationPress}
+                />
+              </ArticleDetailSection>
+
+              <View style={styles.footerBadge}>
+                <Text style={styles.footerBadgeText}>
+                  {detail.category.toUpperCase()} · HUMAN OS
+                </Text>
+              </View>
+            </>
+          )}
+        </ScrollView>
+        <ArticleReviewModal
+          visible={isReviewModalVisible}
+          newsletterSlug={reviewSlug}
+          articleTitle={detail.title}
+          onSubmitSuccess={onReviewSubmitSuccess}
+          onClose={() => setIsReviewModalVisible(false)}
+        />
+        <ProcessingModal
+          visible={favoriteModal.visible}
+          status={favoriteModal.status}
+          title={favoriteModal.title}
+          subtitle={favoriteModal.subtitle}
+          message={favoriteModalMessage}
+          actionLabel={favoriteModal.actionLabel}
+          onActionPress={closeFavoriteModal}
+          onRequestClose={closeFavoriteModal}
+        />
+      </>
     </ScreenView>
   );
 };
@@ -718,9 +985,35 @@ const styling = (
       color: colors.brand.primary,
       textTransform: "uppercase",
     },
-    saveButton: {
-      alignSelf: "center",
-      minWidth: 152,
+    favoriteResultWrap: {
+      alignItems: "center",
+      gap: spacing.md,
+    },
+    favoriteResultMessage: {
+      color: colors.text.primary,
+      fontSize: 14,
+      lineHeight: 20,
+      textAlign: "center",
+      fontFamily:
+        typography?.textStyle?.authBody?.fontFamily ?? "Outfit_400Regular",
+    },
+    favoriteResultPill: {
+      borderRadius: 999,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.xs,
+      borderWidth: 1,
+      borderColor: colors.border.subtle,
+      backgroundColor: colors.surface.base,
+    },
+    favoriteResultPillText: {
+      fontFamily:
+        typography?.textStyle?.authTinyLabel?.fontFamily ??
+        "Outfit_600SemiBold",
+      fontSize: 10,
+      lineHeight: 12,
+      letterSpacing: 1.2,
+      color: colors.brand.primary,
+      textTransform: "uppercase",
     },
   });
 

@@ -58,6 +58,26 @@ export const buildArticleCardItem = (
   };
 };
 
+export const getRemoteArticleImageUri = (
+  image: ImageSourcePropType
+): string | null => {
+  if (typeof image === "number") {
+    return null;
+  }
+
+  if (Array.isArray(image)) {
+    const first = image[0];
+    return first ? getRemoteArticleImageUri(first) : null;
+  }
+
+  if (image && typeof image === "object") {
+    const candidate = image as { uri?: unknown };
+    return typeof candidate.uri === "string" ? candidate.uri : null;
+  }
+
+  return null;
+};
+
 const MOCK_ARTICLE_DATA = [
   {
     id: 101,

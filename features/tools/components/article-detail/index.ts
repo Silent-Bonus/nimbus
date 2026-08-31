@@ -5,3 +5,5 @@ export { default as ArticleDetailSection } from "./ArticleDetailSection";
 export { default as ArticlePullQuote } from "./ArticlePullQuote";
 export { default as ArticleRecommendationCard } from "./ArticleRecommendationCard";
 export { default as ArticleReflectionCard } from "./ArticleReflectionCard";
+export { default as ArticleReviewModal } from "./ArticleReviewModal";
+export { default as ArticleReviewPanel } from "./ArticleReviewPanel";
