@@ -57,9 +57,9 @@ const styling = (
       borderRadius: 26,
       paddingHorizontal: spacing.lg,
       paddingVertical: spacing.lg,
-      backgroundColor: colors.surface.base,
+      backgroundColor: colors.surface.raised,
       borderWidth: 1,
-      borderColor: colors.border.subtle,
+      borderColor: colors.border.muted,
       alignItems: "center",
       shadowColor: colors.shadow.default,
       shadowOpacity: 0.3,
@@ -74,9 +74,9 @@ const styling = (
       alignItems: "center",
       justifyContent: "center",
       borderWidth: 1,
-      borderColor: colors.border.default,
+      borderColor: colors.border.muted,
       borderStyle: "dashed",
-      backgroundColor: colors.bg.subtle,
+      backgroundColor: colors.surface.base,
       marginBottom: spacing.md,
     },
     eyebrow: {
@@ -108,9 +108,7 @@ const styling = (
       textAlign: "center",
     },
     helper: {
-      fontFamily:
-        typography?.textStyle?.authTinyLabel?.fontFamily ??
-        "Outfit_400Regular",
+      fontFamily: typography?.textStyle?.caption?.fontFamily ?? "Outfit_400Regular",
       fontSize: 12,
       lineHeight: 18,
       color: colors.text.secondary,

@@ -15,11 +15,17 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import { submitNewsletterReview } from "@/features/tools/services/toolService";
+import { submitNewsletterReview } from "@/features/tools/services/newsletterService";
 import type {
   NewsletterReviewCreateResponse,
   NewsletterReviewPayload,
-} from "@/features/tools/types/toolsTypes";
+} from "@/features/tools/types/newsletterTypes";
+import type {
+  FontSet,
+  Spacing,
+  SvaColorSet,
+  TypographyTokens,
+} from "@/theme/types";
 
 type ReviewFormState = {
   rating: number;
@@ -121,8 +127,7 @@ const ArticleReviewModal: React.FC<ArticleReviewModalProps> = ({
   onClose,
   onSubmitSuccess,
 }) => {
-  const { newTheme, spacing, svaColors, svaTypography, typography } =
-    useContext(ThemeContext);
+  const { spacing, svaColors, svaTypography, typography } = useContext(ThemeContext);
   const insets = useSafeAreaInsets();
 
   const [form, setForm] = useState<ReviewFormState>(INITIAL_FORM);
@@ -134,14 +139,13 @@ const ArticleReviewModal: React.FC<ArticleReviewModalProps> = ({
   const styles = useMemo(
     () =>
       makeStyles(
-        newTheme,
         svaColors,
         spacing,
         bodyTextStyle,
         svaTypography,
         insets.bottom
       ),
-    [bodyTextStyle, insets.bottom, newTheme, spacing, svaColors, svaTypography]
+    [bodyTextStyle, insets.bottom, spacing, svaColors, svaTypography]
   );
 
   useEffect(() => {
@@ -262,15 +266,11 @@ const ArticleReviewModal: React.FC<ArticleReviewModalProps> = ({
             hitSlop={10}
             style={styles.starButton}
           >
-            <Ionicons
-              name={active ? "star" : "star-outline"}
-              size={24}
-              color={
-                active
-                  ? newTheme.warning ?? newTheme.accent
-                  : newTheme.textSecondary
-              }
-            />
+                <Ionicons
+                  name={active ? "star" : "star-outline"}
+                  size={24}
+                  color={active ? svaColors.state.warning : svaColors.text.secondary}
+                />
           </Pressable>
         );
       })}
@@ -321,7 +321,7 @@ const ArticleReviewModal: React.FC<ArticleReviewModalProps> = ({
                 <Ionicons
                   name="close"
                   size={20}
-                  color={newTheme.textPrimary}
+                  color={svaColors.text.primary}
                 />
               </Pressable>
             </View>
@@ -351,8 +351,8 @@ const ArticleReviewModal: React.FC<ArticleReviewModalProps> = ({
                       size={18}
                       color={
                         feedback.variant === "success"
-                          ? newTheme.success ?? newTheme.accent
-                          : newTheme.error ?? newTheme.accent
+                          ? svaColors.state.success
+                          : svaColors.state.error
                       }
                     />
                     <Text style={styles.feedbackText}>{feedback.message}</Text>
@@ -417,7 +417,7 @@ const ArticleReviewModal: React.FC<ArticleReviewModalProps> = ({
                       setForm((current) => ({ ...current, reviewText: text }))
                     }
                     placeholder="Tell us what stood out, what felt useful, or what could be stronger."
-                    placeholderTextColor={newTheme.textSecondary}
+                    placeholderTextColor={svaColors.text.secondary}
                     multiline
                     editable={!busy}
                     style={[styles.textInput, busy && styles.inputDisabled]}
@@ -449,8 +449,8 @@ const ArticleReviewModal: React.FC<ArticleReviewModalProps> = ({
                     size={16}
                     color={
                       form.wouldRecommend
-                        ? svaColors.brand.primary ?? newTheme.accent
-                        : newTheme.textSecondary
+                        ? svaColors.brand.primary
+                        : svaColors.text.secondary
                     }
                   />
                   <Text style={styles.toggleLabel}>Would recommend</Text>
@@ -477,7 +477,7 @@ const ArticleReviewModal: React.FC<ArticleReviewModalProps> = ({
                 {loading ? (
                   <ActivityIndicator
                     size="small"
-                    color={newTheme.buttonPrimaryText ?? "#10120E"}
+                    color={svaColors.button.primary.text}
                   />
                 ) : (
                   <Text style={styles.submitText}>
@@ -494,20 +494,19 @@ const ArticleReviewModal: React.FC<ArticleReviewModalProps> = ({
 };
 
 const makeStyles = (
-  theme: any,
-  colors: any,
-  spacing: any,
-  bodyTextStyle: any,
-  svaTypography: any,
+  colors: SvaColorSet,
+  spacing: Spacing,
+  bodyTextStyle: FontSet,
+  svaTypography: TypographyTokens | undefined,
   safeBottomInset: number
 ) =>
   StyleSheet.create({
     overlay: {
       flex: 1,
+      backgroundColor: colors.overlay.strong,
     },
     backdrop: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: theme.overlayStrong ?? "rgba(12,14,11,0.72)",
       zIndex: 0,
     },
     center: {
@@ -524,14 +523,14 @@ const makeStyles = (
       maxHeight: "92%",
       alignSelf: "center",
       borderRadius: 30,
-      backgroundColor: theme.cardRaised ?? theme.surfaceMuted ?? theme.surface,
+      backgroundColor: colors.surface.raised,
       borderWidth: 1,
-      borderColor: theme.borderMuted ?? theme.border,
+      borderColor: colors.border.muted,
       overflow: "hidden",
       zIndex: 1,
       ...Platform.select({
         ios: {
-          shadowColor: "#000",
+          shadowColor: colors.shadow.default,
           shadowOpacity: 0.22,
           shadowOffset: { width: 0, height: 12 },
           shadowRadius: 28,
@@ -543,7 +542,7 @@ const makeStyles = (
       width: 58,
       height: 4,
       borderRadius: 999,
-      backgroundColor: theme.borderMuted ?? theme.border,
+      backgroundColor: colors.border.muted,
       marginTop: spacing.md,
       alignSelf: "center",
     },
@@ -560,23 +559,23 @@ const makeStyles = (
     },
     kicker: {
       ...svaTypography?.textStyle?.authTinyLabel,
-      color: colors.brand.primary ?? theme.accent,
+      color: colors.brand.primary,
       letterSpacing: 2,
       fontSize: 10,
       lineHeight: 12,
       marginBottom: 6,
     },
     title: {
-      ...(svaTypography?.textStyle?.displayMedium ?? {}),
+      ...(svaTypography?.textStyle?.authTitle ?? {}),
       fontSize: 24,
       lineHeight: 28,
-      color: theme.textPrimary,
+      color: colors.text.primary,
       textAlign: "left",
     },
     subtitle: {
       ...bodyTextStyle,
       marginTop: 8,
-      color: theme.textSecondary,
+      color: colors.text.secondary,
       fontSize: 13,
       lineHeight: 18,
     },
@@ -586,9 +585,9 @@ const makeStyles = (
       borderRadius: 12,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: theme.pressed ?? "rgba(255,255,255,0.04)",
+      backgroundColor: colors.interaction.pressed,
       borderWidth: 1,
-      borderColor: theme.borderMuted ?? theme.border,
+      borderColor: colors.border.muted,
       marginTop: 2,
     },
     closeButtonPressed: {
@@ -621,17 +620,17 @@ const makeStyles = (
       borderWidth: 1,
     },
     feedbackSuccess: {
-      backgroundColor: `${theme.success ?? colors.state.success}14`,
-      borderColor: `${theme.success ?? colors.state.success}24`,
+      backgroundColor: `${colors.state.success}14`,
+      borderColor: `${colors.state.success}24`,
     },
     feedbackError: {
-      backgroundColor: `${theme.error ?? colors.state.error}14`,
-      borderColor: `${theme.error ?? colors.state.error}24`,
+      backgroundColor: `${colors.state.error}14`,
+      borderColor: `${colors.state.error}24`,
     },
     feedbackText: {
       flex: 1,
       ...bodyTextStyle,
-      color: theme.textPrimary,
+      color: colors.text.primary,
       fontSize: 13,
       lineHeight: 18,
       fontWeight: "600",
@@ -639,21 +638,21 @@ const makeStyles = (
     responseCard: {
       borderRadius: 22,
       padding: spacing.md,
-      backgroundColor: theme.surfaceMuted ?? theme.background,
+      backgroundColor: colors.surface.base,
       borderWidth: 1,
-      borderColor: theme.borderMuted ?? theme.border,
+      borderColor: colors.border.subtle,
       gap: spacing.sm,
     },
     responseTitle: {
       ...(svaTypography?.textStyle?.bodyMedium ?? {}),
-      color: theme.textPrimary,
+      color: colors.text.primary,
       fontSize: 15,
       lineHeight: 20,
       fontWeight: "700",
     },
     responseMeta: {
       ...bodyTextStyle,
-      color: theme.textSecondary,
+      color: colors.text.secondary,
       fontSize: 12,
       lineHeight: 16,
     },
@@ -668,27 +667,27 @@ const makeStyles = (
       paddingVertical: spacing.xs,
       backgroundColor: colors.brand.subtle,
       borderWidth: 1,
-      borderColor: `${colors.brand.primary ?? theme.accent}24`,
+      borderColor: `${colors.brand.primary}24`,
     },
     responsePillText: {
       ...bodyTextStyle,
-      color: colors.brand.primary ?? theme.accent,
+      color: colors.brand.primary,
       fontSize: 11,
       lineHeight: 14,
       fontWeight: "700",
     },
     responseBody: {
       ...bodyTextStyle,
-      color: theme.textPrimary,
+      color: colors.text.primary,
       fontSize: 14,
       lineHeight: 20,
     },
     scoreCard: {
       borderRadius: 22,
       padding: spacing.md,
-      backgroundColor: theme.surfaceMuted ?? theme.background,
+      backgroundColor: colors.surface.base,
       borderWidth: 1,
-      borderColor: theme.borderMuted ?? theme.border,
+      borderColor: colors.border.subtle,
       gap: spacing.sm,
     },
     scoreHeader: {
@@ -697,7 +696,7 @@ const makeStyles = (
     },
     scoreLabel: {
       ...(svaTypography?.textStyle?.bodyMedium ?? {}),
-      color: theme.textPrimary,
+      color: colors.text.primary,
       fontSize: 15,
       lineHeight: 20,
       fontWeight: "700",
@@ -705,7 +704,7 @@ const makeStyles = (
     scoreHint: {
       ...bodyTextStyle,
       marginTop: 4,
-      color: theme.textSecondary,
+      color: colors.text.secondary,
       fontSize: 12,
       lineHeight: 16,
     },
@@ -722,9 +721,9 @@ const makeStyles = (
     inputCard: {
       borderRadius: 22,
       padding: spacing.md,
-      backgroundColor: theme.surfaceMuted ?? theme.background,
+      backgroundColor: colors.surface.base,
       borderWidth: 1,
-      borderColor: theme.borderMuted ?? theme.border,
+      borderColor: colors.border.subtle,
       gap: spacing.sm,
     },
     inputHeader: {
@@ -735,7 +734,7 @@ const makeStyles = (
     },
     optionalLabel: {
       ...bodyTextStyle,
-      color: theme.textSecondary,
+      color: colors.text.secondary,
       fontSize: 12,
       lineHeight: 16,
       fontWeight: "600",
@@ -744,9 +743,9 @@ const makeStyles = (
       minHeight: 110,
       borderRadius: 18,
       borderWidth: 1,
-      borderColor: theme.borderMuted ?? theme.border,
-      backgroundColor: theme.surface ?? theme.background,
-      color: theme.textPrimary,
+      borderColor: colors.border.muted,
+      backgroundColor: colors.bg.base,
+      color: colors.text.primary,
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.md,
       ...bodyTextStyle,
@@ -765,13 +764,13 @@ const makeStyles = (
       minHeight: 52,
       borderRadius: 18,
       paddingHorizontal: spacing.md,
-      backgroundColor: theme.surfaceMuted ?? theme.background,
+      backgroundColor: colors.surface.base,
       borderWidth: 1,
-      borderColor: theme.borderMuted ?? theme.border,
+      borderColor: colors.border.subtle,
     },
     togglePillActive: {
       backgroundColor: colors.brand.subtle,
-      borderColor: `${colors.brand.primary ?? theme.accent}40`,
+      borderColor: `${colors.brand.primary}40`,
     },
     togglePillPressed: {
       opacity: 0.9,
@@ -781,7 +780,7 @@ const makeStyles = (
     },
     toggleLabel: {
       ...bodyTextStyle,
-      color: theme.textPrimary,
+      color: colors.text.primary,
       fontSize: 13,
       lineHeight: 18,
       fontWeight: "700",
@@ -791,18 +790,18 @@ const makeStyles = (
       paddingTop: spacing.md,
       paddingBottom: spacing.xl + safeBottomInset,
       borderTopWidth: 1,
-      borderTopColor: theme.borderMuted ?? theme.border,
-      backgroundColor: theme.cardRaised ?? theme.surfaceMuted ?? theme.surface,
+      borderTopColor: colors.border.muted,
+      backgroundColor: colors.surface.raised,
     },
     submitButton: {
       height: 52,
       borderRadius: 18,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: theme.accent,
+      backgroundColor: colors.button.primary.bg,
     },
     submitButtonSuccess: {
-      backgroundColor: theme.success ?? colors.state.success,
+      backgroundColor: colors.state.success,
     },
     submitButtonDisabled: {
       opacity: 0.7,
@@ -811,7 +810,7 @@ const makeStyles = (
       transform: [{ scale: 0.99 }],
     },
     submitText: {
-      color: theme.buttonPrimaryText ?? "#10120E",
+      color: colors.button.primary.text,
       fontSize: 15,
       lineHeight: 19,
       fontWeight: "800",

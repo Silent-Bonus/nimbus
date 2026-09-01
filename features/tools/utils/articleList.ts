@@ -1,11 +1,168 @@
 import type { ImageSourcePropType } from "react-native";
 
 import type { ProtocolTemplateCardItem } from "@/components/common/ProtocolTemplateCard";
+import type { PillFilterOption } from "@/components/ui/PillFilters";
+import type { NewsletterCategory } from "@/features/tools/types/newsletterTypes";
+
+export const STATIC_ARTICLE_FILTER_OPTIONS = [
+  { label: "All", value: "all" },
+  { label: "Favorites", value: "favorites" },
+] as const satisfies readonly PillFilterOption<string>[];
+
+export const SEARCH_MIN_LENGTH = 3;
 
 export type ArticleCardItem = ProtocolTemplateCardItem & {
   id: string;
   favorite: boolean;
   raw: Record<string, any>;
+};
+
+const normalizeArticleText = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+export const getArticleFilterLabel = (
+  value: string,
+  options: readonly PillFilterOption<string>[]
+) => options.find((option) => option.value === value)?.label ?? "Articles";
+
+export const isArticleCategoryFilter = (value: string) =>
+  value !== "all" && value !== "favorites";
+
+export const getArticleErrorMessage = (error: unknown) => {
+  const normalizeErrorString = (value: string) => {
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+      return "";
+    }
+
+    if (/<!doctype html>|<html|<body|<title>/i.test(trimmed)) {
+      return "The newsletter service returned a 404 page. Verify the API route and try again.";
+    }
+
+    return trimmed;
+  };
+
+  if (typeof error === "string" && error.trim()) {
+    return normalizeErrorString(error);
+  }
+
+  if (error && typeof error === "object") {
+    const candidate = error as {
+      message?: unknown;
+      detail?: unknown;
+      error?: unknown;
+    };
+
+    if (typeof candidate.message === "string" && candidate.message.trim()) {
+      return normalizeErrorString(candidate.message);
+    }
+
+    if (typeof candidate.detail === "string" && candidate.detail.trim()) {
+      return normalizeErrorString(candidate.detail);
+    }
+
+    if (typeof candidate.error === "string" && candidate.error.trim()) {
+      return normalizeErrorString(candidate.error);
+    }
+  }
+
+  return "Try again after checking the newsletter service response.";
+};
+
+const getArticleCategoryText = (category: unknown) => {
+  if (typeof category === "string") {
+    return category.trim();
+  }
+
+  if (category && typeof category === "object") {
+    const candidate = category as { name?: string; slug?: string };
+    return (candidate.name || candidate.slug || "").trim();
+  }
+
+  return "";
+};
+
+const getArticleCategoryValue = (category: unknown) => {
+  if (typeof category === "string") {
+    return category.trim();
+  }
+
+  if (category && typeof category === "object") {
+    const candidate = category as { slug?: string; value?: string; name?: string };
+    return (candidate.slug || candidate.value || candidate.name || "").trim();
+  }
+
+  return "";
+};
+
+const getNewsletterCategoryLabel = (category: NewsletterCategory) => {
+  if (typeof category.label === "string" && category.label.trim()) {
+    return category.label.trim();
+  }
+
+  if (typeof category.value === "string" && category.value.trim()) {
+    return category.value.trim();
+  }
+
+  return "";
+};
+
+const getNewsletterCategoryValue = (category: NewsletterCategory) => {
+  if (typeof category.value === "string" && category.value.trim()) {
+    return category.value.trim();
+  }
+
+  return getNewsletterCategoryLabel(category);
+};
+
+export const buildArticleCategoryFilterOptionsFromCategories = (
+  categories: NewsletterCategory[]
+): PillFilterOption<string>[] => {
+  // The category endpoint can return duplicate labels in different shapes; collapse them before rendering pills.
+  const uniqueCategories = categories.reduce<NewsletterCategory[]>(
+    (acc, category) => {
+      const label = getNewsletterCategoryLabel(category);
+      if (!label) {
+        return acc;
+      }
+
+      const normalizedLabel = normalizeArticleText(label);
+      if (
+        acc.some(
+          (item) =>
+            normalizeArticleText(getNewsletterCategoryLabel(item)) ===
+            normalizedLabel
+        )
+      ) {
+        return acc;
+      }
+
+      acc.push(category);
+      return acc;
+    },
+    []
+  );
+
+  return uniqueCategories
+    .sort((a, b) => {
+      return getNewsletterCategoryLabel(a).localeCompare(
+        getNewsletterCategoryLabel(b)
+      );
+    })
+    .map((category) => {
+      const label = getNewsletterCategoryLabel(category);
+      const value = getNewsletterCategoryValue(category);
+
+      return {
+        label,
+        value,
+        accessibilityLabel: `${label} articles`,
+      };
+    });
 };
 
 const resolveImageSource = (image: unknown): ImageSourcePropType => {
@@ -41,7 +198,10 @@ export const buildArticleCardItem = (
   fallbackTag: string
 ): ArticleCardItem => {
   const title = item?.title || item?.name || "Untitled Article";
-  const category = item?.category || item?.topic || fallbackTag;
+  const category =
+    getArticleCategoryText(item?.category) ||
+    getArticleCategoryText(item?.topic) ||
+    fallbackTag;
   const publishedDate = formatPublishedDate(item?.published_at);
   const tags = [category, publishedDate ?? "Insight"].filter(Boolean).slice(0, 2);
 

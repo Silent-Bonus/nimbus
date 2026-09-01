@@ -22,214 +22,41 @@ import { router, useFocusEffect, useNavigation } from "expo-router";
 import { Image as ExpoImage } from "expo-image";
 
 import ProtocolTemplateCard from "@/components/common/ProtocolTemplateCard";
+import type { PillFilterOption } from "@/components/ui/PillFilters";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
-import PillFilters, {
-  type PillFilterOption,
-} from "@/components/ui/PillFilters";
+import PillFilters from "@/components/ui/PillFilters";
 import ThemeContext from "@/contexts/ThemeContext";
 import ScreenHeader from "@/components/layout/ScreenHeader";
 import EmptyState from "@/features/tools/components/common/EmptyState";
-import { RoutineSkeletonGrid } from "@/features/tools/components/common/RoutineSkeletonGrid";
+import { LibraryCardSkeletonGrid } from "@/features/tools/components/common/LibraryCardSkeletonGrid";
 import { ROUTES } from "@/constants/routes";
 import {
   getFavoriteNewsletterList,
   getNewsletterCategories,
   getNewsletterList,
-} from "@/features/tools/services/toolService";
+} from "@/features/tools/services/newsletterService";
 import {
+  SEARCH_MIN_LENGTH,
+  STATIC_ARTICLE_FILTER_OPTIONS,
   type ArticleCardItem,
+  buildArticleCategoryFilterOptionsFromCategories,
   buildArticleCardItem,
+  getArticleErrorMessage,
+  getArticleFilterLabel,
   getRemoteArticleImageUri,
-} from "@/features/tools/data/articleLibrary";
-import type { NewsletterCategory } from "@/features/tools/types/toolsTypes";
-import type { Spacing, SvaColorSet } from "@/theme/types";
-
-const STATIC_FILTER_OPTIONS = [
-  { label: "All", value: "all" },
-  { label: "Favorites", value: "favorites" },
-] as const satisfies readonly PillFilterOption<string>[];
-const SEARCH_MIN_LENGTH = 3;
+  isArticleCategoryFilter,
+} from "@/features/tools/utils/articleList";
+import type { Spacing, SvaColorSet, TypographyTokens } from "@/theme/types";
 const SEARCH_DEBOUNCE_MS = 350;
-
-const normalize = (value: string) =>
-  value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-
-const getFilterLabel = (
-  value: string,
-  options: readonly PillFilterOption<string>[]
-) => options.find((option) => option.value === value)?.label ?? "Articles";
-
-const isNewsletterCategoryFilter = (value: string) =>
-  value !== "all" && value !== "favorites";
-
-const getErrorMessage = (error: unknown) => {
-  const normalizeErrorString = (value: string) => {
-    const trimmed = value.trim();
-
-    if (!trimmed) {
-      return "";
-    }
-
-    if (/<!doctype html>|<html|<body|<title>/i.test(trimmed)) {
-      return "The newsletter service returned a 404 page. Verify the API route and try again.";
-    }
-
-    return trimmed;
-  };
-
-  if (typeof error === "string" && error.trim()) {
-    return normalizeErrorString(error);
-  }
-
-  if (error && typeof error === "object") {
-    const candidate = error as {
-      message?: unknown;
-      detail?: unknown;
-      error?: unknown;
-    };
-
-    if (typeof candidate.message === "string" && candidate.message.trim()) {
-      return normalizeErrorString(candidate.message);
-    }
-
-    if (typeof candidate.detail === "string" && candidate.detail.trim()) {
-      return normalizeErrorString(candidate.detail);
-    }
-
-    if (typeof candidate.error === "string" && candidate.error.trim()) {
-      return normalizeErrorString(candidate.error);
-    }
-  }
-
-  return "Try again after checking the newsletter service response.";
-};
-
-const getArticleCategoryText = (category: unknown) => {
-  if (typeof category === "string") {
-    return category.trim();
-  }
-
-  if (category && typeof category === "object") {
-    const candidate = category as { name?: string; slug?: string };
-    return (candidate.name || candidate.slug || "").trim();
-  }
-
-  return "";
-};
-
-const getNewsletterCategoryLabel = (category: NewsletterCategory) => {
-  if (typeof category.label === "string" && category.label.trim()) {
-    return category.label.trim();
-  }
-
-  if (typeof category.value === "string" && category.value.trim()) {
-    return category.value.trim();
-  }
-
-  return "";
-};
-
-const buildCategoryFilterOptionsFromCategories = (
-  categories: NewsletterCategory[]
-): PillFilterOption<string>[] => {
-  const uniqueCategories = categories.reduce<NewsletterCategory[]>(
-    (acc, category) => {
-      const label = getNewsletterCategoryLabel(category);
-      if (!label) {
-        return acc;
-      }
-
-      const normalizedLabel = normalize(label);
-      if (acc.some((item) => normalize(getNewsletterCategoryLabel(item)) === normalizedLabel)) {
-        return acc;
-      }
-
-      acc.push(category);
-      return acc;
-    },
-    []
-  );
-
-  return uniqueCategories
-    .sort((a, b) => {
-      return getNewsletterCategoryLabel(a).localeCompare(
-        getNewsletterCategoryLabel(b)
-      );
-    })
-    .map((category) => {
-      const label = getNewsletterCategoryLabel(category);
-
-      return {
-        label,
-        value: label,
-        accessibilityLabel: `${label} articles`,
-      };
-    });
-};
-
-const buildCategoryFilterOptionsFromArticles = (
-  articles: ArticleCardItem[]
-): PillFilterOption<string>[] => {
-  const seen = new Set<string>();
-  const options: PillFilterOption<string>[] = [];
-
-  articles.forEach((item) => {
-    const category = getArticleCategoryText(item.raw?.category);
-    if (!category) {
-      return;
-    }
-
-    const normalized = category.toLowerCase();
-    if (seen.has(normalized)) {
-      return;
-    }
-
-    seen.add(normalized);
-    options.push({
-      label: category,
-      value: category,
-      accessibilityLabel: `${category} articles`,
-    });
-  });
-
-  return options
-    .sort((a, b) => a.label.localeCompare(b.label));
-};
-
-const filterArticlesByQuery = (items: ArticleCardItem[], query: string) => {
-  const normalizedQuery = normalize(query);
-  if (!normalizedQuery) {
-    return items;
-  }
-
-  return items.filter((item) => {
-    const searchBlob = normalize(
-      [
-        item.title,
-        ...item.tags,
-        getArticleCategoryText(item.raw?.category),
-        item.raw?.excerpt,
-        item.raw?.content,
-        item.raw?.slug,
-      ]
-        .filter(Boolean)
-        .join(" ")
-    );
-
-    return searchBlob.includes(normalizedQuery);
-  });
-};
 
 export const ArticleListScreen: React.FC = () => {
   const navigation = useNavigation();
-  const { svaColors, spacing } = useContext(ThemeContext);
-  const styles = styling(svaColors, spacing);
+  const { svaColors, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = styling(svaColors, spacing, svaTypography);
   const searchInputRef = useRef<TextInput>(null);
   const baseRequestIdRef = useRef(0);
   const searchRequestIdRef = useRef(0);
+  const hasCompletedInitialFocusRef = useRef(false);
   const [refreshTick, setRefreshTick] = useState(0);
   const [query, setQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
@@ -250,27 +77,22 @@ export const ArticleListScreen: React.FC = () => {
   const visibleArticles = searchActive ? searchArticles : baseArticles;
   const isLoading = searchActive ? searchLoading : baseLoading;
   const activeErrorMessage = searchActive ? searchErrorMessage : errorMessage;
-  const fallbackCategoryFilters = useMemo(
-    () => buildCategoryFilterOptionsFromArticles(baseArticles),
-    [baseArticles]
-  );
   const filterOptions = useMemo(
-    () => [
-      ...STATIC_FILTER_OPTIONS,
-      ...(categoryFilters.length > 0
-        ? categoryFilters
-        : fallbackCategoryFilters),
-    ],
-    [categoryFilters, fallbackCategoryFilters]
+    () => [...STATIC_ARTICLE_FILTER_OPTIONS, ...categoryFilters],
+    [categoryFilters]
   );
 
-  React.useEffect(() => {
+  useEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
   useFocusEffect(
     useCallback(() => {
-      setRefreshTick((current) => current + 1);
+      if (hasCompletedInitialFocusRef.current) {
+        setRefreshTick((current) => current + 1);
+      } else {
+        hasCompletedInitialFocusRef.current = true;
+      }
     }, [])
   );
 
@@ -285,7 +107,9 @@ export const ArticleListScreen: React.FC = () => {
         if (!active) return;
 
         if (Array.isArray(data)) {
-          setCategoryFilters(buildCategoryFilterOptionsFromCategories(data));
+          setCategoryFilters(
+            buildArticleCategoryFilterOptionsFromCategories(data)
+          );
         } else {
           console.error(
             "Newsletter category API did not return data array:",
@@ -322,12 +146,13 @@ export const ArticleListScreen: React.FC = () => {
           selectedFilter === "favorites"
             ? await getFavoriteNewsletterList()
             : await getNewsletterList(
-                isNewsletterCategoryFilter(selectedFilter)
+                isArticleCategoryFilter(selectedFilter)
                   ? { category: selectedFilter }
                   : undefined
               );
         const data = result?.data || (Array.isArray(result) ? result : []);
 
+        // Ignore stale responses when the user changes filters or refocuses quickly.
         if (!active || baseRequestIdRef.current !== requestId) return;
 
         if (Array.isArray(data)) {
@@ -341,12 +166,14 @@ export const ArticleListScreen: React.FC = () => {
 
         console.error("Newsletter API did not return data array:", result);
         setBaseArticles([]);
-        setErrorMessage("The newsletter response did not include a valid list.");
+        setErrorMessage(
+          "The newsletter response did not include a valid list."
+        );
       } catch (err) {
         console.log("Newsletter API error", err);
         if (active && baseRequestIdRef.current === requestId) {
           setBaseArticles([]);
-          setErrorMessage(getErrorMessage(err));
+          setErrorMessage(getArticleErrorMessage(err));
         }
       } finally {
         if (active && baseRequestIdRef.current === requestId) {
@@ -376,24 +203,23 @@ export const ArticleListScreen: React.FC = () => {
       }
 
       if (selectedFilter === "favorites") {
-        setSearchLoading(false);
+        setSearchLoading(true);
         setSearchErrorMessage(null);
-        setSearchArticles(filterArticlesByQuery(baseArticles, trimmedQuery));
-        return;
       }
 
       try {
-        setSearchLoading(true);
-        setSearchErrorMessage(null);
-
-        const result = await getNewsletterList({
-          category: isNewsletterCategoryFilter(selectedFilter)
-            ? selectedFilter
-            : undefined,
-          search: trimmedQuery,
-        });
+        const result =
+          selectedFilter === "favorites"
+            ? await getFavoriteNewsletterList({ search: trimmedQuery })
+            : await getNewsletterList({
+                category: isArticleCategoryFilter(selectedFilter)
+                  ? selectedFilter
+                  : undefined,
+                search: trimmedQuery,
+              });
         const data = result?.data || (Array.isArray(result) ? result : []);
 
+        // Search requests are debounced, but older network responses can still arrive after newer ones.
         if (!active || searchRequestIdRef.current !== requestId) return;
 
         if (Array.isArray(data)) {
@@ -405,16 +231,28 @@ export const ArticleListScreen: React.FC = () => {
           return;
         }
 
-        console.error("Newsletter search API did not return data array:", result);
+        console.error(
+          selectedFilter === "favorites"
+            ? "Favorite newsletter search API did not return data array:"
+            : "Newsletter search API did not return data array:",
+          result
+        );
         setSearchArticles([]);
         setSearchErrorMessage(
-          "The newsletter search response did not include a valid list."
+          selectedFilter === "favorites"
+            ? "The favorite newsletter search response did not include a valid list."
+            : "The newsletter search response did not include a valid list."
         );
       } catch (err) {
-        console.log("Newsletter search API error", err);
+        console.log(
+          selectedFilter === "favorites"
+            ? "Favorite newsletter search API error"
+            : "Newsletter search API error",
+          err
+        );
         if (active && searchRequestIdRef.current === requestId) {
           setSearchArticles([]);
-          setSearchErrorMessage(getErrorMessage(err));
+          setSearchErrorMessage(getArticleErrorMessage(err));
         }
       } finally {
         if (active && searchRequestIdRef.current === requestId) {
@@ -431,7 +269,7 @@ export const ArticleListScreen: React.FC = () => {
       active = false;
       clearTimeout(timer);
     };
-  }, [baseArticles, searchActive, selectedFilter, trimmedQuery]);
+  }, [searchActive, selectedFilter, trimmedQuery]);
 
   useEffect(() => {
     const uris = visibleArticles
@@ -548,7 +386,7 @@ export const ArticleListScreen: React.FC = () => {
 
   const renderEmpty = () =>
     isLoading ? (
-      <RoutineSkeletonGrid
+      <LibraryCardSkeletonGrid
         spacing={spacing}
         theme={{
           surfaceMuted: svaColors.surface.base,
@@ -571,7 +409,7 @@ export const ArticleListScreen: React.FC = () => {
             ? "No favorite articles found."
             : selectedFilter === "all"
             ? "No articles found."
-            : `No ${getFilterLabel(
+            : `No ${getArticleFilterLabel(
                 selectedFilter,
                 filterOptions
               ).toLowerCase()} articles found.`
@@ -608,7 +446,11 @@ export const ArticleListScreen: React.FC = () => {
   );
 };
 
-const styling = (colors: SvaColorSet, spacing: Spacing) =>
+const styling = (
+  colors: SvaColorSet,
+  spacing: Spacing,
+  typography?: TypographyTokens
+) =>
   StyleSheet.create({
     screen: {
       flex: 1,
@@ -631,23 +473,22 @@ const styling = (colors: SvaColorSet, spacing: Spacing) =>
     searchBar: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: colors.surface.base,
+      backgroundColor: colors.surface.raised,
       borderWidth: 1,
-      borderColor: colors.border.default,
+      borderColor: colors.border.muted,
       borderRadius: 18,
       height: 54,
       paddingHorizontal: spacing.md,
       marginBottom: spacing.sm,
     },
     searchInput: {
+      ...(typography?.textStyle?.body ?? {}),
       flex: 1,
       minWidth: 0,
       height: "100%",
       paddingVertical: 0,
       marginLeft: spacing.sm,
       color: colors.text.primary,
-      fontSize: 15,
-      fontFamily: "Outfit_400Regular",
       textAlignVertical: "center",
     },
     searchSpinner: {
@@ -657,12 +498,14 @@ const styling = (colors: SvaColorSet, spacing: Spacing) =>
       marginLeft: spacing.xs,
     },
     searchHint: {
+      ...(typography?.textStyle?.caption ??
+        typography?.textStyle?.authTinyLabel ??
+        {}),
       color: colors.text.secondary,
       fontSize: 12,
       lineHeight: 16,
       marginBottom: spacing.xs,
       paddingHorizontal: spacing.xs,
-      fontFamily: "Outfit_400Regular",
     },
     filtersContainer: {
       height: 72,

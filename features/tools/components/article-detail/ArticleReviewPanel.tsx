@@ -2,7 +2,7 @@ import React, { useContext, useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { NewsletterReviewSummary } from "@/features/tools/types/toolsTypes";
+import type { NewsletterReviewSummary } from "@/features/tools/types/newsletterTypes";
 import type { Spacing, SvaColorSet, TypographyTokens } from "@/theme/types";
 
 type ArticleReviewPanelProps = {
@@ -94,9 +94,9 @@ const styling = (
       borderRadius: 24,
       paddingHorizontal: spacing.lg,
       paddingVertical: spacing.lg,
-      backgroundColor: colors.surface.base,
+      backgroundColor: colors.surface.raised,
       borderWidth: 1,
-      borderColor: colors.border.subtle,
+      borderColor: colors.border.muted,
     },
     summaryMetric: {
       flex: 1,
@@ -124,9 +124,9 @@ const styling = (
       borderRadius: 24,
       paddingHorizontal: spacing.lg,
       paddingVertical: spacing.lg,
-      backgroundColor: colors.surface.base,
+      backgroundColor: colors.surface.raised,
       borderWidth: 1,
-      borderColor: colors.border.subtle,
+      borderColor: colors.border.muted,
       gap: spacing.sm,
     },
     reviewer: {
@@ -154,9 +154,9 @@ const styling = (
       borderRadius: 999,
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.xs,
-      backgroundColor: colors.bg.subtle,
+      backgroundColor: colors.surface.base,
       borderWidth: 1,
-      borderColor: colors.border.default,
+      borderColor: colors.border.muted,
     },
     badgeText: {
       fontFamily:
@@ -172,9 +172,9 @@ const styling = (
       borderRadius: 24,
       paddingHorizontal: spacing.lg,
       paddingVertical: spacing.lg,
-      backgroundColor: colors.surface.base,
+      backgroundColor: colors.surface.raised,
       borderWidth: 1,
-      borderColor: colors.border.subtle,
+      borderColor: colors.border.muted,
       gap: spacing.sm,
     },
     placeholderTitle: {
