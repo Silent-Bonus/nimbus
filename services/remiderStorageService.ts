@@ -1,6 +1,7 @@
 // services/reminderStorage.ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
+import { StoreKey } from "@/constants/Constant";
 // import { saveNotificationChange } from "./settingService";
 
 type DayShort = "sun" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat";
@@ -93,7 +94,7 @@ const mergeWithDefaults = (backendMap: NotificationsByType | null) => {
  */
 export const getReminder = async (): Promise<NotificationsByType> => {
   try {
-    const r = await SecureStore.getItem("user-profile");
+    const r = await SecureStore.getItem(StoreKey.USER_PROFILE_KEY);
 
     if (!r) {
       // no profile — return defaults so UI has consistent keys
@@ -129,7 +130,7 @@ export const getReminder = async (): Promise<NotificationsByType> => {
 
 export const getUserProfileInfo = async () => {
   try {
-    const r = await SecureStore.getItem("user-profile");
+    const r = await SecureStore.getItem(StoreKey.USER_PROFILE_KEY);
     if (!r) return null;
     // const parsed = JSON.parse(r);
     return r;

@@ -23,10 +23,17 @@ import { LinearGradient } from "expo-linear-gradient";
 import ThemeContext from "@/contexts/ThemeContext";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import AppHeader from "@/components/layout/AppHeader";
+import PremiumBanner from "@/components/ui/PremiumBanner";
 import { ROUTES } from "@/constants/routes";
 import { useNimbusToast } from "@/components/ui/toast/useNimbusToast";
 import { useAuth } from "@/contexts/AuthContext";
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
+import { resolveBodyVitalsTypography } from "@/features/self-care/utils/bodyVitalsTheme";
+import {
+  calculateCalorieVitals,
+  calculateProteinVitals,
+  patchBodyVitalsProfile,
+} from "@/features/auth/services/loginService";
+import type { ColorSet, Spacing } from "@/theme/types";
 
 import {
   ActivityLevelCard,
@@ -36,14 +43,18 @@ import {
   NumericMetricTile,
   NumericMetricTileFooter,
   clampHeightCm,
-  deriveArchitecture,
   parseMetricNumber,
   sanitizeDecimalInput,
   sanitizeIntegerInput,
   stepWeight,
 } from "@/features/self-care/components/body-vitals";
 import type { BodyVitalsContext } from "@/features/self-care/types/bodyVitals";
-import { buildBodyVitalsUpdatePayload } from "@/features/self-care/services/bodyVitalsService";
+import {
+  buildBodyVitalsCalculatorPayload,
+  buildBodyVitalsProfilePatchPayload,
+  mergeBodyVitalsCalculationResponses,
+  normalizeBodyVitalsCalculationResponse,
+} from "@/features/self-care/services/bodyVitalsService";
 import {
   DEFAULT_BODY_VITALS_FORM,
   getStoredBodyVitalsContext,
@@ -60,13 +71,18 @@ import {
 
 export default function BodyVitalScreen() {
   const { width: windowWidth } = useWindowDimensions();
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, typography, svaTypography } =
+    useContext(ThemeContext);
+  const t = useMemo(
+    () => resolveBodyVitalsTypography(svaTypography, typography),
+    [svaTypography, typography]
+  );
   const styles = useMemo(
-    () => styling(newTheme, spacing, typography, windowWidth),
-    [newTheme, spacing, typography, windowWidth]
+    () => styling(newTheme, spacing, t, windowWidth),
+    [newTheme, spacing, t, windowWidth]
   );
 
-  const { updateProfile } = useAuth();
+  const { getUserDetails } = useAuth();
   const toast = useNimbusToast();
   const [savedVitalsContext, setSavedVitalsContext] =
     useState<BodyVitalsContext | null>(null);
@@ -77,6 +93,8 @@ export default function BodyVitalScreen() {
     let active = true;
 
     const loadSavedVitals = async () => {
+      // `/users/me` is mirrored into storage, so hydrate the screen from cache first
+      // and let later refreshes replace it with the latest normalized backend state.
       const cachedVitals = await getStoredBodyVitalsContext();
 
       if (!active) {
@@ -111,39 +129,11 @@ export default function BodyVitalScreen() {
     };
   }, [form]);
 
-  const architecture = useMemo(() => {
-    return deriveArchitecture({
-      heightCm: numericProfile.height,
-      weightKg: numericProfile.weight,
-      activityLevel: numericProfile.activityLevel,
-    });
-  }, [
-    numericProfile.activityLevel,
-    numericProfile.height,
-    numericProfile.weight,
-  ]);
-
   const bannerMessage = savedVitalsContext
     ? savedVitalsContext.banner?.show && savedVitalsContext.banner.message
       ? savedVitalsContext.banner.message
       : "Prefilled from your saved vitals data."
     : null;
-
-  const bannerMeta = useMemo(() => {
-    if (!savedVitalsContext) {
-      return null;
-    }
-
-    if (typeof savedVitalsContext.days_since_last_update === "number") {
-      return `Last updated ${savedVitalsContext.days_since_last_update} days ago`;
-    }
-
-    if (savedVitalsContext.profile_status) {
-      return `Profile status: ${savedVitalsContext.profile_status}`;
-    }
-
-    return null;
-  }, [savedVitalsContext]);
 
   const proteinPanelData = useMemo(
     () => resolveProteinPanelDataFromContext(savedVitalsContext),
@@ -154,6 +144,16 @@ export default function BodyVitalScreen() {
     () => resolveCaloriePanelDataFromContext(savedVitalsContext),
     [savedVitalsContext]
   );
+  const bmrValue =
+    savedVitalsContext?.latest_snapshot?.outputs?.bmr ??
+    savedVitalsContext?.profile?.bmr ??
+    savedVitalsContext?.saved_summary?.bmr ??
+    null;
+  const metabolicInsight =
+    savedVitalsContext?.latest_snapshot?.outputs?.metabolic_insight ??
+    savedVitalsContext?.profile?.metabolic_insight ??
+    savedVitalsContext?.saved_summary?.metabolic_insight ??
+    "Generate your biological summary to unlock your metabolic insight.";
 
   const insights = useMemo(
     () => [
@@ -176,14 +176,13 @@ export default function BodyVitalScreen() {
       {
         key: "architecture",
         label: "Body Architecture",
-        value: architecture,
+        value: "View body blueprint",
         icon: "body-outline" as const,
         accent: newTheme.chart5 ?? newTheme.success,
         route: ROUTES.AUTH.SELF_CARE_BODY_ARCHITECTURE,
       },
     ],
     [
-      architecture,
       newTheme.chart3,
       newTheme.chart4,
       newTheme.chart5,
@@ -203,12 +202,63 @@ export default function BodyVitalScreen() {
     setIsSaving(true);
 
     try {
+      // The profile patch keeps the user's core vitals in sync. The backend does not
+      // support `calculation_type: "all"` yet, so keep the supported protein + calories
+      // flow active for now.
       const contextForPayload =
         savedVitalsContext ?? (await getStoredBodyVitalsContext());
-      const payload = buildBodyVitalsUpdatePayload(form, contextForPayload);
-      const result = await updateProfile?.(payload);
+      const profilePayload = buildBodyVitalsProfilePatchPayload(
+        form,
+        contextForPayload
+      );
+      const proteinPayload = buildBodyVitalsCalculatorPayload(
+        form,
+        contextForPayload,
+        "protein"
+      );
+      const caloriePayload = buildBodyVitalsCalculatorPayload(
+        form,
+        contextForPayload,
+        "calories"
+      );
+      await patchBodyVitalsProfile(profilePayload);
 
-      if (result?.success) {
+      // TODO: Undo this temporary split once the backend supports
+      // `calculation_type: "all"` on `/api/v1/vitals/calculate/`.
+      // const calculationPayload = {
+      //   calculation_type: "all",
+      //   save_to_profile: true,
+      // } as const;
+      // const calculationResult = await calculateBodyVitals(calculationPayload);
+      // const normalizedResult = normalizeBodyVitalsCalculationResponse(
+      //   calculationResult,
+      //   "all",
+      //   contextForPayload
+      // );
+
+      const [proteinResult, calorieResult] = await Promise.all([
+        calculateProteinVitals(proteinPayload),
+        calculateCalorieVitals(caloriePayload),
+      ]);
+      const normalizedProteinResult = normalizeBodyVitalsCalculationResponse(
+        proteinResult,
+        "protein",
+        contextForPayload
+      );
+      const normalizedCalorieResult = normalizeBodyVitalsCalculationResponse(
+        calorieResult,
+        "calories",
+        contextForPayload
+      );
+      const normalizedResult = mergeBodyVitalsCalculationResponses(
+        normalizedProteinResult,
+        normalizedCalorieResult
+      );
+
+      if (normalizedResult.success) {
+        // AuthContext writes the fresh `/users/me` payload into AsyncStorage and
+        // keeps the vitals cache in sync for downstream screens.
+        await getUserDetails?.();
         const refreshedContext = await getStoredBodyVitalsContext();
         setSavedVitalsContext(refreshedContext);
 
@@ -219,7 +269,7 @@ export default function BodyVitalScreen() {
         toast.show({
           variant: "success",
           title: "Vitals saved",
-          message: "Your body vitals were sent to your profile.",
+          message: "Your biological summary has been refreshed.",
         });
         return;
       }
@@ -227,7 +277,7 @@ export default function BodyVitalScreen() {
       toast.show({
         variant: "error",
         title: "Unable to save vitals",
-        message: result?.message ?? "Please try again.",
+        message: normalizedResult.message || "Please try again.",
       });
     } catch (error) {
       console.warn("body vitals save error", error);
@@ -239,7 +289,7 @@ export default function BodyVitalScreen() {
     } finally {
       setIsSaving(false);
     }
-  }, [form, isSaving, savedVitalsContext, toast, updateProfile]);
+  }, [form, getUserDetails, isSaving, savedVitalsContext, toast]);
 
   return (
     <ScreenView padding={0} bgColor={newTheme.background} style={styles.screen}>
@@ -258,27 +308,27 @@ export default function BodyVitalScreen() {
             title="Somatic Metrics"
             subtitle="Calibrate your physical architecture"
             onBack={() => router.back()}
-            rightAction={{
-              icon: "person-circle-outline",
-              onPress: () => router.push(ROUTES.TABS.SETTINGS),
-              accessibilityLabel: "Open profile",
-            }}
+            titleStyle={styles.headerTitle}
+            subtitleStyle={styles.headerSubtitle}
+            rightActions={[
+              {
+                icon: "stats-chart-outline",
+                onPress: () => router.push(ROUTES.AUTH.SELF_CARE_VITALS_TRENDS),
+                accessibilityLabel: "Open vitals trends",
+              },
+            ]}
           />
 
-          {bannerMessage ? (
-            <View style={styles.bannerCard}>
-              <LinearGradient
-                colors={["rgba(163,190,140,0.18)", "rgba(125,164,116,0.06)"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                pointerEvents="none"
-                style={StyleSheet.absoluteFillObject}
-              />
-              <Text style={styles.bannerLabel}>SAVED VITALS PROFILE</Text>
-              <Text style={styles.bannerText}>{bannerMessage}</Text>
-              {bannerMeta ? <Text style={styles.bannerMeta}>{bannerMeta}</Text> : null}
-            </View>
-          ) : null}
+          <PremiumBanner
+            visible={Boolean(bannerMessage)}
+            title="Your somatic profile"
+            message={bannerMessage}
+            icon="sparkles-outline"
+            variant="info"
+            layout="compact"
+            messageNumberOfLines={2}
+            style={styles.bannerCard}
+          />
 
           <View style={styles.grid}>
             <GenderTile
@@ -377,6 +427,28 @@ export default function BodyVitalScreen() {
             }
           />
 
+          <View style={styles.metabolicCard}>
+            <LinearGradient
+              colors={["rgba(94,129,172,0.12)", "rgba(163,190,140,0.08)"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              pointerEvents="none"
+              style={StyleSheet.absoluteFillObject}
+            />
+
+            <View style={styles.metabolicHeader}>
+              <Text style={styles.metabolicEyebrow}>METABOLIC INSIGHT</Text>
+              <View style={styles.bmrPill}>
+                <Text style={styles.bmrPillLabel}>BMR</Text>
+                <Text style={styles.bmrPillValue}>
+                  {typeof bmrValue === "number" ? `${bmrValue} kcal` : "N/A"}
+                </Text>
+              </View>
+            </View>
+
+            <Text style={styles.metabolicText}>{metabolicInsight}</Text>
+          </View>
+
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionHeader}>INTELLIGENCE OUTPUT</Text>
           </View>
@@ -446,7 +518,7 @@ export default function BodyVitalScreen() {
 const styling = (
   theme: ColorSet,
   spacing: Spacing,
-  typography: Typography,
+  t: ReturnType<typeof resolveBodyVitalsTypography>,
   windowWidth: number
 ) =>
   StyleSheet.create({
@@ -457,39 +529,22 @@ const styling = (
     keyboardAvoiding: {
       flex: 1,
     },
+    headerTitle: {
+      ...t.screenTitle,
+      color: theme.textPrimary,
+    },
+    headerSubtitle: {
+      ...t.screenSubtitle,
+      color: theme.textSecondary,
+      opacity: 0.9,
+    },
     content: {
       paddingHorizontal: spacing.md,
       paddingBottom: spacing.xl * 2.25,
     },
     bannerCard: {
-      borderRadius: 20,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.md,
-      overflow: "hidden",
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.borderMuted ?? theme.border,
-      backgroundColor: theme.surfaceMuted ?? "rgba(163,190,140,0.08)",
       marginTop: spacing.sm,
       marginBottom: spacing.md,
-      gap: spacing.xs,
-    },
-    bannerLabel: {
-      ...typography.smallCaption,
-      color: theme.textSecondary,
-      letterSpacing: 1.6,
-      fontWeight: "700",
-      opacity: 0.92,
-    },
-    bannerText: {
-      ...typography.body,
-      color: theme.textPrimary,
-      lineHeight: 20,
-    },
-    bannerMeta: {
-      ...typography.smallCaption,
-      color: theme.textSecondary,
-      opacity: 0.8,
-      letterSpacing: 0.4,
     },
     grid: {
       flexDirection: "row",
@@ -505,15 +560,71 @@ const styling = (
       flexGrow: 0,
       flexShrink: 0,
     },
+    metabolicCard: {
+      position: "relative",
+      overflow: "hidden",
+      marginTop: spacing.lg,
+      marginBottom: spacing.md,
+      borderRadius: 24,
+      borderWidth: 1,
+      borderColor: theme.borderMuted ?? theme.border,
+      backgroundColor: theme.cardRaised ?? theme.surface,
+      padding: spacing.lg,
+      shadowColor: theme.shadow,
+      shadowOpacity: 0.16,
+      shadowOffset: { width: 0, height: 10 },
+      shadowRadius: 16,
+      elevation: 4,
+    },
+    metabolicHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: spacing.md,
+      marginBottom: spacing.md,
+    },
+    metabolicEyebrow: {
+      ...t.sectionLabel,
+      color: theme.chart2 ?? theme.info,
+      opacity: 0.95,
+      flex: 1,
+    },
+    bmrPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.xs,
+      minHeight: 40,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 8,
+      borderRadius: 999,
+      backgroundColor: theme.surfaceMuted ?? theme.surface,
+      borderWidth: 1,
+      borderColor: theme.borderMuted ?? theme.border,
+      alignSelf: "flex-start",
+    },
+    bmrPillLabel: {
+      ...t.sectionLabel,
+      color: theme.textSecondary,
+      opacity: 0.82,
+    },
+    bmrPillValue: {
+      ...t.action,
+      color: theme.textPrimary,
+      letterSpacing: 0.2,
+    },
+    metabolicText: {
+      ...t.body,
+      color: theme.textPrimary,
+      lineHeight: 24,
+      opacity: 0.96,
+    },
     sectionHeaderRow: {
       marginTop: spacing.md,
       marginBottom: spacing.md,
     },
     sectionHeader: {
-      ...typography.smallCaption,
+      ...t.sectionLabel,
       color: theme.textSecondary,
-      letterSpacing: 1.7,
-      fontWeight: "700",
       opacity: 0.9,
     },
     insightStack: {
@@ -548,9 +659,8 @@ const styling = (
     },
     primaryButtonText: {
       color: theme.buttonPrimaryText,
-      ...typography.button,
-      fontWeight: "800",
-      letterSpacing: 2.6,
-      fontSize: 14,
+      ...t.action,
+      fontWeight: "700",
+      letterSpacing: 1.4,
     },
   });

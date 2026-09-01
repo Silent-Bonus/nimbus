@@ -1,6 +1,5 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import {
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,29 +8,33 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { router, useLocalSearchParams } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
 import ThemeContext from "@/contexts/ThemeContext";
 import AppHeader from "@/components/layout/AppHeader";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
-import { ROUTES } from "@/constants/routes";
 import { getStoredBodyVitalsContext } from "@/features/self-care/services/bodyVitalsStorage";
 import type { BodyVitalsContext } from "@/features/self-care/types/bodyVitals";
+import { resolveBodyVitalsTypography } from "@/features/self-care/utils/bodyVitalsTheme";
 import {
   buildCaloriePanelTiers,
   resolveCaloriePanelDataFromContext,
   resolveCaloriePanelDataFromParams,
   type CaloriePanelParams,
 } from "@/features/self-care/services/caloriePanelService";
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
+import type { ColorSet, Spacing } from "@/theme/types";
 
 export default function CalorieThresholdScreen() {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, typography, svaTypography } =
+    useContext(ThemeContext);
   const { width } = useWindowDimensions();
   const params = useLocalSearchParams();
   const [savedVitalsContext, setSavedVitalsContext] =
     useState<BodyVitalsContext | null>(null);
+  const t = useMemo(
+    () => resolveBodyVitalsTypography(svaTypography, typography),
+    [svaTypography, typography]
+  );
 
   useEffect(() => {
     let active = true;
@@ -78,19 +81,9 @@ export default function CalorieThresholdScreen() {
   const heroHeight = 96;
 
   const styles = useMemo(
-    () => styling(newTheme, spacing, typography, heroWidth, heroHeight),
-    [newTheme, spacing, typography, heroWidth, heroHeight]
+    () => styling(newTheme, spacing, t, heroWidth, heroHeight),
+    [newTheme, spacing, t, heroWidth, heroHeight]
   );
-
-  const handleSealToPlan = () => {
-    router.push({
-      pathname: ROUTES.AUTH.TOOLS_MEAL_PLANNER,
-      params: {
-        maintenanceCalories: String(calorieData.maintenanceCalories),
-        targetCalories: String(calorieData.optimalBurnCalories),
-      },
-    });
-  };
 
   return (
     <ScreenView padding={0} bgColor={newTheme.background} style={styles.screen}>
@@ -104,11 +97,6 @@ export default function CalorieThresholdScreen() {
           title="Calorie Intake"
           subtitle="Daily maintenance agni"
           onBack={() => router.back()}
-          rightAction={{
-            icon: "settings-outline",
-            accessibilityLabel: "Open settings",
-            onPress: () => router.push(ROUTES.TABS.SETTINGS),
-          }}
           containerStyle={styles.header}
           titleStyle={styles.headerTitle}
           subtitleStyle={styles.headerSubtitle}
@@ -192,31 +180,6 @@ export default function CalorieThresholdScreen() {
             Assign the selected Burn target to your Nourish Plan to begin.
           </Text>
         </View>
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Seal to plan"
-          onPress={handleSealToPlan}
-          style={({ pressed }) => [
-            styles.sealButton,
-            pressed && styles.sealButtonPressed,
-          ]}
-        >
-          <LinearGradient
-            colors={[newTheme.chart4 ?? "#E48FA3", newTheme.error ?? "#BF616A"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            pointerEvents="none"
-            style={StyleSheet.absoluteFillObject}
-          />
-          <Ionicons
-            name="bookmark"
-            size={20}
-            color={themeInk}
-            style={styles.sealIcon}
-          />
-          <Text style={styles.sealButtonText}>SEAL TO{"\n"}PLAN</Text>
-        </Pressable>
       </ScrollView>
     </ScreenView>
   );
@@ -227,7 +190,7 @@ const themeInk = "#10120E";
 const styling = (
   theme: ColorSet,
   spacing: Spacing,
-  typography: Typography,
+  t: ReturnType<typeof resolveBodyVitalsTypography>,
   heroWidth: number,
   heroHeight: number
 ) =>
@@ -244,14 +207,11 @@ const styling = (
       marginBottom: spacing.sm,
     },
     headerTitle: {
-      ...typography.h2,
-      fontSize: 22,
-      letterSpacing: -0.4,
+      ...t.screenTitle,
+      color: theme.textPrimary,
     },
     headerSubtitle: {
-      ...typography.body,
-      fontSize: 14,
-      lineHeight: 20,
+      ...t.screenSubtitle,
       color: theme.textSecondary,
       opacity: 0.88,
     },
@@ -275,36 +235,29 @@ const styling = (
     },
     heroValue: {
       color: themeInk,
-      fontFamily: "CormorantGaramond_600SemiBold",
+      fontFamily: t.heroDisplay.fontFamily,
       fontSize: 48,
       lineHeight: 50,
-      fontStyle: "italic",
-      letterSpacing: -1.1,
+      fontWeight: t.heroDisplay.fontWeight,
+      letterSpacing: t.heroDisplay.letterSpacing ?? -1.1,
     },
     heroUnit: {
       color: themeInk,
-      fontFamily: "CormorantGaramond_600SemiBold",
+      fontFamily: t.heroDisplay.fontFamily,
       fontSize: 24,
       lineHeight: 24,
-      fontStyle: "italic",
+      fontWeight: t.heroDisplay.fontWeight,
       letterSpacing: -0.4,
     },
     heroCaption: {
       marginTop: 2,
       color: themeInk,
-      fontFamily: typography.smallCaption.fontFamily,
-      fontSize: 10,
-      lineHeight: 12,
-      fontWeight: "800",
-      letterSpacing: 2.4,
+      ...t.sectionLabel,
       opacity: 0.88,
     },
     sectionTitle: {
       color: theme.textPrimary,
-      fontFamily: "CormorantGaramond_500Medium",
-      fontSize: 24,
-      lineHeight: 28,
-      fontStyle: "italic",
+      ...t.sectionTitle,
       marginBottom: spacing.md,
       marginTop: spacing.xl,
     },
@@ -345,11 +298,9 @@ const styling = (
       marginBottom: 2,
     },
     cardLabel: {
-      ...typography.smallCaption,
+      ...t.sectionLabel,
       color: theme.textSecondary,
-      letterSpacing: 1.4,
       opacity: 0.86,
-      fontWeight: "700",
     },
     cardDot: {
       width: 6,
@@ -360,18 +311,19 @@ const styling = (
     },
     cardTitle: {
       color: theme.textPrimary,
-      fontFamily: "CormorantGaramond_500Medium",
+      fontFamily: t.sectionTitle.fontFamily,
       fontSize: 21,
       lineHeight: 24,
-      fontStyle: "italic",
+      fontWeight: t.sectionTitle.fontWeight,
+      letterSpacing: t.sectionTitle.letterSpacing,
     },
     cardCalories: {
       color: newThemeAccent(theme),
-      fontFamily: "CormorantGaramond_600SemiBold",
+      fontFamily: t.screenTitle.fontFamily,
       fontSize: 28,
       lineHeight: 30,
-      letterSpacing: -0.8,
-      fontStyle: "italic",
+      letterSpacing: t.screenTitle.letterSpacing ?? -0.8,
+      fontWeight: t.screenTitle.fontWeight,
       textAlign: "right",
     },
     cardCaloriesHighlight: {
@@ -389,45 +341,11 @@ const styling = (
     },
     tipText: {
       color: theme.textPrimary,
-      fontFamily: "CormorantGaramond_500Medium",
-      fontSize: 20,
-      lineHeight: 29,
-      fontStyle: "italic",
+      ...t.body,
+      fontSize: 17,
+      lineHeight: 26,
       textAlign: "center",
       opacity: 0.96,
-    },
-    sealButton: {
-      width: 114,
-      height: 114,
-      borderRadius: 57,
-      alignSelf: "center",
-      marginTop: spacing.xl,
-      alignItems: "center",
-      justifyContent: "center",
-      overflow: "hidden",
-      borderWidth: 1,
-      borderColor: "rgba(191,97,106,0.6)",
-      shadowColor: theme.shadow,
-      shadowOpacity: 0.3,
-      shadowRadius: 18,
-      shadowOffset: { width: 0, height: 12 },
-      elevation: 6,
-    },
-    sealButtonPressed: {
-      opacity: 0.96,
-      transform: [{ scale: 0.98 }],
-    },
-    sealIcon: {
-      marginBottom: 2,
-    },
-    sealButtonText: {
-      color: themeInk,
-      fontFamily: typography.button.fontFamily,
-      fontSize: 12,
-      lineHeight: 14,
-      fontWeight: "800",
-      letterSpacing: 1.2,
-      textAlign: "center",
     },
   });
 

@@ -186,11 +186,6 @@ export default function ToolsLandingScreen() {
       <View style={styles.root}>
         <AppHeader
           title="Tools"
-          rightAction={{
-            icon: "settings-outline",
-            accessibilityLabel: "Open settings",
-            onPress: () => router.push(ROUTES.TABS.SETTINGS),
-          }}
           containerStyle={styles.header}
         />
 

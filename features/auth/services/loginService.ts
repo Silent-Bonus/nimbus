@@ -19,6 +19,11 @@ import {
   SetPasswordRequest,
 } from "@/features/auth/types/loginTypes";
 import type { UserProfile } from "@/features/auth/types/userProfile";
+import type {
+  BodyVitalsCalculationApiResponse,
+  BodyVitalsCalculationPayload,
+  BodyVitalsProfilePatchPayload,
+} from "@/features/self-care/types/bodyVitals";
 
 type FetchUserResponse = {
   success: boolean;
@@ -163,6 +168,52 @@ export const saveUpdateUser = async (data: any): Promise<any> => {
       data
     );
     return response.data; // Return the list data
+  } catch (error: any) {
+    throw error.response ? error.response.data : error.message;
+  }
+};
+
+export const calculateBodyVitals = async (
+  data: BodyVitalsCalculationPayload
+): Promise<BodyVitalsCalculationApiResponse> => {
+  try {
+    const response: AxiosResponse<BodyVitalsCalculationApiResponse> = await axios.post(
+      API_ENDPOINTS.vitalsCalculator,
+      data
+    );
+    return response.data;
+  } catch (error: any) {
+    throw error.response ? error.response.data : error.message;
+  }
+};
+
+export const calculateProteinVitals = async (
+  data: BodyVitalsCalculationPayload
+): Promise<BodyVitalsCalculationApiResponse> => {
+  return calculateBodyVitals(data);
+};
+
+export const calculateCalorieVitals = async (
+  data: BodyVitalsCalculationPayload
+): Promise<BodyVitalsCalculationApiResponse> => {
+  return calculateBodyVitals(data);
+};
+
+export const calculateBodyShapeVitals = async (
+  data: BodyVitalsCalculationPayload
+): Promise<BodyVitalsCalculationApiResponse> => {
+  return calculateBodyVitals(data);
+};
+
+export const patchBodyVitalsProfile = async (
+  data: BodyVitalsProfilePatchPayload
+): Promise<any> => {
+  try {
+    const response: AxiosResponse<any> = await axios.patch(
+      API_ENDPOINTS.fetchUserDetails,
+      data
+    );
+    return response.data;
   } catch (error: any) {
     throw error.response ? error.response.data : error.message;
   }

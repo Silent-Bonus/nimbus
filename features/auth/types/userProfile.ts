@@ -16,6 +16,39 @@ export type UserNotification = {
   days_of_week: string[];
 };
 
+export type UserProfileDetails = {
+  phone_number?: string | null;
+  height?: number | null;
+  weight?: number | null;
+  age?: number | null;
+  gender?: "male" | "female" | null;
+  gender_prefer_not_to_say?: boolean | null;
+};
+
+export type UserSettings = {
+  onboarding_intent?: string | null;
+  weight_unit?: string | null;
+  height_unit?: string | null;
+  liquid_unit?: string | null;
+  weather_unit?: string | null;
+  start_of_week?: string | null;
+  location?: string | null;
+};
+
+export type UserAddress = {
+  street?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip_code?: string | null;
+  country?: string | null;
+};
+
+export type UserNotificationPreferences = {
+  timezone?: string | null;
+  quiet_hours_start?: string | null;
+  quiet_hours_end?: string | null;
+};
+
 export type UserProfile = {
   id: number;
   username: string | null;
@@ -25,11 +58,11 @@ export type UserProfile = {
   first_name?: string | null;
   last_name?: string | null;
   avatar?: string | null;
-  profile?: Record<string, unknown> | null;
-  settings?: Record<string, unknown> | null;
-  address?: Record<string, unknown> | null;
+  profile?: UserProfileDetails | null;
+  settings?: UserSettings | null;
+  address?: UserAddress | null;
   notifications?: UserNotification[];
-  notification_preferences?: Record<string, unknown> | null;
+  notification_preferences?: UserNotificationPreferences | null;
   vitals_context?: BodyVitalsContext | null;
   subscription?: UserSubscription | null;
 };

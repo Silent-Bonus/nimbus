@@ -10,7 +10,8 @@ import {
 } from "react-native";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
+import { resolveBodyVitalsTypography } from "@/features/self-care/utils/bodyVitalsTheme";
+import type { ColorSet, Spacing } from "@/theme/types";
 
 type MetricTileShellProps = {
   label: string;
@@ -29,11 +30,16 @@ export const MetricTileShell = ({
   contentStyle,
   children,
 }: MetricTileShellProps) => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, typography, svaTypography } =
+    useContext(ThemeContext);
+  const t = useMemo(
+    () => resolveBodyVitalsTypography(svaTypography, typography),
+    [svaTypography, typography]
+  );
 
   const styles = useMemo(
-    () => styling(newTheme, spacing, typography),
-    [newTheme, spacing, typography]
+    () => styling(newTheme, spacing, t),
+    [newTheme, spacing, t]
   );
 
   return (
@@ -56,7 +62,11 @@ export const MetricTileShell = ({
   );
 };
 
-const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
+const styling = (
+  theme: ColorSet,
+  spacing: Spacing,
+  t: ReturnType<typeof resolveBodyVitalsTypography>
+) =>
   StyleSheet.create({
     card: {
       minHeight: 152,
@@ -85,10 +95,8 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       marginBottom: spacing.sm,
     },
     label: {
-      ...typography.smallCaption,
+      ...t.sectionLabel,
       color: theme.textSecondary,
-      fontWeight: "700",
-      letterSpacing: 1.4,
       opacity: 0.85,
     },
     content: {

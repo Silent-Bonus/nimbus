@@ -78,7 +78,9 @@ function normalizeProteinGoal(goal?: BodyVitalsProteinGoal | null): ProteinPanel
 export function resolveProteinPanelDataFromContext(
   context: BodyVitalsContext | null | undefined
 ): ProteinPanelData {
-  return normalizeProteinGoal(context?.profile?.protein_goal);
+  return normalizeProteinGoal(
+    context?.latest_snapshot?.outputs?.protein_goal ?? context?.profile?.protein_goal
+  );
 }
 
 export function resolveProteinPanelDataFromParams(

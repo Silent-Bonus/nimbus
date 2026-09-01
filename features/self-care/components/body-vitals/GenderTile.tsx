@@ -2,7 +2,8 @@ import React, { useContext, useMemo } from "react";
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
+import { resolveBodyVitalsTypography } from "@/features/self-care/utils/bodyVitalsTheme";
+import type { ColorSet, Spacing } from "@/theme/types";
 
 import { MetricTileShell } from "./MetricTileShell";
 import type { SomaticGender } from "./types";
@@ -19,11 +20,16 @@ const OPTIONS: { key: SomaticGender; label: string }[] = [
 ];
 
 export const GenderTile = ({ value, onChange, style }: GenderTileProps) => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, typography, svaTypography } =
+    useContext(ThemeContext);
+  const t = useMemo(
+    () => resolveBodyVitalsTypography(svaTypography, typography),
+    [svaTypography, typography]
+  );
 
   const styles = useMemo(
-    () => styling(newTheme, spacing, typography),
-    [newTheme, spacing, typography]
+    () => styling(newTheme, spacing, t),
+    [newTheme, spacing, t]
   );
 
   return (
@@ -55,7 +61,11 @@ export const GenderTile = ({ value, onChange, style }: GenderTileProps) => {
   );
 };
 
-const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
+const styling = (
+  theme: ColorSet,
+  spacing: Spacing,
+  t: ReturnType<typeof resolveBodyVitalsTypography>
+) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -79,10 +89,8 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       opacity: 0.92,
     },
     optionText: {
-      ...typography.button,
-      fontSize: 13,
+      ...t.action,
       color: theme.textSecondary,
-      letterSpacing: 1.2,
       opacity: 0.5,
     },
     optionTextActive: {

@@ -9,6 +9,7 @@ import React, {
 import {
   ActivityIndicator,
   FlatList,
+  Pressable,
   Platform,
   StyleSheet,
   View,
@@ -42,10 +43,22 @@ import { useNimbusToast } from "@/components/ui/toast/useNimbusToast";
 import SyncProgressCard from "@/features/home/components/component/SyncProgressCard";
 import DailySutraCard from "@/features/home/components/component/DailySutraCard";
 import BioMetricBlueprintPanel from "@/features/home/components/BioMetricBlueprintPanel";
+import ActionModal from "@/components/ui/modal/ActionModal";
+import { Ionicons } from "@expo/vector-icons";
 
 // ---------- Nimbus visual helpers ----------
 const HABIT_ICONS = ["🍰", "🌱", "🏃‍♂️", "🧘", "📚", "💧"];
 const HABIT_COLORS = ["#FF6B6B", "#4ECDC4", "#FFD93D", "#1A535C", "#6A4C93"];
+const PROFILE_UPDATE_ROUTE = ROUTES.AUTH.ADVANCED_SETTINGS;
+// Replace this with the dedicated profile-update route once that screen exists.
+
+function formatMissingFieldLabel(field: string) {
+  return field
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
 
 // ---------- Screen ----------
 export default function TabOneScreen() {
@@ -57,6 +70,7 @@ export default function TabOneScreen() {
   const [completedHabit, setCompletedHabit] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [userInfo, setUserInfo] = useState<any>(null);
+  const [showVitalsBannerModal, setShowVitalsBannerModal] = useState(false);
 
   const { userProfile } = useAuth();
 
@@ -175,6 +189,31 @@ export default function TabOneScreen() {
   }
 
   const isFirstTimeUser = !!userInfo?.firstTimeUser;
+  const dashboardVitalsBanner =
+    userInfo?.vitals_context?.banner?.show &&
+    userInfo?.vitals_context?.banner?.message
+      ? userInfo.vitals_context.banner.message
+      : null;
+  const dashboardVitalsTitle =
+    userInfo?.vitals_context?.banner?.type === "profile_completion"
+      ? "Complete Your Vitals Profile"
+      : "Body Vitals Need Attention";
+  const dashboardMissingFieldsRaw =
+    userInfo?.vitals_context?.missing_fields?.profile_completion ?? [];
+  const dashboardMissingFields = Array.isArray(dashboardMissingFieldsRaw)
+    ? dashboardMissingFieldsRaw.filter(
+        (value: unknown): value is string => typeof value === "string"
+      )
+    : [];
+  const dashboardMissingFieldCopy = dashboardMissingFields.length
+    ? dashboardMissingFields.map(formatMissingFieldLabel).join(", ")
+    : "Sleep Time, Sleep Duration";
+  const dashboardBannerBody = [
+    dashboardVitalsBanner,
+    `Missing fields: ${dashboardMissingFieldCopy}.`,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 
   return (
     <ScreenView
@@ -218,6 +257,45 @@ export default function TabOneScreen() {
                 isLoading={loading}
                 // centerSelected
               />
+
+              {dashboardVitalsBanner ? (
+                <View style={styles.dashboardBanner}>
+                  <View style={styles.dashboardBannerGlow} />
+                  <View style={styles.dashboardBannerInner}>
+                    <View style={styles.dashboardBannerIconWrap}>
+                      <Ionicons
+                        name="warning-outline"
+                        size={20}
+                        color={theme.warning}
+                      />
+                    </View>
+
+                    <Text
+                      style={styles.dashboardBannerTitle}
+                      numberOfLines={1}
+                    >
+                      {dashboardVitalsTitle}
+                    </Text>
+
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Open vitals profile notice"
+                      onPress={() => setShowVitalsBannerModal(true)}
+                      hitSlop={10}
+                      style={({ pressed }) => [
+                        styles.dashboardBannerClose,
+                        pressed && styles.dashboardBannerClosePressed,
+                      ]}
+                    >
+                      <Ionicons
+                        name="close"
+                        size={16}
+                        color={theme.textSecondary}
+                      />
+                    </Pressable>
+                  </View>
+                </View>
+              ) : null}
 
               <SyncProgressCard
                 percentage={84}
@@ -283,6 +361,23 @@ export default function TabOneScreen() {
           }
         />
       </View>
+
+      <ActionModal
+        visible={showVitalsBannerModal}
+        onClose={() => setShowVitalsBannerModal(false)}
+        eyebrow="Profile Advisory"
+        title={dashboardVitalsTitle}
+        body={dashboardBannerBody}
+        iconName="warning-outline"
+        primaryAction={{
+          label: "Update",
+          onPress: () => router.push(PROFILE_UPDATE_ROUTE),
+        }}
+        secondaryAction={{
+          label: "Not now",
+          variant: "outline",
+        }}
+      />
     </ScreenView>
   );
 }
@@ -325,6 +420,69 @@ const styling = (theme: any, spacing: any, typography: any) =>
       alignItems: "center",
       marginBottom: spacing.lg,
       marginTop: spacing.md,
+    },
+    dashboardBanner: {
+      minHeight: 92,
+      marginTop: spacing.sm,
+      marginBottom: spacing.lg,
+      borderRadius: 22,
+      overflow: "hidden",
+      borderWidth: 1,
+      borderColor: "rgba(235,203,139,0.16)",
+      backgroundColor: theme.cardRaised || "#262A22",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.16,
+      shadowRadius: 14,
+      elevation: 6,
+      justifyContent: "center",
+      position: "relative",
+    },
+    dashboardBannerGlow: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(235,203,139,0.04)",
+    },
+    dashboardBannerInner: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm + 2,
+      flexDirection: "row",
+      alignItems: "center",
+      minHeight: 92,
+    },
+    dashboardBannerIconWrap: {
+      width: 50,
+      height: 50,
+      borderRadius: 14,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "rgba(235,203,139,0.12)",
+      borderWidth: 1,
+      borderColor: "rgba(235,203,139,0.18)",
+      marginRight: spacing.md,
+    },
+    dashboardBannerTitle: {
+      ...typography.h3,
+      flex: 1,
+      minWidth: 0,
+      fontSize: 17,
+      lineHeight: 21,
+      fontWeight: "800",
+      color: theme.textPrimary,
+      letterSpacing: 0.1,
+    },
+    dashboardBannerClose: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      alignItems: "center",
+      justifyContent: "center",
+      marginLeft: spacing.md,
+      backgroundColor: "rgba(255,255,255,0.04)",
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.08)",
+    },
+    dashboardBannerClosePressed: {
+      opacity: 0.86,
     },
     greetingTitle: {
       ...typography.h2,

@@ -234,11 +234,6 @@ export default function SelfCare() {
         <AppHeader
           title="Sattva Sanctuary"
           subtitle="A quiet orbit for mind, body, soul."
-          rightAction={{
-            icon: "settings-outline",
-            accessibilityLabel: "Open settings",
-            onPress: () => router.push(ROUTES.TABS.SETTINGS),
-          }}
           containerStyle={styles.header}
         />
 

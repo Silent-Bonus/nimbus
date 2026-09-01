@@ -88,7 +88,9 @@ function normalizeCalorieGoal(goal?: BodyVitalsCalorieGoal | null): CaloriePanel
     totalCalorie;
 
   const buildCalories =
-    toNumber(goal.build) ?? Math.round(maintenanceCalories + 250);
+    toNumber(goal.build_calories) ??
+    toNumber(goal.build) ??
+    Math.round(maintenanceCalories + 250);
 
   return {
     totalCalorie,
@@ -104,7 +106,9 @@ function normalizeCalorieGoal(goal?: BodyVitalsCalorieGoal | null): CaloriePanel
 export function resolveCaloriePanelDataFromContext(
   context: BodyVitalsContext | null | undefined
 ): CaloriePanelData {
-  return normalizeCalorieGoal(context?.profile?.calorie_goal);
+  return normalizeCalorieGoal(
+    context?.latest_snapshot?.outputs?.calorie_goal ?? context?.profile?.calorie_goal
+  );
 }
 
 export function resolveCaloriePanelDataFromParams(

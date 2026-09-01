@@ -11,11 +11,11 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 
 import ThemeContext from "@/contexts/ThemeContext";
+import { resolveBodyVitalsTypography } from "@/features/self-care/utils/bodyVitalsTheme";
 import type {
   ColorSet,
   Spacing,
   Typography,
-  TypographyTokens,
 } from "@/theme/types";
 
 import { MetricTileShell } from "./MetricTileShell";
@@ -49,10 +49,14 @@ export const NumericMetricTile = ({
 }: NumericMetricTileProps) => {
   const { newTheme, spacing, typography, svaTypography } =
     useContext(ThemeContext);
+  const t = useMemo(
+    () => resolveBodyVitalsTypography(svaTypography, typography),
+    [svaTypography, typography]
+  );
 
   const styles = useMemo(
-    () => styling(newTheme, spacing, typography, svaTypography?.textStyle),
-    [newTheme, spacing, typography, svaTypography]
+    () => styling(newTheme, spacing, typography, t),
+    [newTheme, spacing, typography, t]
   );
 
   return (
@@ -101,7 +105,7 @@ const styling = (
   theme: ColorSet,
   spacing: Spacing,
   typography: Typography,
-  displayStyles?: TypographyTokens["textStyle"]
+  t: ReturnType<typeof resolveBodyVitalsTypography>
 ) =>
   StyleSheet.create({
     content: {
@@ -121,21 +125,17 @@ const styling = (
       margin: 0,
       color: theme.textPrimary,
       backgroundColor: "transparent",
-      fontFamily:
-        displayStyles?.authTitle?.fontFamily ??
-        displayStyles?.displayMedium?.fontFamily ??
-        typography.h1.fontFamily,
+      fontFamily: t.numericValue.fontFamily,
       fontSize: 29,
       lineHeight: 34,
-      letterSpacing: -0.6,
+      fontWeight: t.numericValue.fontWeight,
+      letterSpacing: t.numericValue.letterSpacing ?? -0.6,
       includeFontPadding: false,
       textAlignVertical: "center",
     },
     unit: {
+      ...t.sectionLabel,
       color: theme.textSecondary,
-      fontSize: 11,
-      fontWeight: "700",
-      letterSpacing: 1.2,
       marginBottom: 4,
       opacity: 0.9,
     },
@@ -167,7 +167,7 @@ const styling = (
       marginTop: -1,
     },
     stepperText: {
-      ...typography.caption,
+      ...t.caption,
       color: theme.textSecondary,
     },
     progressTrack: {
@@ -194,10 +194,15 @@ export const NumericMetricTileStepperRow = ({
   onIncrement,
   label,
 }: StepperRowProps) => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, typography, svaTypography } =
+    useContext(ThemeContext);
+  const t = useMemo(
+    () => resolveBodyVitalsTypography(svaTypography, typography),
+    [svaTypography, typography]
+  );
   const styles = useMemo(
-    () => styling(newTheme, spacing, typography),
-    [newTheme, spacing, typography]
+    () => styling(newTheme, spacing, typography, t),
+    [newTheme, spacing, typography, t]
   );
 
   return (
@@ -246,10 +251,15 @@ type ProgressBarProps = {
 };
 
 export const NumericMetricTileProgressBar = ({ progress }: ProgressBarProps) => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, typography, svaTypography } =
+    useContext(ThemeContext);
+  const t = useMemo(
+    () => resolveBodyVitalsTypography(svaTypography, typography),
+    [svaTypography, typography]
+  );
   const styles = useMemo(
-    () => styling(newTheme, spacing, typography),
-    [newTheme, spacing, typography]
+    () => styling(newTheme, spacing, typography, t),
+    [newTheme, spacing, typography, t]
   );
 
   const width = `${Math.max(0, Math.min(progress, 1)) * 100}%` as ViewStyle["width"];

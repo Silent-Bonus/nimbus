@@ -127,6 +127,9 @@ export const API_ENDPOINTS = {
   bulkUpdateMealPlan: `${BASE_URL}/api/v1/meals/plans/bulk_update/`,
   scribbles: `${BASE_URL}/api/v1/scribbles/`,
   recentScribbleTags: `${BASE_URL}/api/v1/scribbles/recent_tags/`,
+  vitalsCalculator: `${BASE_URL}/api/v1/vitals/calculate/`,
+  vitalsTrends: (range: string = "30d", metric: string = "all") =>
+    `${BASE_URL}/api/v1/vitals/trends/?range=${range}&metric=${metric}`,
   calorieCalculator: `${BASE_URL}/api/v1/calculators/calories/`,
   proteinIntakeCalculator: `${BASE_URL}/api/v1/calculators/protein/`,
   bodyShapeCalculator: `${BASE_URL}/api/v1/calculators/body_shape/`,

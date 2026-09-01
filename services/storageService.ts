@@ -5,19 +5,28 @@ import * as SecureStore from "expo-secure-store";
 import { StoreKey } from "@/constants/Constant";
 import type { UserProfile } from "@/features/auth/types/userProfile";
 
-const USER_KEY = "@nimbus_user";
 const LEGACY_PROFILE_KEY = StoreKey.USER_PROFILE_KEY;
 const TOKEN_KEY = StoreKey.TOKEN_KEY;
 
 export type User = UserProfile;
+export type AppAsyncStorageSchema = {
+  [StoreKey.USER_KEY]: User | null;
+  [StoreKey.BODY_VITALS_CONTEXT_KEY]: User["vitals_context"] | null;
+  [StoreKey.AUTH_SESSION_TEST_MODE_KEY]: string | null;
+  [StoreKey.WELCOME_SEEN_KEY]: string | null;
+  [StoreKey.THEME_KEY]: string | null;
+};
+export type AppAsyncStorageKey = keyof AppAsyncStorageSchema;
 
-function parseStoredUser(raw: string | null): User | null {
-  if (!raw) return null;
+function parseStoredValue<T>(raw: string | null): T | null {
+  if (!raw) {
+    return null;
+  }
 
   try {
-    return JSON.parse(raw) as User;
+    return JSON.parse(raw) as T;
   } catch {
-    return null;
+    return raw as T;
   }
 }
 
@@ -29,26 +38,57 @@ async function clearLegacyProfileCache() {
   }
 }
 
+// Shared AsyncStorage CRUD helpers for app-level cached data.
+export async function getStoredValue<K extends AppAsyncStorageKey>(
+  key: K
+): Promise<AppAsyncStorageSchema[K]> {
+  const raw = await AsyncStorage.getItem(key);
+  return parseStoredValue<AppAsyncStorageSchema[K]>(raw);
+}
+
+export async function setStoredValue<K extends AppAsyncStorageKey>(
+  key: K,
+  value: AppAsyncStorageSchema[K]
+): Promise<void> {
+  if (value == null) {
+    await AsyncStorage.removeItem(key);
+    return;
+  }
+
+  if (typeof value === "string") {
+    await AsyncStorage.setItem(key, value);
+    return;
+  }
+
+  await AsyncStorage.setItem(key, JSON.stringify(value));
+}
+
+export async function removeStoredValue(key: AppAsyncStorageKey): Promise<void> {
+  await AsyncStorage.removeItem(key);
+}
+
 export async function getStoredUser(): Promise<User | null> {
-  const cached = parseStoredUser(await AsyncStorage.getItem(USER_KEY));
+  const cached = await getStoredValue(StoreKey.USER_KEY);
   if (cached) return cached;
 
-  const legacy = parseStoredUser(await SecureStore.getItemAsync(LEGACY_PROFILE_KEY));
+  const legacy = parseStoredValue<User>(
+    await SecureStore.getItemAsync(LEGACY_PROFILE_KEY)
+  );
   if (!legacy) return null;
 
-  await AsyncStorage.setItem(USER_KEY, JSON.stringify(legacy));
+  await setStoredValue(StoreKey.USER_KEY, legacy);
   await clearLegacyProfileCache();
   return legacy;
 }
 
 export async function setStoredUser(user: User | null): Promise<void> {
   if (!user) {
-    await AsyncStorage.removeItem(USER_KEY);
+    await removeStoredValue(StoreKey.USER_KEY);
     await clearLegacyProfileCache();
     return;
   }
 
-  await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
+  await setStoredValue(StoreKey.USER_KEY, user);
   await clearLegacyProfileCache();
 }
 

@@ -7,7 +7,8 @@ import {
 } from "react-native";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
+import { resolveBodyVitalsTypography } from "@/features/self-care/utils/bodyVitalsTheme";
+import type { ColorSet, Spacing } from "@/theme/types";
 
 import { MetricTileShell } from "./MetricTileShell";
 import { ACTIVITY_LEVEL_OPTIONS, getActivityOption } from "./utils";
@@ -21,12 +22,17 @@ export const ActivityLevelCard = ({
   value,
   onChange,
 }: ActivityLevelCardProps) => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, typography, svaTypography } =
+    useContext(ThemeContext);
   const selectedOption = getActivityOption(value);
+  const t = useMemo(
+    () => resolveBodyVitalsTypography(svaTypography, typography),
+    [svaTypography, typography]
+  );
 
   const styles = useMemo(
-    () => styling(newTheme, spacing, typography),
-    [newTheme, spacing, typography]
+    () => styling(newTheme, spacing, t),
+    [newTheme, spacing, t]
   );
 
   return (
@@ -73,7 +79,11 @@ export const ActivityLevelCard = ({
   );
 };
 
-const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
+const styling = (
+  theme: ColorSet,
+  spacing: Spacing,
+  t: ReturnType<typeof resolveBodyVitalsTypography>
+) =>
   StyleSheet.create({
     card: {
       minHeight: 176,
@@ -92,11 +102,8 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       borderColor: theme.borderMuted ?? theme.border,
     },
     bandLabel: {
-      ...typography.smallCaption,
+      ...t.sectionLabel,
       color: theme.accent,
-      fontSize: 11,
-      fontWeight: "700",
-      letterSpacing: 1.5,
       opacity: 0.95,
     },
     optionRow: {
@@ -135,21 +142,17 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       transform: [{ scale: 0.98 }],
     },
     optionLabel: {
+      ...t.action,
       color: theme.textSecondary,
-      fontSize: 12,
-      lineHeight: 15,
-      fontWeight: "700",
-      letterSpacing: 1.1,
       textAlign: "center",
     },
     optionLabelActive: {
       color: theme.accent,
     },
     optionDescription: {
-      ...typography.smallCaption,
+      ...t.sectionLabel,
       color: theme.textSecondary,
       opacity: 0.68,
-      letterSpacing: 1.15,
       textAlign: "center",
     },
     optionDescriptionActive: {

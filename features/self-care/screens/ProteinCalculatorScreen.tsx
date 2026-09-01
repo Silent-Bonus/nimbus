@@ -1,6 +1,5 @@
 import React, { useContext, useMemo } from "react";
 import {
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,17 +13,22 @@ import { LinearGradient } from "expo-linear-gradient";
 import ThemeContext from "@/contexts/ThemeContext";
 import AppHeader from "@/components/layout/AppHeader";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
-import { ROUTES } from "@/constants/routes";
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
 import {
   buildProteinPanelMealSlots,
   resolveProteinPanelDataFromParams,
 } from "@/features/self-care/services/proteinPanelService";
+import { resolveBodyVitalsTypography } from "@/features/self-care/utils/bodyVitalsTheme";
+import type { ColorSet, Spacing } from "@/theme/types";
 
 export const ProteinCalculatorScreen = () => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, typography, svaTypography } =
+    useContext(ThemeContext);
   const params = useLocalSearchParams();
   const { width } = useWindowDimensions();
+  const t = useMemo(
+    () => resolveBodyVitalsTypography(svaTypography, typography),
+    [svaTypography, typography]
+  );
 
   const proteinPanelData = useMemo(
     () =>
@@ -52,16 +56,9 @@ export const ProteinCalculatorScreen = () => {
   const heroSize = Math.min(Math.max(width * 0.64, 198), 226);
 
   const styles = useMemo(
-    () => styling(newTheme, spacing, typography, heroSize),
-    [newTheme, spacing, typography, heroSize]
+    () => styling(newTheme, spacing, t, heroSize),
+    [newTheme, spacing, t, heroSize]
   );
-
-  const handleSealToPlan = () => {
-    router.push({
-      pathname: ROUTES.AUTH.TOOLS_MEAL_PLANNER,
-      params: { protein: String(proteinPanelData.totalRequirement) },
-    });
-  };
 
   return (
     <ScreenView padding={0} bgColor={newTheme.background} style={styles.screen}>
@@ -140,25 +137,6 @@ export const ProteinCalculatorScreen = () => {
             Assign these values to your Nourish Plan to begin.
           </Text>
         </View>
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Seal to plan"
-          onPress={handleSealToPlan}
-          style={({ pressed }) => [
-            styles.sealButton,
-            pressed && styles.sealButtonPressed,
-          ]}
-        >
-          <LinearGradient
-            colors={[newTheme.buttonPrimary, newTheme.accentPressed]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            pointerEvents="none"
-            style={StyleSheet.absoluteFillObject}
-          />
-          <Text style={styles.sealButtonText}>SEAL TO{"\n"}PLAN</Text>
-        </Pressable>
       </ScrollView>
     </ScreenView>
   );
@@ -167,7 +145,7 @@ export const ProteinCalculatorScreen = () => {
 const styling = (
   theme: ColorSet,
   spacing: Spacing,
-  typography: Typography,
+  t: ReturnType<typeof resolveBodyVitalsTypography>,
   heroSize: number
 ) =>
   StyleSheet.create({
@@ -183,14 +161,11 @@ const styling = (
       marginBottom: spacing.sm,
     },
     headerTitle: {
-      ...typography.h2,
-      fontSize: 22,
-      letterSpacing: -0.3,
+      ...t.screenTitle,
+      color: theme.textPrimary,
     },
     headerSubtitle: {
-      ...typography.body,
-      fontSize: 14,
-      lineHeight: 20,
+      ...t.screenSubtitle,
       color: theme.textSecondary,
       opacity: 0.9,
     },
@@ -215,25 +190,24 @@ const styling = (
     },
     heroValue: {
       color: theme.textPrimary,
-      fontFamily: "CormorantGaramond_600SemiBold",
+      fontFamily: t.heroDisplay.fontFamily,
       fontSize: heroSize * 0.27,
       lineHeight: heroSize * 0.27,
-      fontWeight: "600",
-      letterSpacing: -1.1,
+      fontWeight: t.heroDisplay.fontWeight,
+      letterSpacing: t.heroDisplay.letterSpacing ?? -1.1,
     },
     heroUnit: {
       color: theme.textPrimary,
-      fontFamily: "CormorantGaramond_600SemiBold",
+      fontFamily: t.heroDisplay.fontFamily,
       fontSize: heroSize * 0.14,
       lineHeight: heroSize * 0.14,
-      fontWeight: "600",
+      fontWeight: t.heroDisplay.fontWeight,
       letterSpacing: -0.4,
     },
     heroCaption: {
-      ...typography.smallCaption,
+      ...t.sectionLabel,
       color: theme.textSecondary,
       marginTop: spacing.xs,
-      letterSpacing: 2.3,
       textAlign: "center",
       opacity: 0.9,
     },
@@ -265,10 +239,8 @@ const styling = (
       paddingRight: spacing.md,
     },
     slotLabel: {
-      ...typography.smallCaption,
+      ...t.sectionLabel,
       color: theme.textSecondary,
-      fontWeight: "700",
-      letterSpacing: 1.3,
       opacity: 0.85,
     },
     slotAmountColumn: {
@@ -277,21 +249,21 @@ const styling = (
     },
     slotAmount: {
       color: theme.chart4 ?? theme.error,
-      fontFamily: "CormorantGaramond_600SemiBold",
+      fontFamily: t.screenTitle.fontFamily,
       fontSize: 24,
       lineHeight: 26,
-      fontWeight: "600",
-      letterSpacing: -0.8,
+      fontWeight: t.screenTitle.fontWeight,
+      letterSpacing: t.screenTitle.letterSpacing ?? -0.8,
     },
     slotUnit: {
       color: theme.chart4 ?? theme.error,
-      fontFamily: "CormorantGaramond_600SemiBold",
+      fontFamily: t.screenTitle.fontFamily,
       fontSize: 16,
       lineHeight: 18,
-      fontWeight: "600",
+      fontWeight: t.screenTitle.fontWeight,
     },
     slotAmountLabel: {
-      ...typography.caption,
+      ...t.caption,
       color: theme.textSecondary,
       marginLeft: 6,
       marginBottom: 1,
@@ -304,41 +276,10 @@ const styling = (
     },
     tipText: {
       color: theme.textPrimary,
-      fontFamily: "CormorantGaramond_600SemiBold",
-      fontSize: 20,
-      lineHeight: 29,
-      fontStyle: "italic",
+      ...t.body,
+      fontSize: 17,
+      lineHeight: 26,
       textAlign: "center",
       opacity: 0.98,
-    },
-    sealButton: {
-      width: 112,
-      height: 112,
-      borderRadius: 56,
-      alignSelf: "center",
-      marginTop: spacing.lg * 1.1,
-      alignItems: "center",
-      justifyContent: "center",
-      overflow: "hidden",
-      borderWidth: 1,
-      borderColor: "rgba(49,56,38,0.45)",
-      shadowColor: theme.shadow,
-      shadowOpacity: 0.34,
-      shadowRadius: 18,
-      shadowOffset: { width: 0, height: 12 },
-      elevation: 6,
-    },
-    sealButtonPressed: {
-      opacity: 0.96,
-      transform: [{ scale: 0.98 }],
-    },
-    sealButtonText: {
-      color: theme.background,
-      fontFamily: typography.button.fontFamily,
-      fontSize: 13,
-      lineHeight: 16,
-      fontWeight: "800",
-      letterSpacing: 1.4,
-      textAlign: "center",
     },
   });
