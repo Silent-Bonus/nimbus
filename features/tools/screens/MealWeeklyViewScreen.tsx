@@ -1,17 +1,17 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useContext, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   LayoutAnimation,
-  Platform,
   ScrollView,
   Share,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
-import { router } from "expo-router";
-import { addDays, format, isBefore, startOfDay, startOfWeek } from "date-fns";
-import * as FileSystem from "expo-file-system";
+import { router, useFocusEffect } from "expo-router";
+import * as Sharing from "expo-sharing";
+import { Ionicons } from "@expo/vector-icons";
 
 import ThemeContext from "@/contexts/ThemeContext";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
@@ -19,446 +19,187 @@ import AppHeader from "@/components/layout/AppHeader";
 import { PillFilters } from "@/components/ui/PillFilters";
 import { ROUTES } from "@/constants/routes";
 import { toApiDate } from "@/utils/date-time";
-import { useAuth } from "@/contexts/AuthContext";
+import { useNimbusToast } from "@/components/ui/toast/useNimbusToast";
 import {
-  getMealPlanPdfUrl,
+  DayPlan,
+  MealPlanMealRow,
+  MealPlannerWeekRangeId,
+} from "@/features/tools/types/mealPlannerTypes";
+import {
+  downloadMealPlanPdf,
   getMealPlanRange,
-  type DayPlan,
-  type Meal,
-} from "@/features/tools/services/mealService";
+} from "@/features/tools/services/mealPlannerService";
+import { MealPlanDayCard } from "@/features/tools/components/meal-flow";
+import type {
+  Spacing,
+  Typography,
+  SvaColorSet,
+  TypographyTokens,
+  SvaTokens,
+} from "@/theme/types";
 import {
-  MealPlanDayCard,
-  type MealPlanMealRow,
-  type MealPlanMealType,
-} from "@/features/tools/components/meal-flow";
-import type { Spacing, Typography, SvaColorSet } from "@/theme/types";
-
-type WeekRangeId = "previous" | "current" | "next";
-
-type WeekRange = {
-  value: WeekRangeId;
-  label: string;
-  startDate: Date;
-  endDate: Date;
-};
-
-type DisplayDay = {
-  id: string;
-  title: string;
-  date: Date;
-  mealRows: MealPlanMealRow[];
-  sourcePlan: DayPlan | null;
-};
-
-const MEAL_TYPES: MealPlanMealType[] = ["breakfast", "lunch", "dinner"];
-
-const MEAL_LABELS: Record<MealPlanMealType, string> = {
-  breakfast: "Breakfast",
-  lunch: "Lunch",
-  dinner: "Dinner",
-};
-
-const FALLBACK_MEAL_IMAGE = require("@/assets/images/mt.jpg");
-
-type MockWeekTemplate = {
-  breakfast?: string;
-  lunch?: string;
-  dinner?: string;
-  calories: number;
-};
-
-const MOCK_WEEK_TEMPLATES: MockWeekTemplate[] = [
-  {
-    breakfast: "Zesty Quinoa & Citrus Bowl",
-    lunch: "Mediterranean Buddha Bowl",
-    dinner: "Golden Tofu Stir-fry",
-    calories: 1580,
-  },
-  {
-    lunch: "Herbed Grain Bowl with Roasted Vegetables",
-    calories: 840,
-  },
-  {
-    breakfast: "Berry Overnight Oats",
-    dinner: "Lemon Herb Salmon Plate",
-    calories: 1120,
-  },
-  {
-    breakfast: "Avocado Toast Stack",
-    lunch: "Crunchy Chickpea Salad",
-    dinner: "Miso Ginger Noodle Bowl",
-    calories: 1495,
-  },
-  {
-    breakfast: "Coconut Chia Pudding",
-    calories: 610,
-  },
-  {
-    lunch: "Sesame Veggie Wrap",
-    dinner: "Spiced Paneer Skillet",
-    calories: 1170,
-  },
-  {
-    breakfast: "Banana Almond Pancakes",
-    lunch: "Rainbow Pesto Pasta Salad",
-    dinner: "Charred Veg Bowl",
-    calories: 1625,
-  },
-];
-
-const createMockMeal = (
-  id: number,
-  name: string,
-  mealType: MealPlanMealType,
-  planId: number
-): Meal => ({
-  id,
-  name,
-  calories: 0,
-  image: null,
-  is_consumed: false,
-  plan: planId,
-  meal_type: mealType,
-  recipe: id * 10,
-});
-
-const getMockStatusLabel = (template: MockWeekTemplate) => {
-  const filledSlots = [template.breakfast, template.lunch, template.dinner].filter(
-    Boolean
-  ).length;
-  const emptySlots = 3 - filledSlots;
-  return emptySlots === 0
-    ? "Fully planned"
-    : `${emptySlots} empty slot${emptySlots === 1 ? "" : "s"}`;
-};
-
-const buildMockWeeklyPlans = (weekStart: Date): DayPlan[] =>
-  MOCK_WEEK_TEMPLATES.map((template, index) => {
-    const date = addDays(weekStart, index);
-    const planId = 9000 + index;
-
-    return {
-      id: planId,
-      date: toApiDate(date),
-      status: getMockStatusLabel(template),
-      meals: {
-        breakfast: template.breakfast
-          ? createMockMeal(planId * 10 + 1, template.breakfast, "breakfast", planId)
-          : null,
-        lunch: template.lunch
-          ? createMockMeal(planId * 10 + 2, template.lunch, "lunch", planId)
-          : null,
-        dinner: template.dinner
-          ? createMockMeal(planId * 10 + 3, template.dinner, "dinner", planId)
-          : null,
-        snacks: null,
-      },
-      total_calories: template.calories,
-      total_protein: 0,
-      total_carbs: 0,
-      total_fats: 0,
-    };
-  });
-
-const MOCK_DAY_LAYOUT: Array<Array<{ mealType: MealPlanMealType; recipeName: string }>> =
-  [
-    [
-      {
-        mealType: "breakfast",
-        recipeName: "Zesty Quinoa & Citrus Bowl",
-      },
-      {
-        mealType: "lunch",
-        recipeName: "Mediterranean Buddha Bowl",
-      },
-      {
-        mealType: "dinner",
-        recipeName: "Golden Tofu Stir-fry",
-      },
-    ],
-    [
-      {
-        mealType: "lunch",
-        recipeName: "Herbed Grain Bowl with Roasted Vegetables",
-      },
-    ],
-    [
-      {
-        mealType: "breakfast",
-        recipeName: "Berry Overnight Oats",
-      },
-      {
-        mealType: "dinner",
-        recipeName: "Lemon Herb Salmon Plate",
-      },
-    ],
-    [
-      {
-        mealType: "breakfast",
-        recipeName: "Avocado Toast Stack",
-      },
-      {
-        mealType: "lunch",
-        recipeName: "Crunchy Chickpea Salad",
-      },
-      {
-        mealType: "dinner",
-        recipeName: "Miso Ginger Noodle Bowl",
-      },
-    ],
-    [
-      {
-        mealType: "breakfast",
-        recipeName: "Coconut Chia Pudding",
-      },
-      {
-        mealType: "dinner",
-        recipeName: "Spiced Paneer Skillet",
-      },
-    ],
-    [
-      {
-        mealType: "lunch",
-        recipeName: "Sesame Veggie Wrap",
-      },
-    ],
-    [
-      {
-        mealType: "breakfast",
-        recipeName: "Banana Almond Pancakes",
-      },
-      {
-        mealType: "lunch",
-        recipeName: "Rainbow Pesto Pasta Salad",
-      },
-      {
-        mealType: "dinner",
-        recipeName: "Charred Veg Bowl",
-      },
-    ],
-  ];
-
-const normalizeMealRow = (
-  mealType: MealPlanMealType,
-  meal: Meal | null | undefined
-): MealPlanMealRow | null => {
-  if (!meal) return null;
-
-  return {
-    mealType,
-    recipeName: meal.name || "Untitled recipe",
-    image: meal.image || FALLBACK_MEAL_IMAGE,
-  };
-};
-
-const buildLiveMealRows = (plan: DayPlan): MealPlanMealRow[] =>
-  MEAL_TYPES.map((mealType) =>
-    normalizeMealRow(mealType, plan.meals?.[mealType] ?? null)
-  ).filter((row): row is MealPlanMealRow => Boolean(row));
-
-const buildMockMealRows = (dayIndex: number): MealPlanMealRow[] =>
-  MOCK_DAY_LAYOUT[dayIndex % MOCK_DAY_LAYOUT.length].map((entry) => ({
-    mealType: entry.mealType,
-    recipeName: entry.recipeName,
-    image: FALLBACK_MEAL_IMAGE,
-  }));
-
-const buildDisplayDays = (
-  weekStart: Date,
-  plans: DayPlan[]
-): DisplayDay[] => {
-  const planMap = new Map(
-    plans.map((plan) => [toApiDate(new Date(plan.date)), plan])
-  );
-  const hasLiveData = plans.length > 0;
-
-  return Array.from({ length: 7 }, (_, index) => {
-    const date = addDays(weekStart, index);
-    const key = toApiDate(date);
-    const livePlan = planMap.get(key) ?? null;
-    const title = format(date, "EEEE, MMM d");
-
-    return {
-      id: key,
-      title,
-      date,
-      mealRows: livePlan
-        ? buildLiveMealRows(livePlan)
-        : hasLiveData
-          ? []
-          : buildMockMealRows(index),
-      sourcePlan: livePlan,
-    };
-  });
-};
+  WEEKLY_MEAL_TYPES,
+  buildMealDayShareMessage,
+  buildMealPlannerWeekDisplayDays,
+  buildMealPlannerWeekRanges,
+} from "@/features/tools/utils/mealPlannerUtils";
 
 export const MealWeeklyViewScreen = () => {
-  const { svaColors, spacing, typography } = useContext(ThemeContext);
+  const { svaColors, spacing, typography, svaTypography, tokens } =
+    useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(svaColors, spacing, typography),
-    [svaColors, spacing, typography]
+    () => styling(svaColors, spacing, typography, svaTypography, tokens),
+    [svaColors, spacing, typography, svaTypography, tokens]
   );
-  const { authState } = useAuth();
+  const toast = useNimbusToast();
 
-  const [selectedWeek, setSelectedWeek] = useState<WeekRangeId>("current");
+  const [selectedWeek, setSelectedWeek] = useState<MealPlannerWeekRangeId>("current");
   const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
   const [weeklyPlanData, setWeeklyPlanData] = useState<DayPlan[]>([]);
-  const [loading, setLoading] = useState(!__DEV__);
+  const [loading, setLoading] = useState(true);
 
-  const weekRanges = useMemo<WeekRange[]>(() => {
-    const today = new Date();
-    const currentWeekStart = startOfWeek(today, { weekStartsOn: 1 });
-
-    return [
-      {
-        value: "previous",
-        label: "Previous",
-        startDate: addDays(currentWeekStart, -7),
-        endDate: addDays(currentWeekStart, -1),
-      },
-      {
-        value: "current",
-        label: "Current",
-        startDate: currentWeekStart,
-        endDate: addDays(currentWeekStart, 6),
-      },
-      {
-        value: "next",
-        label: "Future",
-        startDate: addDays(currentWeekStart, 7),
-        endDate: addDays(currentWeekStart, 13),
-      },
-    ];
-  }, []);
+  const weekRanges = useMemo(() => buildMealPlannerWeekRanges(new Date()), []);
 
   const activeWeekRange =
     weekRanges.find((range) => range.value === selectedWeek) ?? weekRanges[1];
 
-  const planSource = useMemo(
-    () => (__DEV__ ? buildMockWeeklyPlans(activeWeekRange.startDate) : weeklyPlanData),
+  // The range endpoint only returns dates that exist on the backend, so the
+  // screen expands that sparse payload into a fixed seven-day week view.
+  const displayDays = useMemo(
+    () => buildMealPlannerWeekDisplayDays(activeWeekRange.startDate, weeklyPlanData),
     [activeWeekRange.startDate, weeklyPlanData]
   );
 
-  const displayDays = useMemo(
-    () => buildDisplayDays(activeWeekRange.startDate, planSource),
-    [activeWeekRange.startDate, planSource]
-  );
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
 
-  const fetchPlan = async (weekId: WeekRangeId) => {
-    try {
-      setLoading(true);
-      const range =
-        weekRanges.find((item) => item.value === weekId) ?? weekRanges[1];
-      const res: any = await getMealPlanRange(range.startDate, range.endDate);
+      const loadPlan = async () => {
+        try {
+          setLoading(true);
+          const range =
+            weekRanges.find((item) => item.value === selectedWeek) ?? weekRanges[1];
+          const res = await getMealPlanRange(range.startDate, range.endDate);
 
-      let data: DayPlan[] = [];
-      if (res?.success) {
-        if (Array.isArray(res.data)) {
-          data = res.data;
-        } else if (res.data && typeof res.data === "object") {
-          data = [res.data];
+          let data: DayPlan[] = [];
+          if (res?.success) {
+            if (Array.isArray(res.data)) {
+              data = res.data;
+            } else if (res.data && typeof res.data === "object") {
+              data = [res.data];
+            }
+          }
+
+          if (active) {
+            setWeeklyPlanData(data);
+          }
+        } catch (error) {
+          console.error("Error fetching meal plan range:", error);
+          if (active) {
+            setWeeklyPlanData([]);
+          }
+        } finally {
+          if (active) {
+            setLoading(false);
+          }
         }
-      }
+      };
 
-      setWeeklyPlanData(data);
-    } catch (error) {
-      console.error("Error fetching meal plan range:", error);
-      setWeeklyPlanData([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+      void loadPlan();
 
-  useEffect(() => {
-    if (__DEV__) {
-      // Mock data should render immediately in dev so the future-plan states are easy to test.
-      setWeeklyPlanData([]);
-      setLoading(false);
-      return;
-    }
-
-    fetchPlan(selectedWeek);
-  }, [selectedWeek]);
+      return () => {
+        active = false;
+      };
+    }, [selectedWeek, weekRanges])
+  );
 
   const toggleAccordion = (index: number) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpandedIndex(expandedIndex === index ? null : index);
   };
 
-  const handleEditMeal = (
-    mealType: MealPlanMealType,
-    date: Date,
-    recipeName: string
-  ) => {
+  const handleOpenRecipe = (meal: MealPlanMealRow) => {
+    if (!meal.recipeId && !meal.recipeSlug) {
+      return;
+    }
+
     router.push({
-      pathname: ROUTES.AUTH.TOOLS_MEAL_CREATION,
+      pathname: ROUTES.AUTH.TOOLS_RECIPE_DETAIL,
       params: {
-        type: MEAL_LABELS[mealType],
-        date: toApiDate(date),
-        foodName: recipeName,
+        id: meal.recipeId,
+        slug: meal.recipeSlug,
+        recipeData: meal.recipeData,
       },
     });
   };
 
-  const onSharePlan = async (data: DayPlan) => {
+  const sharePdfFile = async (
+    fileUri: string,
+    fallbackMessage: string,
+    dialogTitle: string
+  ) => {
+    const canShareFile = await Sharing.isAvailableAsync();
+
+    if (!canShareFile) {
+      await Share.share({ message: fallbackMessage });
+      return;
+    }
+
+    await Sharing.shareAsync(fileUri, {
+      UTI: ".pdf",
+      mimeType: "application/pdf",
+      dialogTitle,
+    });
+  };
+
+  const onShareWeekPlan = async () => {
+    const startDate = toApiDate(activeWeekRange.startDate);
+    const endDate = toApiDate(activeWeekRange.endDate);
+
     try {
       setLoading(true);
-      const dateStr = toApiDate(new Date(data.date));
-      const pdfUrl = getMealPlanPdfUrl(dateStr, dateStr);
-      const fileUri = `${FileSystem.cacheDirectory}NourishPlan_${dateStr}.pdf`;
+      const fileUri = await downloadMealPlanPdf(startDate, endDate);
 
-      const downloadRes = await FileSystem.downloadAsync(pdfUrl, fileUri, {
-        headers: {
-          Authorization: `Bearer ${authState?.token}`,
-        },
-      });
-
-      if (downloadRes.status === 200) {
-        await Share.share(
-          Platform.OS === "ios"
-            ? { url: downloadRes.uri }
-            : {
-                message: `My Nourish Plan for ${dateStr}`,
-                url: downloadRes.uri,
-              }
-        );
-      } else {
-        throw new Error("Failed to download PDF");
-      }
+      await sharePdfFile(
+        fileUri,
+        `My Nourish Horizon plan for ${startDate} to ${endDate}`,
+        "Share weekly meal plan"
+      );
     } catch (error) {
-      console.error("Error sharing PDF:", error);
-      const getMealName = (meal: any) => {
-        if (!meal) return "Not planned";
-        if (Array.isArray(meal)) {
-          return meal.length > 0
-            ? meal.map((item: any) => item.name).join(", ")
-            : "Not planned";
-        }
-        return meal.name || "Not planned";
-      };
-
-      const message =
-        `My Meal Plan for ${new Date(data.date).toDateString()}:\n` +
-        `Breakfast: ${getMealName(data.meals?.breakfast)}\n` +
-        `Lunch: ${getMealName(data.meals?.lunch)}\n` +
-        `Dinner: ${getMealName(data.meals?.dinner)}\n` +
-        `Snacks: ${getMealName(data.meals?.snacks)}\n` +
-        `Total Calories: ${data.total_calories || 0} kcal`;
-
-      await Share.share({ message });
+      console.error("Error sharing weekly PDF:", error);
+      toast.show({
+        variant: "error",
+        title: "Export failed",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Unable to export the weekly meal plan right now.",
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  const onSharePlan = async (data: DayPlan) => {
+    try {
+      await Share.share({ message: buildMealDayShareMessage(data) });
+    } catch (error) {
+      console.error("Error sharing plan details:", error);
+      toast.show({
+        variant: "error",
+        title: "Share failed",
+        message: "We couldn't share this day plan right now.",
+      });
+    }
+  };
+
   return (
-    <ScreenView bgColor={svaColors.bg.base} style={styles.screen}>
+    <ScreenView bgColor={svaColors.bg.base} padding={0} style={styles.screen}>
       <View style={styles.container}>
         <AppHeader
           title="Nourish Horizon"
           subtitle="Design your week"
           onBack={() => router.back()}
-          subtitleStyle={styles.headerSubtitle}
         />
 
         <View style={styles.filterBlock}>
@@ -474,6 +215,37 @@ export const MealWeeklyViewScreen = () => {
             scrollable={false}
             style={styles.chipContainer}
           />
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={`Share weekly meal plan from ${toApiDate(
+              activeWeekRange.startDate
+            )} to ${toApiDate(activeWeekRange.endDate)}`}
+            activeOpacity={0.8}
+            onPress={onShareWeekPlan}
+            style={styles.weekShareButton}
+          >
+            <View style={styles.weekShareContent}>
+              <View style={styles.weekShareIconWrap}>
+                <Ionicons
+                  name="share-social-outline"
+                  size={16}
+                  color={svaColors.text.primary}
+                />
+              </View>
+              <View style={styles.weekShareCopy}>
+                <Text style={styles.weekShareLabel}>Share This Week</Text>
+                <Text style={styles.weekShareMeta}>
+                  PDF · {toApiDate(activeWeekRange.startDate)} to{" "}
+                  {toApiDate(activeWeekRange.endDate)}
+                </Text>
+              </View>
+            </View>
+            <Ionicons
+              name="arrow-forward"
+              size={16}
+              color={svaColors.text.secondary}
+            />
+          </TouchableOpacity>
         </View>
 
         {loading ? (
@@ -486,17 +258,21 @@ export const MealWeeklyViewScreen = () => {
             contentContainerStyle={styles.scrollContent}
           >
             {displayDays.map((day, index) => {
-              const emptySlots = MEAL_TYPES.length - day.mealRows.length;
+              const emptySlots = Math.max(WEEKLY_MEAL_TYPES.length - day.mealRows.length, 0);
+              const normalizedStatus = day.statusLabel.toLowerCase();
               const statusLabel =
-                emptySlots === 0
+                day.statusLabel ||
+                (emptySlots === 0
                   ? "Fully planned"
-                  : `${emptySlots} empty slot${emptySlots === 1 ? "" : "s"}`;
+                  : `${emptySlots} empty slot${emptySlots === 1 ? "" : "s"}`);
               const statusColor =
-                emptySlots === 0
+                normalizedStatus.includes("fully planned")
                   ? svaColors.state.success
-                  : svaColors.state.warning;
-              const isPast = isBefore(day.date, startOfDay(new Date()));
+                  : normalizedStatus.includes("not planned")
+                    ? svaColors.text.secondary
+                    : svaColors.state.warning;
               const isExpanded = expandedIndex === index;
+              const shareablePlan = day.sourcePlan;
 
               return (
                 <MealPlanDayCard
@@ -506,21 +282,9 @@ export const MealWeeklyViewScreen = () => {
                   statusColor={statusColor}
                   mealRows={day.mealRows}
                   isExpanded={isExpanded}
-                  isPast={isPast}
                   onToggle={() => toggleAccordion(index)}
-                  onEditMeal={(mealType) => {
-                    const meal = day.mealRows.find(
-                      (row) => row.mealType === mealType
-                    );
-                    handleEditMeal(
-                      mealType,
-                      day.date,
-                      meal?.recipeName || ""
-                    );
-                  }}
-                  onSharePlan={
-                    day.sourcePlan ? () => onSharePlan(day.sourcePlan!) : undefined
-                  }
+                  onOpenRecipe={handleOpenRecipe}
+                  onSharePlan={shareablePlan ? () => onSharePlan(shareablePlan) : undefined}
                 />
               );
             })}
@@ -534,34 +298,70 @@ export const MealWeeklyViewScreen = () => {
 const styling = (
   theme: SvaColorSet,
   spacing: Spacing,
-  typography: Typography
+  typography: Typography,
+  svaTypography: TypographyTokens | undefined,
+  tokens: SvaTokens
 ) =>
   StyleSheet.create({
     screen: {
       flex: 1,
+      backgroundColor: theme.bg.base,
       paddingBottom: spacing.lg,
     },
     container: {
       flex: 1,
-    },
-    headerSubtitle: {
-      ...typography.caption,
-      color: theme.text.secondary,
-      marginTop: spacing.xs,
-      letterSpacing: 0.2,
+      paddingHorizontal: spacing.md,
     },
     filterBlock: {
       marginBottom: spacing.lg,
+      gap: spacing.md,
     },
     filterLabel: {
-      ...typography.caption,
+      ...(svaTypography?.textStyle.authTinyLabel ?? typography.smallCaption),
       color: theme.text.secondary,
-      marginBottom: spacing.sm,
       letterSpacing: 0.8,
       textTransform: "uppercase",
     },
     chipContainer: {
       marginBottom: 0,
+    },
+    weekShareButton: {
+      minHeight: 56,
+      borderRadius: 20,
+      borderWidth: tokens.border.hairline,
+      borderColor: theme.border.default,
+      backgroundColor: theme.surface.raised,
+      paddingHorizontal: spacing.md,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: spacing.md,
+    },
+    weekShareContent: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+      flex: 1,
+    },
+    weekShareIconWrap: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.bg.subtle,
+    },
+    weekShareCopy: {
+      flex: 1,
+      gap: 2,
+    },
+    weekShareLabel: {
+      ...(svaTypography?.textStyle.bodyMedium ?? typography.bodyStrong),
+      color: theme.text.primary,
+    },
+    weekShareMeta: {
+      ...(svaTypography?.textStyle.caption ?? typography.caption),
+      color: theme.text.secondary,
     },
     scrollContent: {
       paddingBottom: spacing.xxl,

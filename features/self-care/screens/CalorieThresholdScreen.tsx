@@ -85,10 +85,10 @@ export default function CalorieThresholdScreen() {
   const handleSealToPlan = () => {
     router.push({
       pathname: ROUTES.AUTH.TOOLS_MEAL_PLANNER,
-      params: {
-        maintenanceCalories: String(calorieData.maintenanceCalories),
-        targetCalories: String(calorieData.optimalBurnCalories),
-      },
+      // params: {
+      //   maintenanceCalories: String(calorieData.maintenanceCalories),
+      //   targetCalories: String(calorieData.optimalBurnCalories),
+      // },
     });
   };
 
@@ -147,10 +147,7 @@ export default function CalorieThresholdScreen() {
           {calorieTiers.map((tier) => (
             <View
               key={tier.key}
-              style={[
-                styles.card,
-                tier.highlight && styles.cardHighlight,
-              ]}
+              style={[styles.card, tier.highlight && styles.cardHighlight]}
             >
               <LinearGradient
                 colors={
