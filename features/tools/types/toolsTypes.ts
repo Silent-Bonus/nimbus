@@ -30,47 +30,6 @@ export interface ArticleListResponse {
   error_code?: string;
 }
 
-export interface NewsletterItem {
-  id: number;
-  title: string;
-  slug: string;
-  category: string;
-  excerpt: string;
-  published_at: string;
-  content?: string;
-}
-
-export interface NewsletterListResponse {
-  data: NewsletterItem[];
-  success: boolean;
-  message: string;
-  error_code?: string;
-}
-
-export interface NewsletterReflectionPrompt {
-  eyebrow?: string;
-  title?: string;
-  prompt?: string;
-  helper?: string;
-  actionLabel?: string;
-  action_label?: string;
-}
-
-export interface NewsletterDetailItem extends NewsletterItem {
-  content: string;
-  reflection_prompt?: string | NewsletterReflectionPrompt;
-  reflectionPrompt?: string | NewsletterReflectionPrompt;
-  call_to_action?: string;
-  callToAction?: string;
-}
-
-export interface NewsletterDetailResponse {
-  success: boolean;
-  message: string;
-  data: NewsletterDetailItem;
-  error_code?: string;
-}
-
 export interface SoundscapeListResponse {
   data: ArticleDetails[];
   success: boolean;

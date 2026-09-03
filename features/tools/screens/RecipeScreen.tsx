@@ -25,7 +25,7 @@ import { ScreenView } from "@/components/ui/Themed";
 import PillFilters from "@/components/ui/PillFilters";
 import ThemeContext from "@/contexts/ThemeContext";
 import EmptyState from "@/features/tools/components/common/EmptyState";
-import { RoutineSkeletonGrid } from "@/features/tools/components/common/RoutineSkeletonGrid";
+import { LibraryCardSkeletonGrid } from "@/features/tools/components/common/LibraryCardSkeletonGrid";
 import { ROUTES } from "@/constants/routes";
 import {
   getFavoriteRecipeList,
@@ -315,7 +315,7 @@ export const RecipeScreen: React.FC = () => {
   const renderEmpty = useMemo(
     () =>
       isLoading ? (
-        <RoutineSkeletonGrid
+        <LibraryCardSkeletonGrid
           spacing={spacing}
           theme={{
             surfaceMuted: svaColors.surface.base,

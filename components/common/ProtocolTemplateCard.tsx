@@ -40,6 +40,7 @@ type ProtocolTemplateCardStyles = {
   imageWrap: ViewStyle;
   image: ImageStyle;
   imageContain: ImageStyle;
+  imageLoadingOverlay: ViewStyle;
   imageGlow: ViewStyle;
   body: ViewStyle;
   bodyCompact: ViewStyle;

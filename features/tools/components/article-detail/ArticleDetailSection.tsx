@@ -2,6 +2,7 @@ import React, { useContext } from "react";
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
 import ThemeContext from "@/contexts/ThemeContext";
+import type { Spacing, SvaColorSet, TypographyTokens } from "@/theme/types";
 
 type ArticleDetailSectionProps = {
   eyebrow: string;
@@ -25,10 +26,14 @@ const ArticleDetailSection: React.FC<ArticleDetailSectionProps> = ({
   );
 };
 
-const styling = (colors: any, spacing: any, typography: any) =>
+const styling = (
+  colors: SvaColorSet,
+  spacing: Spacing,
+  typography?: TypographyTokens
+) =>
   StyleSheet.create({
     wrap: {
-      marginBottom: spacing.xl,
+      gap: spacing.md,
     },
     eyebrow: {
       ...typography?.textStyle?.authTinyLabel,

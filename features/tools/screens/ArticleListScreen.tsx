@@ -1,185 +1,295 @@
-import React, { useContext, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Platform,
   StyleSheet,
+  Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect, useNavigation } from "expo-router";
+import { Image as ExpoImage } from "expo-image";
 
 import ProtocolTemplateCard from "@/components/common/ProtocolTemplateCard";
+import type { PillFilterOption } from "@/components/ui/PillFilters";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
-import PillFilters, {
-  type PillFilterOption,
-} from "@/components/ui/PillFilters";
+import PillFilters from "@/components/ui/PillFilters";
 import ThemeContext from "@/contexts/ThemeContext";
 import ScreenHeader from "@/components/layout/ScreenHeader";
 import EmptyState from "@/features/tools/components/common/EmptyState";
-import { RoutineSkeletonGrid } from "@/features/tools/components/common/RoutineSkeletonGrid";
+import { LibraryCardSkeletonGrid } from "@/features/tools/components/common/LibraryCardSkeletonGrid";
 import { ROUTES } from "@/constants/routes";
-import { getNewsletterList } from "@/features/tools/services/toolService";
-import { type ArticleCardItem, buildArticleCardItem } from "@/features/tools/data/articleLibrary";
-import type { Spacing, SvaColorSet } from "@/theme/types";
-
-const FAVORITES_KEY = "favorites_v1";
-const STATIC_FILTER_OPTIONS = [
-  { label: "All", value: "all" },
-  { label: "Favorites", value: "favorites" },
-] as const satisfies readonly PillFilterOption<string>[];
-
-const normalize = (value: string) =>
-  value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-
-const getFilterLabel = (
-  value: string,
-  options: readonly PillFilterOption<string>[]
-) => options.find((option) => option.value === value)?.label ?? "Articles";
-
-const getArticleCategoryText = (category: unknown) => {
-  if (typeof category === "string") {
-    return category.trim();
-  }
-
-  if (category && typeof category === "object") {
-    const candidate = category as { name?: string; slug?: string };
-    return (candidate.name || candidate.slug || "").trim();
-  }
-
-  return "";
-};
-
-const buildCategoryFilterOptions = (
-  articles: ArticleCardItem[]
-): PillFilterOption<string>[] => {
-  const seen = new Set<string>();
-  const options: PillFilterOption<string>[] = [];
-
-  articles.forEach((item) => {
-    const category = getArticleCategoryText(item.raw?.category);
-    if (!category) {
-      return;
-    }
-
-    const normalized = category.toLowerCase();
-    if (seen.has(normalized)) {
-      return;
-    }
-
-    seen.add(normalized);
-    options.push({
-      label: category,
-      value: category,
-      accessibilityLabel: `${category} articles`,
-    });
-  });
-
-  return options
-    .sort((a, b) => a.label.localeCompare(b.label));
-};
+import {
+  getFavoriteNewsletterList,
+  getNewsletterCategories,
+  getNewsletterList,
+} from "@/features/tools/services/newsletterService";
+import {
+  SEARCH_MIN_LENGTH,
+  STATIC_ARTICLE_FILTER_OPTIONS,
+  type ArticleCardItem,
+  buildArticleCategoryFilterOptionsFromCategories,
+  buildArticleCardItem,
+  getArticleErrorMessage,
+  getArticleFilterLabel,
+  getRemoteArticleImageUri,
+  isArticleCategoryFilter,
+} from "@/features/tools/utils/articleList";
+import type { Spacing, SvaColorSet, TypographyTokens } from "@/theme/types";
+const SEARCH_DEBOUNCE_MS = 350;
 
 export const ArticleListScreen: React.FC = () => {
   const navigation = useNavigation();
-  const { svaColors, spacing } = useContext(ThemeContext);
-  const styles = styling(svaColors, spacing);
+  const { svaColors, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = styling(svaColors, spacing, svaTypography);
   const searchInputRef = useRef<TextInput>(null);
-
+  const baseRequestIdRef = useRef(0);
+  const searchRequestIdRef = useRef(0);
+  const hasCompletedInitialFocusRef = useRef(false);
+  const [refreshTick, setRefreshTick] = useState(0);
   const [query, setQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
-  const [articles, setArticles] = useState<ArticleCardItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const categoryFilters = useMemo(
-    () => buildCategoryFilterOptions(articles),
-    [articles]
+  const [baseArticles, setBaseArticles] = useState<ArticleCardItem[]>([]);
+  const [searchArticles, setSearchArticles] = useState<ArticleCardItem[]>([]);
+  const [categoryFilters, setCategoryFilters] = useState<
+    PillFilterOption<string>[]
+  >([]);
+  const [baseLoading, setBaseLoading] = useState(true);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [searchErrorMessage, setSearchErrorMessage] = useState<string | null>(
+    null
   );
+  const deferredQuery = useDeferredValue(query);
+  const trimmedQuery = deferredQuery.replace(/\s+/g, " ").trim();
+  const searchActive = trimmedQuery.length >= SEARCH_MIN_LENGTH;
+  const visibleArticles = searchActive ? searchArticles : baseArticles;
+  const isLoading = searchActive ? searchLoading : baseLoading;
+  const activeErrorMessage = searchActive ? searchErrorMessage : errorMessage;
   const filterOptions = useMemo(
-    () => [...STATIC_FILTER_OPTIONS, ...categoryFilters],
+    () => [...STATIC_ARTICLE_FILTER_OPTIONS, ...categoryFilters],
     [categoryFilters]
   );
 
-  React.useEffect(() => {
+  useEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
   useFocusEffect(
-    React.useCallback(() => {
-      let active = true;
-
-      const loadArticles = async () => {
-        try {
-          setIsLoading(true);
-
-          const [favoritesRaw, result] = await Promise.all([
-            AsyncStorage.getItem(FAVORITES_KEY),
-            getNewsletterList(),
-          ]);
-          let favoriteIdsArray: unknown[] = [];
-
-          try {
-            const parsedFavorites = favoritesRaw
-              ? JSON.parse(favoritesRaw)
-              : [];
-            favoriteIdsArray = Array.isArray(parsedFavorites)
-              ? parsedFavorites
-              : [];
-          } catch (parseError) {
-            console.warn("[ArticleList] favorite cache parse failed", parseError);
-          }
-
-          const favoriteIds = new Set(
-            favoriteIdsArray.map((item) => String(item))
-          );
-          const data = result?.data || (Array.isArray(result) ? result : []);
-
-          if (!active) return;
-
-          if (Array.isArray(data)) {
-            const mappedArticles = data.map((item: Record<string, any>) => {
-              const card = buildArticleCardItem(item, "Article");
-              return {
-                ...card,
-                favorite:
-                  favoriteIds.has(card.id) ||
-                  Boolean(item?.favorite ?? item?.is_favorite ?? false),
-              };
-            });
-
-            setArticles(mappedArticles);
-          } else {
-            console.error("Article API did not return data array:", result);
-            setArticles([]);
-          }
-        } catch (err) {
-          console.log("Article API error", err);
-          if (active) {
-            setArticles([]);
-          }
-        } finally {
-          if (active) {
-            setIsLoading(false);
-          }
-        }
-      };
-
-      void loadArticles();
-
-      return () => {
-        active = false;
-      };
+    useCallback(() => {
+      if (hasCompletedInitialFocusRef.current) {
+        setRefreshTick((current) => current + 1);
+      } else {
+        hasCompletedInitialFocusRef.current = true;
+      }
     }, [])
   );
 
-  const handleFilterPress = (label: string) => {
-    setSelectedFilter(label);
-  };
+  useEffect(() => {
+    let active = true;
 
-  const handleItemClick = (item: ArticleCardItem) => {
+    const loadCategories = async () => {
+      try {
+        const result = await getNewsletterCategories();
+        const data = result?.data || (Array.isArray(result) ? result : []);
+
+        if (!active) return;
+
+        if (Array.isArray(data)) {
+          setCategoryFilters(
+            buildArticleCategoryFilterOptionsFromCategories(data)
+          );
+        } else {
+          console.error(
+            "Newsletter category API did not return data array:",
+            result
+          );
+          setCategoryFilters([]);
+        }
+      } catch (err) {
+        console.log("Newsletter category API error", err);
+        if (active) {
+          setCategoryFilters([]);
+        }
+      }
+    };
+
+    void loadCategories();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const requestId = baseRequestIdRef.current + 1;
+    baseRequestIdRef.current = requestId;
+
+    const loadBaseArticles = async () => {
+      try {
+        setBaseLoading(true);
+        setErrorMessage(null);
+
+        const result =
+          selectedFilter === "favorites"
+            ? await getFavoriteNewsletterList()
+            : await getNewsletterList(
+                isArticleCategoryFilter(selectedFilter)
+                  ? { category: selectedFilter }
+                  : undefined
+              );
+        const data = result?.data || (Array.isArray(result) ? result : []);
+
+        // Ignore stale responses when the user changes filters or refocuses quickly.
+        if (!active || baseRequestIdRef.current !== requestId) return;
+
+        if (Array.isArray(data)) {
+          setBaseArticles(
+            data.map((item: Record<string, any>) =>
+              buildArticleCardItem(item, "Article")
+            )
+          );
+          return;
+        }
+
+        console.error("Newsletter API did not return data array:", result);
+        setBaseArticles([]);
+        setErrorMessage(
+          "The newsletter response did not include a valid list."
+        );
+      } catch (err) {
+        console.log("Newsletter API error", err);
+        if (active && baseRequestIdRef.current === requestId) {
+          setBaseArticles([]);
+          setErrorMessage(getArticleErrorMessage(err));
+        }
+      } finally {
+        if (active && baseRequestIdRef.current === requestId) {
+          setBaseLoading(false);
+        }
+      }
+    };
+
+    void loadBaseArticles();
+
+    return () => {
+      active = false;
+    };
+  }, [refreshTick, selectedFilter]);
+
+  useEffect(() => {
+    let active = true;
+    const requestId = searchRequestIdRef.current + 1;
+    searchRequestIdRef.current = requestId;
+
+    const loadSearchArticles = async () => {
+      if (!searchActive) {
+        setSearchLoading(false);
+        setSearchErrorMessage(null);
+        setSearchArticles([]);
+        return;
+      }
+
+      if (selectedFilter === "favorites") {
+        setSearchLoading(true);
+        setSearchErrorMessage(null);
+      }
+
+      try {
+        const result =
+          selectedFilter === "favorites"
+            ? await getFavoriteNewsletterList({ search: trimmedQuery })
+            : await getNewsletterList({
+                category: isArticleCategoryFilter(selectedFilter)
+                  ? selectedFilter
+                  : undefined,
+                search: trimmedQuery,
+              });
+        const data = result?.data || (Array.isArray(result) ? result : []);
+
+        // Search requests are debounced, but older network responses can still arrive after newer ones.
+        if (!active || searchRequestIdRef.current !== requestId) return;
+
+        if (Array.isArray(data)) {
+          setSearchArticles(
+            data.map((item: Record<string, any>) =>
+              buildArticleCardItem(item, "Article")
+            )
+          );
+          return;
+        }
+
+        console.error(
+          selectedFilter === "favorites"
+            ? "Favorite newsletter search API did not return data array:"
+            : "Newsletter search API did not return data array:",
+          result
+        );
+        setSearchArticles([]);
+        setSearchErrorMessage(
+          selectedFilter === "favorites"
+            ? "The favorite newsletter search response did not include a valid list."
+            : "The newsletter search response did not include a valid list."
+        );
+      } catch (err) {
+        console.log(
+          selectedFilter === "favorites"
+            ? "Favorite newsletter search API error"
+            : "Newsletter search API error",
+          err
+        );
+        if (active && searchRequestIdRef.current === requestId) {
+          setSearchArticles([]);
+          setSearchErrorMessage(getArticleErrorMessage(err));
+        }
+      } finally {
+        if (active && searchRequestIdRef.current === requestId) {
+          setSearchLoading(false);
+        }
+      }
+    };
+
+    const timer = setTimeout(() => {
+      void loadSearchArticles();
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [searchActive, selectedFilter, trimmedQuery]);
+
+  useEffect(() => {
+    const uris = visibleArticles
+      .map((item) => getRemoteArticleImageUri(item.image))
+      .filter((uri): uri is string => Boolean(uri))
+      .slice(0, 12);
+
+    if (uris.length === 0) {
+      return;
+    }
+
+    // Warm the first visible remote images so search result swaps feel faster.
+    void ExpoImage.prefetch(uris);
+  }, [visibleArticles]);
+
+  const handleFilterPress = useCallback((label: string) => {
+    setSelectedFilter(label);
+  }, []);
+
+  const handleItemClick = useCallback((item: ArticleCardItem) => {
     const params: { id: string; slug?: string } = { id: item.id };
 
     if (typeof item.raw?.slug === "string" && item.raw.slug.trim()) {
@@ -190,106 +300,93 @@ export const ArticleListScreen: React.FC = () => {
       pathname: ROUTES.AUTH.TOOLS_ARTICLE_DETAIL,
       params,
     });
-  };
+  }, []);
 
-  const filteredArticles = useMemo(() => {
-    const normalizedQuery = normalize(query);
-    const categoryFilteredArticles =
-      selectedFilter === "favorites"
-        ? articles.filter((item) => item.favorite)
-        : selectedFilter === "all"
-        ? articles
-        : articles.filter((item) =>
-            normalize(getArticleCategoryText(item.raw?.category)) ===
-            normalize(selectedFilter)
-          );
-
-    if (!normalizedQuery) return categoryFilteredArticles;
-
-    return categoryFilteredArticles.filter((item) => {
-      const searchBlob = normalize(
-        [
-          item.title,
-          ...item.tags,
-          getArticleCategoryText(item.raw?.category),
-          item.raw?.excerpt,
-          item.raw?.content,
-          item.raw?.slug,
-        ]
-          .filter(Boolean)
-          .join(" ")
-      );
-
-      return searchBlob.includes(normalizedQuery);
-    });
-  }, [articles, query, selectedFilter]);
-
-  const renderHeader = () => (
-    <View style={styles.headerBlock}>
-      <ScreenHeader
-        title="Article Library"
-        subtitle="Deep dives into healing, neuroscience, and mindful living."
-        onBack={() => navigation.goBack()}
-        rightActions={[
-          {
-            icon: "search-outline",
-            accessibilityLabel: "Focus search",
-            onPress: () => searchInputRef.current?.focus(),
-          },
-          {
-            icon: "bookmark-outline",
-            accessibilityLabel: "Saved articles",
-            onPress: () => console.log("[ArticleList] bookmark pressed"),
-          },
-        ]}
-        containerStyle={styles.headerContainer}
-      />
-
-      <View style={styles.searchBar}>
-        <Ionicons
-          name="search-outline"
-          size={18}
-          color={svaColors.text.secondary}
+  const renderHeader = useMemo(
+    () => (
+      <View style={styles.headerBlock}>
+        <ScreenHeader
+          title="Article Library"
+          subtitle="Deep dives into healing, neuroscience, and mindful living."
+          onBack={() => navigation.goBack()}
+          containerStyle={styles.headerContainer}
         />
-        <TextInput
-          ref={searchInputRef}
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Search articles, topics, tags"
-          placeholderTextColor={svaColors.text.secondary}
-          autoCapitalize="none"
-          autoCorrect={false}
-          returnKeyType="search"
-          style={styles.searchInput}
-        />
-        {!!query && (
-          <TouchableOpacity
-            onPress={() => setQuery("")}
-            style={styles.clearButton}
-            accessibilityRole="button"
-            accessibilityLabel="Clear search"
-          >
-            <Ionicons
-              name="close-circle"
-              size={18}
+
+        <View style={styles.searchBar}>
+          <Ionicons
+            name="search-outline"
+            size={18}
+            color={svaColors.text.secondary}
+          />
+          <TextInput
+            ref={searchInputRef}
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search articles, topics, tags"
+            placeholderTextColor={svaColors.text.secondary}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+            clearButtonMode="never"
+            style={styles.searchInput}
+          />
+          {searchLoading ? (
+            <ActivityIndicator
+              size="small"
               color={svaColors.text.secondary}
+              style={styles.searchSpinner}
             />
-          </TouchableOpacity>
-        )}
-      </View>
+          ) : null}
+          {!!query && (
+            <TouchableOpacity
+              onPress={() => {
+                setQuery("");
+                searchInputRef.current?.focus();
+              }}
+              style={styles.clearButton}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search"
+            >
+              <Ionicons
+                name="close-circle"
+                size={18}
+                color={svaColors.text.secondary}
+              />
+            </TouchableOpacity>
+          )}
+        </View>
 
-      <PillFilters
-        options={filterOptions}
-        selectedValue={selectedFilter}
-        onChange={handleFilterPress}
-        contentContainerStyle={styles.filtersRow}
-      />
-    </View>
+        {query.trim() && !searchActive ? (
+          <Text style={styles.searchHint}>
+            Type at least {SEARCH_MIN_LENGTH} characters to search.
+          </Text>
+        ) : null}
+
+        <PillFilters
+          options={filterOptions}
+          selectedValue={selectedFilter}
+          onChange={handleFilterPress}
+          style={styles.filtersContainer}
+          contentContainerStyle={styles.filtersRow}
+        />
+      </View>
+    ),
+    [
+      filterOptions,
+      handleFilterPress,
+      navigation,
+      query,
+      selectedFilter,
+      searchActive,
+      searchLoading,
+      styles,
+      svaColors.text.secondary,
+    ]
   );
 
   const renderEmpty = () =>
     isLoading ? (
-      <RoutineSkeletonGrid
+      <LibraryCardSkeletonGrid
         spacing={spacing}
         theme={{
           surfaceMuted: svaColors.surface.base,
@@ -297,16 +394,22 @@ export const ArticleListScreen: React.FC = () => {
           divider: svaColors.border.default,
         }}
       />
+    ) : activeErrorMessage ? (
+      <EmptyState
+        title="Unable to load newsletters."
+        subtitle={activeErrorMessage}
+        color={svaColors.text.secondary}
+      />
     ) : (
       <EmptyState
         title={
-          query.trim()
-            ? `No articles found for "${query.trim()}".`
+          searchActive
+            ? `No articles found for "${trimmedQuery}".`
             : selectedFilter === "favorites"
             ? "No favorite articles found."
             : selectedFilter === "all"
             ? "No articles found."
-            : `No ${getFilterLabel(
+            : `No ${getArticleFilterLabel(
                 selectedFilter,
                 filterOptions
               ).toLowerCase()} articles found.`
@@ -318,70 +421,101 @@ export const ArticleListScreen: React.FC = () => {
 
   return (
     <ScreenView bgColor={svaColors.bg.base} padding={0} style={styles.screen}>
-      <FlatList
-        data={filteredArticles}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-        columnWrapperStyle={styles.columnWrapper}
-        ListHeaderComponent={renderHeader}
-        ListHeaderComponentStyle={styles.listHeaderComponent}
-        ListEmptyComponent={renderEmpty}
-        renderItem={({ item }) => (
-          <ProtocolTemplateCard
-            item={item}
-            style={styles.cardCell}
-            onPress={() => handleItemClick(item)}
-          />
-        )}
-      />
+      <View style={styles.root}>
+        <FlatList
+          data={isLoading ? [] : visibleArticles}
+          keyExtractor={(item) => item.id}
+          numColumns={2}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+          columnWrapperStyle={styles.columnWrapper}
+          ListHeaderComponent={renderHeader}
+          ListEmptyComponent={renderEmpty}
+          renderItem={({ item }) => (
+            <ProtocolTemplateCard
+              item={item}
+              style={styles.cardCell}
+              onPress={() => handleItemClick(item)}
+            />
+          )}
+        />
+      </View>
     </ScreenView>
   );
 };
 
-const styling = (colors: SvaColorSet, spacing: Spacing) =>
+const styling = (
+  colors: SvaColorSet,
+  spacing: Spacing,
+  typography?: TypographyTokens
+) =>
   StyleSheet.create({
     screen: {
       flex: 1,
       backgroundColor: colors.bg.base,
     },
-    listContent: {
+    root: {
+      flex: 1,
       paddingHorizontal: spacing.md,
+    },
+    listContent: {
+      paddingTop: spacing.xs,
       paddingBottom: Platform.OS === "ios" ? 120 : 140,
     },
-    listHeaderComponent: {
+    headerBlock: {
       marginBottom: spacing.md,
     },
-    headerBlock: {},
     headerContainer: {
-      marginBottom: spacing.md,
+      marginBottom: spacing.sm,
     },
     searchBar: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: colors.surface.base,
+      backgroundColor: colors.surface.raised,
       borderWidth: 1,
-      borderColor: colors.border.default,
+      borderColor: colors.border.muted,
       borderRadius: 18,
       height: 54,
       paddingHorizontal: spacing.md,
-      marginBottom: spacing.md,
+      marginBottom: spacing.sm,
     },
     searchInput: {
+      ...(typography?.textStyle?.body ?? {}),
       flex: 1,
+      minWidth: 0,
+      height: "100%",
+      paddingVertical: 0,
       marginLeft: spacing.sm,
       color: colors.text.primary,
-      fontSize: 15,
-      fontFamily: "Outfit_400Regular",
+      textAlignVertical: "center",
+    },
+    searchSpinner: {
+      marginLeft: spacing.xs,
     },
     clearButton: {
       marginLeft: spacing.xs,
     },
+    searchHint: {
+      ...(typography?.textStyle?.caption ??
+        typography?.textStyle?.authTinyLabel ??
+        {}),
+      color: colors.text.secondary,
+      fontSize: 12,
+      lineHeight: 16,
+      marginBottom: spacing.xs,
+      paddingHorizontal: spacing.xs,
+    },
+    filtersContainer: {
+      height: 72,
+      marginBottom: spacing.sm,
+    },
     filtersRow: {
-      paddingBottom: spacing.xs,
+      minHeight: 72,
+      paddingTop: spacing.md,
+      paddingBottom: spacing.md,
+      paddingRight: spacing.md,
     },
     columnWrapper: {
       justifyContent: "space-between",

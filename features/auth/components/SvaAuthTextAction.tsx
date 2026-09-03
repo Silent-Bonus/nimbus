@@ -1,11 +1,10 @@
-import React, { useContext } from "react";
+import React, { useContext, type ReactNode } from "react";
 import {
   Pressable,
   StyleSheet,
   Text,
   View,
   type Insets,
-  type ReactNode,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
