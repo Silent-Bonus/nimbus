@@ -125,6 +125,9 @@ export const API_ENDPOINTS = {
   getMealPlanPdf: (startDate: string, endDate: string) =>
     `${BASE_URL}/api/v1/meals/plans/pdf/?start_date=${startDate}&end_date=${endDate}`,
 
+  getMealPlanRange: (startDate: string, endDate: string) =>
+    `${BASE_URL}/api/v1/meals/plans/?start_date=${startDate}&end_date=${endDate}`,
+
   getDailyMealPlan: (date?: string) =>
     date
       ? `${BASE_URL}/api/v1/meals/plans/?date=${date}`
@@ -132,6 +135,7 @@ export const API_ENDPOINTS = {
   getMealDashboard: (days: number = 30) =>
     `${BASE_URL}/api/v1/meals/dashboard/?days=${days}`,
   addMealItem: `${BASE_URL}/api/v1/meals/items/`,
+  updateMealItem: (id: number | string) => `${BASE_URL}/api/v1/meals/items/${id}/`,
   bulkUpdateMealPlan: `${BASE_URL}/api/v1/meals/plans/bulk_update/`,
   scribbles: `${BASE_URL}/api/v1/scribbles/`,
   recentScribbleTags: `${BASE_URL}/api/v1/scribbles/recent_tags/`,

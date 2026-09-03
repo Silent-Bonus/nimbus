@@ -9,7 +9,12 @@ import {
 } from "react-native";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { SvaColorSet, Spacing, Typography, TypographyTokens } from "@/theme/types";
+import type {
+  SvaColorSet,
+  Spacing,
+  Typography,
+  TypographyTokens,
+} from "@/theme/types";
 
 type MealFlowSectionProps = {
   title: string;
@@ -59,14 +64,12 @@ const styling = (
       marginBottom: spacing.xl,
     },
     title: {
-      ...(svaTypography?.textStyle.title ?? typography.bodyStrong),
+      ...(svaTypography?.textStyle.bodyMedium ?? typography.bodyStrong),
       color: theme.text.primary,
-      fontSize: 15,
-      fontWeight: "700",
       marginBottom: spacing.md,
     },
     description: {
-      ...(svaTypography?.textStyle.subtitle ?? typography.caption),
+      ...(svaTypography?.textStyle.caption ?? typography.caption),
       color: theme.text.secondary,
       marginBottom: spacing.sm,
     },

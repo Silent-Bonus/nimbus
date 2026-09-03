@@ -4,11 +4,20 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  TextStyle,
-  ViewStyle,
+  type StyleProp,
+  type TextStyle,
+  type ViewStyle,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+
 import ThemeContext from "@/contexts/ThemeContext";
+import type {
+  Spacing,
+  SvaColorSet,
+  SvaTokens,
+  Typography,
+  TypographyTokens,
+} from "@/theme/types";
 
 type RightAction = {
   icon?: keyof typeof Ionicons.glyphMap;
@@ -31,9 +40,9 @@ interface AppHeaderProps {
   onBack?: () => void;
   rightAction?: RightAction;
   rightActions?: HeaderRightAction[];
-  titleStyle?: TextStyle;
-  subtitleStyle?: TextStyle;
-  containerStyle?: ViewStyle;
+  titleStyle?: StyleProp<TextStyle>;
+  subtitleStyle?: StyleProp<TextStyle>;
+  containerStyle?: StyleProp<ViewStyle>;
 }
 
 const AppHeader: React.FC<AppHeaderProps> = ({
@@ -46,11 +55,12 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   subtitleStyle,
   containerStyle,
 }) => {
-  const { newTheme, svaColors, spacing, typography } = useContext(ThemeContext);
+  const { svaColors, spacing, typography, svaTypography, tokens } =
+    useContext(ThemeContext);
 
   const styles = useMemo(
-    () => styling(newTheme, svaColors, spacing, typography),
-    [newTheme, svaColors, spacing, typography]
+    () => styling(svaColors, spacing, typography, svaTypography, tokens),
+    [svaColors, spacing, typography, svaTypography, tokens]
   );
 
   const actions = rightActions.length
@@ -74,7 +84,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
               <Ionicons
                 name="chevron-back"
                 size={22}
-                color={svaColors.text.secondary || newTheme.textSecondary}
+                color={svaColors.text.secondary}
               />
             </TouchableOpacity>
           )}
@@ -93,7 +103,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
               <Ionicons
                 name={action.icon ?? "ellipsis-horizontal"}
                 size={20}
-                color={action.iconColor ?? newTheme.textPrimary}
+                color={action.iconColor ?? svaColors.text.primary}
                 style={{ opacity: 0.9 }}
               />
               {!!("badge" in action && action.badge) && <View style={styles.badge} />}
@@ -116,7 +126,13 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   );
 };
 
-const styling = (theme: any, c: any, spacing: any, typography: any) =>
+const styling = (
+  theme: SvaColorSet,
+  spacing: Spacing,
+  typography: Typography,
+  svaTypography: TypographyTokens | undefined,
+  tokens: SvaTokens
+) =>
   StyleSheet.create({
     container: {
       paddingBottom: spacing.sm,
@@ -144,9 +160,9 @@ const styling = (theme: any, c: any, spacing: any, typography: any) =>
       borderRadius: 12,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: c.interaction.pressed || "rgba(255,255,255,0.05)",
-      borderWidth: 1,
-      borderColor: c.border.subtle || "rgba(255,255,255,0.08)",
+      backgroundColor: theme.interaction.pressed,
+      borderWidth: tokens.border.hairline,
+      borderColor: theme.border.subtle,
       position: "relative",
     },
     badge: {
@@ -156,20 +172,20 @@ const styling = (theme: any, c: any, spacing: any, typography: any) =>
       width: 7,
       height: 7,
       borderRadius: 4,
-      backgroundColor: theme.accent,
-      borderWidth: 1.5,
-      borderColor: theme.surface,
+      backgroundColor: theme.brand.primary,
+      borderWidth: tokens.border.strong,
+      borderColor: theme.bg.base,
     },
     textBlock: {
       paddingHorizontal: spacing.xs,
     },
     title: {
-      ...typography.h2,
-      color: c.text.primary || theme.textPrimary,
+      ...(svaTypography?.textStyle.authTitle ?? typography.h2),
+      color: theme.text.primary,
     },
     subtitle: {
-      ...typography.body,
-      color: c.text.secondary || theme.textSecondary,
+      ...(svaTypography?.textStyle.body ?? typography.body),
+      color: theme.text.secondary,
       marginTop: spacing.xs,
     },
   });

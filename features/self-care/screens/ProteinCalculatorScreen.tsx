@@ -39,9 +39,7 @@ export const ProteinCalculatorScreen = () => {
           protein?: string | string[];
         }
       ),
-    [
-      params,
-    ]
+    [params]
   );
 
   const proteinSlots = useMemo(
@@ -59,7 +57,7 @@ export const ProteinCalculatorScreen = () => {
   const handleSealToPlan = () => {
     router.push({
       pathname: ROUTES.AUTH.TOOLS_MEAL_PLANNER,
-      params: { protein: String(proteinPanelData.totalRequirement) },
+      // params: { protein: String(proteinPanelData.totalRequirement) },
     });
   };
 
