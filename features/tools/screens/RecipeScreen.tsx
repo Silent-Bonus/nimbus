@@ -16,7 +16,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { router, useNavigation } from "expo-router";
+import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import { Image as ExpoImage } from "expo-image";
 
 import AppHeader from "@/components/layout/AppHeader";
@@ -52,6 +52,7 @@ import {
 
 export const RecipeScreen: React.FC = () => {
   const navigation = useNavigation();
+  const params = useLocalSearchParams<{ query?: string | string[] }>();
   const { svaColors, svaTypography, spacing, typography } =
     useContext(ThemeContext);
   const styles = useMemo(
@@ -60,7 +61,11 @@ export const RecipeScreen: React.FC = () => {
   );
   const searchInputRef = useRef<TextInput>(null);
 
-  const [query, setQuery] = useState("");
+  const routeQuery = useMemo(() => {
+    const raw = Array.isArray(params.query) ? params.query[0] : params.query;
+    return raw?.trim() ?? "";
+  }, [params.query]);
+  const [query, setQuery] = useState(routeQuery);
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
   const [categoryFilters, setCategoryFilters] = useState<
     ReturnType<typeof buildRecipeCategoryFilterOptions>
@@ -82,6 +87,10 @@ export const RecipeScreen: React.FC = () => {
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
+
+  useEffect(() => {
+    setQuery(routeQuery);
+  }, [routeQuery]);
 
   useEffect(() => {
     let active = true;

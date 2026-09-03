@@ -1,141 +1,187 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useContext, useMemo, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
-  Platform,
   ActivityIndicator,
 } from "react-native";
-import { router } from "expo-router";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 
 import ThemeContext from "@/contexts/ThemeContext";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import {
-  getMealDashboard,
-  MealDashboardData,
-  getDailyMealPlan,
   DayPlan,
   Meal,
-} from "@/features/tools/services/mealService";
+  MealPlanResponse,
+  NormalizedMealDashboardData,
+  MealPlannerScreenMealSlotKey,
+} from "@/features/tools/types/mealPlannerTypes";
+import {
+  getMealDashboard,
+  getDailyMealPlan,
+  updateMealItem,
+} from "@/features/tools/services/mealPlannerService";
+import {
+  getMealName,
+  getMealPlannerGoalOverrides,
+  transformMealDashboardResponse,
+} from "@/features/tools/utils/mealPlannerUtils";
 import { toApiDate } from "@/utils/date-time";
 import { ROUTES } from "@/constants/routes";
 import AppHeader from "@/components/layout/AppHeader";
+import { useNimbusToast } from "@/components/ui/toast/useNimbusToast";
 import {
   MealCardSurface,
-  MealMacroProgressCard,
-  MealNutritionTileCard,
-  type MealMacroProgressMetric,
-  type MealNutritionMetric,
+  MealInsightCard,
+  MealNutritionPieCard,
+  MealPlannerSlotCard,
+  MealTrendCard,
+  type MealNutritionPieMetric,
+  type MealTrendMetric,
 } from "@/features/tools/components/meal-flow";
-import type { SvaColorSet, Spacing, Typography } from "@/theme/types";
+import type {
+  SvaColorSet,
+  Spacing,
+  Typography,
+  TypographyTokens,
+  SvaTokens,
+} from "@/theme/types";
 
-/* ---------- Mock Data ---------- */
-const MOCK_DAILY_CONSUMPTION = {
-  calories: { consumed: 1440, goal: 2000, color: "#90B47A" },
-  protein: { consumed: 82, goal: 150, color: "#4C8DFF" },
-  carbs: { consumed: 145, goal: 250, color: "#79A9F2" },
-  fats: { consumed: 35, goal: 70, color: "#FB923C" },
-  fiber: { consumed: 28, goal: 30, color: "#9DD2C5" },
+type OverviewStat = {
+  key: "tracked" | "streak" | "completion";
+  label: string;
+  value: string;
 };
 
-const MOCK_DASHBOARD: MealDashboardData = {
-  period: "Last 30 days",
-  days_tracked: 12,
-  total_calories_consumed: 15400,
-  average_calories: 1283.33,
-  today_nutrition: MOCK_DAILY_CONSUMPTION,
+const DASHBOARD_RANGE_DAYS = 30;
+
+const formatMealSlotLabel = (value?: string | null) =>
+  value ? value.charAt(0).toUpperCase() + value.slice(1) : "None";
+
+const getMealItems = (meal: Meal | Meal[] | null | undefined): Meal[] => {
+  if (!meal) {
+    return [];
+  }
+
+  return Array.isArray(meal) ? meal.filter(Boolean) : [meal];
 };
 
-const MOCK_EXPECTED_CONSUMPTION: MealNutritionMetric[] = [
-  {
-    key: "protein",
-    label: "Protein",
-    consumed: 34,
-  },
-  {
-    key: "carbs",
-    label: "Carbs",
-    consumed: 126,
-  },
-  {
-    key: "fiber",
-    label: "Fiber",
-    consumed: 18,
-  },
-];
+const getMealSearchQuery = (meal: Meal | Meal[] | null | undefined) => {
+  const mealItems = getMealItems(meal);
+  if (mealItems.length === 0) {
+    return "";
+  }
+
+  return getMealName(Array.isArray(meal) ? mealItems[0] : meal).trim();
+};
+
+const resolveDayPlan = (response: MealPlanResponse<DayPlan | DayPlan[]>) => {
+  if (!response?.success) {
+    return null;
+  }
+
+  if (Array.isArray(response.data)) {
+    return response.data[0] ?? null;
+  }
+
+  return response.data ?? null;
+};
+
+const applyGoalOverride = (
+  metric: NormalizedMealDashboardData["today"]["nutrition"]["calories"],
+  goalOverride: number | null
+) => {
+  const goal = goalOverride ?? metric.goal;
+  const remaining = Math.max(goal - metric.consumed, 0);
+  const progressPercent =
+    goal > 0 ? Math.min(100, Math.round((metric.consumed / goal) * 100)) : 0;
+
+  return {
+    ...metric,
+    goal,
+    remaining,
+    progress_percent: progressPercent,
+  };
+};
 
 export const MealPlannerScreen = () => {
-  const { svaColors, spacing, typography } = useContext(ThemeContext);
+  const { svaColors, spacing, typography, svaTypography, tokens } =
+    useContext(ThemeContext);
+  const toast = useNimbusToast();
+  const params = useLocalSearchParams<{
+    targetCalories?: string | string[];
+    protein?: string | string[];
+  }>();
   const styles = useMemo(
-    () => styling(svaColors, spacing, typography),
-    [svaColors, spacing, typography]
+    () => styling(svaColors, spacing, typography, svaTypography, tokens),
+    [svaColors, spacing, typography, svaTypography, tokens]
   );
 
-  const [selectedDate] = useState(new Date());
   const [dashboardData, setDashboardData] =
-    useState<MealDashboardData>(MOCK_DASHBOARD);
+    useState<NormalizedMealDashboardData | null>(null);
   const [dayPlan, setDayPlan] = useState<DayPlan | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [dayPlanLoading, setDayPlanLoading] = useState(false);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [consumingMealSlot, setConsumingMealSlot] =
+    useState<MealPlannerScreenMealSlotKey | null>(null);
 
+  const { targetCalories, targetProtein } = useMemo(
+    () => getMealPlannerGoalOverrides(params),
+    [params]
+  );
+
+  /**
+   * Dashboard analytics and the day-plan timeline are fetched separately so
+   * each section can recover independently from transient API failures.
+   */
   const fetchDashboardData = async () => {
     try {
-      const result = await getMealDashboard(30);
-      if (
-        result &&
-        result.success &&
-        result.data &&
-        result.data.today_nutrition
-      ) {
-        setDashboardData(result.data);
+      setDashboardLoading(true);
+      const result = await getMealDashboard(DASHBOARD_RANGE_DAYS);
+      if (result?.success) {
+        setDashboardData(transformMealDashboardResponse(result).data);
+      } else {
+        setDashboardData(null);
       }
     } catch (error) {
       console.error("Dashboard API error:", error);
+      setDashboardData(null);
+    } finally {
+      setDashboardLoading(false);
     }
   };
 
-  const fetchDailyPlan = async (date: Date) => {
+  const fetchDailyPlan = async (date: Date, showLoading = true) => {
     try {
-      setLoading(true);
-      const result: any = await getDailyMealPlan(date);
-
-      if (
-        result &&
-        result.success &&
-        Array.isArray(result.data) &&
-        result.data.length > 0
-      ) {
-        setDayPlan(result.data[0]);
-      } else if (
-        result &&
-        result.success &&
-        result.data &&
-        !Array.isArray(result.data)
-      ) {
-        setDayPlan(result.data);
-      } else {
-        setDayPlan(null);
+      if (showLoading) {
+        setDayPlanLoading(true);
       }
+      const result = await getDailyMealPlan(date);
+      setDayPlan(resolveDayPlan(result));
     } catch (error) {
       console.error("Daily Plan API error:", error);
       setDayPlan(null);
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setDayPlanLoading(false);
+      }
     }
   };
 
-  useEffect(() => {
-    fetchDashboardData();
-    fetchDailyPlan(new Date());
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      void fetchDashboardData();
+      void fetchDailyPlan(new Date());
+    }, [])
+  );
 
-  const handleAddMeal = (type: string) => {
+  const handleAddMeal = (type: MealPlannerScreenMealSlotKey) => {
     router.push({
       pathname: ROUTES.AUTH.TOOLS_MEAL_CREATION,
-      params: { type, date: toApiDate(selectedDate) },
+      params: { type, date: toApiDate(new Date()) },
     });
   };
 
@@ -147,121 +193,267 @@ export const MealPlannerScreen = () => {
     router.push(ROUTES.AUTH.TOOLS_MEAL_WEEKLY);
   };
 
-  const macroProgressMetrics = useMemo<MealMacroProgressMetric[]>(() => {
-    const nutrition = dashboardData.today_nutrition;
+  const handleOpenRecipeSearch = (data: Meal | Meal[] | null | undefined) => {
+    const query = getMealSearchQuery(data);
 
-    return [
+    if (!query || query === "Not planned") {
+      return;
+    }
+
+    router.push({
+      pathname: ROUTES.AUTH.TOOLS_RECIPE,
+      params: { query },
+    });
+  };
+
+  /**
+   * Route params can override calorie/protein goals coming from calculator
+   * flows without mutating the underlying dashboard response.
+   */
+  const activeNutrition = useMemo(() => {
+    if (!dashboardData) {
+      return null;
+    }
+
+    const nutrition = dashboardData.today.nutrition;
+
+    return {
+      ...nutrition,
+      calories: applyGoalOverride(nutrition.calories, targetCalories),
+      protein: applyGoalOverride(nutrition.protein, targetProtein),
+    };
+  }, [dashboardData, targetCalories, targetProtein]);
+
+  const dashboardUi = useMemo(() => {
+    if (!dashboardData || !activeNutrition) {
+      return null;
+    }
+
+    const nutritionMetrics: MealNutritionPieMetric[] = [
+      {
+        key: "calories",
+        label: "Calories",
+        consumed: activeNutrition.calories.consumed,
+        goal: activeNutrition.calories.goal,
+        unit: activeNutrition.calories.unit,
+        color: activeNutrition.calories.color,
+      },
       {
         key: "carbs",
         label: "Carbs",
-        consumed: nutrition.carbs.consumed,
-        goal: nutrition.carbs.goal,
-        color: svaColors.chart.blue,
-        letter: "C",
+        consumed: activeNutrition.carbs.consumed,
+        goal: activeNutrition.carbs.goal,
+        unit: activeNutrition.carbs.unit,
+        color: activeNutrition.carbs.color,
       },
       {
         key: "protein",
         label: "Protein",
-        consumed: nutrition.protein.consumed,
-        goal: nutrition.protein.goal,
-        color: svaColors.chart.lavender,
-        letter: "P",
+        consumed: activeNutrition.protein.consumed,
+        goal: activeNutrition.protein.goal,
+        unit: activeNutrition.protein.unit,
+        color: activeNutrition.protein.color,
+      },
+      {
+        key: "fats",
+        label: "Fats",
+        consumed: activeNutrition.fats.consumed,
+        goal: activeNutrition.fats.goal,
+        unit: activeNutrition.fats.unit,
+        color: activeNutrition.fats.color,
       },
       {
         key: "fiber",
         label: "Fiber",
-        consumed: nutrition.fiber.consumed,
-        goal: nutrition.fiber.goal,
-        color: svaColors.chart.seafoam,
-        letter: "F",
+        consumed: activeNutrition.fiber.consumed,
+        goal: activeNutrition.fiber.goal,
+        unit: activeNutrition.fiber.unit,
+        color: activeNutrition.fiber.color,
       },
     ];
-  }, [dashboardData.today_nutrition, svaColors]);
 
-  const macroProgressPercent = useMemo(() => {
-    const calories = dashboardData.today_nutrition.calories;
-    if (!calories.goal) return 0;
-    return Math.round((calories.consumed / calories.goal) * 100);
-  }, [dashboardData.today_nutrition.calories]);
+    const trendMetrics: MealTrendMetric[] = [
+      {
+        key: "calories",
+        label: "Calories",
+        averageValue: dashboardData.trends.last_7_days.avg_calories,
+        unit: " kcal",
+        direction: dashboardData.trends.direction.calories,
+        hitRate: dashboardData.adherence.goal_hit_rate.calories,
+        color: activeNutrition.calories.color,
+      },
+      {
+        key: "protein",
+        label: "Protein",
+        averageValue: dashboardData.trends.last_7_days.avg_protein,
+        unit: "g",
+        direction: dashboardData.trends.direction.protein,
+        hitRate: dashboardData.adherence.goal_hit_rate.protein,
+        color: activeNutrition.protein.color,
+      },
+      {
+        key: "fiber",
+        label: "Fiber",
+        averageValue: dashboardData.trends.last_7_days.avg_fiber,
+        unit: "g",
+        direction: dashboardData.trends.direction.fiber,
+        hitRate: dashboardData.adherence.goal_hit_rate.fiber,
+        color: activeNutrition.fiber.color,
+      },
+    ];
 
-  const renderMealCard = (type: string, data: Meal | undefined | null) => {
-    const iconMap: any = {
-      breakfast: "coffee",
-      lunch: "white-balance-sunny",
-      dinner: "moon-waning-crescent",
-      snacks: "apple",
+    const overviewStats: OverviewStat[] = [
+      {
+        key: "tracked",
+        label: "Tracked",
+        value: `${dashboardData.summary.days_tracked}/${dashboardData.range.days}`,
+      },
+      {
+        key: "streak",
+        label: "Streak",
+        value: `${dashboardData.summary.current_streak_days} days`,
+      },
+      {
+        key: "completion",
+        label: "Completion",
+        value: `${dashboardData.summary.meal_completion_rate}%`,
+      },
+    ];
+
+    const overviewCaption = dashboardData.today.status.fully_tracked
+      ? "Every planned meal is already tracked for today."
+      : dashboardData.today.status.next_pending_meal
+        ? `Next pending meal: ${formatMealSlotLabel(
+            dashboardData.today.status.next_pending_meal
+          )}.`
+        : dashboardData.today.status.last_logged_meal
+          ? `Last logged meal: ${formatMealSlotLabel(
+              dashboardData.today.status.last_logged_meal
+            )}.`
+          : "Start logging meals to build a steady streak.";
+
+    return {
+      overviewCaption,
+      overviewStats,
+      nutritionMetrics,
+      trendsCaption: `Last 7 days: ${Math.round(
+        dashboardData.trends.last_7_days.avg_calories
+      )} kcal avg, ${Math.round(
+        dashboardData.trends.last_7_days.avg_protein
+      )}g protein, ${Math.round(
+        dashboardData.trends.last_7_days.avg_fiber
+      )}g fiber. Direction: calories ${dashboardData.trends.direction.calories}, protein ${dashboardData.trends.direction.protein}, fiber ${dashboardData.trends.direction.fiber}.`,
+      trendsPanelCaption: `Week ending ${dashboardData.range.end_date}: protein is holding at ${dashboardData.adherence.goal_hit_rate.protein}% goal hits, while fiber trails at ${dashboardData.adherence.goal_hit_rate.fiber}%.`,
+      insightsCaption: `Signals generated from ${dashboardData.range.label.toLowerCase()} of meal tracking.`,
+      trendMetrics,
     };
+  }, [activeNutrition, dashboardData]);
 
-    if (!data) {
-      return (
-        <TouchableOpacity
-          style={styles.ghostCard}
-          activeOpacity={0.7}
-          onPress={() => handleAddMeal(type)}
-        >
-          <View style={styles.timelinePoint}>
-            <MaterialCommunityIcons
-              name={iconMap[type]}
-              size={20}
-              color={svaColors.text.secondary}
-            />
-          </View>
-          <MealCardSurface
-            tone="dashed"
-            radius={24}
-            style={styles.ghostCardBody}
-          >
-            <Text style={styles.ghostText}>Plan your {type}</Text>
-            <Ionicons
-              name="add-circle-outline"
-              size={24}
-              color={svaColors.brand.primary}
-            />
-          </MealCardSurface>
-        </TouchableOpacity>
-      );
+  /**
+   * Consumed-state is patched per item. We update the visible slot optimistically
+   * and then refetch both day and dashboard data so aggregate cards stay in sync.
+   */
+  const updatePlanMealsConsumed = (
+    plan: DayPlan | null,
+    mealType: MealPlannerScreenMealSlotKey,
+    itemIds: number[]
+  ): DayPlan | null => {
+    if (!plan || itemIds.length === 0) {
+      return plan;
     }
 
-    return (
-      <View style={styles.mealCardContainer}>
-        <View style={styles.timelinePointActive}>
-          <MaterialCommunityIcons
-            name={iconMap[type]}
-            size={20}
-            color={svaColors.bg.base}
-          />
-        </View>
-        <MealCardSurface tone="surface" radius={24} style={styles.mealCard}>
-          <View style={styles.mealInfo}>
-            <Text style={styles.mealType}>{type.toUpperCase()}</Text>
-            <Text style={styles.mealTitle}>{data.name}</Text>
-            <Text style={styles.mealMeta}>{data.calories ?? 0} kcal</Text>
-          </View>
-          {data.image && (
-            <View style={styles.mealImagePlaceholder}>
-              <Ionicons
-                name="restaurant-outline"
-                size={24}
-                color={svaColors.text.secondary}
-              />
-            </View>
-          )}
-        </MealCardSurface>
-      </View>
-    );
+    const currentSlot = plan.meals?.[mealType];
+    if (!currentSlot) {
+      return plan;
+    }
+
+    if (Array.isArray(currentSlot)) {
+      return {
+        ...plan,
+        meals: {
+          ...plan.meals,
+          [mealType]: currentSlot.map((meal) =>
+            itemIds.includes(meal.id) ? { ...meal, is_consumed: true } : meal
+          ),
+        },
+      };
+    }
+
+    if (!itemIds.includes(currentSlot.id)) {
+      return plan;
+    }
+
+    return {
+      ...plan,
+      meals: {
+        ...plan.meals,
+        [mealType]: { ...currentSlot, is_consumed: true },
+      },
+    };
+  };
+
+  const handleMarkConsumed = async (
+    mealType: MealPlannerScreenMealSlotKey,
+    data: Meal | Meal[] | null | undefined
+  ) => {
+    const meals = getMealItems(data);
+    const pendingMeals = meals.filter((meal) => !meal.is_consumed);
+
+    if (pendingMeals.length === 0) {
+      return;
+    }
+
+    try {
+      setConsumingMealSlot(mealType);
+
+      await Promise.all(
+        pendingMeals.map((meal) =>
+          updateMealItem(meal.id, {
+            is_consumed: true,
+          })
+        )
+      );
+
+      setDayPlan((prev) =>
+        updatePlanMealsConsumed(
+          prev,
+          mealType,
+          pendingMeals.map((meal) => meal.id)
+        )
+      );
+
+      void fetchDashboardData();
+      void fetchDailyPlan(new Date(), false);
+
+      const mealLabel = mealType.charAt(0).toUpperCase() + mealType.slice(1);
+      toast.show({
+        variant: "success",
+        title:
+          pendingMeals.length > 1
+            ? `${mealLabel} updated`
+            : `${mealLabel} consumed`,
+        message:
+          pendingMeals.length > 1
+            ? "Every item in this slot is now counted in your daily intake."
+            : "This meal has been added to your daily intake.",
+        position: "top",
+      });
+    } catch (error) {
+      console.error("Error marking meal consumed:", error);
+      toast.show({
+        variant: "error",
+        title: "Update failed",
+        message: "We couldn't mark this meal as consumed right now.",
+        position: "top",
+      });
+    } finally {
+      setConsumingMealSlot(null);
+    }
   };
 
   return (
-    <ScreenView
-      style={{
-        paddingTop:
-          Platform.OS === "ios"
-            ? spacing["xxl"] + spacing["xxl"] * 0.2
-            : spacing.xl,
-        paddingHorizontal: spacing.md,
-      }}
-    >
-      <SafeAreaView style={{ flex: 1 }}>
+    <ScreenView bgColor={svaColors.bg.base} padding={0} style={styles.screen}>
+      <View style={styles.root}>
         <AppHeader
           title="Nourish Plan"
           subtitle="Fuel your body with intention."
@@ -278,33 +470,107 @@ export const MealPlannerScreen = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.mainScroll}
         >
-          <MealNutritionTileCard
-            title="Expected Consumption"
-            eyebrow="Status"
-            metrics={MOCK_EXPECTED_CONSUMPTION}
-          />
+          {dashboardLoading ? (
+            <MealCardSurface tone="surface" radius={28} style={styles.dashboardLoaderCard}>
+              <ActivityIndicator size="small" color={svaColors.brand.primary} />
+              <Text style={styles.dashboardLoaderText}>Loading dashboard insights</Text>
+            </MealCardSurface>
+          ) : dashboardData && dashboardUi ? (
+            <>
+              <MealCardSurface tone="surface" radius={28} style={styles.overviewCard}>
+                <View style={styles.overviewHeader}>
+                  <View style={styles.overviewHeaderCopy}>
+                    <Text style={styles.overviewEyebrow}>
+                      {dashboardData.range.label.toUpperCase()}
+                    </Text>
+                    <Text style={styles.overviewTitle}>Tracking Overview</Text>
+                    <Text style={styles.overviewCaption}>{dashboardUi.overviewCaption}</Text>
+                  </View>
+                  <View style={styles.overviewBadge}>
+                    <Text style={styles.overviewBadgeText}>
+                      {dashboardData.summary.tracked_days_percentage}%
+                    </Text>
+                  </View>
+                </View>
 
-          <MealMacroProgressCard
-            title="Daily Consumption"
-            progressLabel={`${macroProgressPercent}% of goal`}
-            metrics={macroProgressMetrics}
-          />
+                <View style={styles.overviewStatsRow}>
+                  {dashboardUi.overviewStats.map((stat) => (
+                    <View key={stat.key} style={styles.overviewStatTile}>
+                      <Text style={styles.overviewStatLabel}>{stat.label}</Text>
+                      <Text style={styles.overviewStatValue}>{stat.value}</Text>
+                    </View>
+                  ))}
+                </View>
+              </MealCardSurface>
+
+              <MealNutritionPieCard
+                title="Today’s Nutrition"
+                statusLabel={dashboardData.range.label}
+                caption={dashboardUi.trendsCaption}
+                metrics={dashboardUi.nutritionMetrics}
+              />
+
+              <MealTrendCard
+                title="Weekly Trend Signals"
+                eyebrow="Trend Dashboard"
+                caption={dashboardUi.trendsPanelCaption}
+                metrics={dashboardUi.trendMetrics}
+              />
+
+              <MealInsightCard
+                title="Nutrition Insights"
+                eyebrow="SVA Insight"
+                caption={dashboardUi.insightsCaption}
+                insights={dashboardData.insights}
+              />
+            </>
+          ) : (
+            <MealCardSurface tone="surface" radius={28} style={styles.dashboardLoaderCard}>
+              <Text style={styles.overviewTitle}>Dashboard unavailable</Text>
+              <Text style={styles.overviewCaption}>
+                We couldn&apos;t load your nutrition insights right now.
+              </Text>
+            </MealCardSurface>
+          )}
 
           <View style={styles.timelineContainer}>
             <View style={styles.timelineVerticalLine} />
-            {loading ? (
+            {dayPlanLoading ? (
               <ActivityIndicator color={svaColors.chart.blue} />
             ) : (
               <>
-                {renderMealCard("breakfast", dayPlan?.meals?.breakfast)}
-                {renderMealCard("lunch", dayPlan?.meals?.lunch)}
-                {renderMealCard("dinner", dayPlan?.meals?.dinner)}
-                {renderMealCard(
-                  "snacks",
-                  Array.isArray(dayPlan?.meals?.snacks)
-                    ? dayPlan?.meals?.snacks[0]
-                    : (dayPlan?.meals?.snacks as unknown as Meal)
-                )}
+                <MealPlannerSlotCard
+                  mealType="breakfast"
+                  mealData={dayPlan?.meals?.breakfast}
+                  isConsuming={consumingMealSlot === "breakfast"}
+                  onAddMeal={handleAddMeal}
+                  onOpenRecipeSearch={handleOpenRecipeSearch}
+                  onMarkConsumed={handleMarkConsumed}
+                />
+                <MealPlannerSlotCard
+                  mealType="lunch"
+                  mealData={dayPlan?.meals?.lunch}
+                  isConsuming={consumingMealSlot === "lunch"}
+                  onAddMeal={handleAddMeal}
+                  onOpenRecipeSearch={handleOpenRecipeSearch}
+                  onMarkConsumed={handleMarkConsumed}
+                />
+                <MealPlannerSlotCard
+                  mealType="dinner"
+                  mealData={dayPlan?.meals?.dinner}
+                  isConsuming={consumingMealSlot === "dinner"}
+                  onAddMeal={handleAddMeal}
+                  onOpenRecipeSearch={handleOpenRecipeSearch}
+                  onMarkConsumed={handleMarkConsumed}
+                />
+                <MealPlannerSlotCard
+                  mealType="snack"
+                  mealData={dayPlan?.meals?.snack}
+                  isConsuming={consumingMealSlot === "snack"}
+                  onAddMeal={handleAddMeal}
+                  onOpenRecipeSearch={handleOpenRecipeSearch}
+                  onMarkConsumed={handleMarkConsumed}
+                />
               </>
             )}
           </View>
@@ -323,7 +589,7 @@ export const MealPlannerScreen = () => {
           />
           <Text style={styles.fabLabel}>Plan Ahead</Text>
         </TouchableOpacity>
-      </SafeAreaView>
+      </View>
     </ScreenView>
   );
 };
@@ -331,13 +597,118 @@ export const MealPlannerScreen = () => {
 const styling = (
   theme: SvaColorSet,
   spacing: Spacing,
-  typography: Typography
+  typography: Typography,
+  svaTypography: TypographyTokens | undefined,
+  tokens: SvaTokens
 ) =>
   StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: theme.bg.base,
+    },
+    root: {
+      flex: 1,
+      paddingHorizontal: spacing.md,
+    },
     mainScroll: {
       paddingHorizontal: 0,
       paddingBottom: 120,
       paddingTop: spacing.md,
+    },
+    overviewCard: {
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.lg,
+      paddingBottom: spacing.lg,
+      marginBottom: spacing.xl,
+      gap: spacing.lg,
+    },
+    dashboardLoaderCard: {
+      minHeight: 148,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.xl,
+      marginBottom: spacing.xl,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: spacing.sm,
+    },
+    dashboardLoaderText: {
+      ...(svaTypography?.textStyle.body ?? typography.body),
+      color: theme.text.secondary,
+      fontSize: 13,
+      lineHeight: 18,
+    },
+    overviewHeader: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      gap: spacing.md,
+    },
+    overviewHeaderCopy: {
+      flex: 1,
+      gap: 6,
+    },
+    overviewEyebrow: {
+      ...(svaTypography?.textStyle.authTinyLabel ?? typography.smallCaption),
+      color: theme.text.secondary,
+      fontSize: 11,
+      letterSpacing: 1.4,
+      textTransform: "uppercase",
+    },
+    overviewTitle: {
+      ...(svaTypography?.textStyle.title ?? typography.h3),
+      color: theme.text.primary,
+      fontSize: 20,
+      lineHeight: 24,
+    },
+    overviewCaption: {
+      ...(svaTypography?.textStyle.body ?? typography.body),
+      color: theme.text.secondary,
+      fontSize: 13,
+      lineHeight: 18,
+    },
+    overviewBadge: {
+      minWidth: 58,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.sm,
+      borderRadius: 16,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.bg.subtle,
+      borderWidth: tokens.border.hairline,
+      borderColor: theme.border.default,
+    },
+    overviewBadgeText: {
+      ...(svaTypography?.textStyle.bodyMedium ?? typography.bodyStrong),
+      color: theme.brand.primary,
+      fontSize: 16,
+    },
+    overviewStatsRow: {
+      flexDirection: "row",
+      gap: spacing.sm,
+    },
+    overviewStatTile: {
+      flex: 1,
+      minHeight: 88,
+      borderRadius: 20,
+      backgroundColor: theme.bg.subtle,
+      borderWidth: tokens.border.hairline,
+      borderColor: theme.border.default,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.md,
+      justifyContent: "space-between",
+    },
+    overviewStatLabel: {
+      ...(svaTypography?.textStyle.authTinyLabel ?? typography.smallCaption),
+      color: theme.text.secondary,
+      fontSize: 10,
+      letterSpacing: 1.1,
+      textTransform: "uppercase",
+    },
+    overviewStatValue: {
+      ...(svaTypography?.textStyle.bodyMedium ?? typography.bodyStrong),
+      color: theme.text.primary,
+      fontSize: 16,
+      lineHeight: 20,
     },
     timelineContainer: {
       paddingLeft: 20,
@@ -350,86 +721,6 @@ const styling = (
       width: 2,
       backgroundColor: theme.divider,
       opacity: 0.6,
-    },
-    mealCardContainer: {
-      marginBottom: spacing.xl,
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    timelinePointActive: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: theme.chart.blue,
-      justifyContent: "center",
-      alignItems: "center",
-      zIndex: 2,
-      marginRight: 16,
-    },
-    mealCard: {
-      flex: 1,
-      padding: spacing.md,
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-    },
-    mealInfo: {
-      flex: 1,
-    },
-    mealType: {
-      ...typography.caption,
-      color: theme.chart.blue,
-      fontWeight: "800",
-      letterSpacing: 1,
-      marginBottom: 4,
-    },
-    mealTitle: {
-      ...typography.bodyStrong,
-      fontSize: 16,
-      color: theme.text.primary,
-    },
-    mealMeta: {
-      ...typography.caption,
-      color: theme.text.secondary,
-      marginTop: 2,
-    },
-    mealImagePlaceholder: {
-      width: 60,
-      height: 60,
-      borderRadius: 16,
-      backgroundColor: theme.surface.raised,
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    ghostCard: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: spacing.xl,
-    },
-    timelinePoint: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: theme.bg.subtle,
-      borderWidth: 1,
-      borderColor: theme.border.default,
-      justifyContent: "center",
-      alignItems: "center",
-      zIndex: 2,
-      marginRight: 16,
-    },
-    ghostCardBody: {
-      flex: 1,
-      height: 80,
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingHorizontal: spacing.lg,
-    },
-    ghostText: {
-      ...typography.body,
-      color: theme.text.secondary,
-      fontStyle: "italic",
     },
     fab: {
       position: "absolute",
@@ -449,7 +740,7 @@ const styling = (
       elevation: 8,
     },
     fabLabel: {
-      ...typography.bodyStrong,
+      ...(svaTypography?.textStyle.authActionLabel ?? typography.bodyStrong),
       color: theme.button.primary.text,
     },
   });

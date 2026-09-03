@@ -5,27 +5,36 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   Platform,
   TextInput,
   KeyboardAvoidingView,
-  ActivityIndicator,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import { ScreenView } from "@/components/ui/Themed";
+import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import StyledButton from "@/components/ui/theme-components/StyledButton";
 import DateInput from "@/components/ui/picker/DateInput";
 import DatePickerSheet from "@/components/ui/picker/DatePickerSheet";
 import { FilterPill } from "@/features/self-care/components/workout/FilterPill";
 import { searchRecipes } from "@/features/tools/services/recipeService";
 import {
-  addMealItem,
   bulkUpdateMealPlan,
+} from "@/features/tools/services/mealPlannerService";
+import type {
   BulkMealUpdatePayload,
-} from "@/features/tools/services/mealService";
+  MealPlannerApiMealType,
+  MealPlannerDayDraft,
+  MealPlannerDraftEntry,
+  MealPlannerUiMealType,
+  MealPlannerWeeklyPlanStore,
+} from "@/features/tools/types/mealPlannerTypes";
+import {
+  DAY_MEAL_TYPES,
+  mealTypeToApiKey,
+  normalizeMealTypeParam,
+} from "@/features/tools/utils/mealPlannerUtils";
 import {
   formatDay,
   toApiDate,
@@ -37,31 +46,31 @@ import { addDays } from "date-fns";
 import AppHeader from "@/components/layout/AppHeader";
 import {
   MealCardSurface,
+  MealPlannerDayPreviewCard,
+  MealPlannerModeTabs,
+  MealPlannerReviewList,
+  MealPlannerStageActionCard,
   MealFlowSection,
+  MealPlannerSearchDropdown,
 } from "@/features/tools/components/meal-flow";
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
-
-type MealType = "Breakfast" | "Lunch" | "Dinner" | "Snacks";
-
-interface MealEntry {
-  foodName: string;
-  calories?: number;
-  recipeId?: number;
-}
-
-interface DayPlan {
-  [key: string]: MealEntry | null;
-}
-
-interface WeeklyPlanStore {
-  [date: string]: DayPlan;
-}
+import type {
+  Spacing,
+  TypographyTokens,
+  SvaColorSet,
+  SvaTokens,
+} from "@/theme/types";
 
 export const MealCreationScreen = () => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(newTheme, spacing, typography);
+  const { svaColors, spacing, svaTypography, tokens } = useContext(ThemeContext);
+  const styles = useMemo(
+    () => styling(svaColors, spacing, svaTypography, tokens),
+    [svaColors, spacing, svaTypography, tokens]
+  );
   const params = useLocalSearchParams();
   const toast = useNimbusToast();
+  const initialMealType = normalizeMealTypeParam(params.type);
+  const initialFoodName =
+    typeof params.foodName === "string" ? params.foodName : "";
 
   /* --- UI State --- */
   const [activeTab, setActiveTab] = useState<"day" | "week">(
@@ -71,29 +80,42 @@ export const MealCreationScreen = () => {
   const [isRangePickerVisible, setIsRangePickerVisible] = useState(false);
 
   /* --- Day Tab State --- */
-  const tomorrowAtMidnight = useMemo(() => {
+  const todayAtMidnight = useMemo(() => {
     const d = new Date();
-    d.setDate(d.getDate() + 1);
     d.setHours(0, 0, 0, 0);
     return d;
   }, []);
 
   const tenDaysLater = useMemo(() => {
-    const d = new Date(tomorrowAtMidnight);
+    const d = new Date(todayAtMidnight);
     d.setDate(d.getDate() + 10);
     return d;
-  }, [tomorrowAtMidnight]);
+  }, [todayAtMidnight]);
 
   const [dayDate, setDayDate] = useState(
-    params.date ? new Date(params.date as string) : tomorrowAtMidnight
+    params.date ? new Date(params.date as string) : todayAtMidnight
   );
-  const [mealType, setMealType] = useState<MealType>(
-    (params.type as MealType) || "Breakfast"
-  );
-  const [foodSearch, setFoodSearch] = useState(
-    (params.foodName as string) || ""
-  );
+  const [mealType, setMealType] = useState<MealPlannerUiMealType>(initialMealType);
+  const [foodSearch, setFoodSearch] = useState(initialFoodName);
   const [selectedRecipe, setSelectedRecipe] = useState<any>(null);
+  const [dayDraftStore, setDayDraftStore] = useState<MealPlannerWeeklyPlanStore>(() => {
+    if (!initialFoodName.trim()) {
+      return {};
+    }
+
+    const initialDateKey = toApiDate(
+      params.date ? new Date(params.date as string) : todayAtMidnight
+    );
+
+    return {
+      [initialDateKey]: {
+        [mealTypeToApiKey(initialMealType)]: {
+          foodName: initialFoodName.trim(),
+          calories: 0,
+        },
+      },
+    };
+  });
 
   /* --- Week Tab State --- */
   const tomorrow = useMemo(() => {
@@ -105,10 +127,11 @@ export const MealCreationScreen = () => {
 
   const [startDate, setStartDate] = useState(tomorrow);
   const [selectedWeekdays, setSelectedWeekdays] = useState<string[]>([]);
-  const [bulkMealType, setBulkMealType] = useState<MealType>("Breakfast");
+  const [bulkMealType, setBulkMealType] =
+    useState<MealPlannerUiMealType>("Breakfast");
   const [bulkFoodSearch, setBulkFoodSearch] = useState("");
   const [bulkSelectedRecipe, setBulkSelectedRecipe] = useState<any>(null);
-  const [weeklyPlan, setWeeklyPlan] = useState<WeeklyPlanStore>({});
+  const [weeklyPlan, setWeeklyPlan] = useState<MealPlannerWeeklyPlanStore>({});
 
   /* --- Search State --- */
   const [recipeResults, setRecipeResults] = useState<any[]>([]);
@@ -127,44 +150,157 @@ export const MealCreationScreen = () => {
     };
   }, [startDate]);
 
+  const dayDraftKey = useMemo(() => toApiDate(dayDate), [dayDate]);
+  const dayPlanDraft = useMemo<MealPlannerDayDraft>(
+    () => dayDraftStore[dayDraftKey] ?? {},
+    [dayDraftKey, dayDraftStore]
+  );
+
+  const getDraftEntryFromInput = () => {
+    const trimmedName = foodSearch.trim();
+
+    if (!trimmedName) {
+      return null;
+    }
+
+    if (
+      selectedRecipe &&
+      selectedRecipe.id !== 0 &&
+      selectedRecipe.title === trimmedName
+    ) {
+      return {
+        foodName: trimmedName,
+        recipeId: selectedRecipe.id,
+        calories: 0,
+      } satisfies MealPlannerDraftEntry;
+    }
+
+    return {
+      foodName: trimmedName,
+      calories: 0,
+    } satisfies MealPlannerDraftEntry;
+  };
+
+  useEffect(() => {
+    const entry = dayPlanDraft[mealTypeToApiKey(mealType)];
+
+    if (entry?.foodName) {
+      setFoodSearch(entry.foodName);
+      setSelectedRecipe(
+        entry.recipeId
+          ? {
+              id: entry.recipeId,
+              title: entry.foodName,
+            }
+          : null
+      );
+      return;
+    }
+
+    setFoodSearch("");
+    setSelectedRecipe(null);
+  }, [dayPlanDraft, mealType]);
+
   // Actions
-  const handleSave = async () => {
-    try {
-      // Map "Snacks" -> "snack" for backend
-      const normalizedType =
-        mealType.toLowerCase() === "snacks" ? "snack" : mealType.toLowerCase();
+  const handleAddDaySlot = () => {
+    const entry = getDraftEntryFromInput();
 
-      const payload: any = {
-        date: dayDate, // Pass Date object, not string
-        meal_type: normalizedType,
-      };
+    if (!entry) {
+      return;
+    }
 
-      // Use selectedRecipe if its title matches the current foodSearch exactly
-      if (
-        selectedRecipe &&
-        selectedRecipe.id !== 0 &&
-        selectedRecipe.title === foodSearch
-      ) {
-        payload.recipe_id = selectedRecipe.id;
-      } else {
-        payload.name = foodSearch;
-        payload.calories = 0;
+    const slotKey = mealTypeToApiKey(mealType);
+    setDayDraftStore((prev) => ({
+      ...prev,
+      [dayDraftKey]: {
+        ...(prev[dayDraftKey] ?? {}),
+        [slotKey]: entry,
+      },
+    }));
+    toast.show({
+      variant: "success",
+      title: `${mealType} ready`,
+      message: `${entry.foodName} has been staged for ${toFriendlyDate(dayDate)}.`,
+      position: "top",
+    });
+  };
+
+  const handleRemoveDaySlot = (slotKey: MealPlannerApiMealType) => {
+    setDayDraftStore((prev) => {
+      const currentDraft = { ...(prev[dayDraftKey] ?? {}) };
+      delete currentDraft[slotKey];
+
+      if (Object.keys(currentDraft).length === 0) {
+        const nextStore = { ...prev };
+        delete nextStore[dayDraftKey];
+        return nextStore;
       }
 
-      console.log("Saving single day meal:", payload);
-      await addMealItem(payload);
+      return {
+        ...prev,
+        [dayDraftKey]: currentDraft,
+      };
+    });
+
+    if (mealTypeToApiKey(mealType) === slotKey) {
+      setFoodSearch("");
+      setSelectedRecipe(null);
+    }
+  };
+
+  const handleSaveDayPlan = async () => {
+    try {
+      const slotKey = mealTypeToApiKey(mealType);
+      const currentEntry = getDraftEntryFromInput();
+      const dayEntries: MealPlannerDayDraft = {
+        ...dayPlanDraft,
+        ...(currentEntry ? { [slotKey]: currentEntry } : {}),
+      };
+      const plannedEntries = Object.entries(dayEntries).filter(
+        ([, entry]) => entry?.foodName?.trim()
+      ) as [MealPlannerApiMealType, MealPlannerDraftEntry][];
+
+      if (plannedEntries.length === 0) {
+        return;
+      }
+
+      const formattedDate = toApiDate(dayDate);
+      const payload: BulkMealUpdatePayload = {
+        [formattedDate]: {},
+      };
+
+      plannedEntries.forEach(([mealKey, entry]) => {
+        payload[formattedDate][mealKey] = entry.recipeId
+          ? {
+              recipe_id: entry.recipeId,
+            }
+          : {
+              name: entry.foodName,
+              calories: entry.calories || 0,
+              protein: entry.protein,
+              carbohydrates: entry.carbohydrates,
+              fats: entry.fats,
+              fiber: entry.fiber,
+            };
+      });
+
+      console.log("Saving day plan:", JSON.stringify(payload, null, 2));
+      await bulkUpdateMealPlan(payload);
       toast.show({
         variant: "success",
         title: "Nourishment",
-        message: "Your meal has been saved to your plan.",
+        message:
+          plannedEntries.length === 1
+            ? "Your meal has been saved to your plan."
+            : "Your day plan has been saved with all selected meal slots.",
       });
       router.back();
     } catch (e) {
-      console.error("Failed to save meal:", e);
+      console.error("Failed to save day plan:", e);
       toast.show({
         variant: "error",
         title: "Oh no!",
-        message: "We couldn't save your meal right now. Please try again.",
+        message: "We couldn't save your day plan right now. Please try again.",
       });
     }
   };
@@ -176,23 +312,24 @@ export const MealCreationScreen = () => {
       Object.entries(weeklyPlan).forEach(([date, meals]) => {
         payload[date] = {};
         Object.entries(meals).forEach(([type, entry]) => {
-          // Standardize meal type keys for API (e.g., "snacks" -> "snack")
-          const apiType = type === "snacks" ? "snack" : type;
-
           if (entry) {
             if (entry.recipeId) {
-              payload[date][apiType] = {
+              payload[date][type] = {
                 recipe_id: entry.recipeId,
               };
             } else {
-              payload[date][apiType] = {
+              payload[date][type] = {
                 name: entry.foodName,
                 calories: entry.calories || 0,
+                protein: entry.protein,
+                carbohydrates: entry.carbohydrates,
+                fats: entry.fats,
+                fiber: entry.fiber,
               };
             }
           } else {
             // Explicitly support clearing slots
-            payload[date][apiType] = null;
+            payload[date][type] = null;
           }
         });
       });
@@ -224,7 +361,7 @@ export const MealCreationScreen = () => {
     const newPlan = { ...weeklyPlan };
     selectedWeekdays.forEach((date) => {
       if (!newPlan[date]) newPlan[date] = {};
-      const typeKey = bulkMealType.toLowerCase(); // "breakfast", "lunch", "dinner", "snacks"
+      const typeKey = mealTypeToApiKey(bulkMealType);
 
       newPlan[date][typeKey] = {
         foodName: bulkFoodSearch,
@@ -289,102 +426,43 @@ export const MealCreationScreen = () => {
 
   /* --- Renders --- */
 
-  const renderTabs = () => (
-    <View style={styles.tabContainer}>
-      <TouchableOpacity
-        onPress={() => setActiveTab("day")}
-        style={[styles.tab, activeTab === "day" && styles.activeTab]}
-      >
-        <Text
-          style={[styles.tabText, activeTab === "day" && styles.activeTabText]}
-        >
-          Day Meal
-        </Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        onPress={() => setActiveTab("week")}
-        style={[styles.tab, activeTab === "week" && styles.activeTab]}
-      >
-        <Text
-          style={[styles.tabText, activeTab === "week" && styles.activeTabText]}
-        >
-          Week Plan
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  const renderSearchDropdown = () => {
-    if (isSearching)
-      return (
-        <ActivityIndicator style={{ marginTop: 10 }} color={newTheme.accent} />
-      );
-
-    const query = activeTab === "day" ? foodSearch : bulkFoodSearch;
-    const isDayRecipeSelected =
-      activeTab === "day" &&
-      selectedRecipe &&
-      selectedRecipe.title === foodSearch;
-    const isWeekRecipeSelected =
-      activeTab === "week" &&
-      bulkSelectedRecipe &&
-      bulkSelectedRecipe.title === bulkFoodSearch;
-
-    // If a recipe is already "locked in" (selected and matches input), don't show dropdown
-    if (isDayRecipeSelected || isWeekRecipeSelected) return null;
-
-    if (recipeResults.length === 0 && query.trim().length >= 3) {
-      return (
-        <MealCardSurface tone="surface" radius={16} style={styles.searchDropdown}>
-          <TouchableOpacity
-            style={styles.searchResultItem}
-            onPress={() => handleSelectRecipe({ id: 0, title: query })}
-          >
-            <MaterialCommunityIcons
-              name="pencil-plus"
-              size={16}
-              color={newTheme.textSecondary}
-            />
-            <Text style={styles.searchResultText}>Use "{query}"</Text>
-          </TouchableOpacity>
-        </MealCardSurface>
-      );
-    }
-
-    if (recipeResults.length === 0) return null;
-
-    return (
-      <MealCardSurface tone="surface" radius={16} style={styles.searchDropdown}>
-        {recipeResults.map((item) => (
-          <TouchableOpacity
-            key={item.id}
-            style={styles.searchResultItem}
-            onPress={() => handleSelectRecipe(item)}
-          >
-            <MaterialCommunityIcons
-              name="silverware-fork-knife"
-              size={16}
-              color={newTheme.accent}
-            />
-            <Text style={styles.searchResultText}>{item.title}</Text>
-          </TouchableOpacity>
-        ))}
-      </MealCardSurface>
-    );
-  };
+  const searchQuery = activeTab === "day" ? foodSearch : bulkFoodSearch;
+  const isRecipeSelectionLocked =
+    (activeTab === "day" &&
+      Boolean(selectedRecipe && selectedRecipe.title === foodSearch)) ||
+    (activeTab === "week" &&
+      Boolean(
+        bulkSelectedRecipe && bulkSelectedRecipe.title === bulkFoodSearch
+      ));
 
   const renderDayForm = () => (
     <ScrollView
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.formPadding}
     >
+      <MealFlowSection title="Plan the day">
+        <MealCardSurface tone="accent" radius={16} style={styles.infoBanner}>
+          <Ionicons
+            name="layers-outline"
+            size={18}
+            color={svaColors.brand.primary}
+          />
+          <Text style={styles.infoBannerText}>
+            For {toFriendlyDate(dayDate)}, you can save one meal slot or stage
+            breakfast, lunch, dinner, and snack together in one sync.
+          </Text>
+        </MealCardSurface>
+      </MealFlowSection>
+
       <MealFlowSection title="When?">
         <DateInput
           value={dayDate}
-          onChange={setDayDate}
+          onChange={(nextDate) => {
+            setDayDate(nextDate);
+          }}
           label="Select Date"
           title="Meal Date"
-          minimumDate={tomorrowAtMidnight}
+          minimumDate={todayAtMidnight}
           maximumDate={tenDaysLater}
         />
       </MealFlowSection>
@@ -395,17 +473,15 @@ export const MealCreationScreen = () => {
           showsHorizontalScrollIndicator={false}
           style={styles.chipRow}
         >
-          {(["Breakfast", "Lunch", "Dinner", "Snacks"] as MealType[]).map(
-            (type) => (
-              <FilterPill
-                key={type}
-                label={type}
-                isActive={mealType === type}
-                onPress={() => setMealType(type)}
-                style={styles.chip}
-              />
-            )
-          )}
+          {DAY_MEAL_TYPES.map((type) => (
+            <FilterPill
+              key={type}
+              label={type}
+              isActive={mealType === type}
+              onPress={() => setMealType(type)}
+              style={styles.chip}
+            />
+          ))}
         </ScrollView>
       </MealFlowSection>
 
@@ -427,14 +503,14 @@ export const MealCreationScreen = () => {
             size={20}
             color={
               selectedRecipe && selectedRecipe.title === foodSearch
-                ? newTheme.accent
-                : newTheme.textSecondary
+                ? svaColors.brand.primary
+                : svaColors.text.secondary
             }
           />
           <TextInput
             style={styles.searchInput}
             placeholder="Search or enter recipe name..."
-            placeholderTextColor={newTheme.textSecondary}
+            placeholderTextColor={svaColors.text.secondary}
             value={foodSearch}
             onChangeText={(t) => {
               setFoodSearch(t);
@@ -444,7 +520,32 @@ export const MealCreationScreen = () => {
             }}
           />
         </View>
-        {renderSearchDropdown()}
+        <MealPlannerSearchDropdown
+          query={searchQuery}
+          results={recipeResults}
+          isSearching={isSearching}
+          isSelectionLocked={isRecipeSelectionLocked}
+          onSelectOption={handleSelectRecipe}
+          onSelectCustom={(query) => handleSelectRecipe({ id: 0, title: query })}
+        />
+
+        {foodSearch.trim() ? (
+          <MealPlannerStageActionCard
+            title="Add or Update This Slot"
+            message={`Stage ${foodSearch.trim()} for ${mealType.toLowerCase()} on ${toFriendlyDate(dayDate)}.`}
+            onPress={handleAddDaySlot}
+          />
+        ) : null}
+      </MealFlowSection>
+
+      <MealFlowSection title="Day plan preview">
+        <MealPlannerDayPreviewCard
+          date={dayDate}
+          draft={dayPlanDraft}
+          activeMealType={mealType}
+          onSelectMealType={setMealType}
+          onRemoveSlot={handleRemoveDaySlot}
+        />
       </MealFlowSection>
     </ScrollView>
   );
@@ -459,7 +560,7 @@ export const MealCreationScreen = () => {
           <Ionicons
             name="information-circle"
             size={18}
-            color={newTheme.accent}
+            color={svaColors.brand.primary}
           />
           <Text style={styles.infoBannerText}>
             You can set your plan's start date up to 10 days in advance.
@@ -470,7 +571,7 @@ export const MealCreationScreen = () => {
           <MealCardSurface tone="surface" radius={24} style={styles.rangePanel}>
             <View style={styles.rangePanelHeader}>
               <View style={styles.rangeIconCircle}>
-                <Ionicons name="calendar" size={20} color={newTheme.accent} />
+                <Ionicons name="calendar" size={20} color={svaColors.brand.primary} />
               </View>
               <View style={styles.rangeTextCol}>
                 <Text style={styles.rangeLabel}>Active Window</Text>
@@ -556,10 +657,10 @@ export const MealCreationScreen = () => {
           showsHorizontalScrollIndicator={false}
           style={styles.chipRow}
         >
-          {(["Breakfast", "Lunch", "Dinner", "Snacks"] as MealType[]).map(
+          {DAY_MEAL_TYPES.map(
             (type) => {
               const alreadyPlanned = weekDates.filter(
-                (d) => weeklyPlan[toApiDate(d)]?.[type.toLowerCase()]
+                (d) => weeklyPlan[toApiDate(d)]?.[mealTypeToApiKey(type)]
               ).length;
 
               return (
@@ -600,14 +701,14 @@ export const MealCreationScreen = () => {
             size={20}
             color={
               bulkSelectedRecipe && bulkSelectedRecipe.title === bulkFoodSearch
-                ? newTheme.accent
-                : newTheme.textSecondary
+                ? svaColors.brand.primary
+                : svaColors.text.secondary
             }
           />
           <TextInput
             style={styles.searchInput}
             placeholder="Choose oatmeal, protein shake..."
-            placeholderTextColor={newTheme.textSecondary}
+            placeholderTextColor={svaColors.text.secondary}
             value={bulkFoodSearch}
             onChangeText={(t) => {
               setBulkFoodSearch(t);
@@ -617,90 +718,29 @@ export const MealCreationScreen = () => {
             }}
           />
         </View>
-        {renderSearchDropdown()}
+        <MealPlannerSearchDropdown
+          query={searchQuery}
+          results={recipeResults}
+          isSearching={isSearching}
+          isSelectionLocked={isRecipeSelectionLocked}
+          onSelectOption={handleSelectRecipe}
+          onSelectCustom={(query) => handleSelectRecipe({ id: 0, title: query })}
+        />
       </MealFlowSection>
 
       {selectedWeekdays.length > 0 && bulkFoodSearch !== "" && (
-        <TouchableOpacity onPress={handleAddToPlan}>
-          <MealCardSurface
-            tone="raised"
-            radius={24}
-            borderColor={`${newTheme.accent}40`}
-            style={styles.summaryCard}
-          >
-            <View style={styles.summaryInfo}>
-              <Text style={styles.summaryTitle}>📝 Ready to Add</Text>
-              <Text style={styles.summaryText}>
-                {bulkFoodSearch} for {bulkMealType} on {selectedWeekdays.length}{" "}
-                days.
-              </Text>
-            </View>
-            <View style={styles.addButtonCircle}>
-              <Ionicons name="add" size={24} color={newTheme.background} />
-            </View>
-          </MealCardSurface>
-        </TouchableOpacity>
+        <MealPlannerStageActionCard
+          title="Ready to Add"
+          message={`${bulkFoodSearch} for ${bulkMealType} on ${selectedWeekdays.length} days.`}
+          onPress={handleAddToPlan}
+        />
       )}
     </ScrollView>
   );
 
-  const renderReviewScreen = () => (
-    <ScrollView
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.formPadding}
-    >
-      <Text style={styles.reviewHeader}>Weekly Summary</Text>
-      {weekDates.map((date) => {
-        const dateStr = toApiDate(date);
-        const dayPlan = weeklyPlan[dateStr] || {};
-        return (
-          <MealCardSurface
-            key={dateStr}
-            tone="surface"
-            radius={20}
-            style={styles.reviewDayCard}
-          >
-            <View style={styles.reviewDayHeader}>
-              <Text style={styles.reviewDayDate}>{toFriendlyDate(date)}</Text>
-              <Text style={styles.reviewDayStatus}>
-                {Object.keys(dayPlan).length}/4 meals
-              </Text>
-            </View>
-            {["breakfast", "lunch", "dinner", "snacks"].map((meal) => (
-              <View key={meal} style={styles.reviewMealRow}>
-                <Text style={styles.reviewMealType}>
-                  {meal.charAt(0).toUpperCase() + meal.slice(1)}
-                </Text>
-                <Text
-                  style={[
-                    styles.reviewMealFood,
-                    !dayPlan[meal] && {
-                      fontStyle: "italic",
-                      color: newTheme.textSecondary,
-                    },
-                  ]}
-                >
-                  {dayPlan[meal]?.foodName || "Not planned"}
-                </Text>
-              </View>
-            ))}
-          </MealCardSurface>
-        );
-      })}
-    </ScrollView>
-  );
-
   return (
-    <ScreenView
-      style={{
-        paddingTop:
-          Platform.OS === "ios"
-            ? spacing["xxl"] + spacing["xxl"] * 0.2
-            : spacing.xl,
-        paddingHorizontal: spacing.md,
-      }}
-    >
-      <SafeAreaView style={{ flex: 1 }}>
+    <ScreenView bgColor={svaColors.bg.base} padding={0} style={styles.screen}>
+      <View style={styles.root}>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={{ flex: 1 }}
@@ -715,11 +755,16 @@ export const MealCreationScreen = () => {
             onBack={() => (showReview ? setShowReview(false) : router.back())}
           />
 
-          {!showReview && renderTabs()}
+          {!showReview && (
+            <MealPlannerModeTabs
+              activeTab={activeTab}
+              onChange={setActiveTab}
+            />
+          )}
 
           <View style={{ flex: 1 }}>
             {showReview
-              ? renderReviewScreen()
+              ? <MealPlannerReviewList weekDates={weekDates} weeklyPlan={weeklyPlan} />
               : activeTab === "day"
               ? renderDayForm()
               : renderWeekForm()}
@@ -743,14 +788,14 @@ export const MealCreationScreen = () => {
                 showReview
                   ? "Confirm & Sync"
                   : activeTab === "day"
-                  ? "Save Meal"
+                  ? "Save Day Plan"
                   : "Add to Plan"
               }
               onPress={() => {
                 if (showReview) {
                   handleSaveFinal();
                 } else if (activeTab === "day") {
-                  handleSave();
+                  handleSaveDayPlan();
                 } else {
                   handleAddToPlan();
                 }
@@ -760,47 +805,34 @@ export const MealCreationScreen = () => {
               disabled={
                 !showReview &&
                 (activeTab === "day"
-                  ? !foodSearch
+                  ? !foodSearch.trim() &&
+                    Object.values(dayPlanDraft).every(
+                      (entry) => !entry?.foodName?.trim()
+                    )
                   : selectedWeekdays.length === 0 || !bulkFoodSearch)
               }
             />
           </View>
         </KeyboardAvoidingView>
-      </SafeAreaView>
+      </View>
     </ScreenView>
   );
 };
 
-const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
+const styling = (
+  theme: SvaColorSet,
+  spacing: Spacing,
+  svaTypography: TypographyTokens | undefined,
+  tokens: SvaTokens
+) =>
   StyleSheet.create({
-    tabContainer: {
-      flexDirection: "row",
-      backgroundColor: theme.surfaceMuted,
-      borderRadius: 16,
-      padding: 4,
-      marginBottom: spacing.lg,
-    },
-    tab: {
+    screen: {
       flex: 1,
-      paddingVertical: 12,
-      alignItems: "center",
-      borderRadius: 12,
+      backgroundColor: theme.bg.base,
     },
-    activeTab: {
-      backgroundColor: theme.surface,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 2,
-    },
-    tabText: {
-      ...typography.body,
-      color: theme.textSecondary,
-      fontWeight: "600",
-    },
-    activeTabText: {
-      color: theme.accent,
+    root: {
+      flex: 1,
+      paddingHorizontal: spacing.md,
     },
     formPadding: {
       paddingHorizontal: 0,
@@ -814,10 +846,9 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       gap: 8,
     },
     infoBannerText: {
-      ...typography.caption,
-      color: theme.textPrimary,
+      ...svaTypography?.textStyle.caption,
+      color: theme.text.primary,
       flex: 1,
-      fontWeight: "600",
     },
     chipRow: {
       flexDirection: "row",
@@ -829,49 +860,33 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
     searchBar: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: theme.surface,
+      backgroundColor: theme.surface.base,
       borderRadius: 16,
       paddingHorizontal: spacing.md,
       height: 56,
-      borderWidth: 1,
-      borderColor: theme.divider,
+      borderWidth: tokens.border.hairline,
+      borderColor: theme.border.default,
     },
     searchInput: {
       flex: 1,
       marginLeft: spacing.sm,
-      color: theme.textPrimary,
-      fontSize: 16,
+      ...svaTypography?.textStyle.input,
+      color: theme.text.primary,
     },
     searchBarSelected: {
-      borderColor: theme.accent,
-      backgroundColor: theme.accent + "05",
-    },
-    searchDropdown: {
-      marginTop: 8,
-      padding: spacing.xs,
-    },
-    searchResultItem: {
-      flexDirection: "row",
-      alignItems: "center",
-      padding: spacing.md,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.divider,
-      gap: 10,
-    },
-    searchResultText: {
-      ...typography.body,
-      color: theme.textPrimary,
+      borderColor: theme.brand.primary,
+      backgroundColor: theme.brand.primary + "05",
     },
     footer: {
       paddingVertical: spacing.md,
-      backgroundColor: theme.background,
-      borderTopWidth: 1,
-      borderTopColor: theme.divider,
+      backgroundColor: theme.bg.base,
+      borderTopWidth: tokens.border.hairline,
+      borderTopColor: theme.border.default,
     },
     rangePanel: {
       padding: spacing.md,
       marginBottom: spacing.md,
-      shadowColor: "#000",
+      shadowColor: theme.shadow.default,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.05,
       shadowRadius: 10,
@@ -886,7 +901,7 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       width: 40,
       height: 40,
       borderRadius: 12,
-      backgroundColor: theme.accent + "15",
+      backgroundColor: theme.brand.primary + "15",
       justifyContent: "center",
       alignItems: "center",
       marginRight: spacing.sm,
@@ -895,32 +910,28 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       flex: 1,
     },
     rangeLabel: {
-      ...typography.caption,
-      color: theme.textSecondary,
-      fontWeight: "600",
+      ...svaTypography?.textStyle.authTinyLabel,
+      color: theme.text.secondary,
       textTransform: "uppercase",
       letterSpacing: 0.5,
     },
     rangeValue: {
-      ...typography.bodyStrong,
-      fontSize: 17,
-      color: theme.textPrimary,
+      ...svaTypography?.textStyle.bodyMedium,
+      color: theme.text.primary,
     },
     rangeEditBadge: {
-      backgroundColor: theme.surfaceMuted,
+      backgroundColor: theme.bg.subtle,
       paddingHorizontal: spacing.sm,
       paddingVertical: 4,
       borderRadius: 8,
     },
     rangeEditText: {
-      ...typography.caption,
-      color: theme.accent,
-      fontWeight: "700",
+      ...svaTypography?.textStyle.authActionLabel,
+      color: theme.brand.primary,
     },
     rangeHint: {
-      ...typography.caption,
-      color: theme.textSecondary,
-      lineHeight: 16,
+      ...svaTypography?.textStyle.caption,
+      color: theme.text.secondary,
       fontStyle: "italic",
     },
     weekdayRow: {
@@ -932,30 +943,28 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       width: 44,
       height: 64,
       borderRadius: 12,
-      backgroundColor: theme.surface,
-      borderWidth: 1,
-      borderColor: theme.divider,
+      backgroundColor: theme.surface.base,
+      borderWidth: tokens.border.hairline,
+      borderColor: theme.border.default,
       justifyContent: "center",
       alignItems: "center",
       position: "relative",
     },
     dayTileActive: {
-      backgroundColor: theme.accent,
-      borderColor: theme.accent,
+      backgroundColor: theme.brand.primary,
+      borderColor: theme.brand.primary,
     },
     dayTileNumber: {
-      ...typography.bodyStrong,
-      fontSize: 14,
-      color: theme.textPrimary,
+      ...svaTypography?.textStyle.bodyMedium,
+      color: theme.text.primary,
     },
     dayTileLabel: {
-      ...typography.caption,
-      fontSize: 10,
-      color: theme.textSecondary,
+      ...svaTypography?.textStyle.authTinyLabel,
+      color: theme.text.secondary,
       marginTop: 2,
     },
     dayTileTextActive: {
-      color: theme.background,
+      color: theme.text.inverse,
     },
     plannedIndicators: {
       flexDirection: "row",
@@ -967,83 +976,11 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       width: 4,
       height: 4,
       borderRadius: 2,
-      backgroundColor: theme.accent,
+      backgroundColor: theme.brand.primary,
     },
     plannedCountText: {
-      ...typography.caption,
-      fontSize: 10,
-      color: theme.textSecondary,
+      ...svaTypography?.textStyle.authTinyLabel,
+      color: theme.text.secondary,
       marginTop: 4,
-    },
-    addButtonCircle: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: theme.accent,
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    summaryCard: {
-      padding: spacing.lg,
-      flexDirection: "row",
-      alignItems: "center",
-      marginTop: spacing.sm,
-    },
-    summaryInfo: {
-      flex: 1,
-    },
-    summaryTitle: {
-      ...typography.bodyStrong,
-      color: theme.textPrimary,
-      marginBottom: 2,
-    },
-    summaryText: {
-      ...typography.caption,
-      color: theme.textSecondary,
-      lineHeight: 18,
-    },
-    reviewHeader: {
-      ...typography.h3,
-      color: theme.textPrimary,
-      marginBottom: spacing.lg,
-    },
-    reviewDayCard: {
-      padding: spacing.md,
-      marginBottom: spacing.md,
-    },
-    reviewDayHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      borderBottomWidth: 1,
-      borderBottomColor: theme.divider,
-      paddingBottom: 8,
-      marginBottom: 12,
-    },
-    reviewDayDate: {
-      ...typography.bodyStrong,
-      color: theme.accent,
-    },
-    reviewDayStatus: {
-      ...typography.caption,
-      color: theme.textSecondary,
-      fontWeight: "700",
-    },
-    reviewMealRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      marginBottom: 8,
-    },
-    reviewMealType: {
-      ...typography.caption,
-      fontWeight: "700",
-      color: theme.textSecondary,
-      width: 80,
-    },
-    reviewMealFood: {
-      ...typography.body,
-      color: theme.textPrimary,
-      flex: 1,
-      textAlign: "right",
     },
   });

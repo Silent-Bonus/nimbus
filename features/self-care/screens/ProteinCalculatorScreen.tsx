@@ -43,9 +43,7 @@ export const ProteinCalculatorScreen = () => {
           protein?: string | string[];
         }
       ),
-    [
-      params,
-    ]
+    [params]
   );
 
   const proteinSlots = useMemo(
@@ -59,7 +57,6 @@ export const ProteinCalculatorScreen = () => {
     () => styling(newTheme, spacing, t, heroSize),
     [newTheme, spacing, t, heroSize]
   );
-
   return (
     <ScreenView padding={0} bgColor={newTheme.background} style={styles.screen}>
       <StatusBar style="light" />

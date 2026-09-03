@@ -1,6 +1,5 @@
 import React, { useContext, useMemo } from "react";
 import {
-  ImageSourcePropType,
   Pressable,
   StyleSheet,
   Text,
@@ -10,10 +9,11 @@ import {
   type TextStyle,
   type ViewStyle,
 } from "react-native";
-import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 
 import ThemeContext from "@/contexts/ThemeContext";
+import { apiMealTypeToLabel } from "@/features/tools/utils/mealPlannerUtils";
+import type { MealPlanMealRow } from "@/features/tools/types/mealPlannerTypes";
 import { MealCardSurface } from "./MealCardSurface";
 import type {
   SvaColorSet,
@@ -23,15 +23,10 @@ import type {
   SvaTokens,
 } from "@/theme/types";
 
-const FALLBACK_MEAL_IMAGE = require("@/assets/images/mt.jpg");
-
-export type MealPlanMealType = "breakfast" | "lunch" | "dinner";
-
-export type MealPlanMealRow = {
-  mealType: MealPlanMealType;
-  recipeName: string;
-  image?: string | ImageSourcePropType | null;
-};
+export type {
+  MealPlanMealRow,
+  MealPlanMealType,
+} from "@/features/tools/types/mealPlannerTypes";
 
 export type MealPlanDayCardProps = {
   title: string;
@@ -39,9 +34,8 @@ export type MealPlanDayCardProps = {
   statusColor: string;
   mealRows: readonly MealPlanMealRow[];
   isExpanded: boolean;
-  isPast: boolean;
   onToggle: () => void;
-  onEditMeal: (mealType: MealPlanMealType) => void;
+  onOpenRecipe?: (meal: MealPlanMealRow) => void;
   onSharePlan?: () => void;
   style?: StyleProp<ViewStyle>;
   titleStyle?: StyleProp<TextStyle>;
@@ -54,9 +48,8 @@ export function MealPlanDayCard({
   statusColor,
   mealRows,
   isExpanded,
-  isPast,
   onToggle,
-  onEditMeal,
+  onOpenRecipe,
   onSharePlan,
   style,
   titleStyle,
@@ -68,8 +61,6 @@ export function MealPlanDayCard({
     () => styling(svaColors, spacing, typography, svaTypography, tokens),
     [svaColors, spacing, typography, svaTypography, tokens]
   );
-  const formatMealType = (value: MealPlanMealType) =>
-    value.charAt(0).toUpperCase() + value.slice(1);
 
   return (
     <MealCardSurface
@@ -97,11 +88,13 @@ export function MealPlanDayCard({
           </View>
         </View>
 
-        <Ionicons
-          name={isExpanded ? "chevron-up" : "chevron-down"}
-          size={20}
-          color={svaColors.text.secondary}
-        />
+        <View style={styles.headerChevronWrap}>
+          <Ionicons
+            name={isExpanded ? "chevron-up" : "chevron-down"}
+            size={18}
+            color={svaColors.text.secondary}
+          />
+        </View>
       </Pressable>
 
       {isExpanded && <View style={styles.divider} />}
@@ -112,35 +105,27 @@ export function MealPlanDayCard({
             {mealRows.length > 0 ? (
               mealRows.map((meal) => (
                 <View key={meal.mealType} style={styles.mealRow}>
-                  <View style={styles.mealImageWrap}>
-                    {renderMealImage(
-                      meal.image,
-                      styles,
-                      svaColors.text.inverse
-                    )}
-                  </View>
-
                   <View style={styles.mealCopy}>
                     <Text style={styles.mealType} numberOfLines={1}>
-                      {formatMealType(meal.mealType)}
+                      {apiMealTypeToLabel(meal.mealType)}
                     </Text>
                     <Text style={styles.mealName} numberOfLines={2}>
                       {meal.recipeName}
                     </Text>
                   </View>
 
-                  {!isPast && (
+                  {onOpenRecipe && (meal.recipeId || meal.recipeSlug) && (
                     <TouchableOpacity
                       accessibilityRole="button"
-                      accessibilityLabel={`Change ${formatMealType(
+                      accessibilityLabel={`Open ${apiMealTypeToLabel(
                         meal.mealType
-                      )}`}
-                      onPress={() => onEditMeal(meal.mealType)}
+                      )} recipe`}
+                      onPress={() => onOpenRecipe(meal)}
                       activeOpacity={0.7}
-                      style={styles.editButton}
+                      style={styles.actionButton}
                     >
                       <Ionicons
-                        name="pencil-outline"
+                        name="chevron-forward"
                         size={18}
                         color={svaColors.text.secondary}
                       />
@@ -168,12 +153,21 @@ export function MealPlanDayCard({
               onPress={onSharePlan}
               style={styles.shareButton}
             >
+              <View style={styles.shareContent}>
+                <View style={styles.shareIconWrap}>
+                  <Ionicons
+                    name="share-social-outline"
+                    size={16}
+                    color={svaColors.text.primary}
+                  />
+                </View>
+                <Text style={styles.shareText}>Share Plan</Text>
+              </View>
               <Ionicons
-                name="share-social-outline"
-                size={18}
-                color={svaColors.text.primary}
+                name="arrow-forward"
+                size={16}
+                color={svaColors.text.secondary}
               />
-              <Text style={styles.shareText}>Share Plan</Text>
             </TouchableOpacity>
           ) : null}
         </View>
@@ -181,39 +175,6 @@ export function MealPlanDayCard({
     </MealCardSurface>
   );
 }
-
-function renderMealImage(
-  image: string | ImageSourcePropType | null | undefined,
-  styles: ReturnType<typeof styling>,
-  fallbackIconColor: string
-) {
-  if (image) {
-    return (
-      <Image
-        source={normalizeImageSource(image)}
-        style={styles.mealImage}
-        contentFit="cover"
-        transition={120}
-      />
-    );
-  }
-
-  return (
-    <View style={styles.mealImageFallback}>
-      <Ionicons
-        name="restaurant-outline"
-        size={20}
-        color={fallbackIconColor}
-      />
-    </View>
-  );
-}
-
-const normalizeImageSource = (
-  source: string | ImageSourcePropType
-): ImageSourcePropType => {
-  return typeof source === "string" ? { uri: source } : source;
-};
 
 const styling = (
   theme: SvaColorSet,
@@ -226,118 +187,125 @@ const styling = (
     card: {
       marginBottom: spacing.md,
       overflow: "hidden",
+      shadowColor: theme.bg.base,
+      shadowOpacity: 0.18,
+      shadowRadius: 18,
+      shadowOffset: { width: 0, height: 10 },
+      elevation: 6,
     },
     header: {
       flexDirection: "row",
-      alignItems: "center",
+      alignItems: "flex-start",
       justifyContent: "space-between",
       gap: spacing.md,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.lg,
+      paddingBottom: spacing.md,
     },
     headerPressed: {
-      opacity: 0.96,
+      opacity: 0.94,
     },
     headerTextBlock: {
       flex: 1,
-      gap: 6,
+      gap: spacing.sm,
     },
     title: {
-      ...(svaTypography?.textStyle.title ?? typography.bodyStrong),
+      ...(svaTypography?.textStyle.heading2 ?? typography.h3),
       color: theme.text.primary,
-      fontSize: 18,
     },
     statusRow: {
+      alignSelf: "flex-start",
       flexDirection: "row",
       alignItems: "center",
-      gap: 6,
+      gap: spacing.xs + 2,
+      paddingHorizontal: spacing.sm + 4,
+      paddingVertical: spacing.xs + 3,
+      borderRadius: tokens.radius.chip,
+      backgroundColor: theme.bg.subtle,
+      borderWidth: tokens.border.hairline,
+      borderColor: theme.border.default,
     },
     statusDot: {
-      width: 6,
-      height: 6,
-      borderRadius: 3,
+      width: 7,
+      height: 7,
+      borderRadius: 99,
     },
     statusText: {
       ...(svaTypography?.textStyle.authTinyLabel ?? typography.caption),
-      fontSize: 11,
-      letterSpacing: 1,
+      letterSpacing: 1.2,
       textTransform: "uppercase",
     },
+    headerChevronWrap: {
+      width: 36,
+      height: 36,
+      borderRadius: tokens.radius.button,
+      backgroundColor: theme.bg.subtle,
+      borderWidth: tokens.border.hairline,
+      borderColor: theme.border.default,
+      justifyContent: "center",
+      alignItems: "center",
+      marginTop: 2,
+    },
     divider: {
-      height: 1,
+      height: tokens.border.hairline,
       backgroundColor: theme.divider,
-      marginHorizontal: spacing.md,
+      marginHorizontal: spacing.lg,
+      opacity: 0.5,
     },
     body: {
-      paddingHorizontal: spacing.md,
+      paddingHorizontal: spacing.lg,
       paddingTop: spacing.md,
-      paddingBottom: spacing.md,
+      paddingBottom: spacing.lg,
     },
     mealsList: {
-      gap: spacing.sm,
+      gap: spacing.md,
     },
     mealRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: spacing.sm,
-      padding: spacing.xs,
+      gap: spacing.md,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
       backgroundColor: theme.bg.subtle,
-      borderRadius: tokens.radius.input,
+      borderRadius: tokens.radius.card,
       borderWidth: tokens.border.hairline,
       borderColor: theme.border.default,
     },
-    mealImageWrap: {
-      width: 56,
-      height: 56,
-      borderRadius: 18,
-      overflow: "hidden",
-      backgroundColor: theme.surface.raised,
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    mealImage: {
-      width: "100%",
-      height: "100%",
-    },
-    mealImageFallback: {
-      width: "100%",
-      height: "100%",
-      justifyContent: "center",
-      alignItems: "center",
-      backgroundColor: theme.brand.primary,
-    },
     mealCopy: {
       flex: 1,
-      gap: 2,
-      paddingVertical: spacing.xs,
+      gap: spacing.xs + 2,
+      paddingRight: spacing.sm,
     },
     mealType: {
       ...(svaTypography?.textStyle.authTinyLabel ?? typography.caption),
       color: theme.text.secondary,
       textTransform: "uppercase",
-      letterSpacing: 1.2,
+      letterSpacing: 1.6,
     },
     mealName: {
       ...(svaTypography?.textStyle.bodyMedium ?? typography.bodyStrong),
       color: theme.text.primary,
-      fontSize: 15,
-      lineHeight: 20,
     },
-    editButton: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: theme.interaction.pressed,
+    actionButton: {
+      width: 40,
+      height: 40,
+      borderRadius: tokens.radius.button,
+      backgroundColor: theme.surface.raised,
+      borderWidth: tokens.border.hairline,
+      borderColor: theme.border.default,
       justifyContent: "center",
       alignItems: "center",
-      marginRight: spacing.xs,
     },
     emptyState: {
       flexDirection: "row",
       alignItems: "center",
       gap: spacing.sm,
-      paddingVertical: spacing.sm,
-      paddingHorizontal: spacing.xs,
+      paddingVertical: spacing.md,
+      paddingHorizontal: spacing.sm,
+      backgroundColor: theme.bg.subtle,
+      borderRadius: tokens.radius.card,
+      borderWidth: tokens.border.hairline,
+      borderColor: theme.border.default,
     },
     emptyText: {
       ...(svaTypography?.textStyle.subtitle ?? typography.caption),
@@ -346,19 +314,33 @@ const styling = (
     },
     shareButton: {
       marginTop: spacing.md,
-      minHeight: 44,
-      borderRadius: tokens.radius.input,
+      minHeight: 56,
+      borderRadius: tokens.radius.card,
       borderWidth: tokens.border.hairline,
       borderColor: theme.border.default,
-      backgroundColor: theme.bg.subtle,
+      backgroundColor: theme.surface.raised,
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: spacing.md,
       gap: spacing.sm,
+    },
+    shareContent: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+    },
+    shareIconWrap: {
+      width: 32,
+      height: 32,
+      borderRadius: tokens.radius.button,
+      backgroundColor: theme.bg.subtle,
+      justifyContent: "center",
+      alignItems: "center",
     },
     shareText: {
       ...(svaTypography?.textStyle.authActionLabel ?? typography.button),
       color: theme.text.primary,
-      fontSize: 13,
+      letterSpacing: 0.2,
     },
   });

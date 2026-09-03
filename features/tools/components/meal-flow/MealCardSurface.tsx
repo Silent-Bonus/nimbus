@@ -2,7 +2,7 @@ import React, { useContext, useMemo } from "react";
 import { View, StyleSheet, type StyleProp, type ViewStyle } from "react-native";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { SvaColorSet } from "@/theme/types";
+import type { SvaColorSet, SvaTokens } from "@/theme/types";
 
 export type MealCardTone =
   | "surface"
@@ -32,33 +32,36 @@ export function MealCardSurface({
   borderStyle,
   testID,
 }: MealCardSurfaceProps) {
-  const { svaColors } = useContext(ThemeContext);
-  const styles = useMemo(() => styling(svaColors, radius), [svaColors, radius]);
+  const { svaColors, tokens } = useContext(ThemeContext);
+  const styles = useMemo(
+    () => styling(svaColors, radius, tokens),
+    [svaColors, radius, tokens]
+  );
   const toneStyle = useMemo<ViewStyle>(() => {
     switch (tone) {
       case "muted":
         return {
           backgroundColor: svaColors.bg.subtle,
           borderColor: svaColors.border.default,
-          borderWidth: 1,
+          borderWidth: tokens.border.hairline,
         };
       case "raised":
         return {
           backgroundColor: svaColors.surface.raised,
           borderColor: svaColors.border.default,
-          borderWidth: 1,
+          borderWidth: tokens.border.hairline,
         };
       case "accent":
         return {
           backgroundColor: svaColors.brand.subtle,
           borderColor: svaColors.brand.primary,
-          borderWidth: 1,
+          borderWidth: tokens.border.hairline,
         };
       case "dashed":
         return {
           backgroundColor: svaColors.surface.base,
           borderColor: svaColors.border.default,
-          borderWidth: 2,
+          borderWidth: tokens.border.strong,
           borderStyle: "dashed",
         };
       case "surface":
@@ -66,10 +69,10 @@ export function MealCardSurface({
         return {
           backgroundColor: svaColors.surface.base,
           borderColor: svaColors.border.default,
-          borderWidth: 1,
+          borderWidth: tokens.border.hairline,
         };
     }
-  }, [svaColors, tone]);
+  }, [svaColors, tone, tokens]);
 
   return (
     <View
@@ -88,11 +91,12 @@ export function MealCardSurface({
   );
 }
 
-const styling = (theme: SvaColorSet, radius: number) =>
+const styling = (theme: SvaColorSet, radius: number, tokens: SvaTokens) =>
   StyleSheet.create({
     base: {
       alignSelf: "stretch",
       borderRadius: radius,
+      borderWidth: tokens.border.hairline,
       backgroundColor: theme.surface.base,
     },
   });

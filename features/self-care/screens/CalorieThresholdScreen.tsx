@@ -84,7 +84,6 @@ export default function CalorieThresholdScreen() {
     () => styling(newTheme, spacing, t, heroWidth, heroHeight),
     [newTheme, spacing, t, heroWidth, heroHeight]
   );
-
   return (
     <ScreenView padding={0} bgColor={newTheme.background} style={styles.screen}>
       <StatusBar style="light" />
@@ -135,10 +134,7 @@ export default function CalorieThresholdScreen() {
           {calorieTiers.map((tier) => (
             <View
               key={tier.key}
-              style={[
-                styles.card,
-                tier.highlight && styles.cardHighlight,
-              ]}
+              style={[styles.card, tier.highlight && styles.cardHighlight]}
             >
               <LinearGradient
                 colors={
