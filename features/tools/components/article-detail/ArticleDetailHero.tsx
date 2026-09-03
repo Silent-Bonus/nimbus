@@ -79,9 +79,9 @@ const styling = (
     card: {
       borderRadius: 28,
       overflow: "hidden",
-      backgroundColor: colors.surface.base,
+      backgroundColor: colors.surface.raised,
       borderWidth: 1,
-      borderColor: colors.border.subtle,
+      borderColor: colors.border.muted,
       minHeight: 360,
       shadowColor: colors.shadow.default,
       shadowOpacity: 0.34,
@@ -157,9 +157,9 @@ const styling = (
       borderRadius: 17,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: colors.bg.subtle,
+      backgroundColor: colors.surface.base,
       borderWidth: 1,
-      borderColor: colors.border.subtle,
+      borderColor: colors.border.muted,
     },
     authorCopy: {
       flex: 1,

@@ -64,6 +64,14 @@ export const API_ENDPOINTS = {
 
   getWorkoutVideoList: `${BASE_URL}/api/v1/media/media-assets/?type=video`,
   getNewsletterList: `${BASE_URL}/api/v1/newsletter/`,
+  getNewsletterCategories: `${BASE_URL}/api/v1/newsletter/categories/`,
+  getNewsletterFavorites: `${BASE_URL}/api/v1/newsletter/favorites/`,
+  addNewsletterFavorite: (slug: number | string) =>
+    `${BASE_URL}/api/v1/newsletter/${slug}/favorite/`,
+  getNewsletterReviews: (slug: number | string) =>
+    `${BASE_URL}/api/v1/newsletter/${slug}/reviews/`,
+  submitNewsletterReview: (slug: number | string) =>
+    `${BASE_URL}/api/v1/newsletter/${slug}/reviews/`,
   getNewsletterDetails: (slug: number | string) =>
     `${BASE_URL}/api/v1/newsletter/${slug}/`,
   getRecipeList: `${BASE_URL}/api/v1/recipes/`,

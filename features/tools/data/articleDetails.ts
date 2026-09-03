@@ -14,6 +14,7 @@ export type ArticleReflectionPrompt = {
   prompt: string;
   helper: string;
   actionLabel: string;
+  actionUrl?: string;
 };
 
 export type ArticleRecommendation = {

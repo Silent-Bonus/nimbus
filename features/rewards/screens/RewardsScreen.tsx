@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
 import {
+  type DimensionValue,
   Platform,
   ScrollView,
   StyleSheet,
@@ -199,7 +200,7 @@ export const RewardsScreen = () => {
 
   const content = useMemo(() => createMilestoneContent(svaColors), [svaColors]);
 
-  const fillWidth = `${Math.max(
+  const fillWidth: DimensionValue = `${Math.max(
     0,
     Math.min(content.hero.progressPercent, 100)
   )}%`;

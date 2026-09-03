@@ -4,8 +4,6 @@ import {
   // ArticleDataDetails,
   ArticleListResponse,
   AudioBookListResponse,
-  NewsletterDetailResponse,
-  NewsletterListResponse,
   ShortVideoListResponse,
   SoundscapeListResponse,
   bodyShapeCalculatorRequest,
@@ -34,17 +32,6 @@ export const getArticleList = async (
   }
 };
 
-export const getNewsletterList = async (): Promise<NewsletterListResponse> => {
-  try {
-    const response: AxiosResponse<NewsletterListResponse> = await axios.get(
-      API_ENDPOINTS.getNewsletterList
-    );
-    return response.data;
-  } catch (error: any) {
-    throw error.response ? error.response.data : error.message;
-  }
-};
-
 //  TODO: Need to integrate
 export const getArticleDetails = async (id: number): Promise<any> => {
   try {
@@ -52,19 +39,6 @@ export const getArticleDetails = async (id: number): Promise<any> => {
       `${API_ENDPOINTS.getArticleDetails}${id}/`
     );
     return response.data; // Return the list data
-  } catch (error: any) {
-    throw error.response ? error.response.data : error.message;
-  }
-};
-
-export const getNewsletterDetails = async (
-  slug: number | string
-): Promise<NewsletterDetailResponse> => {
-  try {
-    const response: AxiosResponse<NewsletterDetailResponse> = await axios.get(
-      API_ENDPOINTS.getNewsletterDetails(slug)
-    );
-    return response.data;
   } catch (error: any) {
     throw error.response ? error.response.data : error.message;
   }

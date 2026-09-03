@@ -32,9 +32,9 @@ const styling = (
       paddingHorizontal: spacing.lg,
       paddingVertical: spacing.lg,
       borderRadius: 24,
-      backgroundColor: colors.surface.base,
+      backgroundColor: colors.surface.raised,
       borderWidth: 1,
-      borderColor: colors.border.subtle,
+      borderColor: colors.border.muted,
     },
     bar: {
       width: 2,

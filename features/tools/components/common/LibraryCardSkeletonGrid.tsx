@@ -1,11 +1,11 @@
 import { View, StyleSheet } from "react-native";
 
-type RoutineSkeletonProps = {
+type LibraryCardSkeletonGridProps = {
   spacing: any;
   theme: any;
 };
 
-export const RoutineSkeletonGrid: React.FC<RoutineSkeletonProps> = ({
+export const LibraryCardSkeletonGrid: React.FC<LibraryCardSkeletonGridProps> = ({
   spacing,
   theme,
 }) => {
