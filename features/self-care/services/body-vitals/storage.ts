@@ -10,17 +10,18 @@ import {
   clampHeightCm,
   formatFlexibleDecimal,
   parseMetricNumber,
-} from "@/features/self-care/components/body-vitals/utils";
-import type { SomaticGender } from "@/features/self-care/components/body-vitals/types";
-import { normalizeBodyVitalsContext } from "@/features/self-care/services/bodyVitalsNormalizer";
+} from "@/features/self-care/utils/bodyVitalsUtils";
+import { normalizeBodyVitalsContext } from "./normalizer";
 import type {
   BodyVitalsActivityLevel,
   BodyVitalsContext,
   BodyVitalsFormState,
+  SomaticGender,
 } from "@/features/self-care/types/bodyVitals";
 
 const BODY_VITALS_CONTEXT_KEY = StoreKey.BODY_VITALS_CONTEXT_KEY;
 
+// Default draft values keep the form stable before persisted context is loaded.
 export const DEFAULT_BODY_VITALS_FORM: BodyVitalsFormState = {
   gender: "masculine",
   age: "32",

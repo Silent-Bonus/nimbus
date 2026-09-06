@@ -3,9 +3,11 @@ import { StyleSheet, View } from "react-native";
 import Slider from "@react-native-community/slider";
 
 import ThemeContext from "@/contexts/ThemeContext";
+import {
+  HEIGHT_MAX_CM,
+  HEIGHT_MIN_CM,
+} from "@/features/self-care/utils/bodyVitalsUtils";
 import type { ColorSet, Spacing } from "@/theme/types";
-
-import { HEIGHT_MAX_CM, HEIGHT_MIN_CM } from "./utils";
 
 type HeightSliderProps = {
   value: number;

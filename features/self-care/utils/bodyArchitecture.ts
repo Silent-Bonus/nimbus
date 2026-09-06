@@ -1,3 +1,38 @@
+import { formatFlexibleDecimal } from "@/features/self-care/utils/bodyVitalsUtils";
+import type {
+  BodyVitalsBodyShape,
+  BodyVitalsContext,
+  BodyVitalsMeasurements,
+} from "@/features/self-care/types/bodyVitals";
+
+export type StatCard = {
+  label: string;
+  value: string;
+};
+
+export type MeasurementFormState = {
+  bust_cm: string;
+  waist_cm: string;
+  high_hip_cm: string;
+  low_hip_cm: string;
+};
+
+export type ShapeResult = {
+  rawShape: string | null;
+  label: string;
+  description: string;
+  movementStrategy: string;
+  confidence: number | null;
+  metabolicInsight: string | null;
+};
+
+export const DEFAULT_MEASUREMENT_FORM: MeasurementFormState = {
+  bust_cm: "",
+  waist_cm: "",
+  high_hip_cm: "",
+  low_hip_cm: "",
+};
+
 export function formatLabelForHero(value: string) {
   return value.toUpperCase();
 }
@@ -107,4 +142,133 @@ export function getBodyShapeMovementStrategy(value: string | null | undefined) {
   };
 
   return strategies[key] ?? strategies.undefined;
+}
+
+export function formatMeasurementInput(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return "";
+  }
+
+  return formatFlexibleDecimal(value, 1);
+}
+
+export function toMeasurementNumber(value: string) {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function resolveMeasurementForm(
+  context: BodyVitalsContext | null | undefined
+): MeasurementFormState {
+  const measurements: BodyVitalsMeasurements | null | undefined =
+    context?.inputs?.measurements ??
+    context?.latest_snapshot?.outputs?.body_shape?.measurements ??
+    context?.profile?.measurements ??
+    null;
+
+  return {
+    bust_cm: formatMeasurementInput(measurements?.bust_cm),
+    waist_cm: formatMeasurementInput(measurements?.waist_cm),
+    high_hip_cm: formatMeasurementInput(measurements?.high_hip_cm),
+    low_hip_cm: formatMeasurementInput(measurements?.low_hip_cm),
+  };
+}
+
+export function buildShapeResult(
+  shape: BodyVitalsBodyShape | string | null | undefined,
+  metabolicInsight?: string | null
+): ShapeResult {
+  const shapeValue =
+    typeof shape === "string" ? shape : shape?.label ?? shape?.code ?? null;
+
+  return {
+    rawShape:
+      typeof shape === "string" ? shape : shape?.code ?? shape?.label ?? null,
+    label: formatBodyShapeLabel(shapeValue),
+    description: getBodyShapeDescription(shapeValue),
+    movementStrategy:
+      typeof shape === "string"
+        ? getBodyShapeMovementStrategy(shape)
+        : shape?.movement_strategy ?? getBodyShapeMovementStrategy(shapeValue),
+    confidence: typeof shape === "string" ? null : shape?.confidence ?? null,
+    metabolicInsight: metabolicInsight ?? null,
+  };
+}
+
+export function resolveSavedShapeResult(
+  context: BodyVitalsContext | null
+): ShapeResult | null {
+  const savedShape =
+    context?.latest_snapshot?.outputs?.body_shape ??
+    (context?.profile?.body_shape_label || context?.profile?.body_shape_code
+      ? {
+          label: context.profile?.body_shape_label,
+          code: context.profile?.body_shape_code,
+          confidence: context.profile?.body_shape_confidence,
+          movement_strategy: context.profile?.movement_strategy,
+        }
+      : null) ??
+    (context?.saved_summary?.body_shape_label ||
+    context?.saved_summary?.body_shape_code
+      ? {
+          label: context.saved_summary?.body_shape_label,
+          code: context.saved_summary?.body_shape_code,
+          confidence: context.saved_summary?.body_shape_confidence,
+          movement_strategy: context.saved_summary?.movement_strategy,
+        }
+      : null);
+
+  if (!savedShape) {
+    return null;
+  }
+
+  return buildShapeResult(
+    savedShape,
+    context?.latest_snapshot?.outputs?.metabolic_insight ??
+      context?.profile?.metabolic_insight ??
+      context?.saved_summary?.metabolic_insight ??
+      null
+  );
+}
+
+export function resolveResultStrategy(
+  calculatedResult: ShapeResult | null,
+  savedShape: BodyVitalsBodyShape | null,
+  context: BodyVitalsContext | null
+) {
+  if (calculatedResult) {
+    return calculatedResult.movementStrategy;
+  }
+
+  return (
+    savedShape?.movement_strategy ??
+    context?.profile?.movement_strategy ??
+    getBodyShapeMovementStrategy(savedShape?.label ?? savedShape?.code)
+  );
+}
+
+export function resolveResultWisdom(
+  calculatedResult: ShapeResult | null,
+  context: BodyVitalsContext | null
+) {
+  if (calculatedResult) {
+    return (
+      calculatedResult.metabolicInsight ??
+      `Your current blueprint reads as ${calculatedResult.label.toLowerCase()}. ${
+        calculatedResult.movementStrategy
+      }`
+    );
+  }
+
+  return (
+    context?.latest_snapshot?.outputs?.metabolic_insight ??
+    context?.profile?.metabolic_insight ??
+    "Add your measurements and calculate your current body blueprint to unlock a more precise interpretation."
+  );
 }

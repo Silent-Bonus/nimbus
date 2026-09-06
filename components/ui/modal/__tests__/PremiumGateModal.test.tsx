@@ -56,26 +56,26 @@ const hasText = (tree: renderer.ReactTestRenderer, value: string) =>
     .some((node) => getTextContent(node) === value);
 
 function renderModal(
-  props: React.ComponentProps<typeof PremiumGateModal> = {} as any
+  overrides: Partial<React.ComponentProps<typeof PremiumGateModal>> = {}
 ) {
   let tree!: renderer.ReactTestRenderer;
+  const defaultProps: React.ComponentProps<typeof PremiumGateModal> = {
+    visible: true,
+    onClose: jest.fn(),
+    onUpgrade: jest.fn(),
+    title: "Nimbus Plus required",
+    subtitle: "Preview the manifest, then unlock the full stack.",
+    highlights: [
+      "Full protocol stack and timing cues",
+      "Expanded context and reminders",
+      "Premium purchase flow",
+    ],
+  };
 
   act(() => {
     tree = renderer.create(
       <ThemeContext.Provider value={themeValue as any}>
-        <PremiumGateModal
-          visible
-          onClose={jest.fn()}
-          onUpgrade={jest.fn()}
-          title="Nimbus Plus required"
-          subtitle="Preview the manifest, then unlock the full stack."
-          highlights={[
-            "Full protocol stack and timing cues",
-            "Expanded context and reminders",
-            "Premium purchase flow",
-          ]}
-          {...props}
-        />
+        <PremiumGateModal {...defaultProps} {...overrides} />
       </ThemeContext.Provider>
     );
   });

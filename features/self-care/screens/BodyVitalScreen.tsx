@@ -26,13 +26,7 @@ import AppHeader from "@/components/layout/AppHeader";
 import PremiumBanner from "@/components/ui/PremiumBanner";
 import { ROUTES } from "@/constants/routes";
 import { useNimbusToast } from "@/components/ui/toast/useNimbusToast";
-import { useAuth } from "@/contexts/AuthContext";
 import { resolveBodyVitalsTypography } from "@/features/self-care/utils/bodyVitalsTheme";
-import {
-  calculateCalorieVitals,
-  calculateProteinVitals,
-  patchBodyVitalsProfile,
-} from "@/features/auth/services/loginService";
 import type { ColorSet, Spacing } from "@/theme/types";
 
 import {
@@ -42,32 +36,29 @@ import {
   InsightCard,
   NumericMetricTile,
   NumericMetricTileFooter,
+} from "@/features/self-care/components/body-vitals";
+import type { BodyVitalsContext } from "@/features/self-care/types/bodyVitals";
+import {
+  saveAndRefreshBodyVitals,
+} from "@/features/self-care/services/body-vitals/calculations";
+import {
+  DEFAULT_BODY_VITALS_FORM,
+  getStoredBodyVitalsContext,
+  resolveBodyVitalsFormState,
+} from "@/features/self-care/services/body-vitals/storage";
+import {
+  buildCaloriePanelRouteParams,
+  resolveCaloriePanelDataFromContext,
+  buildProteinPanelRouteParams,
+  resolveProteinPanelDataFromContext,
+} from "@/features/self-care/services/body-vitals/panels";
+import {
   clampHeightCm,
   parseMetricNumber,
   sanitizeDecimalInput,
   sanitizeIntegerInput,
   stepWeight,
-} from "@/features/self-care/components/body-vitals";
-import type { BodyVitalsContext } from "@/features/self-care/types/bodyVitals";
-import {
-  buildBodyVitalsCalculatorPayload,
-  buildBodyVitalsProfilePatchPayload,
-  mergeBodyVitalsCalculationResponses,
-  normalizeBodyVitalsCalculationResponse,
-} from "@/features/self-care/services/bodyVitalsService";
-import {
-  DEFAULT_BODY_VITALS_FORM,
-  getStoredBodyVitalsContext,
-  resolveBodyVitalsFormState,
-} from "@/features/self-care/services/bodyVitalsStorage";
-import {
-  buildCaloriePanelRouteParams,
-  resolveCaloriePanelDataFromContext,
-} from "@/features/self-care/services/caloriePanelService";
-import {
-  buildProteinPanelRouteParams,
-  resolveProteinPanelDataFromContext,
-} from "@/features/self-care/services/proteinPanelService";
+} from "@/features/self-care/utils/bodyVitalsUtils";
 
 export default function BodyVitalScreen() {
   const { width: windowWidth } = useWindowDimensions();
@@ -82,11 +73,11 @@ export default function BodyVitalScreen() {
     [newTheme, spacing, t, windowWidth]
   );
 
-  const { getUserDetails } = useAuth();
   const toast = useNimbusToast();
   const [savedVitalsContext, setSavedVitalsContext] =
     useState<BodyVitalsContext | null>(null);
   const [form, setForm] = useState(DEFAULT_BODY_VITALS_FORM);
+  const [isHydrating, setIsHydrating] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -95,16 +86,24 @@ export default function BodyVitalScreen() {
     const loadSavedVitals = async () => {
       // `/users/me` is mirrored into storage, so hydrate the screen from cache first
       // and let later refreshes replace it with the latest normalized backend state.
-      const cachedVitals = await getStoredBodyVitalsContext();
+      try {
+        const cachedVitals = await getStoredBodyVitalsContext();
 
-      if (!active) {
-        return;
-      }
+        if (!active) {
+          return;
+        }
 
-      setSavedVitalsContext(cachedVitals);
+        setSavedVitalsContext(cachedVitals);
 
-      if (cachedVitals) {
-        setForm(resolveBodyVitalsFormState(cachedVitals));
+        if (cachedVitals) {
+          setForm(resolveBodyVitalsFormState(cachedVitals));
+        }
+      } catch (error) {
+        console.warn("body vitals hydration error", error);
+      } finally {
+        if (active) {
+          setIsHydrating(false);
+        }
       }
     };
 
@@ -202,64 +201,17 @@ export default function BodyVitalScreen() {
     setIsSaving(true);
 
     try {
-      // The profile patch keeps the user's core vitals in sync. The backend does not
-      // support `calculation_type: "all"` yet, so keep the supported protein + calories
-      // flow active for now.
-      const contextForPayload =
-        savedVitalsContext ?? (await getStoredBodyVitalsContext());
-      const profilePayload = buildBodyVitalsProfilePatchPayload(
+      // Save, calculate, and refresh the persisted vitals cache in one service
+      // call so the screen only has to react to the refreshed context.
+      const {
+        normalizedResult,
+        refreshedContext,
+      } = await saveAndRefreshBodyVitals(
         form,
-        contextForPayload
-      );
-      const proteinPayload = buildBodyVitalsCalculatorPayload(
-        form,
-        contextForPayload,
-        "protein"
-      );
-      const caloriePayload = buildBodyVitalsCalculatorPayload(
-        form,
-        contextForPayload,
-        "calories"
-      );
-      await patchBodyVitalsProfile(profilePayload);
-
-      // TODO: Undo this temporary split once the backend supports
-      // `calculation_type: "all"` on `/api/v1/vitals/calculate/`.
-      // const calculationPayload = {
-      //   calculation_type: "all",
-      //   save_to_profile: true,
-      // } as const;
-      // const calculationResult = await calculateBodyVitals(calculationPayload);
-      // const normalizedResult = normalizeBodyVitalsCalculationResponse(
-      //   calculationResult,
-      //   "all",
-      //   contextForPayload
-      // );
-
-      const [proteinResult, calorieResult] = await Promise.all([
-        calculateProteinVitals(proteinPayload),
-        calculateCalorieVitals(caloriePayload),
-      ]);
-      const normalizedProteinResult = normalizeBodyVitalsCalculationResponse(
-        proteinResult,
-        "protein",
-        contextForPayload
-      );
-      const normalizedCalorieResult = normalizeBodyVitalsCalculationResponse(
-        calorieResult,
-        "calories",
-        contextForPayload
-      );
-      const normalizedResult = mergeBodyVitalsCalculationResponses(
-        normalizedProteinResult,
-        normalizedCalorieResult
+        savedVitalsContext ?? (await getStoredBodyVitalsContext())
       );
 
       if (normalizedResult.success) {
-        // AuthContext writes the fresh `/users/me` payload into AsyncStorage and
-        // keeps the vitals cache in sync for downstream screens.
-        await getUserDetails?.();
-        const refreshedContext = await getStoredBodyVitalsContext();
         setSavedVitalsContext(refreshedContext);
 
         if (refreshedContext) {
@@ -289,7 +241,19 @@ export default function BodyVitalScreen() {
     } finally {
       setIsSaving(false);
     }
-  }, [form, getUserDetails, isSaving, savedVitalsContext, toast]);
+  }, [form, isSaving, savedVitalsContext, toast]);
+
+  if (isHydrating) {
+    return (
+      <ScreenView padding={0} bgColor={newTheme.background} style={styles.screen}>
+        <StatusBar style="light" />
+        <View style={styles.loadingState}>
+          <ActivityIndicator size="large" color={newTheme.accent} />
+          <Text style={styles.loadingText}>Loading your saved vitals...</Text>
+        </View>
+      </ScreenView>
+    );
+  }
 
   return (
     <ScreenView padding={0} bgColor={newTheme.background} style={styles.screen}>
@@ -529,6 +493,18 @@ const styling = (
     keyboardAvoiding: {
       flex: 1,
     },
+    loadingState: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: spacing.lg,
+      gap: spacing.sm,
+    },
+    loadingText: {
+      ...t.body,
+      color: theme.textSecondary,
+      textAlign: "center",
+    },
     headerTitle: {
       ...t.screenTitle,
       color: theme.textPrimary,
@@ -610,7 +586,6 @@ const styling = (
     bmrPillValue: {
       ...t.action,
       color: theme.textPrimary,
-      letterSpacing: 0.2,
     },
     metabolicText: {
       ...t.body,
@@ -660,7 +635,6 @@ const styling = (
     primaryButtonText: {
       color: theme.buttonPrimaryText,
       ...t.action,
-      fontWeight: "700",
-      letterSpacing: 1.4,
+      letterSpacing: t.action.letterSpacing ?? 1.1,
     },
   });

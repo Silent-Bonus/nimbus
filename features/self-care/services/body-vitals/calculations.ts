@@ -1,68 +1,45 @@
 import {
+  calculateCalorieVitals,
+  calculateProteinVitals,
+  getUserDetails,
+  patchBodyVitalsProfile,
+} from "@/features/auth/services/loginService";
+import { syncAndPublishUserProfile } from "@/features/auth/services/userProfileSyncService";
+import {
   clampHeightCm,
   getActivityOption,
   parseMetricNumber,
-} from "@/features/self-care/components/body-vitals/utils";
+} from "@/features/self-care/utils/bodyVitalsUtils";
 import type {
   BodyVitalsCalculationApiResponse,
-  BodyVitalsAllCalculationPayload,
   BodyVitalsBodyShapeCalculationPayload,
   BodyVitalsCalculationPayload,
   BodyVitalsCalculationResults,
   BodyVitalsApiGender,
-  BodyVitalsCalculationType,
   BodyVitalsCalorieGoal,
+  BodyVitalsCalculationType,
   BodyVitalsContext,
   BodyVitalsDietGoal,
   BodyVitalsFormState,
   BodyVitalsNormalizedCalculationResponse,
   BodyVitalsProfilePatchPayload,
   BodyVitalsProteinGoal,
-  BodyVitalsUpdatePayload,
 } from "@/features/self-care/types/bodyVitals";
+import {
+  DEFAULT_BODY_SHAPE,
+  DEFAULT_BMR,
+  DEFAULT_CALORIE_GOAL,
+  DEFAULT_DIET_GOAL,
+  DEFAULT_PROTEIN_GOAL,
+} from "./defaults";
+import {
+  getStoredBodyVitalsContext,
+  resolveBodyVitalsFormState,
+  DEFAULT_BODY_VITALS_FORM,
+} from "./storage";
 
-import { DEFAULT_BODY_VITALS_FORM, resolveBodyVitalsFormState } from "./bodyVitalsStorage";
-
-const DEFAULT_PROTEIN_GOAL: BodyVitalsProteinGoal = {
-  total_requirement: 155,
-  meal_one: 35,
-  meal_two: 40,
-  meal_three: 33,
-  unit: "gm",
-  protein_target_g: 108,
-  protein_per_meal_g: 27,
-  tip: "Aim for 25 to 35 g protein per meal and add a recovery snack if training volume is high.",
-};
-
-const DEFAULT_CALORIE_GOAL: BodyVitalsCalorieGoal = {
-  total_calorie: 1949,
-  maintenance_calories: 2199,
-  optimal_burn_calories: 1949,
-  build_calories: 2449,
-  maintaince: 2199,
-  burn: 1949,
-  build: 2449,
-  unit: "kcal",
-  tip: "This is a larger deficit. Watch recovery, hunger, and training performance closely.",
-};
-
-const DEFAULT_DIET_GOAL: BodyVitalsDietGoal = {
-  carbs_goal: 233,
-  fats_goal: 65,
-  fiber_goal: 27,
-  tip: "Use balanced carbs and fats, and keep fiber high enough to support satiety and digestion.",
-};
-
-const DEFAULT_BODY_SHAPE = {
-  code: "pear_hourglass_hybrid",
-  label: "Pear / Hourglass Hybrid",
-  confidence: 0.86,
-  movement_strategy:
-    "Blend glute activation with core work and balanced upper-body volume.",
-  measurements: null,
-};
-
-const DEFAULT_BMR = 1419;
+// These fallbacks keep panel and calculation flows usable while the API
+// response shape is still partially normalized client-side.
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -379,13 +356,6 @@ export function mapSomaticGenderToApiGender(
   return gender === "feminine" ? "female" : "male";
 }
 
-export function buildBodyVitalsSummaryPayload(): BodyVitalsAllCalculationPayload {
-  return {
-    calculation_type: "all",
-    save_to_profile: true,
-  };
-}
-
 export function buildBodyVitalsCalculatorPayload(
   form: BodyVitalsFormState,
   savedContext: BodyVitalsContext | null,
@@ -460,16 +430,70 @@ export function buildBodyVitalsProfilePatchPayload(
   };
 }
 
-export function buildBodyVitalsUpdatePayload(
+export async function refreshBodyVitalsContext() {
+  try {
+    const response = await getUserDetails();
+
+    if (!response?.success || !response.data) {
+      return await getStoredBodyVitalsContext();
+    }
+
+    const normalizedProfile = await syncAndPublishUserProfile(response.data);
+
+    return normalizedProfile?.vitals_context ?? (await getStoredBodyVitalsContext());
+  } catch (error) {
+    console.warn("body vitals refresh error", error);
+    return await getStoredBodyVitalsContext();
+  }
+}
+
+export async function saveAndRefreshBodyVitals(
   form: BodyVitalsFormState,
   savedContext: BodyVitalsContext | null
-): BodyVitalsUpdatePayload {
-  const vitals = resolveCommonVitals(form, savedContext);
+) {
+  const profilePayload = buildBodyVitalsProfilePatchPayload(form, savedContext);
+  const proteinPayload = buildBodyVitalsCalculatorPayload(
+    form,
+    savedContext,
+    "protein"
+  );
+  const caloriePayload = buildBodyVitalsCalculatorPayload(
+    form,
+    savedContext,
+    "calories"
+  );
+
+  await patchBodyVitalsProfile(profilePayload);
+
+  const [proteinResult, calorieResult] = await Promise.all([
+    calculateProteinVitals(proteinPayload),
+    calculateCalorieVitals(caloriePayload),
+  ]);
+  const normalizedProteinResult = normalizeBodyVitalsCalculationResponse(
+    proteinResult,
+    "protein",
+    savedContext
+  );
+  const normalizedCalorieResult = normalizeBodyVitalsCalculationResponse(
+    calorieResult,
+    "calories",
+    savedContext
+  );
+  const normalizedResult = mergeBodyVitalsCalculationResponses(
+    normalizedProteinResult,
+    normalizedCalorieResult
+  );
+
+  if (!normalizedResult.success) {
+    return {
+      normalizedResult,
+      refreshedContext: savedContext,
+    };
+  }
 
   return {
-    calculation_type: "all",
-    save_to_profile: true,
-    vitals,
+    normalizedResult,
+    refreshedContext: await refreshBodyVitalsContext(),
   };
 }
 

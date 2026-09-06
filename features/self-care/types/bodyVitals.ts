@@ -1,6 +1,5 @@
-import type { SomaticGender } from "@/features/self-care/components/body-vitals/types";
-
 export type BodyVitalsActivityLevel = "sedentary" | "active" | "optimal" | string;
+export type SomaticGender = "masculine" | "feminine";
 export type BodyVitalsApiGender = "male" | "female";
 export type BodyVitalsApiActivityLevel = "sedentary" | "active" | "optimal";
 export type BodyVitalsBodyShapeApiActivityLevel =

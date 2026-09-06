@@ -10,7 +10,10 @@ import {
 } from "react-native";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import { resolveBodyVitalsTypography } from "@/features/self-care/utils/bodyVitalsTheme";
+import {
+  resolveBodyVitalsTypography,
+  type BodyVitalsTypography,
+} from "@/features/self-care/utils/bodyVitalsTheme";
 import type { ColorSet, Spacing } from "@/theme/types";
 
 type MetricTileShellProps = {
@@ -65,7 +68,7 @@ export const MetricTileShell = ({
 const styling = (
   theme: ColorSet,
   spacing: Spacing,
-  t: ReturnType<typeof resolveBodyVitalsTypography>
+  t: BodyVitalsTypography
 ) =>
   StyleSheet.create({
     card: {

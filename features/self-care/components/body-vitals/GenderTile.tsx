@@ -2,11 +2,14 @@ import React, { useContext, useMemo } from "react";
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import { resolveBodyVitalsTypography } from "@/features/self-care/utils/bodyVitalsTheme";
+import {
+  resolveBodyVitalsTypography,
+  type BodyVitalsTypography,
+} from "@/features/self-care/utils/bodyVitalsTheme";
+import type { SomaticGender } from "@/features/self-care/types/bodyVitals";
 import type { ColorSet, Spacing } from "@/theme/types";
 
 import { MetricTileShell } from "./MetricTileShell";
-import type { SomaticGender } from "./types";
 
 type GenderTileProps = {
   value: SomaticGender;
@@ -64,7 +67,7 @@ export const GenderTile = ({ value, onChange, style }: GenderTileProps) => {
 const styling = (
   theme: ColorSet,
   spacing: Spacing,
-  t: ReturnType<typeof resolveBodyVitalsTypography>
+  t: BodyVitalsTypography
 ) =>
   StyleSheet.create({
     container: {

@@ -9,6 +9,6 @@ export const StoreKey = {
   WELCOME_SEEN_KEY: "welcome-seen",
   ONBOARDING_DONE_KEY: "onboarding-done",
   THEME_KEY: "theme",
-};
+} as const;
 
 export const ErrorMsg = {};

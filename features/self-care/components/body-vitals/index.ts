@@ -1,23 +1,11 @@
 export { ActivityLevelCard } from "./ActivityLevelCard";
+export { BodyVitalsTrendChart } from "./BodyVitalsTrendChart";
+export { BodyVitalsTrendFilterGroup } from "./BodyVitalsTrendFilterGroup";
+export { BodyVitalsTrendSummaryGrid } from "./BodyVitalsTrendSummaryGrid";
+export { BodyVitalsTrendTimelineCard } from "./BodyVitalsTrendTimelineCard";
 export { GenderTile } from "./GenderTile";
 export { HeightSlider } from "./HeightSlider";
 export { InsightCard } from "./InsightCard";
-export { MetricTileShell } from "./MetricTileShell";
+export { MeasurementInputRow } from "./MeasurementInputRow";
 export { NumericMetricTile, NumericMetricTileFooter } from "./NumericMetricTile";
-export type {
-  NumericMetricTileConfig,
-  SomaticGender,
-  SomaticInsight,
-  SomaticInsightKey,
-} from "./types";
-export {
-  calculateMaintenanceCalories,
-  calculateProteinTarget,
-  clampHeightCm,
-  deriveArchitecture,
-  formatFlexibleDecimal,
-  parseMetricNumber,
-  sanitizeDecimalInput,
-  sanitizeIntegerInput,
-  stepWeight,
-} from "./utils";
+export type { BodyVitalsTrendSummaryItem } from "./BodyVitalsTrendSummaryGrid";

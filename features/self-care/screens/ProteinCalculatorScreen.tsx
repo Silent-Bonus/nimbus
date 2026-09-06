@@ -16,7 +16,7 @@ import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import {
   buildProteinPanelMealSlots,
   resolveProteinPanelDataFromParams,
-} from "@/features/self-care/services/proteinPanelService";
+} from "@/features/self-care/services/body-vitals/panels";
 import { resolveBodyVitalsTypography } from "@/features/self-care/utils/bodyVitalsTheme";
 import type { ColorSet, Spacing } from "@/theme/types";
 

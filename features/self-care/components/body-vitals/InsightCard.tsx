@@ -4,7 +4,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import { resolveBodyVitalsTypography } from "@/features/self-care/utils/bodyVitalsTheme";
+import {
+  resolveBodyVitalsTypography,
+  type BodyVitalsTypography,
+} from "@/features/self-care/utils/bodyVitalsTheme";
 import type { ColorSet, Spacing } from "@/theme/types";
 
 type InsightCardProps = {
@@ -75,7 +78,7 @@ export const InsightCard = ({
 const styling = (
   theme: ColorSet,
   spacing: Spacing,
-  t: ReturnType<typeof resolveBodyVitalsTypography>
+  t: BodyVitalsTypography
 ) =>
   StyleSheet.create({
     card: {
@@ -126,13 +129,11 @@ const styling = (
       opacity: 0.75,
     },
     value: {
+      ...t.sectionTitle,
       marginTop: 2,
       color: theme.textPrimary,
-      fontFamily: t.sectionTitle.fontFamily,
       fontSize: 19,
       lineHeight: 24,
-      fontWeight: t.sectionTitle.fontWeight,
-      letterSpacing: t.sectionTitle.letterSpacing ?? -0.2,
     },
     chevron: {
       marginLeft: spacing.sm,

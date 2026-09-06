@@ -7,11 +7,17 @@ import {
 } from "react-native";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import { resolveBodyVitalsTypography } from "@/features/self-care/utils/bodyVitalsTheme";
+import {
+  resolveBodyVitalsTypography,
+  type BodyVitalsTypography,
+} from "@/features/self-care/utils/bodyVitalsTheme";
+import {
+  ACTIVITY_LEVEL_OPTIONS,
+  getActivityOption,
+} from "@/features/self-care/utils/bodyVitalsUtils";
 import type { ColorSet, Spacing } from "@/theme/types";
 
 import { MetricTileShell } from "./MetricTileShell";
-import { ACTIVITY_LEVEL_OPTIONS, getActivityOption } from "./utils";
 
 type ActivityLevelCardProps = {
   value: number;
@@ -82,7 +88,7 @@ export const ActivityLevelCard = ({
 const styling = (
   theme: ColorSet,
   spacing: Spacing,
-  t: ReturnType<typeof resolveBodyVitalsTypography>
+  t: BodyVitalsTypography
 ) =>
   StyleSheet.create({
     card: {

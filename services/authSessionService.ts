@@ -3,7 +3,7 @@ import axios from "axios";
 import * as SecureStore from "expo-secure-store";
 
 import { StoreKey } from "@/constants/Constant";
-import { clearStoredBodyVitalsContext } from "@/features/self-care/services/bodyVitalsStorage";
+import { clearStoredBodyVitalsContext } from "@/features/self-care/services/body-vitals/storage";
 import { setStoredUser } from "@/services/storageService";
 
 export const AUTH_SESSION_DEFAULT_TIMEOUT_MS = 15 * 24 * 60 * 60 * 1000;

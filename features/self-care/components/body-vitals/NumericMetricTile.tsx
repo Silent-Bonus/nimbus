@@ -11,11 +11,13 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import { resolveBodyVitalsTypography } from "@/features/self-care/utils/bodyVitalsTheme";
+import {
+  resolveBodyVitalsTypography,
+  type BodyVitalsTypography,
+} from "@/features/self-care/utils/bodyVitalsTheme";
 import type {
   ColorSet,
   Spacing,
-  Typography,
 } from "@/theme/types";
 
 import { MetricTileShell } from "./MetricTileShell";
@@ -55,8 +57,8 @@ export const NumericMetricTile = ({
   );
 
   const styles = useMemo(
-    () => styling(newTheme, spacing, typography, t),
-    [newTheme, spacing, typography, t]
+    () => styling(newTheme, spacing, t),
+    [newTheme, spacing, t]
   );
 
   return (
@@ -104,8 +106,7 @@ export const NumericMetricTile = ({
 const styling = (
   theme: ColorSet,
   spacing: Spacing,
-  typography: Typography,
-  t: ReturnType<typeof resolveBodyVitalsTypography>
+  t: BodyVitalsTypography
 ) =>
   StyleSheet.create({
     content: {
@@ -119,16 +120,15 @@ const styling = (
       paddingTop: spacing.xs,
     },
     valueInput: {
+      ...t.numericValue,
       flex: 1,
       minWidth: 0,
       padding: 0,
       margin: 0,
       color: theme.textPrimary,
       backgroundColor: "transparent",
-      fontFamily: t.numericValue.fontFamily,
       fontSize: 29,
       lineHeight: 34,
-      fontWeight: t.numericValue.fontWeight,
       letterSpacing: t.numericValue.letterSpacing ?? -0.6,
       includeFontPadding: false,
       textAlignVertical: "center",
@@ -170,17 +170,6 @@ const styling = (
       ...t.caption,
       color: theme.textSecondary,
     },
-    progressTrack: {
-      height: 4,
-      borderRadius: 999,
-      overflow: "hidden",
-      backgroundColor: theme.divider,
-    },
-    progressFill: {
-      height: "100%",
-      borderRadius: 999,
-      backgroundColor: theme.accent,
-    },
   });
 
 type StepperRowProps = {
@@ -201,8 +190,8 @@ export const NumericMetricTileStepperRow = ({
     [svaTypography, typography]
   );
   const styles = useMemo(
-    () => styling(newTheme, spacing, typography, t),
-    [newTheme, spacing, typography, t]
+    () => styling(newTheme, spacing, t),
+    [newTheme, spacing, t]
   );
 
   return (
@@ -246,32 +235,6 @@ export const NumericMetricTileStepperRow = ({
   );
 };
 
-type ProgressBarProps = {
-  progress: number;
-};
-
-export const NumericMetricTileProgressBar = ({ progress }: ProgressBarProps) => {
-  const { newTheme, spacing, typography, svaTypography } =
-    useContext(ThemeContext);
-  const t = useMemo(
-    () => resolveBodyVitalsTypography(svaTypography, typography),
-    [svaTypography, typography]
-  );
-  const styles = useMemo(
-    () => styling(newTheme, spacing, typography, t),
-    [newTheme, spacing, typography, t]
-  );
-
-  const width = `${Math.max(0, Math.min(progress, 1)) * 100}%` as ViewStyle["width"];
-
-  return (
-    <View style={styles.progressTrack}>
-      <View style={[styles.progressFill, { width }]} />
-    </View>
-  );
-};
-
 export const NumericMetricTileFooter = {
   StepperRow: NumericMetricTileStepperRow,
-  ProgressBar: NumericMetricTileProgressBar,
 };

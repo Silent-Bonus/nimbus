@@ -9,6 +9,7 @@ const meditationTemplates = [
   mapMeditationListItemTemplate(
     {
       id: 1,
+      slug: "sleep-drift",
       title: "Sleep Drift",
       modality: "meditation",
       description: "Let the body grow heavier while the breath becomes quieter.",
@@ -27,6 +28,7 @@ const meditationTemplates = [
   mapMeditationListItemTemplate(
     {
       id: 2,
+      slug: "focus-lantern",
       title: "Focus Lantern",
       modality: "meditation",
       description:

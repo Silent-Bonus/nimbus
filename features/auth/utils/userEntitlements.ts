@@ -8,7 +8,7 @@ import type {
   UserSubscription,
   UserSubscriptionTier,
 } from "@/features/auth/types/userProfile";
-import { normalizeBodyVitalsContext } from "@/features/self-care/services/bodyVitalsNormalizer";
+import { normalizeBodyVitalsContext } from "@/features/self-care/services/body-vitals/normalizer";
 
 const FALLBACK_SUBSCRIPTION = {
   tier: "free",

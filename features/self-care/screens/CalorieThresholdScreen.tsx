@@ -13,7 +13,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import ThemeContext from "@/contexts/ThemeContext";
 import AppHeader from "@/components/layout/AppHeader";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
-import { getStoredBodyVitalsContext } from "@/features/self-care/services/bodyVitalsStorage";
+import { getStoredBodyVitalsContext } from "@/features/self-care/services/body-vitals/storage";
 import type { BodyVitalsContext } from "@/features/self-care/types/bodyVitals";
 import { resolveBodyVitalsTypography } from "@/features/self-care/utils/bodyVitalsTheme";
 import {
@@ -21,7 +21,7 @@ import {
   resolveCaloriePanelDataFromContext,
   resolveCaloriePanelDataFromParams,
   type CaloriePanelParams,
-} from "@/features/self-care/services/caloriePanelService";
+} from "@/features/self-care/services/body-vitals/panels";
 import type { ColorSet, Spacing } from "@/theme/types";
 
 export default function CalorieThresholdScreen() {

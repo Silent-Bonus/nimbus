@@ -4,9 +4,9 @@ import {
   buildCaloriePanelTiers,
   resolveCaloriePanelDataFromContext,
   resolveCaloriePanelDataFromParams,
-} from "../caloriePanelService";
+} from "../body-vitals/panels";
 
-describe("caloriePanelService", () => {
+describe("bodyVitals panels: calorie", () => {
   it("maps the calorie goal from the vitals context", () => {
     const data = resolveCaloriePanelDataFromContext({
       profile: {

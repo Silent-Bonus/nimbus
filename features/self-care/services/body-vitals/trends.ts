@@ -7,6 +7,7 @@ import type {
   BodyVitalsTrendResponse,
 } from "@/features/self-care/types/bodyVitals";
 
+// Reads persisted vitals snapshots from the backend for the trends screen.
 export async function getBodyVitalsTrends(
   range: BodyVitalsTrendRange = "30d",
   metric: BodyVitalsTrendMetric = "all"
