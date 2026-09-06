@@ -21,7 +21,7 @@ const mockNavigation = {
   setOptions: jest.fn(),
 };
 
-let mockParams = {
+let mockParams: Record<string, string> = {
   journalSlug: "journal-1",
   journalTitle: "The Morning Light",
   journalDescription:

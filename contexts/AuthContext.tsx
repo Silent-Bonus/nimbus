@@ -14,7 +14,6 @@ import axios from "axios";
 import { StoreKey } from "@/constants/Constant";
 import { API_ENDPOINTS } from "@/config/apiConfig";
 import { ROUTES } from "@/constants/routes";
-import { normalizeUserProfile } from "@/features/auth/utils/userEntitlements";
 import type { UserProfile } from "@/features/auth/types/userProfile";
 import {
   login,
@@ -23,7 +22,13 @@ import {
   getUserDetails,
   saveUpdateUser,
 } from "@/features/auth/services/loginService";
-import { setStoredUser, User, getStoredUser } from "@/services/storageService";
+import {
+  clearUserProfileSync,
+  publishUserProfileSync,
+  subscribeToUserProfileSync,
+  syncAndPublishUserProfile,
+} from "@/features/auth/services/userProfileSyncService";
+import { User, getStoredUser } from "@/services/storageService";
 import {
   clearAuthSession,
   getAuthSessionTestModeEnabled,
@@ -31,7 +36,6 @@ import {
   setAuthSessionTestModeEnabled,
   touchAuthSessionActivity,
 } from "@/services/authSessionService";
-import { syncStoredBodyVitalsContext } from "@/features/self-care/services/bodyVitalsStorage";
 
 export async function clearAuthAndOnboarding() {
   await clearAuthSession();
@@ -144,6 +148,12 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const authStateRef = useRef(authState);
 
   useEffect(() => {
+    return subscribeToUserProfileSync((profile) => {
+      setUserProfile(profile);
+    });
+  }, []);
+
+  useEffect(() => {
     authStateRef.current = authState;
   }, [authState]);
 
@@ -183,7 +193,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       delete axios.defaults.headers.common["Authorization"];
       setAuthState({ token: null, authenticated: false });
-      setUserProfile(null);
+      clearUserProfileSync();
       setOnboardingDone(null);
       sessionClearInProgressRef.current = false;
     }
@@ -233,9 +243,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
           const cachedProfile = await getStoredUser();
           if (cachedProfile) {
-            const normalizedProfile = normalizeUserProfile(cachedProfile);
-            setUserProfile(normalizedProfile);
-            await syncStoredBodyVitalsContext(normalizedProfile);
+            await publishUserProfileSync(cachedProfile);
           }
           setOnboardingDone(ob === "true");
           return;
@@ -243,12 +251,12 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
         delete axios.defaults.headers.common["Authorization"];
         setAuthState({ token: null, authenticated: false });
-        setUserProfile(null);
+        clearUserProfileSync();
         setOnboardingDone(null);
       } catch {
         delete axios.defaults.headers.common["Authorization"];
         setAuthState({ token: null, authenticated: false });
-        setUserProfile(null);
+        clearUserProfileSync();
         setOnboardingDone(null);
       }
     };
@@ -429,27 +437,13 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // single place to update state + storage from server
-  const applyServerUser = useCallback(async (serverUser: User | null) => {
-    const normalizedUser = normalizeUserProfile(serverUser);
-    setUserProfile(normalizedUser);
-    await setStoredUser(normalizedUser);
-    await syncStoredBodyVitalsContext(normalizedUser);
-    return normalizedUser;
-  }, []);
-
-  // public helpers
-  // const setLocalUser = useCallback(async (u: User | null) => {
-  //   setUser(u);
-  //   await setStoredUser(u);
-  // }, []);
-
   const _fetchUserProfile = async () => {
     try {
       const response = await getUserDetails();
       const { success, data } = response;
 
       if (success && data) {
-        return await applyServerUser(data);
+        return await syncAndPublishUserProfile(data);
       }
 
       return null;
@@ -465,7 +459,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         const res = await saveUpdateUser(payload); // your API
         // if your API shape is { success, data: { user }, message }
         if (res?.success && res?.data) {
-          await applyServerUser(res.data); // keep app + storage in sync
+          await syncAndPublishUserProfile(res.data); // keep app + storage in sync
         }
         return res; // caller decides what to do
       } catch (err: any) {
@@ -476,7 +470,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         };
       }
     },
-    [applyServerUser]
+    []
   );
 
   const value = {

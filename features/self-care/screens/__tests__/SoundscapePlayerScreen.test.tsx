@@ -29,6 +29,7 @@ const mockSessionRef = "soundscape-session-123";
 const cachedSoundscape = toSoundscapeTrack(
   {
     id: 5,
+    slug: "528hz-dna-integrity",
     title: "528Hz: DNA Integrity",
     modality: "soundscape",
     duration: "10 min",

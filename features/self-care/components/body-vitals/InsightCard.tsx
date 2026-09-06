@@ -4,7 +4,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
+import {
+  resolveBodyVitalsTypography,
+  type BodyVitalsTypography,
+} from "@/features/self-care/utils/bodyVitalsTheme";
+import type { ColorSet, Spacing } from "@/theme/types";
 
 type InsightCardProps = {
   label: string;
@@ -21,11 +25,16 @@ export const InsightCard = ({
   accent,
   onPress,
 }: InsightCardProps) => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, typography, svaTypography } =
+    useContext(ThemeContext);
+  const t = useMemo(
+    () => resolveBodyVitalsTypography(svaTypography, typography),
+    [svaTypography, typography]
+  );
 
   const styles = useMemo(
-    () => styling(newTheme, spacing, typography),
-    [newTheme, spacing, typography]
+    () => styling(newTheme, spacing, t),
+    [newTheme, spacing, t]
   );
 
   return (
@@ -66,7 +75,11 @@ export const InsightCard = ({
   );
 };
 
-const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
+const styling = (
+  theme: ColorSet,
+  spacing: Spacing,
+  t: BodyVitalsTypography
+) =>
   StyleSheet.create({
     card: {
       minHeight: 74,
@@ -111,20 +124,16 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       justifyContent: "center",
     },
     label: {
-      ...typography.smallCaption,
+      ...t.sectionLabel,
       color: theme.textSecondary,
-      fontWeight: "700",
-      letterSpacing: 1.3,
       opacity: 0.75,
     },
     value: {
+      ...t.sectionTitle,
       marginTop: 2,
       color: theme.textPrimary,
-      fontSize: 18,
-      lineHeight: 22,
-      fontWeight: "700",
-      fontFamily: typography.h3.fontFamily,
-      letterSpacing: -0.2,
+      fontSize: 19,
+      lineHeight: 24,
     },
     chevron: {
       marginLeft: spacing.sm,

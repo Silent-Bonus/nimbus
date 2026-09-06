@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColorScheme } from "react-native";
+import { StoreKey } from "@/constants/Constant";
 import { getTheme } from "@/theme";
 import { svaColors as defaultSvaColors } from "@/theme/palettes/nimbus";
 import type {
@@ -86,7 +87,7 @@ export const ThemeProvider: FC<ThemeProviderProps> = ({ children }) => {
   useEffect(() => {
     const loadTheme = async () => {
       try {
-        const savedTheme = await AsyncStorage.getItem("theme");
+        const savedTheme = await AsyncStorage.getItem(StoreKey.THEME_KEY);
         const normalizedTheme = normalizeThemeName(savedTheme);
         if (normalizedTheme) {
           setThemeName(normalizedTheme);
@@ -112,7 +113,7 @@ export const ThemeProvider: FC<ThemeProviderProps> = ({ children }) => {
 
   const toggleTheme = (newTheme: ThemeName) => {
     setThemeName(newTheme);
-    AsyncStorage.setItem("theme", newTheme).catch((error) =>
+    AsyncStorage.setItem(StoreKey.THEME_KEY, newTheme).catch((error) =>
       console.log("Error saving theme:", error)
     );
   };
@@ -120,7 +121,7 @@ export const ThemeProvider: FC<ThemeProviderProps> = ({ children }) => {
   const useSystemTheme = () => {
     const systemTheme = colorScheme === "light" ? "light" : "dark";
     setThemeName(systemTheme);
-    AsyncStorage.removeItem("theme"); // clear override
+    AsyncStorage.removeItem(StoreKey.THEME_KEY); // clear override
   };
 
   const contextValue: ThemeContextData = {

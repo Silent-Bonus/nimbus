@@ -20,9 +20,7 @@ const buildMockUserProfile = (tier: "free" | "plus"): UserProfile => ({
     height_unit: "cm",
     weight_unit: "kg",
     weather_unit: "celsius",
-    start_of_day: "06:00",
     start_of_week: "monday",
-    sleep_time: "22:00",
     location: null,
   },
   address: {

@@ -4,9 +4,9 @@ import {
   buildProteinPanelRouteParams,
   resolveProteinPanelDataFromContext,
   resolveProteinPanelDataFromParams,
-} from "../proteinPanelService";
+} from "../body-vitals/panels";
 
-describe("proteinPanelService", () => {
+describe("bodyVitals panels: protein", () => {
   it("maps the protein goal from the vitals context", () => {
     const data = resolveProteinPanelDataFromContext({
       profile: {
@@ -63,5 +63,13 @@ describe("proteinPanelService", () => {
       { key: "meal-2", label: "MEAL 2", grams: 45 },
       { key: "meal-3", label: "MEAL 3", grams: 60 },
     ]);
+  });
+
+  it("marks protein-only route params as API-backed data", () => {
+    expect(
+      resolveProteinPanelDataFromParams({
+        protein: "135",
+      }).source
+    ).toBe("api");
   });
 });

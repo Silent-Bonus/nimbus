@@ -1,22 +1,27 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
 import { StoreKey } from "@/constants/Constant";
-import { getStoredUser } from "@/services/storageService";
+import {
+  getStoredUser,
+  getStoredValue,
+  removeStoredValue,
+  setStoredValue,
+} from "@/services/storageService";
 
 import {
   clampHeightCm,
   formatFlexibleDecimal,
   parseMetricNumber,
-} from "@/features/self-care/components/body-vitals/utils";
-import type { SomaticGender } from "@/features/self-care/components/body-vitals/types";
+} from "@/features/self-care/utils/bodyVitalsUtils";
+import { normalizeBodyVitalsContext } from "./normalizer";
 import type {
   BodyVitalsActivityLevel,
   BodyVitalsContext,
   BodyVitalsFormState,
+  SomaticGender,
 } from "@/features/self-care/types/bodyVitals";
 
 const BODY_VITALS_CONTEXT_KEY = StoreKey.BODY_VITALS_CONTEXT_KEY;
 
+// Default draft values keep the form stable before persisted context is loaded.
 export const DEFAULT_BODY_VITALS_FORM: BodyVitalsFormState = {
   gender: "masculine",
   age: "32",
@@ -30,10 +35,6 @@ const ACTIVITY_LEVEL_VALUES: Record<string, number> = {
   active: 0.55,
   optimal: 0.85,
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function toNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -98,34 +99,25 @@ function toActivityLevel(
   return fallback;
 }
 
-export function normalizeBodyVitalsContext(raw: unknown): BodyVitalsContext | null {
-  return isRecord(raw) ? (raw as BodyVitalsContext) : null;
-}
-
 export async function setStoredBodyVitalsContext(
   context: BodyVitalsContext | null
 ): Promise<void> {
   if (!context) {
-    await AsyncStorage.removeItem(BODY_VITALS_CONTEXT_KEY);
+    await removeStoredValue(BODY_VITALS_CONTEXT_KEY);
     return;
   }
 
-  await AsyncStorage.setItem(BODY_VITALS_CONTEXT_KEY, JSON.stringify(context));
+  await setStoredValue(BODY_VITALS_CONTEXT_KEY, context);
 }
 
 export async function clearStoredBodyVitalsContext(): Promise<void> {
-  await AsyncStorage.removeItem(BODY_VITALS_CONTEXT_KEY);
+  await removeStoredValue(BODY_VITALS_CONTEXT_KEY);
 }
 
 export async function getStoredBodyVitalsContext(): Promise<BodyVitalsContext | null> {
-  const cachedRaw = await AsyncStorage.getItem(BODY_VITALS_CONTEXT_KEY);
-  let cached: BodyVitalsContext | null = null;
-
-  try {
-    cached = normalizeBodyVitalsContext(cachedRaw ? JSON.parse(cachedRaw) : null);
-  } catch {
-    cached = null;
-  }
+  const cached = normalizeBodyVitalsContext(
+    await getStoredValue(BODY_VITALS_CONTEXT_KEY)
+  );
 
   if (cached) {
     return cached;
@@ -162,31 +154,38 @@ export function resolveBodyVitalsFormState(
   context: BodyVitalsContext | null | undefined,
   fallback: BodyVitalsFormState = DEFAULT_BODY_VITALS_FORM
 ): BodyVitalsFormState {
+  const inputs = context?.inputs;
   const prefill = context?.prefill;
   const profile = context?.profile;
   const savedSummary = context?.saved_summary;
 
   const heightCm =
+    toNumber(inputs?.height_cm) ??
     toNumber(prefill?.height_cm) ??
     toNumber(savedSummary?.height_cm) ??
     toNumber(profile?.height_cm);
   const weightKg =
+    toNumber(inputs?.weight_kg) ??
     toNumber(prefill?.weight_kg) ??
     toNumber(savedSummary?.weight_kg) ??
     toNumber(profile?.weight_kg);
   const age =
-    toNumber(prefill?.age) ?? toNumber(savedSummary?.age) ?? toNumber(profile?.age);
+    toNumber(inputs?.age) ??
+    toNumber(prefill?.age) ??
+    toNumber(savedSummary?.age) ??
+    toNumber(profile?.age);
 
   const gender = toSomaticGender(
-    prefill?.gender ?? savedSummary?.gender ?? profile?.gender,
-    prefill?.gender_prefer_not_to_say ??
+    inputs?.gender ?? prefill?.gender ?? savedSummary?.gender ?? profile?.gender,
+    inputs?.gender_prefer_not_to_say ??
+      prefill?.gender_prefer_not_to_say ??
       savedSummary?.gender_prefer_not_to_say ??
       profile?.gender_prefer_not_to_say,
     fallback.gender
   );
 
   const activityLevel = toActivityLevel(
-    prefill?.activity_level ?? profile?.activity_level,
+    inputs?.activity_level ?? prefill?.activity_level ?? profile?.activity_level,
     fallback.activityLevel
   );
 

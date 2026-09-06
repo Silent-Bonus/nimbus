@@ -81,6 +81,7 @@ export const ROUTES = {
     SELF_CARE_SOUNDSCAPE_PLAYER: "/(auth)/self-care/soundscape/player/[soundscapeId]",
     SELF_CARE_CALORIE_THRESHOLD: "/(auth)/self-care/calorie-threshold",
     SELF_CARE_BODY_ARCHITECTURE: "/(auth)/self-care/body-architecture",
+    SELF_CARE_VITALS_TRENDS: "/(auth)/self-care/vitals-trends",
     SELF_CARE_WORKOUT_SESSION: "/(auth)/self-care/workoutSession",
     SELF_CARE_WORKOUT: "/(auth)/self-care/workout",
     SELF_CARE_VITALS: "/(auth)/self-care/vitals",

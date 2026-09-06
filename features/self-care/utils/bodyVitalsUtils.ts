@@ -1,4 +1,8 @@
-import type { SomaticGender } from "./types";
+import type { SomaticGender } from "@/features/self-care/types/bodyVitals";
+
+// Shared body-vitals input, formatting, and lightweight calculation helpers.
+// These are used by screens, services, and UI components, so they live at the
+// feature layer instead of under `components/`.
 
 export const HEIGHT_MIN_CM = 137;
 export const HEIGHT_MAX_CM = 198;
@@ -58,7 +62,7 @@ export const formatFlexibleDecimal = (value: number, decimals = 1) => {
   return Number.isInteger(rounded) ? `${rounded}` : rounded.toFixed(decimals);
 };
 
-export const formatWeight = (value: number) => formatFlexibleDecimal(value, 1);
+const formatWeight = (value: number) => formatFlexibleDecimal(value, 1);
 
 export const clampHeightCm = (value: number) =>
   Math.max(HEIGHT_MIN_CM, Math.min(HEIGHT_MAX_CM, value));
