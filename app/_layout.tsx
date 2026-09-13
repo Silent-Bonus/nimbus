@@ -28,9 +28,11 @@ import {
 import AuthProvider from "@/contexts/AuthContext";
 import { PremiumGateProvider } from "@/contexts/PremiumGateContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { MeditationSessionProvider } from "@/contexts/MeditationSessionContext";
 // import HabitContext from "@/context/HabitContext";
 import { NimbusAlertProvider } from "@/components/ui/alert/NimbusAlertProvider";
 import { NimbusToastHost } from "@/components/ui/toast/NimbusToast";
+import { FloatingMeditationControl } from "@/components/ui/FloatingMeditationControl";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -79,15 +81,18 @@ function RootLayoutNav() {
       <ThemeProvider>
         <PremiumGateProvider>
           <NimbusAlertProvider>
-            {/* <HabitContext.Provider value={{ habitData, setHabitData }}> */}
-            <Stack screenOptions={{ headerShown: false }}>
-              {/* ✅ explicitly declare groups */}
-              <Stack.Screen name="(public)" />
-              <Stack.Screen name="(auth)" />
-            </Stack>
+            <MeditationSessionProvider>
+              {/* <HabitContext.Provider value={{ habitData, setHabitData }}> */}
+              <Stack screenOptions={{ headerShown: false }}>
+                {/* ✅ explicitly declare groups */}
+                <Stack.Screen name="(public)" />
+                <Stack.Screen name="(auth)" />
+              </Stack>
 
-            <NimbusToastHost />
-            {/* </HabitContext.Provider> */}
+              <FloatingMeditationControl />
+              <NimbusToastHost />
+              {/* </HabitContext.Provider> */}
+            </MeditationSessionProvider>
           </NimbusAlertProvider>
         </PremiumGateProvider>
       </ThemeProvider>

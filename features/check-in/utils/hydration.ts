@@ -9,6 +9,25 @@ export const WATER_STEP_ML = 250;
 export const WATER_GOAL_ML = 3000;
 export const REMINDER_OPTIONS = [30, 60, 90, 120] as const;
 
+/** Convert a hydration delta in ml to the habit's configured API unit. */
+export const toHydrationIncrement = (
+  deltaMl: number,
+  metricUnit?: string | null
+) => {
+  const normalizedUnit = String(metricUnit ?? "").trim().toLowerCase();
+  const safeDeltaMl = Math.max(0, Math.round(deltaMl));
+
+  if (normalizedUnit.includes("ml")) {
+    return safeDeltaMl;
+  }
+
+  if (normalizedUnit.includes("l")) {
+    return safeDeltaMl / 1000;
+  }
+
+  return safeDeltaMl;
+};
+
 export const DEFAULT_WEEKLY_SERIES: WeeklyPoint[] = WEEK_DAYS.map((day) => ({
   day,
   percent: 0,

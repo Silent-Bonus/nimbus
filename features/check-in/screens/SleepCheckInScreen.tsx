@@ -1,3 +1,8 @@
+/**
+ * Nidra/sleep daily check-in screen.
+ * Tracks sleep sessions, converts durations to backend hours, and displays
+ * normalized weekly sleep architecture and recovery guidance.
+ */
 import React, {
   useCallback,
   useContext,
@@ -12,9 +17,17 @@ import { useLocalSearchParams, useNavigation } from "expo-router";
 import ThemeContext from "@/contexts/ThemeContext";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import ScreenHeader from "@/components/layout/ScreenHeader";
-import { getHabitDetailsByDate } from "@/features/check-in/services/dailyCheckinService";
-import { DailyCheckInDetailResponse } from "@/features/check-in/types/dailyCheckin";
+import { useNimbusToast } from "@/components/ui/toast/useNimbusToast";
+import RitualReminderSettingsModal from "@/features/check-in/components/common/RitualReminderSettingsModal";
+import {
+  getHabitDetailsByDate,
+  incrementHabitProgress,
+  updateHabitReminderFrequency,
+} from "@/features/check-in/services/dailyCheckinService";
+import { toApiDate } from "@/utils/date-time";
+import { NormalizedHabitDetailResponse } from "@/features/check-in/types/dailyCheckin";
 import { toMinutes } from "@/features/check-in/utils/dailyCheckin";
+import { sanitizeHabitIncrement } from "@/features/check-in/utils/dailyCheckin";
 import SleepPerformanceCard from "@/features/check-in/components/sleep/SleepPerformance";
 import {
   DEFAULT_BED_MINUTES,
@@ -27,8 +40,6 @@ import {
   parseTimeToMinutes,
 } from "@/features/check-in/utils/sleepCheckin";
 import {
-  CircadianAlignmentCard,
-  ReminderBufferCard,
   SleepErrorState,
   SleepLoadingState,
   SleepPatternCard,
@@ -46,24 +57,32 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      gap: 10,
-      marginTop: 16,
+      gap: spacing.sm,
+      marginTop: spacing.md,
     },
     refreshingText: {
       ...typography.caption,
       color: theme.textSecondary,
       fontWeight: "700",
     },
+    sectionSpacer: {
+      height: spacing.md,
+    },
+    bottomSpacer: {
+      height: spacing.md,
+    },
   });
 
 export const SleepCheckInScreen = () => {
   const navigation = useNavigation();
+  const toast = useNimbusToast();
   const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
   const styles = useMemo(
     () => makeStyles(theme, spacing, typography),
     [theme, spacing, typography]
   );
 
+  // Normalize route values once because Expo Router may return array params.
   const { id, date } = useLocalSearchParams<{ id?: string; date?: string }>();
   const templateId = useMemo(() => Number(id), [id]);
   const scrollRef = useRef<ScrollView>(null);
@@ -71,11 +90,15 @@ export const SleepCheckInScreen = () => {
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [detail, setDetail] = useState<DailyCheckInDetailResponse | null>(null);
+  // Keep the API response separate from derived sleep metrics so the cards
+  // remain driven by a stable, theme-aware view model.
+  const [detail, setDetail] = useState<NormalizedHabitDetailResponse | null>(null);
   const [bedMinutes, setBedMinutes] = useState(DEFAULT_BED_MINUTES);
   const [wakeMinutes, setWakeMinutes] = useState(DEFAULT_WAKE_MINUTES);
   const [reminderIndex, setReminderIndex] = useState(1);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
+  // Fetch the selected sleep habit and normalized daily progress.
   useEffect(() => {
     navigation.setOptions({
       headerShown: false,
@@ -93,7 +116,9 @@ export const SleepCheckInScreen = () => {
     setError(null);
 
     try {
-      const res: DailyCheckInDetailResponse = await getHabitDetailsByDate(
+      // Fetch the selected check-in date; reminder updates are handled
+      // independently through the settings modal.
+      const res = await getHabitDetailsByDate(
         templateId,
         date
       );
@@ -113,19 +138,25 @@ export const SleepCheckInScreen = () => {
     }
   }, [date, templateId]);
 
+  // Restore or clear the active sleep session when the route changes.
   useEffect(() => {
     loadSleep();
   }, [loadSleep]);
 
+  // Keep the weekly chart aligned with the API's date/day progress records.
   useEffect(() => {
     const data = detail?.data;
     if (!data) return;
 
-    setBedMinutes(parseTimeToMinutes(data.start_time, DEFAULT_BED_MINUTES));
-    setWakeMinutes(parseTimeToMinutes(data.end_time, DEFAULT_WAKE_MINUTES));
+    setBedMinutes(
+      parseTimeToMinutes(data.habit.start_time, DEFAULT_BED_MINUTES)
+    );
+    setWakeMinutes(
+      parseTimeToMinutes(data.habit.end_time, DEFAULT_WAKE_MINUTES)
+    );
 
     const reminderValue = Number(
-      String(data.reminder_time ?? "").match(/\d+/)?.[0] ?? NaN
+      String(data.protocol_details.reminder_time ?? "").match(/\d+/)?.[0] ?? NaN
     );
     if (Number.isFinite(reminderValue)) {
       const index = REMINDER_OPTIONS.indexOf(reminderValue);
@@ -136,14 +167,23 @@ export const SleepCheckInScreen = () => {
   }, [detail]);
 
   const sleepSummary = useMemo(() => {
-    const data = detail?.data;
+    const normalized = detail?.data;
     const goalMinutes = SLEEP_GOAL_MINUTES;
-    const asleepMinutes = data
-      ? Math.max(0, toMinutes(data.completed_unit ?? 0, data.metric_unit ?? "hours"))
+    const asleepMinutes = normalized
+      ? Math.max(
+          0,
+          toMinutes(
+            normalized.goal_details.metric_details.completed,
+            normalized.goal_details.metric_details.unit ?? "hours"
+          )
+        )
       : 0;
     const targetHours = goalMinutes / 60;
-    const weeklySeries = data
-      ? buildWeeklySleepSeries(data.last_7_days_completion, targetHours)
+    const weeklySeries = normalized
+      ? buildWeeklySleepSeries(
+          normalized.progress.last_7_days_completion,
+          targetHours
+        )
       : MOCK_WEEKLY_SLEEP;
 
     return {
@@ -155,31 +195,141 @@ export const SleepCheckInScreen = () => {
     };
   }, [detail]);
 
-  const sleepProgress = useMemo(() => {
-    if (!sleepSummary.goalMinutes) return 0;
-    return Math.min(
-      1,
-      Math.max(0, sleepSummary.asleepMinutes / sleepSummary.goalMinutes)
-    );
-  }, [sleepSummary.asleepMinutes, sleepSummary.goalMinutes]);
-
-  const sleepStatusLabel =
-    sleepProgress >= 0.92
-      ? "Aligned recovery"
-      : sleepProgress >= 0.75
-      ? "Recovery in progress"
-      : "Deep recovery in progress";
-
   const refreshing = loading && loaded && !error;
 
   const handleRefresh = useCallback(() => {
     loadSleep();
   }, [loadSleep]);
 
-  const scrollToTip = useCallback(() => {
-    scrollRef.current?.scrollToEnd({ animated: true });
-  }, []);
+  const handleSleepSessionComplete = useCallback(
+    async (durationHours: number) => {
+      if (!templateId) {
+        throw new Error("Missing sleep check-in id.");
+      }
 
+      const entry = {
+        date: toApiDate(new Date()),
+        increment_by: sanitizeHabitIncrement(durationHours, "hours", 8),
+      };
+
+      console.log("[Nidra Sync] sleep session entry", {
+        habitId: templateId,
+        ...entry,
+      });
+
+      try {
+        await incrementHabitProgress(templateId, entry.date, entry.increment_by);
+        await loadSleep();
+
+        toast.show({
+          variant: "success",
+          title: "Sleep session saved",
+          message: `${durationHours} hours added to Nidra Sync.`,
+        });
+      } catch (error) {
+        console.warn("[Nidra Sync] sleep session save failed", error);
+        toast.show({
+          variant: "error",
+          title: "Sleep session failed",
+          message: "Please try again.",
+        });
+        throw error;
+      }
+    },
+    [loadSleep, templateId, toast]
+  );
+
+  const handleSleepSessionStart = useCallback(
+    (startedAt: Date) => {
+      toast.show({
+        variant: "info",
+        title: "Sleep tracking started",
+        message: `Started at ${startedAt.toLocaleTimeString([], {
+          hour: "numeric",
+          minute: "2-digit",
+        })}. Tap Wake up when you are ready.`,
+      });
+    },
+    [toast]
+  );
+
+  const handleSleepSessionInvalid = useCallback(() => {
+    toast.show({
+      variant: "warning",
+      title: "Wake up after sleeping",
+      message: "Keep the session active long enough to record a duration.",
+    });
+  }, [toast]);
+
+  const handlePastSleepComplete = useCallback(
+    async (durationHours: number, sleepDate: Date) => {
+      if (!templateId) {
+        throw new Error("Missing sleep check-in id.");
+      }
+
+      // Sleep progress is sent in hours and capped at the 8-hour target.
+      const entry = {
+        date: toApiDate(sleepDate),
+        increment_by: sanitizeHabitIncrement(durationHours, "hours", 8),
+      };
+
+      console.log("[Nidra Sync] past sleep entry", {
+        habitId: templateId,
+        ...entry,
+      });
+
+      try {
+        await incrementHabitProgress(templateId, entry.date, entry.increment_by);
+        await loadSleep();
+        toast.show({
+          variant: "success",
+          title: "Past sleep saved",
+          message: `${entry.increment_by} hours added to Nidra Sync.`,
+        });
+      } catch (error) {
+        console.warn("[Nidra Sync] past sleep save failed", error);
+        toast.show({
+          variant: "error",
+          title: "Past sleep failed",
+          message: "Please try again.",
+        });
+        throw error;
+      }
+    },
+    [loadSleep, templateId, toast]
+  );
+
+  const handleReminderChange = useCallback(
+    async (nextIndex: number) => {
+      const reminderFrequency = REMINDER_OPTIONS[nextIndex];
+      if (!templateId || reminderFrequency === undefined) return;
+
+      try {
+        console.log("[Nidra Sync] reminder frequency update", {
+          habitId: templateId,
+          reminder_frequency: reminderFrequency,
+        });
+        // Only update the selected value after the server accepts the PATCH.
+        await updateHabitReminderFrequency(templateId, reminderFrequency);
+        setReminderIndex(nextIndex);
+        toast.show({
+          variant: "success",
+          title: "Reminder updated",
+          message: `Nidra reminders set to every ${reminderFrequency} minutes.`,
+        });
+      } catch (error) {
+        console.warn("[Nidra Sync] reminder frequency update failed", error);
+        toast.show({
+          variant: "error",
+          title: "Reminder update failed",
+          message: "Please try again.",
+        });
+      }
+    },
+    [templateId, toast]
+  );
+
+  // Render loading, error, and sleep tracking states in the SVA shell.
   return (
     <ScreenView bgColor={theme.background} padding={0}>
       <ScrollView
@@ -193,53 +343,36 @@ export const SleepCheckInScreen = () => {
           onBack={() => navigation.goBack()}
           rightActions={[
             {
-              icon: "refresh-outline",
-              accessibilityLabel: "Refresh sleep data",
-              onPress: handleRefresh,
-            },
-            {
-              icon: "information-circle-outline",
-              accessibilityLabel: "Jump to tip",
-              onPress: scrollToTip,
+              icon: "settings-outline",
+              accessibilityLabel: "Open settings",
+              onPress: () => setShowSettingsModal(true),
             },
           ]}
         />
 
+        {/* Loading, error, and content states intentionally stay mutually exclusive. */}
         {loading && !loaded ? (
           <SleepLoadingState />
         ) : error ? (
           <SleepErrorState message={error} onRetry={handleRefresh} />
         ) : (
           <>
+            {/* Lead with the primary sleep result and the weekly architecture view. */}
             <SleepPerformanceCard
               asleepMinutes={sleepSummary.asleepMinutes}
               goalMinutes={sleepSummary.goalMinutes}
-              ratingLabel={sleepStatusLabel}
+              onSleepSessionStart={handleSleepSessionStart}
+              onSleepSessionInvalid={handleSleepSessionInvalid}
+              onSleepSessionComplete={handleSleepSessionComplete}
+              onPastSleepComplete={handlePastSleepComplete}
             />
 
-            <View style={{ height: 18 }} />
-
-            <CircadianAlignmentCard
-              bedMinutes={bedMinutes}
-              wakeMinutes={wakeMinutes}
-              onChangeBed={setBedMinutes}
-              onChangeWake={setWakeMinutes}
-            />
-
-            <View style={{ height: 18 }} />
-
-            <ReminderBufferCard
-              reminderIndex={reminderIndex}
-              onChange={setReminderIndex}
-            />
-
-            <View style={{ height: 18 }} />
+            <View style={styles.sectionSpacer} />
 
             <SleepPatternCard data={sleepSummary.weeklySeries} />
 
-            <View style={{ height: 18 }} />
-
             <SleepTipCard />
+
           </>
         )}
 
@@ -250,8 +383,21 @@ export const SleepCheckInScreen = () => {
           </View>
         ) : null}
 
-        <View style={{ height: 24 }} />
+        <View style={styles.bottomSpacer} />
       </ScrollView>
+
+      <RitualReminderSettingsModal
+        visible={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        title="Nidra Sync reminders"
+        reminderOptions={REMINDER_OPTIONS}
+        selectedIndex={reminderIndex}
+        onSelectIndex={handleReminderChange}
+        bedMinutes={bedMinutes}
+        wakeMinutes={wakeMinutes}
+        onChangeBed={setBedMinutes}
+        onChangeWake={setWakeMinutes}
+      />
     </ScreenView>
   );
 };

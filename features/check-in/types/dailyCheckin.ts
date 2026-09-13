@@ -47,7 +47,65 @@ export interface DailyCheckInDetailResponse {
   data: DailyCheckInDetail;
 }
 
-type DailyCheckIn = {
+export interface NormalizedHabitDetailResponse {
+  success: boolean;
+  message: string;
+  data: {
+    habit: {
+      id: number;
+      name: string;
+      description: string;
+      color: string;
+      icon: string | null;
+      frequency: string;
+      start_time: string | null;
+      end_time: string | null;
+      last_completed: string | null;
+      completed: boolean;
+      habit_type_tracking: string;
+    };
+    protocol_details: {
+      template_name: string;
+      template_type: string;
+      source: string;
+      frequency_type: string;
+      start_date: string | null;
+      end_date: string | null;
+      all_day: boolean;
+      reminder_time: string | null;
+    };
+    goal_details: {
+      goal: number | null;
+      metric_details: {
+        unit: string;
+        target: number;
+        completed: number;
+        remaining: number;
+        completion_percentage: number;
+      };
+      description: string;
+    };
+    progress: {
+      last_7_days_completion: Array<WeeklySummary & { date?: string }>;
+      completed_days_in_month: number[];
+      success_rate: number;
+      total_completed_habits: number;
+      tips: string[];
+      interesting_text: string | null;
+    };
+    trends: unknown | null;
+    streak: {
+      current_streak: number;
+      longest_streak: number;
+    };
+    daily_checkin: {
+      tips: string[];
+      interesting_text: string;
+    };
+  };
+}
+
+export type DailyCheckIn = {
   id: number;
   tags: string[];
   frequency: string;

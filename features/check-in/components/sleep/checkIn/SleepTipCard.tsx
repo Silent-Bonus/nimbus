@@ -20,6 +20,7 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       shadowOffset: { width: 0, height: 12 },
       shadowRadius: 24,
       elevation: 8,
+      marginTop: spacing.lg,
     },
     tipHeaderRow: {
       flexDirection: "row",
@@ -27,14 +28,14 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       gap: 10,
     },
     tipIconWrap: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: "rgba(255,255,255,0.04)",
+      backgroundColor: theme.surfaceMuted,
       borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.08)",
+      borderColor: theme.borderMuted,
     },
     sectionLabel: {
       ...typography.smallCaption,
@@ -48,6 +49,7 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       ...typography.h3,
       color: theme.textPrimary,
       fontStyle: "italic",
+      lineHeight: typography.h3.lineHeight,
       letterSpacing: -0.2,
     },
   });

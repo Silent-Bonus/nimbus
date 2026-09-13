@@ -21,7 +21,8 @@ type MeditationProgressCardProps = {
   completedMinutes: number;
   goalMinutes: number;
   anchoredAt: Date | null;
-  onAddMinutes: (step: number) => void;
+  onAddMinutes: (step: number) => Promise<void> | void;
+  onResetMinutes: () => void;
   onAnchorHold: () => void;
 };
 
@@ -52,7 +53,6 @@ const makeStyles = (
       shadowOffset: { width: 0, height: 12 },
       shadowRadius: 20,
       elevation: 8,
-      minHeight: 420,
     },
     heroGlow: {
       position: "absolute",
@@ -97,7 +97,7 @@ const makeStyles = (
       borderRadius: 999,
       backgroundColor: "rgba(255,255,255,0.05)",
       borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.06)",
+      borderColor: theme.borderMuted,
       alignItems: "center",
       justifyContent: "center",
       minWidth: 70,
@@ -124,7 +124,7 @@ const makeStyles = (
       borderRadius: 88,
       backgroundColor: "rgba(0,0,0,0.10)",
       borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.05)",
+      borderColor: theme.borderMuted,
       alignItems: "center",
       justifyContent: "center",
       paddingHorizontal: spacing.md,
@@ -158,14 +158,6 @@ const makeStyles = (
       marginTop: 10,
       textAlign: "center",
     },
-    anchorStampMuted: {
-      ...typography.caption,
-      color: theme.textSecondary,
-      opacity: 0.86,
-      marginTop: 10,
-      textAlign: "center",
-      lineHeight: 18,
-    },
     quickAddHeader: {
       marginTop: spacing.lg,
     },
@@ -192,8 +184,8 @@ const makeStyles = (
       minHeight: 44,
       borderRadius: 999,
       borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.08)",
-      backgroundColor: "rgba(255,255,255,0.04)",
+      borderColor: theme.borderMuted,
+      backgroundColor: theme.surfaceMuted,
       alignItems: "center",
       justifyContent: "center",
       shadowColor: theme.shadow,
@@ -212,6 +204,20 @@ const makeStyles = (
       fontWeight: "800",
       letterSpacing: 0.6,
     },
+    resetButton: {
+      minHeight: 44,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: spacing.sm,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.borderMuted,
+    },
+    resetButtonText: {
+      ...typography.button,
+      color: theme.textSecondary,
+      fontSize: 14,
+    },
     anchorStage: {
       marginTop: spacing.lg,
       alignItems: "center",
@@ -222,9 +228,9 @@ const makeStyles = (
       borderRadius: 45,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: "rgba(255,255,255,0.03)",
+      backgroundColor: theme.surfaceMuted,
       borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.08)",
+      borderColor: theme.borderMuted,
       shadowColor: theme.shadow,
       shadowOpacity: 0.22,
       shadowRadius: 16,
@@ -245,7 +251,7 @@ const makeStyles = (
       justifyContent: "center",
       backgroundColor: theme.background,
       borderWidth: 1,
-      borderColor: theme.borderMuted ?? "rgba(255,255,255,0.06)",
+      borderColor: theme.borderMuted,
     },
     anchorButtonLabel: {
       ...typography.button,
@@ -269,6 +275,7 @@ export const MeditationProgressCard = ({
   goalMinutes,
   anchoredAt,
   onAddMinutes,
+  onResetMinutes,
   onAnchorHold,
 }: MeditationProgressCardProps) => {
   const {
@@ -355,11 +362,7 @@ export const MeditationProgressCard = ({
             <Text style={styles.anchorStamp}>
               Anchored · {formatClockTime(anchoredAt)}
             </Text>
-          ) : (
-            <Text style={styles.anchorStampMuted}>
-              Hold the anchor to lock in the session.
-            </Text>
-          )}
+          ) : null}
         </View>
       </View>
 
@@ -375,6 +378,8 @@ export const MeditationProgressCard = ({
           <Pressable
             key={step}
             onPress={() => onAddMinutes(step)}
+            accessibilityRole="button"
+            accessibilityLabel={`Add ${step} meditation minutes`}
             style={({ pressed }) => [
               styles.quickAddChip,
               pressed && styles.quickAddChipPressed,
@@ -385,10 +390,27 @@ export const MeditationProgressCard = ({
         ))}
       </View>
 
+      {/*
+      <Pressable
+        onPress={onResetMinutes}
+        accessibilityRole="button"
+        accessibilityLabel="Reset meditation minutes"
+        style={({ pressed }) => [
+          styles.resetButton,
+          pressed && styles.quickAddChipPressed,
+        ]}
+      >
+        <Text style={styles.resetButtonText}>Reset to 0 minutes</Text>
+      </Pressable>
+      */}
+
       <View style={styles.anchorStage}>
         <Pressable
           onLongPress={onAnchorHold}
           delayLongPress={650}
+          accessibilityRole="button"
+          accessibilityLabel="Hold to anchor meditation session"
+          accessibilityHint="Press and hold to seal the session."
           style={({ pressed }) => [
             styles.anchorButton,
             pressed && styles.anchorButtonPressed,

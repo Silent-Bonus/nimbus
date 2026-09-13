@@ -30,6 +30,7 @@ type Props<T extends SelectableItem> = {
   onClose: () => void;
 
   title: string;
+  subtitle?: string;
   options: T[];
 
   selectedId?: T["id"] | null;
@@ -44,6 +45,7 @@ export default function SelectableListModal<T extends SelectableItem>({
   visible,
   onClose,
   title,
+  subtitle,
   options,
   selectedId = null,
   onSelect,
@@ -155,7 +157,7 @@ export default function SelectableListModal<T extends SelectableItem>({
         ]}
       >
         <View style={[styles.card, style]}>
-          <ModalHeader title={title} onClose={onClose} />
+          <ModalHeader title={title} subtitle={subtitle} onClose={onClose} />
 
           <FlatList
             data={options}

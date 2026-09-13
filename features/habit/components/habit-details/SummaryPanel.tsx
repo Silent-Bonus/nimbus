@@ -86,7 +86,7 @@ const styling = (theme: any, spacing: any, typography: any) =>
       marginBottom: spacing.xs,
     },
     value: {
-      ...typography.bodyLarge,
+      ...typography.bodyStrong,
       fontWeight: "700",
       color: theme.textPrimary,
     },

@@ -65,6 +65,7 @@ export interface HabitItem {
   duration: string;
   metric_count: number;
   metric_unit: string;
+  habit_type_tracking?: "boolean" | "incremental" | string;
   last_completed: string;
   time?: string;
   completed: boolean;

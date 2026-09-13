@@ -47,6 +47,9 @@ import type {
 
 type SoundscapeDetailParams = {
   soundscapeId?: string | string[];
+  source?: string | string[];
+  checkInId?: string | string[];
+  date?: string | string[];
 };
 
 const parseParam = (value?: string | string[]) => {
@@ -68,6 +71,9 @@ export default function SoundscapeDetailScreen() {
     useContext(ThemeContext);
 
   const soundscapeId = parseParam(params.soundscapeId) ?? "";
+  const routedSource = parseParam(params.source);
+  const routedCheckInId = parseParam(params.checkInId);
+  const routedDate = parseParam(params.date);
 
   const styles = useMemo(
     () => styling(svaColors, svaTypography, spacing, typography),
@@ -187,7 +193,7 @@ export default function SoundscapeDetailScreen() {
     } catch (error) {
       console.warn("soundscape favorite toggle failed", error);
     }
-  }, [favoriteIds, isFavorite, soundscape]);
+  }, [soundscape]);
 
   const handleShare = useCallback(async () => {
     if (!soundscape) return;
@@ -210,9 +216,13 @@ export default function SoundscapeDetailScreen() {
       pathname: ROUTES.AUTH.SELF_CARE_SOUNDSCAPE_PLAYER,
       params: {
         soundscapeId: soundscape.id,
+        source: routedSource,
+        checkInId: routedCheckInId,
+        date: routedDate,
+        autoStart: routedSource === "daily-checkin" ? "true" : undefined,
       },
     });
-  }, [soundscape]);
+  }, [routedCheckInId, routedDate, routedSource, soundscape]);
 
   const ctaLabel = "Start Soundscape";
   const headerActions: HeaderRightAction[] = soundscape

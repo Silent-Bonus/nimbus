@@ -11,11 +11,12 @@ import {
   Pressable,
 } from "react-native";
 import Slider from "@react-native-community/slider";
+import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import ThemeContext from "@/contexts/ThemeContext";
-import type { ColorSet } from "@/theme/types";
+import type { ColorSet, Spacing, Typography } from "@/theme/types";
 import { Tab } from "./components/Tabs";
 import { TimeRow } from "./components/TimeRow";
 import { GhostButton } from "./components/GhostButton";
@@ -48,7 +49,7 @@ type Props = {
   onSleepNow?: () => void;
 
   /** Called when user saves manual log */
-  onSaveManual?: (payload: LogPayload) => void;
+  onSaveManual?: (payload: LogPayload) => void | Promise<void>;
 
   /** Optional defaults for manual tab */
   defaultBed?: Date;
@@ -97,7 +98,10 @@ export default function LogSheet({
   // Manual state
   const initBed = defaultBed ?? setHM(new Date(), 23, 0);
   const initWake = defaultWake ?? addDays(setHM(new Date(), 7, 0), 1); // next morning 07:00
-  const pastDateOptions = useMemo(() => getPastSleepDates(), []);
+  // Show the five most recent past dates; the date picker below allows any
+  // date from this range forward, including future dates.
+  const pastDateOptions = useMemo(() => getPastSleepDates(5), []);
+  const minimumSelectableDate = pastDateOptions[pastDateOptions.length - 1];
   const [selectedDate, setSelectedDate] = useState<Date>(
     pastDateOptions[0] ?? initBed
   );
@@ -106,9 +110,10 @@ export default function LogSheet({
   const [durationMinutes, setDurationMinutes] = useState(
     Math.max(0, Math.min(12 * 60, defaultDurationMinutes))
   );
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const { newTheme } = useContext(ThemeContext);
-  const styles = styling(newTheme);
+  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const styles = styling(newTheme, spacing, typography);
 
   const durationMin = useMemo(
     () => diffMinutes(bedTime, wakeTime),
@@ -131,6 +136,7 @@ export default function LogSheet({
     setBedTime(initBed);
     setWakeTime(initWake);
     setDurationMinutes(Math.max(0, Math.min(12 * 60, defaultDurationMinutes)));
+    setShowDatePicker(false);
   }, [
     visible,
     showNowTab,
@@ -147,6 +153,23 @@ export default function LogSheet({
       if (kind === "bed") setBedTime(mergeHM(bedTime, d));
       else setWakeTime(mergeHM(wakeTime, d));
     };
+
+  const onDateChange = (event: DateTimePickerEvent, date?: Date) => {
+    if (event.type === "dismissed") {
+      setShowDatePicker(false);
+      return;
+    }
+
+    if (!date) return;
+
+    const normalizedDate = new Date(date);
+    normalizedDate.setHours(0, 0, 0, 0);
+    setSelectedDate(normalizedDate);
+
+    if (Platform.OS === "android") {
+      setShowDatePicker(false);
+    }
+  };
 
   return (
     <Modal
@@ -267,6 +290,53 @@ export default function LogSheet({
                           );
                         })}
                       </View>
+
+                      <Pressable
+                        onPress={() => setShowDatePicker(true)}
+                        style={({ pressed }) => [
+                          styles.datePickerButton,
+                          pressed && styles.dateChipPressed,
+                        ]}
+                        accessibilityRole="button"
+                        accessibilityLabel="Choose another sleep date"
+                      >
+                        <Ionicons
+                          name="calendar-outline"
+                          size={18}
+                          color={newTheme.accent}
+                        />
+                        <Text style={styles.datePickerButtonText}>
+                          Choose another date
+                        </Text>
+                        <Ionicons
+                          name="chevron-forward"
+                          size={16}
+                          color={newTheme.textSecondary}
+                        />
+                      </Pressable>
+
+                      {showDatePicker ? (
+                        <View style={styles.datePickerPanel}>
+                          <DateTimePicker
+                            value={selectedDate}
+                            mode="date"
+                            minimumDate={minimumSelectableDate}
+                            display={Platform.OS === "ios" ? "spinner" : "default"}
+                            onChange={onDateChange}
+                            accentColor={newTheme.accent}
+                            textColor={newTheme.textPrimary}
+                            themeVariant={Platform.OS === "ios" ? "dark" : undefined}
+                          />
+                          {Platform.OS === "ios" ? (
+                            <Pressable
+                              onPress={() => setShowDatePicker(false)}
+                              style={styles.datePickerDoneButton}
+                            >
+                              <Text style={styles.datePickerDoneText}>Done</Text>
+                            </Pressable>
+                          ) : null}
+                        </View>
+                      ) : null}
                     </View>
                   ) : null}
 
@@ -336,8 +406,8 @@ export default function LogSheet({
 
                   <PrimaryButton
                     label={saveText}
-                    onPress={() => {
-                      onSaveManual?.({
+                    onPress={async () => {
+                      await onSaveManual?.({
                         bedTime: durationTargetBed,
                         wakeTime: durationTargetWake,
                         durationMin: durationMinutes,
@@ -388,8 +458,8 @@ export default function LogSheet({
 
                   <PrimaryButton
                     label={saveText}
-                    onPress={() => {
-                      onSaveManual?.({ bedTime, wakeTime, durationMin });
+                    onPress={async () => {
+                      await onSaveManual?.({ bedTime, wakeTime, durationMin });
                       onClose();
                     }}
                   />
@@ -406,7 +476,11 @@ export default function LogSheet({
 
 /* ---------- styles ---------- */
 
-const styling = (newTheme: ColorSet) =>
+const styling = (
+  newTheme: ColorSet,
+  spacing: Spacing,
+  typography: Typography
+) =>
   StyleSheet.create({
     backdrop: {
       ...StyleSheet.absoluteFillObject,
@@ -419,9 +493,9 @@ const styling = (newTheme: ColorSet) =>
       borderTopRightRadius: 20,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderColor: newTheme.border,
-      paddingHorizontal: 16,
+      paddingHorizontal: spacing.md,
       paddingTop: 8,
-      paddingBottom: 12,
+      paddingBottom: spacing.sm,
       maxHeight: "86%",
       shadowColor: newTheme.shadow,
       shadowOpacity: 0.25,
@@ -441,9 +515,13 @@ const styling = (newTheme: ColorSet) =>
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      marginBottom: 12,
+      marginBottom: spacing.sm,
     },
-    title: { color: newTheme.textPrimary, fontSize: 18, fontWeight: "800" },
+    title: {
+      ...typography.h3,
+      color: newTheme.textPrimary,
+      fontWeight: "800",
+    },
     tabs: { flexDirection: "row", gap: 8 },
     dateStripCard: {
       borderRadius: 18,
@@ -477,8 +555,8 @@ const styling = (newTheme: ColorSet) =>
       transform: [{ scale: 0.99 }],
     },
     dateChipDay: {
+      ...typography.smallCaption,
       color: newTheme.textSecondary,
-      fontSize: 10,
       fontWeight: "800",
       letterSpacing: 1.1,
       textTransform: "uppercase",
@@ -487,10 +565,9 @@ const styling = (newTheme: ColorSet) =>
       color: newTheme.textPrimary,
     },
     dateChipValue: {
+      ...typography.bodyStrong,
       marginTop: 2,
       color: newTheme.textPrimary,
-      fontSize: 15,
-      lineHeight: 18,
       fontWeight: "800",
       letterSpacing: 0.1,
     },
@@ -504,13 +581,13 @@ const styling = (newTheme: ColorSet) =>
       gap: 10,
     },
     durationDialLabel: {
-      fontSize: 12,
+      ...typography.smallCaption,
       fontWeight: "700",
       letterSpacing: 0.8,
       textTransform: "uppercase",
     },
     durationDialValue: {
-      fontSize: 28,
+      ...typography.h2,
       fontWeight: "800",
       letterSpacing: -0.3,
     },
@@ -523,7 +600,7 @@ const styling = (newTheme: ColorSet) =>
       justifyContent: "space-between",
     },
     durationScaleText: {
-      fontSize: 11,
+      ...typography.smallCaption,
       fontWeight: "700",
       letterSpacing: 0.4,
     },
@@ -535,14 +612,51 @@ const styling = (newTheme: ColorSet) =>
       gap: 3,
     },
     durationPreviewLabel: {
-      fontSize: 11,
+      ...typography.smallCaption,
       fontWeight: "700",
       letterSpacing: 0.7,
       textTransform: "uppercase",
     },
     durationPreviewValue: {
-      fontSize: 16,
+      ...typography.bodyStrong,
       fontWeight: "800",
       letterSpacing: 0.1,
+    },
+    datePickerButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+      minHeight: 48,
+      marginTop: spacing.xs,
+      paddingHorizontal: spacing.md,
+      borderRadius: 16,
+      backgroundColor: newTheme.surfaceMuted,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: newTheme.borderMuted,
+    },
+    datePickerButtonText: {
+      ...typography.bodyStrong,
+      flex: 1,
+      color: newTheme.textPrimary,
+    },
+    datePickerPanel: {
+      alignItems: "center",
+      marginTop: spacing.sm,
+      paddingTop: spacing.xs,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: newTheme.borderMuted,
+    },
+    datePickerDoneButton: {
+      alignSelf: "stretch",
+      alignItems: "center",
+      marginTop: spacing.xs,
+      paddingVertical: spacing.sm,
+      borderRadius: 14,
+      backgroundColor: newTheme.accent,
+    },
+    datePickerDoneText: {
+      ...typography.button,
+      color: newTheme.background,
+      fontWeight: "800",
     },
   });

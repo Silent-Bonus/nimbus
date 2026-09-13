@@ -17,31 +17,33 @@ import {
 type Props = {
   asleepMinutes: number;
   goalMinutes: number;
-  ratingLabel?: string;
+  onSleepSessionStart?: (startedAt: Date) => void;
+  onSleepSessionInvalid?: () => void;
+  onSleepSessionComplete?: (durationHours: number) => Promise<void> | void;
+  onPastSleepComplete?: (
+    durationHours: number,
+    sleepDate: Date
+  ) => Promise<void> | void;
 };
 
 export default function SleepPerformanceCard({
   asleepMinutes,
   goalMinutes,
-  ratingLabel,
+  onSleepSessionStart,
+  onSleepSessionInvalid,
+  onSleepSessionComplete,
+  onPastSleepComplete,
 }: Props) {
   const { newTheme: theme, typography } = useContext(ThemeContext);
   const styles = useMemo(() => styling(theme, typography), [theme, typography]);
   const [open, setOpen] = useState(false);
   const [sleepNowProcessing, setSleepNowProcessing] = useState(false);
+  const [sleepStartedAt, setSleepStartedAt] = useState<Date | null>(null);
 
   const progress = useMemo(() => {
     if (!goalMinutes) return 0;
     return clamp(asleepMinutes / goalMinutes, 0, 1);
   }, [asleepMinutes, goalMinutes]);
-
-  const centerLabel =
-    ratingLabel ??
-    (progress >= 0.92
-      ? "Aligned recovery"
-      : progress >= 0.75
-      ? "Recovery in progress"
-      : "Deep recovery in progress");
 
   const ringSize = 184;
   const strokeWidth = 15;
@@ -56,22 +58,43 @@ export default function SleepPerformanceCard({
   const handleSleepNow = async () => {
     if (sleepNowProcessing) return;
 
+    if (!sleepStartedAt) {
+      const startedAt = new Date();
+      setSleepStartedAt(startedAt);
+      onSleepSessionStart?.(startedAt);
+      return;
+    }
+
     setSleepNowProcessing(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1200));
       const now = new Date();
-      console.log("Mock sleep now API call:", now.toISOString());
+      const elapsedHours = (now.getTime() - sleepStartedAt.getTime()) / 3600000;
+      const durationHours = Math.min(
+        8,
+        Math.round(Math.max(0, elapsedHours) * 100) / 100
+      );
+
+      if (durationHours <= 0) {
+        onSleepSessionInvalid?.();
+        return;
+      }
+
+      console.log("[Nidra Sync] sleep session completed", {
+        startedAt: sleepStartedAt.toISOString(),
+        wokeAt: now.toISOString(),
+        durationHours,
+      });
+
+      await onSleepSessionComplete?.(durationHours);
+      setSleepStartedAt(null);
     } finally {
       setSleepNowProcessing(false);
     }
   };
 
   const handleSaveManual = (payload: LogPayload) => {
-    console.log("Sleep log saved:", {
-      bed: payload.bedTime.toISOString(),
-      wake: payload.wakeTime.toISOString(),
-      minutes: payload.durationMin,
-    });
+    const durationHours = payload.durationMin / 60;
+    return onPastSleepComplete?.(durationHours, payload.bedTime);
   };
 
   return (
@@ -93,10 +116,6 @@ export default function SleepPerformanceCard({
           </Text>
         </View>
 
-        <View style={styles.goalChip}>
-          <Text style={styles.goalChipText}>{formatGoalHours(goalMinutes)}</Text>
-          <Text style={styles.goalChipSub}>goal</Text>
-        </View>
       </View>
 
       <View style={styles.ringStage}>
@@ -128,7 +147,6 @@ export default function SleepPerformanceCard({
             <Text style={styles.centerPrimary}>{formatHours(asleepMinutes)}</Text>
             <Text style={styles.centerSecondary}> / {formatGoalHours(goalMinutes)}</Text>
           </Text>
-          <Text style={styles.centerLabel}>{centerLabel}</Text>
         </View>
       </View>
 
@@ -160,7 +178,11 @@ export default function SleepPerformanceCard({
             color={sleepNowProcessing ? (theme.textSecondary ?? theme.textPrimary) : theme.textPrimary}
           />
           <Text style={styles.primaryActionText}>
-            {sleepNowProcessing ? "Processing..." : "Sleep now"}
+            {sleepNowProcessing
+              ? "Saving sleep..."
+              : sleepStartedAt
+              ? "Wake up"
+              : "Sleep now"}
           </Text>
         </Pressable>
 
@@ -192,7 +214,7 @@ export default function SleepPerformanceCard({
         manualDateSelection="pastWeek"
         defaultDurationMinutes={goalMinutes}
         manualTitleText="Select sleep date"
-        manualSubtitleText="Choose a date from the past week and set duration."
+        manualSubtitleText="Choose one of the last five days or any future date."
         saveText="Add past sleep"
       />
     </View>
@@ -240,29 +262,6 @@ const styling = (theme: ColorSet, typography: Typography) =>
       marginTop: 4,
       color: theme.textSecondary,
       opacity: 0.86,
-    },
-    goalChip: {
-      alignItems: "flex-end",
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 16,
-      backgroundColor: "rgba(255,255,255,0.03)",
-      borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.06)",
-    },
-    goalChipText: {
-      ...typography.caption,
-      color: theme.textPrimary,
-      fontWeight: "800",
-      letterSpacing: 0.1,
-    },
-    goalChipSub: {
-      ...typography.smallCaption,
-      marginTop: 1,
-      color: theme.textSecondary,
-      fontWeight: "700",
-      letterSpacing: 1.1,
-      textTransform: "uppercase",
     },
     ringStage: {
       alignItems: "center",

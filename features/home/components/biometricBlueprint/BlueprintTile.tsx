@@ -3,8 +3,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import type { BlueprintCard } from "@/features/home/types/biometricBlueprint";
+
 import type { BiometricBlueprintStyles } from "./styles";
-import type { BlueprintCard } from "./types";
 
 type BlueprintTileProps = {
   card: BlueprintCard;

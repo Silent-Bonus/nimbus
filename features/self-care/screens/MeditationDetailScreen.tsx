@@ -77,6 +77,13 @@ export default function MeditationDetailScreen() {
   // fall back to the numeric id for older entry points.
   const { meditationId, meditationSlug } = parseMeditationRouteParams(params);
   const detailIdentifier = meditationSlug || meditationId;
+  const routedSource = Array.isArray(params.source)
+    ? params.source[0]
+    : params.source;
+  const routedCheckInId = Array.isArray(params.checkInId)
+    ? params.checkInId[0]
+    : params.checkInId;
+  const routedDate = Array.isArray(params.date) ? params.date[0] : params.date;
 
   const styles = useMemo(
     () => styling(theme, svaTypography, spacing, typography),
@@ -219,9 +226,19 @@ export default function MeditationDetailScreen() {
       pathname: ROUTES.AUTH.SELF_CARE_MEDITATION_PLAYER,
       params: {
         ...buildMeditationRouteParams(meditation),
+        source: routedSource,
+        checkInId: routedCheckInId,
+        date: routedDate,
+        autoStart: routedSource === "daily-checkin" ? "true" : undefined,
       },
     });
-  }, [isStartingMeditation, meditation]);
+  }, [
+    isStartingMeditation,
+    meditation,
+    routedCheckInId,
+    routedDate,
+    routedSource,
+  ]);
 
   // Until the detail payload exists, render a dedicated loading or error state
   // instead of a placeholder meditation object.

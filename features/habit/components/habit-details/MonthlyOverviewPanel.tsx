@@ -1,7 +1,7 @@
 import React, { useContext, useMemo, useState } from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import ThemeContext from "@/contexts/ThemeContext";
+import type { ColorSet, Spacing, Typography } from "@/theme/types";
 
 interface Props {
   completedDays?: number[]; // e.g. [21, 22, 23, 24, 25]
@@ -30,8 +30,11 @@ export default function MonthlyOverviewPanel({ completedDays = [] }: Props) {
   const [currentMonth] = useState(now.getMonth());
   const [currentYear] = useState(now.getFullYear());
 
-  const { newTheme } = useContext(ThemeContext);
-  const styles = useMemo(() => styling(newTheme), [newTheme]);
+  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const styles = useMemo(
+    () => styling(newTheme, spacing, typography),
+    [newTheme, spacing, typography]
+  );
 
   // Build matrix of weeks for current month, Monday-first
   const weeks = useMemo(() => {
@@ -70,7 +73,6 @@ export default function MonthlyOverviewPanel({ completedDays = [] }: Props) {
         <Text style={styles.headerText}>
           {MONTH_NAMES[currentMonth]}, {currentYear}
         </Text>
-        <Ionicons name="chevron-down" size={18} color={newTheme.background} />
       </View>
 
       {/* Weekday labels */}
@@ -113,48 +115,46 @@ export default function MonthlyOverviewPanel({ completedDays = [] }: Props) {
   );
 }
 
-const styling = (newTheme: any) =>
+const styling = (newTheme: ColorSet, spacing: Spacing, typography: Typography) =>
   StyleSheet.create({
     card: {
       borderWidth: 1,
-      borderColor: newTheme.accent,
-      borderRadius: 12,
-      paddingBottom: 12,
-      marginTop: 16,
-      backgroundColor: newTheme.surface,
+      borderColor: newTheme.borderMuted,
+      borderRadius: spacing.lg,
+      paddingBottom: spacing.sm,
+      marginTop: spacing.sm,
+      backgroundColor: newTheme.cardRaised ?? newTheme.surface,
       overflow: "hidden",
     },
     header: {
       flexDirection: "row",
-      backgroundColor: newTheme.accent,
-      borderTopLeftRadius: 12,
-      borderTopRightRadius: 12,
-      paddingVertical: 6,
+      backgroundColor: newTheme.surfaceMuted,
+      borderTopLeftRadius: spacing.lg,
+      borderTopRightRadius: spacing.lg,
+      paddingVertical: spacing.sm,
       justifyContent: "center",
       alignItems: "center",
-      paddingHorizontal: 12,
+      paddingHorizontal: spacing.md,
     },
     headerText: {
-      fontSize: 16,
-      fontWeight: "600",
-      color: newTheme.background,
-      marginRight: 4,
+      ...typography.bodyStrong,
+      color: newTheme.textPrimary,
+      marginRight: spacing.xs,
     },
     weekRow: {
       flexDirection: "row",
       justifyContent: "space-around",
-      marginVertical: 4,
+      marginVertical: spacing.xs,
     },
     weekDay: {
-      fontSize: 12,
-      fontWeight: "600",
+      ...typography.smallCaption,
       color: newTheme.textSecondary,
-      width: 28,
+      width: 30,
       textAlign: "center",
     },
     dayCell: {
-      width: 28,
-      height: 28,
+      width: 30,
+      height: 30,
       justifyContent: "center",
       alignItems: "center",
     },
@@ -163,21 +163,21 @@ const styling = (newTheme: any) =>
       alignItems: "center",
     },
     dayText: {
-      fontSize: 14,
+      ...typography.caption,
       color: newTheme.textPrimary,
     },
     // Teardrop / pill marker for completed days
     dropMarker: {
       backgroundColor: newTheme.accent,
-      width: 28,
-      height: 34,
-      borderRadius: 17,
+      width: 30,
+      height: 36,
+      borderRadius: 18,
       justifyContent: "center",
       alignItems: "center",
       transform: [{ rotate: "45deg" }],
     },
     dropText: {
-      fontSize: 12,
+      ...typography.smallCaption,
       color: newTheme.background,
       fontWeight: "600",
       transform: [{ rotate: "-45deg" }],

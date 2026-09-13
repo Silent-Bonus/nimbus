@@ -131,14 +131,21 @@ export const buildWeeklySleepSeries = (
 ): SleepPoint[] => {
   const source = Array.isArray(raw) ? raw : [];
 
-  return WEEK_DAYS.map((day, index) => {
-    const entry = source[index];
+  // Preserve the API order and use each entry's actual weekday. The API's
+  // seven-day window can start mid-week, so index-based Mon-Sun mapping shifts
+  // values onto the wrong day.
+  const entries = source.length ? source : WEEK_DAYS;
+
+  return entries.map((entry, index) => {
+    const candidate = entry && typeof entry === "object"
+      ? (entry as Record<string, unknown>)
+      : null;
+    const day = String(candidate?.day ?? WEEK_DAYS[index] ?? "");
     let hours = 0;
 
     if (typeof entry === "number") {
       hours = entry > 12 ? entry / 60 : (entry / 100) * goalHours;
-    } else if (entry && typeof entry === "object") {
-      const candidate = entry as Record<string, unknown>;
+    } else if (candidate) {
       const directHours = Number(candidate.hours);
       const directValue = Number(candidate.value);
       const percent = Number(candidate.percent);

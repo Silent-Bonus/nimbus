@@ -7,6 +7,7 @@
 
 import { addDays, format, startOfWeek, subDays } from "date-fns";
 
+import { toApiDate } from "@/utils/date-time";
 import type {
   DashboardMealKey,
   DayPlan,
@@ -128,13 +129,13 @@ const extractRangeDays = (label?: string) => {
 
 const toDateString = (value?: string | null, fallbackDate = new Date()) => {
   if (!value) {
-    return format(fallbackDate, "yyyy-MM-dd");
+    return toApiDate(fallbackDate);
   }
 
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime())
-    ? format(fallbackDate, "yyyy-MM-dd")
-    : format(parsed, "yyyy-MM-dd");
+    ? toApiDate(fallbackDate)
+    : toApiDate(parsed);
 };
 
 const normalizeNutritionMetric = (
@@ -465,12 +466,12 @@ export const buildMealPlannerWeekDisplayDays = (
   plans: DayPlan[]
 ): MealPlannerWeekDisplayDay[] => {
   const planMap = new Map(
-    plans.map((plan) => [format(new Date(plan.date), "yyyy-MM-dd"), plan])
+    plans.map((plan) => [toApiDate(new Date(plan.date)), plan])
   );
 
   return Array.from({ length: 7 }, (_, index) => {
     const date = addDays(weekStart, index);
-    const key = format(date, "yyyy-MM-dd");
+    const key = toApiDate(date);
     const livePlan = planMap.get(key) ?? null;
 
     return {

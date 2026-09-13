@@ -14,7 +14,7 @@ import HeaderPanel from "@/features/habit/components/habit-details/HeaderPanel";
 import MonthlyOverviewPanel from "@/features/habit/components/habit-details/MonthlyOverviewPanel";
 import AppHeader from "@/components/layout/AppHeader";
 import { format, isBefore, parseISO, startOfDay } from "date-fns";
-import { formatReminderTime } from "@/utils/date-time";
+import { formatReminderTime, toApiDate } from "@/utils/date-time";
 import HabitDetailsSkeleton from "@/features/habit/components/habit-details/HabitDetailsSkeleton";
 import { DeleteHabitModal } from "@/features/habit/components/habit-details/DeleteHabitModal";
 
@@ -49,27 +49,26 @@ export const HabitDetailScreen = () => {
         const formattedData = {
           ...data,
           name: data.name,
-          success_rate: 45,
-          completed_habits: 134,
+          success_rate: data.success_rate ?? 0,
+          completed_habits: data.total_completed_habits ?? 0,
           type: data.habit_type,
-          metric_unit: "ltrs",
-          icon: "🧘",
+          metric_unit: data.metric_unit ?? "",
           summary_data: [
             {
               label: "Current streak",
-              value: `${data.current_streak || 3}`,
+              value: `${data.current_streak ?? 0}`,
             },
             {
               label: "Success rate",
-              value: `${data.success_rate || 45}%`,
+              value: `${data.success_rate ?? 0}%`,
             },
             {
               label: "Best streak day",
-              value: `${data.longest_streak || 10}`,
+              value: `${data.longest_streak ?? 0}`,
             },
             {
               label: "Completed habits",
-              value: `${data.total_completed_habits || 134}`,
+              value: `${data.total_completed_habits ?? 0}`,
             },
           ],
         };
@@ -86,8 +85,7 @@ export const HabitDetailScreen = () => {
     if (id) {
       const habitId = Array.isArray(id) ? id[0] : id;
       const selectedDate = Array.isArray(date) ? date?.[0] : date; // "2025-12-10"
-      const safeDate =
-        selectedDate ?? format(startOfDay(new Date()), "yyyy-MM-dd");
+      const safeDate = selectedDate ?? toApiDate(startOfDay(new Date()));
       getHabitDetails(habitId, safeDate);
     }
   }, [id, date]);
@@ -198,9 +196,6 @@ export const HabitDetailScreen = () => {
                 />
                 <WeeklyHabitRowPanel
                   key={habit.name}
-                  habitName={habit.name}
-                  frequency={habit.frequency}
-                  icon={habit.icon}
                   data={habit.last_7_days_completion}
                 />
               </View>

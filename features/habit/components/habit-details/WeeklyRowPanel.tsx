@@ -1,19 +1,14 @@
 import ThemeContext from "@/contexts/ThemeContext";
 import React, { useContext, useMemo } from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
+import type { ColorSet, Spacing, Typography } from "@/theme/types";
 
 interface Props {
-  habitName: string;
-  frequency: string;
-  icon?: string; // emoji for now
   data: { day: string; done: boolean; date: string }[];
   onToggle?: (day: string) => void;
 }
 
 export default function WeeklyHabitRow({
-  habitName,
-  frequency,
-  icon = "🧘",
   data,
   onToggle,
 }: Props) {
@@ -32,22 +27,6 @@ export default function WeeklyHabitRow({
 
   return (
     <View style={styles.card}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.icon}>{icon}</Text>
-          <Text style={styles.habitName} numberOfLines={1}>
-            {habitName}
-          </Text>
-        </View>
-
-        <View style={styles.frequencyPill}>
-          <Text style={styles.frequencyText}>{frequency}</Text>
-        </View>
-      </View>
-
-      <View style={styles.divider} />
-
       {/* Days row */}
       <View style={styles.daysRow}>
         {normalized.map((item) => (
@@ -77,7 +56,7 @@ export default function WeeklyHabitRow({
   );
 }
 
-const styling = (newTheme: any, spacing: any, typography: any) =>
+const styling = (newTheme: ColorSet, spacing: Spacing, typography: Typography) =>
   StyleSheet.create({
     card: {
       backgroundColor: newTheme.surface,
@@ -91,45 +70,6 @@ const styling = (newTheme: any, spacing: any, typography: any) =>
       shadowOpacity: 0.14,
       shadowRadius: 10,
       elevation: 3,
-    },
-
-    // Header
-    header: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: spacing.sm,
-    },
-    headerLeft: {
-      flexDirection: "row",
-      alignItems: "center",
-      flexShrink: 1,
-    },
-    icon: {
-      fontSize: 20,
-      marginRight: spacing.sm,
-    },
-    habitName: {
-      ...typography.bodyMedium,
-      color: newTheme.textPrimary,
-      fontWeight: "600",
-      flexShrink: 1,
-    },
-    frequencyPill: {
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.xs,
-      borderRadius: 999,
-      backgroundColor: newTheme.surfaceSoft ?? newTheme.disabled,
-    },
-    frequencyText: {
-      ...typography.caption,
-      color: newTheme.textSecondary,
-    },
-
-    divider: {
-      height: 1,
-      backgroundColor: newTheme.divider,
-      marginVertical: spacing.sm,
     },
 
     // Days
@@ -146,9 +86,9 @@ const styling = (newTheme: any, spacing: any, typography: any) =>
       width: 32,
       height: 32,
       borderRadius: 16,
-      backgroundColor: newTheme.disabled,
+      backgroundColor: newTheme.surfaceMuted,
       borderWidth: 1,
-      borderColor: newTheme.divider,
+      borderColor: newTheme.borderMuted,
       justifyContent: "center",
       alignItems: "center",
     },
@@ -167,7 +107,7 @@ const styling = (newTheme: any, spacing: any, typography: any) =>
     },
     check: {
       fontSize: 16,
-      color: newTheme.surface,
+      color: newTheme.background,
       fontWeight: "600",
     },
     dayLabel: {
