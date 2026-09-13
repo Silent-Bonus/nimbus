@@ -21,6 +21,7 @@ import { LinearGradient } from "expo-linear-gradient";
 
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import ThemeContext from "@/contexts/ThemeContext";
+import { useMeditationSession } from "@/contexts/MeditationSessionContext";
 import {
   buildSoundscapeResonanceLabel,
   getSoundscapeById,
@@ -42,6 +43,10 @@ import type { ColorSet, Spacing, Typography, TypographyTokens } from "@/theme/ty
 
 type SoundscapePlayerParams = {
   soundscapeId?: string | string[];
+  source?: string | string[];
+  checkInId?: string | string[];
+  date?: string | string[];
+  autoStart?: string | string[];
 };
 
 const parseParam = (value?: string | string[]) => {
@@ -64,6 +69,10 @@ export default function SoundscapePlayerScreen() {
   const isCompactLayout = windowHeight < 900;
 
   const soundscapeId = parseParam(params.soundscapeId) ?? "";
+  const routeSource = parseParam(params.source);
+  const routeCheckInId = parseParam(params.checkInId);
+  const routeDate = parseParam(params.date);
+  const routeAutoStart = parseParam(params.autoStart);
   const soundscape = useMemo(
     () => getSoundscapeById(soundscapeId) ?? null,
     [soundscapeId]
@@ -157,6 +166,10 @@ export default function SoundscapePlayerScreen() {
       spacing={spacing}
       isCompactLayout={isCompactLayout}
       onBack={handleBack}
+      routeSource={routeSource}
+      routeCheckInId={routeCheckInId}
+      routeDate={routeDate}
+      routeAutoStart={routeAutoStart}
     />
   );
 }
@@ -548,6 +561,10 @@ type SoundscapePlayerContentProps = {
   spacing: Spacing;
   isCompactLayout: boolean;
   onBack: () => void | Promise<void>;
+  routeSource?: string;
+  routeCheckInId?: string;
+  routeDate?: string;
+  routeAutoStart?: string;
 };
 
 type SoundscapeSessionStatus =
@@ -565,6 +582,10 @@ function SoundscapePlayerContent({
   spacing,
   isCompactLayout,
   onBack,
+  routeSource,
+  routeCheckInId,
+  routeDate,
+  routeAutoStart,
 }: SoundscapePlayerContentProps) {
   // Display-only labels are derived once from the cached soundscape so the
   // transport and header sections can stay presentation-focused.
@@ -595,11 +616,13 @@ function SoundscapePlayerContent({
   const [sessionStatus, setSessionStatus] =
     useState<SoundscapeSessionStatus>("idle");
   const [sessionRef, setSessionRef] = useState<string | null>(null);
+  const meditationSession = useMeditationSession();
   const sessionStatusRef = useRef<SoundscapeSessionStatus>("idle");
   const pauseSessionRef = useRef<(() => Promise<void>) | null>(null);
   const sessionCreatePromiseRef = useRef<Promise<string | null> | null>(null);
   const completionInFlightRef = useRef(false);
   const leavingScreenRef = useRef(false);
+  const hasAutoStartedRef = useRef(false);
 
   const {
     soundRef,
@@ -625,6 +648,7 @@ function SoundscapePlayerContent({
     sessionCreatePromiseRef.current = null;
     completionInFlightRef.current = false;
     leavingScreenRef.current = false;
+    hasAutoStartedRef.current = false;
   }, [soundscape.id]);
 
   useEffect(() => {
@@ -841,19 +865,25 @@ function SoundscapePlayerContent({
     }
 
     if (isPlaying) {
-      await togglePlayPause();
-      void pauseSession();
+      await meditationSession.pauseSession();
       return;
     }
 
     if (sessionStatus === "paused") {
-      await togglePlayPause();
-      void resumeSession();
+      await meditationSession.resumeSession();
       return;
     }
 
     ensureSessionStarted();
     await togglePlayPause();
+    meditationSession.startSession({
+      mode: "soundscape",
+      source: routeSource === "daily-checkin" ? "daily-checkin" : "soundscape",
+      title: soundscape.title,
+      contentId: soundscape.id,
+      checkInId: routeCheckInId,
+      date: routeDate,
+    });
     setSessionStatus((current) =>
       current === "completed" ? current : "active"
     );
@@ -861,11 +891,74 @@ function SoundscapePlayerContent({
     ensureSessionStarted,
     isLoading,
     isPlaying,
-    pauseSession,
-    resumeSession,
+    meditationSession,
+    routeCheckInId,
+    routeDate,
+    routeSource,
     sessionStatus,
+    soundscape.id,
+    soundscape.title,
     togglePlayPause,
   ]);
+
+  useEffect(
+    () =>
+      meditationSession.registerControls({
+        onPause: async () => {
+          if (isPlaying) {
+            await togglePlayPause();
+          }
+          await pauseSession();
+        },
+        onResume: async () => {
+          if (isLoading || sessionStatus === "completed") return;
+
+          if (sessionStatus === "paused") {
+            await togglePlayPause();
+            await resumeSession();
+            return;
+          }
+
+          ensureSessionStarted();
+          await togglePlayPause();
+          setSessionStatus((current) =>
+            current === "completed" ? current : "active"
+          );
+        },
+        onStop: async () => {
+          if (currentSound) {
+            await currentSound.stopAsync().catch(() => {});
+          }
+          await completeSession();
+        },
+      }),
+    [
+      completeSession,
+      currentSound,
+      ensureSessionStarted,
+      isLoading,
+      isPlaying,
+      meditationSession,
+      pauseSession,
+      resumeSession,
+      sessionStatus,
+      togglePlayPause,
+    ]
+  );
+
+  useEffect(() => {
+    if (
+      routeAutoStart !== "true" ||
+      hasAutoStartedRef.current ||
+      isLoading ||
+      sessionStatus === "completed"
+    ) {
+      return;
+    }
+
+    hasAutoStartedRef.current = true;
+    void handlePlayPause();
+  }, [handlePlayPause, isLoading, routeAutoStart, sessionStatus]);
 
   // Back navigation pauses both audio and session state before leaving the
   // screen so the user can resume later without marking the session complete.

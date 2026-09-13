@@ -91,8 +91,7 @@ const styling = (theme: any, spacing: any, typography: any) =>
       color: theme.textSecondary,
     },
     value: {
-      ...typography.bodyMedium,
-      fontWeight: "600",
+      ...typography.bodyStrong,
       color: theme.textPrimary,
       marginLeft: spacing.md,
     },

@@ -2,6 +2,7 @@ import React, { useContext, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ThemeContext from "@/contexts/ThemeContext";
+import type { ColorSet, Spacing, Typography } from "@/theme/types";
 
 interface Props {
   title: string;
@@ -13,14 +14,13 @@ interface Props {
 export default function HeaderPanel({
   title,
   type = "default",
-  accentColor = "#000",
+  accentColor,
   onSelect,
 }: Props) {
   const [selected, setSelected] = useState("Today");
   const [open, setOpen] = useState(false);
-  const { newTheme } = useContext(ThemeContext);
-
-  const styles = styling(newTheme);
+  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const styles = styling(newTheme, spacing, typography);
 
   const weekly = ["Current week", "Previous week", "Future weeks"];
   const monthly = ["Current month", "Previous month", "Future month"];
@@ -41,14 +41,17 @@ export default function HeaderPanel({
       {(type === "monthly" || type === "weekly") && (
         <View style={{ position: "relative", zIndex: 100 }}>
           <TouchableOpacity
-            style={[styles.dropdownButton, { backgroundColor: accentColor }]}
+            style={[
+              styles.dropdownButton,
+              { backgroundColor: accentColor ?? newTheme.surfaceMuted },
+            ]}
             onPress={() => setOpen(!open)}
           >
             <Text style={styles.dropdownText}>{selected}</Text>
             <Ionicons
               name={open ? "chevron-up" : "chevron-down"}
               size={16}
-              color="#fff"
+              color={newTheme.textPrimary}
             />
           </TouchableOpacity>
 
@@ -84,49 +87,48 @@ export default function HeaderPanel({
   );
 }
 
-const styling = (newTheme: any) =>
+const styling = (newTheme: ColorSet, spacing: Spacing, typography: Typography) =>
   StyleSheet.create({
     container: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      marginBottom: 12,
+      marginBottom: spacing.sm,
     },
     title: {
-      fontSize: 18,
-      fontWeight: "700",
+      ...typography.h3,
       color: newTheme.textPrimary,
     },
     dropdownButton: {
       flexDirection: "row",
       alignItems: "center",
-      paddingHorizontal: 12,
-      paddingVertical: 6,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs,
       borderRadius: 20,
     },
     dropdownText: {
       color: newTheme.textSecondary,
-      fontSize: 14,
-      marginRight: 6,
+      ...typography.caption,
+      marginRight: spacing.xs,
     },
     dropdownMenu: {
       position: "absolute",
       top: 40,
       right: 0,
-      backgroundColor: newTheme.surface,
+      backgroundColor: newTheme.surfaceElevated ?? newTheme.surface,
       elevation: 10, // ✅ Android shadow
       zIndex: 100,
-      borderRadius: 8,
-      shadowColor: "#000",
+      borderRadius: spacing.sm,
+      shadowColor: newTheme.shadow,
       shadowOpacity: 0.1,
       shadowRadius: 4,
     },
     dropdownItem: {
-      paddingHorizontal: 12,
-      paddingVertical: 10,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
     },
     dropdownItemText: {
-      fontSize: 14,
+      ...typography.caption,
       color: newTheme.textPrimary,
     },
   });

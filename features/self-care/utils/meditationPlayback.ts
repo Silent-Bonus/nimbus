@@ -20,6 +20,10 @@ export type MeditationRouteParams = {
   meditationLevel?: RouteValue;
   meditationDosha?: RouteValue;
   meditationSource?: RouteValue;
+  source?: RouteValue;
+  checkInId?: RouteValue;
+  date?: RouteValue;
+  autoStart?: RouteValue;
 };
 
 export type ParsedMeditationRouteParams = {

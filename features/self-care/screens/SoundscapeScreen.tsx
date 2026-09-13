@@ -7,7 +7,7 @@ import React, {
   useState,
 } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { router, useNavigation } from "expo-router";
+import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 
 import AppHeader from "@/components/layout/AppHeader";
@@ -60,6 +60,11 @@ export const SoundscapeScreen = () => {
   // Screen-level state covers the backend-fed soundscape library and the
   // local favorites/filter state used by this listing screen.
   const navigation = useNavigation();
+  const routeParams = useLocalSearchParams<{
+    source?: string | string[];
+    checkInId?: string | string[];
+    date?: string | string[];
+  }>();
   const { svaColors, svaTypography, spacing } = useContext(ThemeContext);
   const styles = useMemo(
     () => styling(svaColors, svaTypography, spacing),
@@ -237,11 +242,21 @@ export const SoundscapeScreen = () => {
   };
 
   const handleOpenSoundscapeDetail = useCallback((soundscapeId: string) => {
+    const source = Array.isArray(routeParams.source)
+      ? routeParams.source[0]
+      : routeParams.source;
+    const checkInId = Array.isArray(routeParams.checkInId)
+      ? routeParams.checkInId[0]
+      : routeParams.checkInId;
+    const date = Array.isArray(routeParams.date)
+      ? routeParams.date[0]
+      : routeParams.date;
+
     router.push({
       pathname: ROUTES.AUTH.SELF_CARE_SOUNDSCAPE_DETAIL,
-      params: { soundscapeId },
+      params: { soundscapeId, source, checkInId, date },
     });
-  }, []);
+  }, [routeParams.checkInId, routeParams.date, routeParams.source]);
 
   const handleBack = useCallback(() => {
     if (selectedFilter === FAVORITES_FILTER_VALUE) {

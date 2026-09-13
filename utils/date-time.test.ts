@@ -4,6 +4,7 @@ import {
   fromApiDate,
   toFriendlyDate,
   toFriendlyTime,
+  toISODate,
   isValidDate,
   pad,
   durationFromRange,
@@ -36,6 +37,11 @@ describe('utils/date-time', () => {
     it('toApiDate converts Date to yyyy-MM-dd', () => {
       const d = new Date('2026-05-15T10:00:00');
       expect(toApiDate(d)).toBe('2026-05-15');
+    });
+
+    it('toISODate matches the shared API date format', () => {
+      const d = new Date('2026-05-15T10:00:00');
+      expect(toISODate(d)).toBe('2026-05-15');
     });
 
     it('toApiTime converts Date to HH:mm:ss', () => {

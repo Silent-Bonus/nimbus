@@ -3,6 +3,7 @@ import { Text } from "react-native";
 import renderer, { act } from "react-test-renderer";
 
 import ThemeContext from "../../../../contexts/ThemeContext";
+import { MeditationSessionProvider } from "../../../../contexts/MeditationSessionContext";
 import { getTheme } from "../../../../theme";
 import {
   cacheSoundscapeTracks,
@@ -157,18 +158,23 @@ const hasText = (tree: renderer.ReactTestRenderer, value: string) =>
     .findAllByType(Text)
     .some((node) => getTextContent(node) === value);
 
+const renderedTrees: renderer.ReactTestRenderer[] = [];
+
 async function renderScreen() {
   let tree!: renderer.ReactTestRenderer;
 
   await act(async () => {
     tree = renderer.create(
       <ThemeContext.Provider value={themeValue as any}>
-        <SoundscapePlayerScreen />
+        <MeditationSessionProvider>
+          <SoundscapePlayerScreen />
+        </MeditationSessionProvider>
       </ThemeContext.Provider>
     );
     await Promise.resolve();
   });
 
+  renderedTrees.push(tree);
   return tree;
 }
 
@@ -222,6 +228,13 @@ describe("SoundscapePlayerScreen", () => {
         return { sound: mockSound };
       }
     );
+  });
+
+  afterEach(async () => {
+    await act(async () => {
+      renderedTrees.splice(0).forEach((tree) => tree.unmount());
+      await Promise.resolve();
+    });
   });
 
   it("loads the soundscape and renders the player surface without creating a session", async () => {

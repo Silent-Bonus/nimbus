@@ -69,10 +69,22 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       fontWeight: "700",
       flexShrink: 1,
     },
-    chartLabel: {
+    weekLegend: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginTop: spacing.xs,
+      paddingHorizontal: 2,
+    },
+    weekLegendItem: {
+      flex: 1,
+      alignItems: "center",
+    },
+    weekLegendText: {
       ...typography.caption,
-      color: theme.textSecondary,
-      marginTop: 6,
+      color: theme.textPrimary,
+      fontWeight: "700",
+      textAlign: "center",
     },
     trendFooter: {
       flexDirection: "row",
@@ -104,7 +116,7 @@ export const HydrationTrendCard = ({ data }: HydrationTrendCardProps) => {
     () =>
       data.map((item) => ({
         value: item.percent,
-        label: item.day,
+        label: "",
         dataPointColor: theme.chart2 ?? theme.accent,
         dataPointRadius: item.percent > 0 ? 4 : 3,
       })),
@@ -157,10 +169,17 @@ export const HydrationTrendCard = ({ data }: HydrationTrendCardProps) => {
         dataPointsRadius={4}
         initialSpacing={10}
         endSpacing={10}
-        xAxisLabelTextStyle={styles.chartLabel}
         backgroundColor="transparent"
         isAnimated
       />
+
+      <View style={styles.weekLegend} accessibilityLabel="Past 7 days">
+        {data.map((item) => (
+          <View key={item.day} style={styles.weekLegendItem}>
+            <Text style={styles.weekLegendText}>{item.day}</Text>
+          </View>
+        ))}
+      </View>
 
       <View style={styles.trendFooter}>
         <Text style={styles.trendFooterValue}>{Math.round(average)}%</Text>

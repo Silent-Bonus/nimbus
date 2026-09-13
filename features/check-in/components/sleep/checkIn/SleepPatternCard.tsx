@@ -67,8 +67,10 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      marginTop: 16,
+      // Keep the recovery legend visually separate from the weekday labels.
+      marginTop: spacing.lg,
       paddingHorizontal: 6,
+      gap: spacing.sm,
     },
     legendItem: {
       flexDirection: "row",
@@ -76,6 +78,7 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       gap: 6,
       flex: 1,
       justifyContent: "center",
+      minWidth: 0,
     },
     legendDot: {
       width: 8,
@@ -86,6 +89,8 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       ...typography.smallCaption,
       color: theme.textSecondary,
       letterSpacing: 1,
+      flexShrink: 1,
+      textAlign: "center",
     },
   });
 
@@ -141,10 +146,15 @@ export const SleepPatternCard = ({ data }: SleepPatternCardProps) => {
         noOfSections={4}
         maxValue={12}
         isAnimated
+        // Reserve a dedicated row for the weekday labels so they do not get
+        // clipped into the card's status legend area on smaller screens.
+        xAxisLabelsHeight={30}
+        labelsExtraHeight={6}
+        labelsDistanceFromXaxis={6}
         xAxisLabelTextStyle={{
           ...typography.caption,
-          color: theme.textSecondary,
-          marginTop: 8,
+          color: theme.textPrimary,
+          fontWeight: "700",
         }}
         yAxisTextStyle={{ color: "transparent" }}
       />

@@ -1,4 +1,10 @@
-import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   LayoutAnimation,
   Platform,
@@ -12,19 +18,20 @@ import { useRouter } from "expo-router";
 import axios from "axios";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import { getCheckinList } from "@/features/check-in/services/dailyCheckinService";
+import { getBiometricBlueprintItems } from "@/features/home/service";
 import {
   BlueprintSkeleton,
   BlueprintTile,
+} from "@/features/home/components/biometricBlueprint";
+import {
   buildBlueprintCards,
   buildTemplates,
-  getBlueprintItems,
-} from "@/features/home/components/biometricBlueprint";
+} from "@/features/home/utils/biometricBlueprint";
 import type {
   BiometricBlueprintPanelProps,
   BlueprintCard,
   LoadedCheckin,
-} from "@/features/home/components/biometricBlueprint";
+} from "@/features/home/types";
 import { makeStyles } from "@/features/home/components/biometricBlueprint/styles";
 
 const Panel = ({ date }: BiometricBlueprintPanelProps) => {
@@ -32,7 +39,7 @@ const Panel = ({ date }: BiometricBlueprintPanelProps) => {
   const { newTheme, spacing, typography } = useContext(ThemeContext);
   const styles = useMemo(
     () => makeStyles(newTheme, spacing, typography),
-    [newTheme, spacing, typography]
+    [newTheme, spacing, typography],
   );
 
   const [items, setItems] = useState<LoadedCheckin[]>([]);
@@ -54,19 +61,20 @@ const Panel = ({ date }: BiometricBlueprintPanelProps) => {
     setError(null);
 
     try {
-      const res = await getCheckinList(date, true);
-      setItems(getBlueprintItems(res));
+      // Pull the selected day's check-ins and normalize them into blueprint cards.
+      const nextItems = await getBiometricBlueprintItems(date);
+      setItems(nextItems);
     } catch (error: unknown) {
       const msg = axios.isAxiosError(error)
-        ? error.response?.data?.message ??
+        ? (error.response?.data?.message ??
           error.response?.data?.detail ??
           error.message ??
-          "Unable to load blueprint"
+          "Unable to load blueprint")
         : error instanceof Error
-        ? error.message
-        : typeof error === "string"
-        ? error
-        : "Unable to load blueprint";
+          ? error.message
+          : typeof error === "string"
+            ? error
+            : "Unable to load blueprint";
       setError(msg);
       setItems([]);
     } finally {
@@ -75,19 +83,24 @@ const Panel = ({ date }: BiometricBlueprintPanelProps) => {
   }, [date]);
 
   useEffect(() => {
+    // Refresh whenever the selected date changes.
     fetchBlueprints();
   }, [fetchBlueprints]);
 
+  // Theme-driven template cards stay stable; only the live data changes.
   const templates = useMemo(() => buildTemplates(newTheme), [newTheme]);
 
+  // Merge live check-ins with the fixed template set for rendering.
   const blueprintCards = useMemo<BlueprintCard[]>(
     () => buildBlueprintCards(items, templates),
-    [items, templates]
+    [items, templates],
   );
 
   const onCardPress = useCallback(
     (card: BlueprintCard) => {
       if (!card.item?.id) return;
+
+      // Route into the matching check-in screen with the selected date.
       router.push({
         pathname: card.item.route,
         params: {
@@ -96,10 +109,11 @@ const Panel = ({ date }: BiometricBlueprintPanelProps) => {
         },
       });
     },
-    [date, router]
+    [date, router],
   );
 
   const toggleCollapse = () => {
+    // Keep the expand/collapse motion in sync with the section toggle.
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setIsCollapsed((prev) => !prev);
   };

@@ -155,6 +155,8 @@ export const API_ENDPOINTS = {
 
   markHabitDone: (habitId: number) =>
     `${BASE_URL}/api/v1/habits/${habitId}/mark_complete/`,
+  incrementHabitProgress: (habitId: number | string) =>
+    `${BASE_URL}/api/v1/habits/${habitId}/increment_progress/`,
 
   // ✅ NEW: Function for fetching habits with date & filter
   getDailyCheckInByDate: (date: string, isDailyCheckIn = true) =>

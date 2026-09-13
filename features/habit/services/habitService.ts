@@ -14,6 +14,10 @@ import {
   HabitTagResponse,
   HabitUnitesponse,
 } from "@/features/habit/types/habitTypes";
+import {
+  transformHabitListResponse,
+  type NormalizedHabitListResponse,
+} from "@/features/habit/utils/habitList";
 
 // Type definitions for login, signup, and list responses
 
@@ -55,15 +59,15 @@ export const createBulkHabit = async (
 // get habit list
 export const getHabitList = async (
   data?: string
-): Promise<HabitListResponse> => {
+): Promise<NormalizedHabitListResponse> => {
   const endpoint = data
     ? `${API_ENDPOINTS.createHabit}?date=${data}`
     : API_ENDPOINTS.createHabit;
   try {
-    const response: AxiosResponse<HabitListResponse> = await axios.get(
+    const response: AxiosResponse<HabitListResponse | NormalizedHabitListResponse> = await axios.get(
       endpoint
     );
-    return response.data; // Return the list data
+    return transformHabitListResponse(response.data);
   } catch (error: any) {
     throw error.response ? error.response.data : error.message;
   }
@@ -153,6 +157,13 @@ export const markHabitDone = async (
       data
     );
     if (response.status === 204) {
+      // A successful mark-complete request may intentionally have no body.
+      // Normalize it so the caller can still show success and refresh the UI.
+      return {
+        success: "true",
+        message: "Habit marked as done",
+        data: [],
+      };
     }
     return response.data; // Return the list data
   } catch (error: any) {
