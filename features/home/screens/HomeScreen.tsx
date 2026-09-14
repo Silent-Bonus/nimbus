@@ -45,10 +45,30 @@ import DailySutraCard from "@/features/home/components/DailySutraCard";
 import BioMetricBlueprintPanel from "@/features/home/components/BioMetricBlueprintPanel";
 import ActionModal from "@/components/ui/modal/ActionModal";
 import { Ionicons } from "@expo/vector-icons";
+import * as SecureStore from "expo-secure-store";
 import { toApiDate } from "@/utils/date-time";
 import { pickColor, pickIcon } from "@/features/check-in/utils/dailyCheckin";
+import { StoreKey } from "@/constants/Constant";
+import { getTodayResonance } from "@/features/home/services/resonanceService";
 
 const PROFILE_UPDATE_ROUTE = ROUTES.AUTH.ADVANCED_SETTINGS;
+const APP_TUTORIAL_STEPS = [
+  {
+    title: "Your daily home",
+    body: "See your daily rhythm, progress, and active habits in one place.",
+    iconName: "home-outline" as const,
+  },
+  {
+    title: "Build your rhythm",
+    body: "Complete habits and daily check-ins to keep your wellness protocol moving.",
+    iconName: "checkmark-circle-outline" as const,
+  },
+  {
+    title: "Explore your tools",
+    body: "Use the tabs to discover meditation, insights, routines, and your profile settings.",
+    iconName: "sparkles-outline" as const,
+  },
+];
 // Replace this with the dedicated profile-update route once that screen exists.
 
 function formatMissingFieldLabel(field: string) {
@@ -70,8 +90,38 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [userInfo, setUserInfo] = useState<any>(null);
   const [showVitalsBannerModal, setShowVitalsBannerModal] = useState(false);
+  const [resonanceScore, setResonanceScore] = useState<number | null>(null);
+  const [showTutorial, setShowTutorial] = useState(false);
+  const [tutorialStep, setTutorialStep] = useState(0);
 
   const { userProfile } = useAuth();
+
+  useEffect(() => {
+    let active = true;
+
+    void SecureStore.getItemAsync(StoreKey.TUTORIAL_PENDING_KEY).then((value) => {
+      if (active && value === "true") setShowTutorial(true);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const dismissTutorial = useCallback(async () => {
+    setShowTutorial(false);
+    setTutorialStep(0);
+    await SecureStore.deleteItemAsync(StoreKey.TUTORIAL_PENDING_KEY);
+  }, []);
+
+  const advanceTutorial = useCallback(async () => {
+    if (tutorialStep >= APP_TUTORIAL_STEPS.length - 1) {
+      await dismissTutorial();
+      return;
+    }
+
+    setTutorialStep((value) => value + 1);
+  }, [dismissTutorial, tutorialStep]);
 
   const toast = useNimbusToast();
 
@@ -128,11 +178,21 @@ export default function HomeScreen() {
     [decorateHabits]
   );
 
+  const loadResonance = useCallback(async () => {
+    try {
+      const score = await getTodayResonance();
+      setResonanceScore(score);
+    } catch {
+      setResonanceScore(null);
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       // runs every time this screen is focused again
-      loadHabits(isoDate);
-    }, [loadHabits, isoDate])
+      void loadHabits(isoDate);
+      void loadResonance();
+    }, [loadHabits, loadResonance, isoDate])
   );
 
   // keep userInfo in sync
@@ -278,7 +338,7 @@ export default function HomeScreen() {
                       />
                     </View>
 
-                    <Text style={styles.dashboardBannerTitle} numberOfLines={1}>
+                    <Text style={styles.dashboardBannerTitle}>
                       {dashboardVitalsTitle}
                     </Text>
 
@@ -303,7 +363,7 @@ export default function HomeScreen() {
               ) : null}
 
               <SyncProgressCard
-                percentage={84}
+                percentage={resonanceScore ?? 0}
                 currentPhase="Flow State"
                 nextPhase="Master Healer"
               />
@@ -382,6 +442,27 @@ export default function HomeScreen() {
         secondaryAction={{
           label: "Not now",
           variant: "outline",
+        }}
+      />
+
+      <ActionModal
+        visible={showTutorial}
+        onClose={() => void dismissTutorial()}
+        eyebrow={`Getting started ${tutorialStep + 1}/${APP_TUTORIAL_STEPS.length}`}
+        title={APP_TUTORIAL_STEPS[tutorialStep].title}
+        body={APP_TUTORIAL_STEPS[tutorialStep].body}
+        iconName={APP_TUTORIAL_STEPS[tutorialStep].iconName}
+        primaryAction={{
+          label:
+            tutorialStep === APP_TUTORIAL_STEPS.length - 1
+              ? "Start exploring"
+              : "Next",
+          onPress: () => void advanceTutorial(),
+        }}
+        secondaryAction={{
+          label: "Skip tutorial",
+          variant: "outline",
+          onPress: () => void dismissTutorial(),
         }}
       />
     </ScreenView>
@@ -477,11 +558,12 @@ const styling = (theme: any, spacing: any, typography: any) =>
       ...typography.h3,
       flex: 1,
       minWidth: 0,
-      fontSize: 17,
-      lineHeight: 21,
-      fontWeight: "800",
+      fontSize: 15,
+      lineHeight: 19,
+      fontWeight: "700",
       color: theme.textPrimary,
       letterSpacing: 0.1,
+      paddingVertical: 2,
     },
     dashboardBannerClose: {
       width: 34,
@@ -493,6 +575,7 @@ const styling = (theme: any, spacing: any, typography: any) =>
       backgroundColor: "rgba(255,255,255,0.04)",
       borderWidth: 1,
       borderColor: "rgba(255,255,255,0.08)",
+      marginTop: 1,
     },
     dashboardBannerClosePressed: {
       opacity: 0.86,

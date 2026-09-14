@@ -9,8 +9,11 @@ import { getTheme } from "@/theme";
 import OnboardingQuestionsScreen from "../OnboardingQuestionsScreen";
 import {
   buildDoshaResponseItem,
-  buildDoshaSubmissionPayload,
+  buildDoshaAssessmentPayload,
+  buildOnboardingAnswersPayload,
+  fetchDoshaQuestions,
   fetchPersonaQuestions,
+  submitDoshaAssessment,
   submitPersonaAnswers,
 } from "../../services/onboardingService";
 
@@ -47,6 +50,8 @@ jest.mock("../../services/onboardingService", () => {
   return {
     ...actual,
     fetchPersonaQuestions: jest.fn(),
+    fetchDoshaQuestions: jest.fn(),
+    submitDoshaAssessment: jest.fn(),
     submitPersonaAnswers: jest.fn(),
   };
 });
@@ -72,6 +77,12 @@ const mockFetchPersonaQuestions = fetchPersonaQuestions as jest.MockedFunction<
 >;
 const mockSubmitPersonaAnswers = submitPersonaAnswers as jest.MockedFunction<
   typeof submitPersonaAnswers
+>;
+const mockFetchDoshaQuestions = fetchDoshaQuestions as jest.MockedFunction<
+  typeof fetchDoshaQuestions
+>;
+const mockSubmitDoshaAssessment = submitDoshaAssessment as jest.MockedFunction<
+  typeof submitDoshaAssessment
 >;
 
 const questionOne = {
@@ -145,6 +156,16 @@ describe("OnboardingQuestionsScreen", () => {
       message: "Saved",
       data: { ok: true },
     });
+    mockFetchDoshaQuestions.mockResolvedValue({
+      success: true,
+      message: "Dosha questions loaded",
+      data: [questionOne as any, questionTwo as any],
+    });
+    mockSubmitDoshaAssessment.mockResolvedValue({
+      success: true,
+      message: "Dosha assessment saved",
+      data: { ok: true },
+    });
     mockGetUserDetails.mockResolvedValue({ success: true });
     mockMarkOnboardingDone.mockResolvedValue(undefined);
     mockResetToPublic.mockResolvedValue(undefined);
@@ -160,7 +181,7 @@ describe("OnboardingQuestionsScreen", () => {
     expect(mockSetOptions).toHaveBeenCalledWith({
       headerShown: false,
     });
-    expect(mockFetchPersonaQuestions).toHaveBeenCalledTimes(1);
+    expect(mockFetchDoshaQuestions).toHaveBeenCalledTimes(1);
     expect(hasText(tree, questionOne.question)).toBe(true);
     expect(hasText(tree, questionTwo.question)).toBe(false);
     expect(getBackButtons(tree)).toHaveLength(0);
@@ -185,13 +206,61 @@ describe("OnboardingQuestionsScreen", () => {
       await Promise.resolve();
     });
 
+    expect(mockSubmitDoshaAssessment).toHaveBeenCalledTimes(0);
+
+    const submitButton = tree.root.findAllByType(Pressable).find((node) =>
+      node.findAllByType(Text).some((textNode) => getTextContent(textNode) === "Submit")
+    );
+    expect(submitButton).toBeDefined();
+
+    await act(async () => {
+      submitButton?.props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mockSubmitDoshaAssessment).toHaveBeenCalledTimes(1);
+    expect(mockSubmitDoshaAssessment).toHaveBeenCalledWith(
+      buildDoshaAssessmentPayload([questionOne, questionTwo] as any, {
+        1: buildDoshaResponseItem(questionOne as any, questionOne.options[1] as any),
+        2: buildDoshaResponseItem(questionTwo as any, questionTwo.options[2] as any),
+      })
+    );
+    expect(mockFetchPersonaQuestions).toHaveBeenCalledTimes(1);
+    expect(mockMarkOnboardingDone).toHaveBeenCalledTimes(0);
+
+    const profileFirstOption = tree.root.findByProps({ testID: "dosha-option-B" }) as any;
+    await act(async () => {
+      profileFirstOption.props.onPress();
+      jest.advanceTimersByTime(200);
+      await Promise.resolve();
+    });
+
+    const profileLastOption = tree.root.findByProps({ testID: "dosha-option-C" }) as any;
+    await act(async () => {
+      profileLastOption.props.onPress();
+      await Promise.resolve();
+    });
+
+    const profileSubmitButton = tree.root.findAllByType(Pressable).find((node) =>
+      node.findAllByType(Text).some((textNode) => getTextContent(textNode) === "Submit")
+    );
+    expect(profileSubmitButton).toBeDefined();
+
+    await act(async () => {
+      profileSubmitButton?.props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
     expect(mockSubmitPersonaAnswers).toHaveBeenCalledTimes(1);
     expect(mockSubmitPersonaAnswers).toHaveBeenCalledWith(
-      buildDoshaSubmissionPayload([
-        buildDoshaResponseItem(questionOne as any, questionOne.options[1] as any),
-        buildDoshaResponseItem(questionTwo as any, questionTwo.options[2] as any),
-      ])
+      buildOnboardingAnswersPayload([questionOne, questionTwo] as any, {
+        1: buildDoshaResponseItem(questionOne as any, questionOne.options[1] as any),
+        2: buildDoshaResponseItem(questionTwo as any, questionTwo.options[2] as any),
+      })
     );
+
     expect(mockMarkOnboardingDone).toHaveBeenCalledTimes(1);
     expect(mockGetUserDetails).toHaveBeenCalledTimes(1);
     expect(mockReplace).toHaveBeenCalledWith(ROUTES.AUTH.SUCCESS_STATE);

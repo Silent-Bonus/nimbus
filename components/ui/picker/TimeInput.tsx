@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { View, TouchableOpacity, StyleSheet, Text } from "react-native";
+import { TouchableOpacity, StyleSheet, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ThemeContext from "@/contexts/ThemeContext";
 import TimePickerSheet from "@/components/ui/picker/TimePickerSheet";
@@ -12,6 +12,7 @@ type Props = {
   // optional
   disabled?: boolean;
   title?: string; // modal title
+  is24Hour?: boolean;
 };
 
 export default function TimeInput({
@@ -20,6 +21,7 @@ export default function TimeInput({
   onChange,
   disabled = false,
   title,
+  is24Hour = false,
 }: Props) {
   const { newTheme } = React.useContext(ThemeContext);
   const styles = useMemo(() => createStyles(newTheme), [newTheme]);
@@ -66,6 +68,7 @@ export default function TimeInput({
         title={title ?? label}
         onChange={onChange}
         onClose={() => setOpen(false)}
+        is24Hour={is24Hour}
       />
     </>
   );

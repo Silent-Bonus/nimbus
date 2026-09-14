@@ -8,6 +8,8 @@ export const StoreKey = {
   AUTH_SESSION_TEST_MODE_KEY: "auth-session-test-mode",
   WELCOME_SEEN_KEY: "welcome-seen",
   ONBOARDING_DONE_KEY: "onboarding-done",
+  TUTORIAL_PENDING_KEY: "tutorial-pending-v1",
+  DOSHA_ASSESSMENT_RESULT_KEY: "dosha-assessment-result-v1",
   THEME_KEY: "theme",
 } as const;
 
