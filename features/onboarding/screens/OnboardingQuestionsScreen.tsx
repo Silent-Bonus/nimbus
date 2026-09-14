@@ -7,27 +7,63 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useNavigation, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as SecureStore from "expo-secure-store";
 
 import ThemeContext from "@/contexts/ThemeContext";
 import { StyledButton } from "@/components/ui/StyledButton";
+import TimeInput from "@/components/ui/picker/TimeInput";
 import { ROUTES } from "@/constants/routes";
 import { useAuth } from "@/contexts/AuthContext";
+import { StoreKey } from "@/constants/Constant";
+import { fromHHmm, toHHmm } from "@/utils/date-time";
 
 import OnboardingHeader from "../components/OnboardingHeader";
 import ChoiceItem from "../components/ChoiceItem";
 import {
   buildDoshaResponseItem,
-  buildDoshaSubmissionPayload,
+  buildDoshaAssessmentPayload,
+  buildOnboardingAnswersPayload,
   DoshaOption,
   DoshaQuestion,
   DoshaResponseItem,
   fetchPersonaQuestions,
+  fetchDoshaQuestions,
   submitPersonaAnswers,
+  submitDoshaAssessment,
 } from "../services/onboardingService";
+
+function normalizeTimeValue(value: unknown): string | null {
+  const match = String(value ?? "").match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return null;
+
+  return `${String(hours).padStart(2, "0")}:${match[2]}`;
+}
+
+function getDefaultTime(
+  question: DoshaQuestion,
+  userProfile: ReturnType<typeof useAuth>["userProfile"]
+) {
+  const inputs = userProfile?.vitals_context?.inputs;
+  const prefill = userProfile?.vitals_context?.prefill;
+  const configuredValue =
+    question.id === 2
+      ? inputs?.start_of_day ?? prefill?.start_of_day
+      : question.id === 3
+        ? inputs?.sleep_time ?? prefill?.sleep_time
+        : undefined;
+  const fallback = question.id === 3 ? "22:30" : "06:30";
+
+  return normalizeTimeValue(configuredValue) ?? fallback;
+}
 
 export const OnboardingQuestionsScreen = () => {
   const navigation = useNavigation();
@@ -39,10 +75,12 @@ export const OnboardingQuestionsScreen = () => {
     [insets.bottom, insets.top, svaColors, svaTypography]
   );
 
-  const { resetToPublic, markOnboardingDone, getUserDetails } = useAuth();
+  const { resetToPublic, markOnboardingDone, getUserDetails, userProfile } =
+    useAuth();
 
   const [loadingQuestions, setLoadingQuestions] = useState(true);
   const [questions, setQuestions] = useState<DoshaQuestion[]>([]);
+  const [questionSet, setQuestionSet] = useState<"profile" | "dosha">("profile");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [responses, setResponses] = useState<Record<number, DoshaResponseItem>>(
     {}
@@ -50,11 +88,35 @@ export const OnboardingQuestionsScreen = () => {
   const [errorMessage, setErrorMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [advancing, setAdvancing] = useState(false);
+  const [textAnswer, setTextAnswer] = useState("");
+  const [timePickerValue, setTimePickerValue] = useState(() => new Date());
 
   const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const currentQuestion = questions[currentIndex];
   const totalQuestions = questions.length;
+  const currentQuestionId = currentQuestion?.id;
+
+  useEffect(() => {
+    const answer = currentQuestionId
+      ? responses[currentQuestionId]?.selected_option
+      : undefined;
+    const defaultTime = currentQuestion
+      ? getDefaultTime(currentQuestion, userProfile)
+      : "06:30";
+    setTextAnswer(
+      typeof answer === "string"
+        ? answer
+        : currentQuestion?.type === "time"
+          ? defaultTime
+          : ""
+    );
+    setTimePickerValue(
+      typeof answer === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(answer)
+        ? fromHHmm(answer)
+        : fromHHmm(defaultTime)
+    );
+  }, [currentQuestion, currentQuestionId, responses, userProfile]);
 
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
@@ -76,16 +138,18 @@ export const OnboardingQuestionsScreen = () => {
       const res = await fetchPersonaQuestions();
 
       if (Array.isArray(res?.data) && res.data.length > 0) {
+        setQuestionSet("profile");
         setQuestions(res.data);
         setCurrentIndex(0);
         setResponses({});
-        return;
+        return true;
       }
 
       setQuestions([]);
       setErrorMessage(
         res?.message ?? "Unable to load onboarding questions. Please try again."
       );
+      return false;
     } catch (error: any) {
       setQuestions([]);
       setErrorMessage(
@@ -93,14 +157,48 @@ export const OnboardingQuestionsScreen = () => {
           ? error.message
           : "Unable to load onboarding questions. Please try again."
       );
+      return false;
+    } finally {
+      setLoadingQuestions(false);
+    }
+  }, []);
+
+  const loadDoshaQuestions = useCallback(async () => {
+    try {
+      setLoadingQuestions(true);
+      setErrorMessage("");
+
+      const res = await fetchDoshaQuestions();
+
+      if (Array.isArray(res?.data) && res.data.length > 0) {
+        setQuestionSet("dosha");
+        setQuestions(res.data);
+        setCurrentIndex(0);
+        setResponses({});
+        return true;
+      }
+
+      setQuestions([]);
+      setErrorMessage(
+        res?.message ?? "Unable to load Dosha questions. Please try again."
+      );
+      return false;
+    } catch (error: any) {
+      setQuestions([]);
+      setErrorMessage(
+        typeof error?.message === "string"
+          ? error.message
+          : "Unable to load Dosha questions. Please try again."
+      );
+      return false;
     } finally {
       setLoadingQuestions(false);
     }
   }, []);
 
   useEffect(() => {
-    void loadQuestions();
-  }, [loadQuestions]);
+    void loadDoshaQuestions();
+  }, [loadDoshaQuestions]);
 
   const handleBack = useCallback(async () => {
     setErrorMessage("");
@@ -137,11 +235,14 @@ export const OnboardingQuestionsScreen = () => {
         setAdvancing(false);
         setErrorMessage("");
 
-        const orderedResponses = Object.values(finalResponses).sort(
-          (left, right) => left.question_id - right.question_id
-        );
-        const payload = buildDoshaSubmissionPayload(orderedResponses);
-        const res = await submitPersonaAnswers(payload);
+        const res =
+          questionSet === "profile"
+            ? await submitPersonaAnswers(
+                buildOnboardingAnswersPayload(questions, finalResponses)
+              )
+            : await submitDoshaAssessment(
+                buildDoshaAssessmentPayload(questions, finalResponses)
+              );
 
         if (!res?.success) {
           setErrorMessage(
@@ -149,6 +250,18 @@ export const OnboardingQuestionsScreen = () => {
           );
           return;
         }
+
+        if (questionSet === "dosha") {
+          await SecureStore.setItemAsync(
+            StoreKey.DOSHA_ASSESSMENT_RESULT_KEY,
+            JSON.stringify(res?.data?.result ?? res?.data ?? {})
+          );
+          const profileLoaded = await loadQuestions();
+          if (!profileLoaded) return;
+          return;
+        }
+
+        await SecureStore.setItemAsync(StoreKey.TUTORIAL_PENDING_KEY, "true");
 
         try {
           await getUserDetails?.();
@@ -168,7 +281,14 @@ export const OnboardingQuestionsScreen = () => {
         setSubmitting(false);
       }
     },
-    [getUserDetails, markOnboardingDone, router]
+    [
+      getUserDetails,
+      loadQuestions,
+      markOnboardingDone,
+      questionSet,
+      questions,
+      router,
+    ]
   );
 
   const scheduleNextQuestion = useCallback((nextIndex: number) => {
@@ -188,6 +308,30 @@ export const OnboardingQuestionsScreen = () => {
     (option: DoshaOption) => {
       if (!currentQuestion || advancing || submitting) return;
 
+      if (currentQuestion.type === "multiple") {
+        const currentAnswer = responses[currentQuestion.id]?.selected_option;
+        const selectedIds = Array.isArray(currentAnswer)
+          ? currentAnswer
+          : currentAnswer
+            ? [currentAnswer]
+            : [];
+        const nextSelectedIds = selectedIds.includes(option.id)
+          ? selectedIds.filter((id) => id !== option.id)
+          : [...selectedIds, option.id];
+        const updatedResponses = {
+          ...responses,
+          [currentQuestion.id]: {
+            question_id: currentQuestion.id,
+            selected_option: nextSelectedIds,
+            score_weight: { vata: 0, pitta: 0, kapha: 0 },
+          },
+        };
+
+        setResponses(updatedResponses);
+        setErrorMessage("");
+        return;
+      }
+
       const nextResponse = buildDoshaResponseItem(currentQuestion, option);
       const updatedResponses = {
         ...responses,
@@ -198,7 +342,6 @@ export const OnboardingQuestionsScreen = () => {
       setErrorMessage("");
 
       if (currentIndex >= totalQuestions - 1) {
-        void finishOnboarding(updatedResponses);
         return;
       }
 
@@ -208,13 +351,85 @@ export const OnboardingQuestionsScreen = () => {
       advancing,
       currentIndex,
       currentQuestion,
-      finishOnboarding,
       responses,
       scheduleNextQuestion,
       submitting,
       totalQuestions,
     ]
   );
+
+  const handleContinue = useCallback(() => {
+    if (!currentQuestion || advancing || submitting) return;
+
+    if (currentQuestion.type === "multiple") {
+      const selected = responses[currentQuestion.id]?.selected_option;
+      if (!Array.isArray(selected) || selected.length === 0) {
+        setErrorMessage("Select at least one option to continue.");
+        return;
+      }
+
+      const updatedResponses = { ...responses };
+      if (currentIndex >= totalQuestions - 1) {
+        void finishOnboarding(updatedResponses);
+      } else {
+        scheduleNextQuestion(currentIndex + 1);
+      }
+      return;
+    }
+
+    if (currentQuestion.type === "single") {
+      const selected = responses[currentQuestion.id]?.selected_option;
+      if (typeof selected !== "string" || !selected) {
+        setErrorMessage("Select an option to continue.");
+        return;
+      }
+
+      if (currentIndex >= totalQuestions - 1) {
+        void finishOnboarding(responses);
+      } else {
+        scheduleNextQuestion(currentIndex + 1);
+      }
+      return;
+    }
+
+    const value = textAnswer.trim();
+    if (currentQuestion.type === "time" && !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value)) {
+      setErrorMessage("Enter a valid time in HH:MM format.");
+      return;
+    }
+    if (currentQuestion.type === "number" && !/^\d+$/.test(value)) {
+      setErrorMessage("Enter a whole number to continue.");
+      return;
+    }
+
+    const updatedResponses = {
+      ...responses,
+      [currentQuestion.id]: {
+        question_id: currentQuestion.id,
+        selected_option: value,
+        score_weight: { vata: 0, pitta: 0, kapha: 0 },
+      },
+    };
+
+    setResponses(updatedResponses);
+    setErrorMessage("");
+
+    if (currentIndex >= totalQuestions - 1) {
+      void finishOnboarding(updatedResponses);
+    } else {
+      scheduleNextQuestion(currentIndex + 1);
+    }
+  }, [
+    advancing,
+    currentIndex,
+    currentQuestion,
+    finishOnboarding,
+    responses,
+    scheduleNextQuestion,
+    submitting,
+    textAnswer,
+    totalQuestions,
+  ]);
 
   if (loadingQuestions) {
     return (
@@ -253,7 +468,14 @@ export const OnboardingQuestionsScreen = () => {
     );
   }
 
-  const selectedOptionId = responses[currentQuestion.id]?.selected_option;
+  const selectedAnswer = responses[currentQuestion.id]?.selected_option;
+  const selectedOptionIds = Array.isArray(selectedAnswer)
+    ? selectedAnswer
+    : selectedAnswer
+      ? [selectedAnswer]
+      : [];
+  const isTextQuestion =
+    currentQuestion.type === "time" || currentQuestion.type === "number";
   return (
     <View style={styles.screen}>
       <View pointerEvents="none" style={styles.glowOne} />
@@ -276,15 +498,24 @@ export const OnboardingQuestionsScreen = () => {
         <View style={styles.heroBlock}>
           <View style={styles.categoryPill}>
             <Text style={styles.categoryText} numberOfLines={1}>
-              {currentQuestion.category ?? "Dosha alignment"}
+              {currentQuestion.category ??
+                (questionSet === "dosha" ? "Dosha" : "Onboarding")}
             </Text>
           </View>
 
           <Text style={styles.questionText}>{currentQuestion.question}</Text>
 
-          <Text style={styles.helperText}>
-            Choose the option that feels most natural right now.
-          </Text>
+          {!!currentQuestion.subtitle && (
+            <Text style={styles.questionSubtitle}>
+              {currentQuestion.subtitle}
+            </Text>
+          )}
+
+          {!currentQuestion.subtitle && (
+            <Text style={styles.helperText}>
+              Choose the option that feels most natural right now.
+            </Text>
+          )}
         </View>
 
         {!!errorMessage && (
@@ -293,19 +524,76 @@ export const OnboardingQuestionsScreen = () => {
           </View>
         )}
 
-        <View style={styles.optionsWrap}>
-          {currentQuestion.options.map((option) => (
-            <ChoiceItem
-              key={option.id}
-              choice={option}
-              selected={selectedOptionId === option.id}
-              onPress={() => handleOptionPress(option)}
+        {currentQuestion.type === "time" ? (
+          <View style={styles.inputWrap}>
+            <TimeInput
+              label=""
+              value={timePickerValue}
+              title={currentQuestion.question}
+              is24Hour
+              onChange={(value) => {
+                setTimePickerValue(value);
+                setTextAnswer(toHHmm(value));
+                if (errorMessage) setErrorMessage("");
+              }}
             />
-          ))}
-        </View>
+            <StyledButton
+              label={currentIndex === totalQuestions - 1 ? "Submit" : "Continue"}
+              onPress={handleContinue}
+              disabled={advancing || submitting}
+            />
+          </View>
+        ) : isTextQuestion ? (
+          <View style={styles.inputWrap}>
+            <TextInput
+              value={textAnswer}
+              onChangeText={(value) => {
+                const sanitized = value.replace(/\D/g, "");
+                setTextAnswer(sanitized);
+                if (errorMessage) setErrorMessage("");
+              }}
+              placeholder="Enter a number"
+              placeholderTextColor={svaColors.text.secondary}
+              keyboardType="numeric"
+              style={styles.answerInput}
+            />
+            <StyledButton
+              label={currentIndex === totalQuestions - 1 ? "Submit" : "Continue"}
+              onPress={handleContinue}
+              disabled={advancing || submitting}
+            />
+          </View>
+        ) : (
+          <View style={styles.optionsWrap}>
+            {currentQuestion.options.map((option) => (
+              <ChoiceItem
+                key={option.id}
+                choice={option}
+                selected={selectedOptionIds.includes(option.id)}
+                onPress={() => handleOptionPress(option)}
+              />
+            ))}
+            {(currentQuestion.type === "multiple" ||
+              currentIndex === totalQuestions - 1) && (
+              <StyledButton
+                label={
+                  currentIndex === totalQuestions - 1 ? "Submit" : "Continue"
+                }
+                onPress={handleContinue}
+                disabled={advancing || submitting}
+              />
+            )}
+          </View>
+        )}
 
         <Text style={styles.footerHint}>
-          Tap one option and we&apos;ll automatically continue to the next question.
+          {currentQuestion.type === "single"
+            ? "Tap one option and we'll automatically continue to the next question."
+            : currentQuestion.type === "multiple"
+              ? "Select all options that apply, then continue."
+              : currentQuestion.type === "time"
+                ? "Use 24-hour HH:MM format."
+                : "Enter numbers only."}
         </Text>
       </ScrollView>
 
@@ -315,7 +603,9 @@ export const OnboardingQuestionsScreen = () => {
             <ActivityIndicator color={svaColors.brand.primary} />
             <Text style={styles.submittingTitle}>Saving your responses</Text>
             <Text style={styles.submittingSubtitle}>
-              We&apos;re sending your dosha profile to the backend.
+              {questionSet === "profile"
+                ? "Preparing your Dosha questions."
+                : "We&apos;re creating your Dosha profile."}
             </Text>
           </View>
         </View>
@@ -398,8 +688,13 @@ const styling = (
     questionText: {
       ...svaTypography.textStyle.authTitle,
       color: svaColors.text.primary,
-      marginBottom: 10,
+      marginBottom: 8,
       lineHeight: 36,
+    },
+    questionSubtitle: {
+      ...svaTypography.textStyle.authSubtitle,
+      color: svaColors.text.secondary,
+      marginBottom: 10,
     },
     helperText: {
       ...svaTypography.textStyle.authSubtitle,
@@ -407,6 +702,20 @@ const styling = (
     },
     optionsWrap: {
       marginTop: 2,
+    },
+    inputWrap: {
+      gap: 16,
+      marginTop: 2,
+    },
+    answerInput: {
+      ...svaTypography.textStyle.authBody,
+      color: svaColors.text.primary,
+      minHeight: 58,
+      paddingHorizontal: 18,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: svaColors.border.default,
+      backgroundColor: svaColors.surface.raised,
     },
     footerHint: {
       ...svaTypography.textStyle.authFootnote,

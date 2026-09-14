@@ -31,6 +31,8 @@ describe("onboardingService", () => {
               id: 1,
               category: "Body Structure & Physical Traits",
               question: "Your body frame is usually:",
+              subtitle: "Choose the frame that feels most like you.",
+              type: "single",
               options: [
                 {
                   id: "a",
@@ -54,6 +56,10 @@ describe("onboardingService", () => {
 
     const result = await fetchPersonaQuestions();
 
+    expect(API_ENDPOINTS.personaQuestion).toContain(
+      "/api/v1/profile/onboarding-questions"
+    );
+    expect(API_ENDPOINTS.personaQuestion).not.toContain("persona-questions");
     expect(mockedAxios.get).toHaveBeenCalledWith(API_ENDPOINTS.personaQuestion);
     expect(result.success).toBe(true);
     expect(result.message).toBe("Questions loaded");
@@ -61,6 +67,8 @@ describe("onboardingService", () => {
     expect(result.data[0].id).toBe(1);
     expect(result.data[0].category).toBe("Body Structure & Physical Traits");
     expect(result.data[0].question).toBe("Your body frame is usually:");
+    expect(result.data[0].subtitle).toBe("Choose the frame that feels most like you.");
+    expect(result.data[0].type).toBe("single");
     expect(result.data[0].options.map((option) => option.id)).toEqual([
       "A",
       "B",
@@ -80,6 +88,8 @@ describe("onboardingService", () => {
         id: 4,
         category: "Body Structure & Physical Traits",
         question: "You are most uncomfortable in:",
+        subtitle: "Choose the option that fits best.",
+        type: "single",
         options: [],
       },
       {
