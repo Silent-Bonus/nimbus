@@ -2,6 +2,7 @@ import React, { useContext } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import ThemeContext from "@/contexts/ThemeContext";
+import { SVATypography } from "@/theme/typography";
 import type { Spacing, SvaColorSet, TypographyTokens } from "@/theme/types";
 
 type RecipeProcessListProps = {
@@ -29,7 +30,7 @@ const RecipeProcessList: React.FC<RecipeProcessListProps> = ({ steps }) => {
 const styling = (
   colors: SvaColorSet,
   spacing: Spacing,
-  typography?: TypographyTokens
+  svaTypography?: TypographyTokens
 ) =>
   StyleSheet.create({
     wrap: {
@@ -44,7 +45,7 @@ const styling = (
       minWidth: 30,
       color: colors.brand.primary,
       fontFamily:
-        typography?.textStyle?.authTitle?.fontFamily ??
+        svaTypography?.textStyle?.authTitle?.fontFamily ??
         "CormorantGaramond_600SemiBold",
       fontSize: 16,
       lineHeight: 22,
@@ -57,7 +58,7 @@ const styling = (
       fontSize: 14,
       lineHeight: 22,
       fontFamily:
-        typography?.textStyle?.authBody?.fontFamily ?? "Outfit_400Regular",
+        svaTypography?.textStyle?.authBody?.fontFamily ?? SVATypography.fontFamily.body,
     },
   });
 

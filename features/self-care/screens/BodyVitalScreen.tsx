@@ -62,11 +62,11 @@ import {
 
 export default function BodyVitalScreen() {
   const { width: windowWidth } = useWindowDimensions();
-  const { newTheme, spacing, typography, svaTypography } =
+  const { newTheme, spacing, svaTypography } =
     useContext(ThemeContext);
   const t = useMemo(
-    () => resolveBodyVitalsTypography(svaTypography, typography),
-    [svaTypography, typography]
+    () => resolveBodyVitalsTypography(svaTypography),
+    [svaTypography]
   );
   const styles = useMemo(
     () => styling(newTheme, spacing, t, windowWidth),

@@ -7,7 +7,6 @@ import type { MeditationTemplateCardItem } from "@/features/self-care/types/well
 import type {
   ColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 
@@ -24,12 +23,12 @@ export default function MeditationTemplateCard({
     newTheme: theme,
     svaTypography,
     spacing,
-    typography,
+
   } = useContext(ThemeContext);
 
   const styles = useMemo(
-    () => styling(theme, svaTypography, spacing, typography),
-    [theme, svaTypography, spacing, typography]
+    () => styling(theme, svaTypography, spacing),
+    [theme, svaTypography, spacing]
   );
 
   return (
@@ -118,9 +117,9 @@ export default function MeditationTemplateCard({
 
 const styling = (
   theme: ColorSet,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: any | undefined,
   spacing: Spacing,
-  typography: Typography
+
 ) =>
   StyleSheet.create({
     card: {
@@ -221,7 +220,7 @@ const styling = (
       borderColor: theme.borderMuted ?? "rgba(255,255,255,0.05)",
     },
     ratingText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 0.4,
     },
@@ -235,7 +234,7 @@ const styling = (
       marginTop: 2,
     },
     durationText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 0.8,
     },
@@ -269,12 +268,12 @@ const styling = (
       borderColor: theme.borderMuted ?? "rgba(255,255,255,0.05)",
     },
     tagText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.chart2 ?? theme.accent,
       letterSpacing: 1.1,
     },
     tagTextMuted: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 1.1,
     },

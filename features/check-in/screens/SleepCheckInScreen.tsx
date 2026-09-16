@@ -45,9 +45,9 @@ import {
   SleepPatternCard,
   SleepTipCard,
 } from "@/features/check-in/components/sleep/checkIn";
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "@/theme/types";
 
-const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
+const makeStyles = (theme: ColorSet, spacing: Spacing, svaTypography: TypographyTokens) =>
   StyleSheet.create({
     scrollContent: {
       paddingHorizontal: spacing.md,
@@ -61,7 +61,7 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       marginTop: spacing.md,
     },
     refreshingText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       fontWeight: "700",
     },
@@ -76,10 +76,10 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
 export const SleepCheckInScreen = () => {
   const navigation = useNavigation();
   const toast = useNimbusToast();
-  const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme: theme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => makeStyles(theme, spacing, typography),
-    [theme, spacing, typography]
+    () => makeStyles(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
 
   // Normalize route values once because Expo Router may return array params.

@@ -6,7 +6,6 @@ import type {
   Spacing,
   SvaColorSet,
   SvaTokens,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 
@@ -24,11 +23,11 @@ export function MealPlannerModeTabs({
   activeTab,
   onChange,
 }: MealPlannerModeTabsProps) {
-  const { svaColors, spacing, typography, svaTypography, tokens } =
+  const { svaColors, spacing, svaTypography, tokens } =
     useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(svaColors, spacing, typography, svaTypography, tokens),
-    [svaColors, spacing, typography, svaTypography, tokens]
+    () => styling(svaColors, spacing, svaTypography, tokens),
+    [svaColors, spacing, svaTypography, tokens]
   );
 
   return (
@@ -60,8 +59,7 @@ export function MealPlannerModeTabs({
 const styling = (
   theme: SvaColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: TypographyTokens,
   tokens: SvaTokens
 ) =>
   StyleSheet.create({
@@ -88,7 +86,7 @@ const styling = (
       elevation: 2,
     },
     tabText: {
-      ...(svaTypography?.textStyle.bodyMedium ?? typography.bodyStrong),
+      ...(svaTypography?.textStyle.bodyMedium ?? svaTypography.textStyle.bodyMedium),
       color: theme.text.secondary,
     },
     activeTabText: {

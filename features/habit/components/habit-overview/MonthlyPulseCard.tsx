@@ -19,19 +19,16 @@ type MonthlyPulseTypography = {
 type MonthlyPulseStyles = ReturnType<typeof createStyles>;
 
 export default function MonthlyPulseCard({ data }: MonthlyPulseCardProps) {
-  const { svaColors, svaTypography, typography } = useContext(ThemeContext);
+  const { svaColors, svaTypography } = useContext(ThemeContext);
 
   const fonts = useMemo<MonthlyPulseTypography>(
     () => ({
       monoFamily:
-        svaTypography?.textStyle.authMonoLabel.fontFamily ??
-        "SpaceMono-Regular",
+        svaTypography.fontFamily.mono,
       bodyFamily:
-        svaTypography?.textStyle.body.fontFamily ??
-        typography.body.fontFamily ??
-        "Outfit_400Regular",
+        svaTypography.fontFamily.body,
     }),
-    [svaTypography, typography]
+    [svaTypography]
   );
 
   const styles: MonthlyPulseStyles = useMemo(

@@ -52,7 +52,6 @@ import {
 import type {
   ColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 
@@ -87,7 +86,7 @@ export default function MeditationPlayerScreen() {
     newTheme: theme,
     svaTypography,
     spacing,
-    typography,
+
   } = useContext(ThemeContext);
   const template: MeditationItemDetail = buildMeditationPlaybackTemplate(params);
   const meditationId = template.id;
@@ -103,8 +102,8 @@ export default function MeditationPlayerScreen() {
   );
 
   const styles = useMemo(
-    () => styling(theme, svaTypography, spacing, typography),
-    [theme, svaTypography, spacing, typography]
+    () => styling(theme, svaTypography, spacing),
+    [theme, svaTypography, spacing]
   );
 
   // Refs hold mutable playback/session state that must stay readable inside
@@ -760,9 +759,9 @@ export default function MeditationPlayerScreen() {
 
 const styling = (
   theme: ColorSet,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: any | undefined,
   spacing: Spacing,
-  typography: Typography
+
 ) =>
   StyleSheet.create({
     screen: {
@@ -852,7 +851,7 @@ const styling = (
       borderColor: "rgba(255,255,255,0.1)",
     },
     heroBadgeText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textPrimary,
       letterSpacing: 0.9,
     },
@@ -869,7 +868,7 @@ const styling = (
       letterSpacing: -0.45,
     },
     subtitle: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
       marginTop: 8,
     },
@@ -894,7 +893,7 @@ const styling = (
       alignItems: "center",
     },
     timeText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       letterSpacing: 0.8,
     },
@@ -923,12 +922,12 @@ const styling = (
       textTransform: "uppercase",
     },
     metaDate: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 0.9,
     },
     metaText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textPrimary,
       lineHeight: 22,
     },
@@ -947,7 +946,7 @@ const styling = (
       borderColor: "rgba(163,190,140,0.16)",
     },
     tagText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.chart2 ?? theme.accent,
       letterSpacing: 1.05,
     },
@@ -970,7 +969,7 @@ const styling = (
       borderColor: theme.borderMuted ?? "rgba(255,255,255,0.05)",
     },
     loadingText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
     },
   });

@@ -11,4 +11,3 @@ export const capSessionSeconds = (seconds: number, goalSeconds?: number) => {
 
   return goalSeconds ? Math.min(safeSeconds, goalSeconds) : safeSeconds;
 };
-

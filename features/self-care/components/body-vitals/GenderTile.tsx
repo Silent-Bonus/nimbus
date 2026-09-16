@@ -23,11 +23,11 @@ const OPTIONS: { key: SomaticGender; label: string }[] = [
 ];
 
 export const GenderTile = ({ value, onChange, style }: GenderTileProps) => {
-  const { newTheme, spacing, typography, svaTypography } =
+  const { newTheme, spacing, svaTypography } =
     useContext(ThemeContext);
   const t = useMemo(
-    () => resolveBodyVitalsTypography(svaTypography, typography),
-    [svaTypography, typography]
+    () => resolveBodyVitalsTypography(svaTypography),
+    [svaTypography]
   );
 
   const styles = useMemo(

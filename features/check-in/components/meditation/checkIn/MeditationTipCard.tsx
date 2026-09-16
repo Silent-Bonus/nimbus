@@ -4,9 +4,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "@/theme/types";
 
-const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
+const makeStyles = (theme: ColorSet, spacing: Spacing, svaTypography: any) =>
   StyleSheet.create({
     card: {
       marginTop: spacing.lg,
@@ -38,24 +38,24 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       borderColor: theme.borderMuted,
     },
     sectionLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       fontWeight: "700",
       opacity: 0.78,
       letterSpacing: 1.7,
     },
     cardSubTitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginTop: 4,
       lineHeight: 18,
     },
     tipQuote: {
       marginTop: spacing.md,
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       fontStyle: "italic",
-      lineHeight: typography.h3.lineHeight,
+      lineHeight: svaTypography.textStyle.title.lineHeight,
       letterSpacing: -0.2,
     },
     tipList: {
@@ -75,7 +75,7 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       marginTop: 8,
     },
     tipText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textPrimary,
       opacity: 0.86,
       lineHeight: 22,
@@ -84,10 +84,10 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
   });
 
 export const MeditationTipCard = () => {
-  const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme: theme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => makeStyles(theme, spacing, typography),
-    [theme, spacing, typography]
+    () => makeStyles(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
   const accent = theme.chart5 ?? theme.accent;
 

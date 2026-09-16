@@ -2,6 +2,7 @@ import React, { useContext } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import ThemeContext from "@/contexts/ThemeContext";
+import { SVATypography } from "@/theme/typography";
 import type { Spacing, SvaColorSet, TypographyTokens } from "@/theme/types";
 
 type ArticleBodyCopyProps = {
@@ -43,14 +44,16 @@ const ArticleBodyCopy: React.FC<ArticleBodyCopyProps> = ({
 const styling = (
   colors: SvaColorSet,
   spacing: Spacing,
-  typography?: TypographyTokens
+  svaTypography?: TypographyTokens
 ) =>
   StyleSheet.create({
     wrap: {
       gap: spacing.md,
     },
     paragraph: {
-      fontFamily: typography?.textStyle?.authBody?.fontFamily ?? "Outfit_400Regular",
+      fontFamily:
+        svaTypography?.textStyle?.authBody?.fontFamily ??
+        SVATypography.fontFamily.body,
       color: colors.text.secondary,
       fontSize: 15,
       lineHeight: 28,
@@ -58,7 +61,7 @@ const styling = (
     },
     dropCap: {
       fontFamily:
-        typography?.textStyle?.authTitle?.fontFamily ??
+        svaTypography?.textStyle?.authTitle?.fontFamily ??
         "CormorantGaramond_600SemiBold",
       fontSize: 52,
       lineHeight: 54,

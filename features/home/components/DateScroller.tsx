@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { addDays, isSameDay, startOfDay, subDays } from "date-fns";
 import ThemeContext from "@/contexts/ThemeContext";
-import type { ColorSet, Typography } from "@/theme/types";
+import type { ColorSet, TypographyTokens } from "@/theme/types";
 
 type Props = {
   value: Date;
@@ -37,10 +37,10 @@ export default function DateScroller({
   );
   const sidePad = Math.max(12, (screenWidth - itemWidth) / 2);
 
-  const { newTheme: theme, typography } = useContext(ThemeContext);
+  const { newTheme: theme, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(theme, typography, itemWidth, sidePad),
-    [theme, typography, itemWidth, sidePad]
+    () => styling(theme, svaTypography, itemWidth, sidePad),
+    [theme, svaTypography, itemWidth, sidePad]
   );
 
   const today = useMemo(() => atMidnight(new Date()), []);
@@ -130,7 +130,7 @@ export default function DateScroller({
 
 const styling = (
   theme: ColorSet,
-  typography: Typography,
+  svaTypography: TypographyTokens,
   itemWidth: number,
   sidePad: number
 ) =>
@@ -165,14 +165,14 @@ const styling = (
       elevation: 6,
     },
     dayText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       letterSpacing: 1.6,
       color: theme.textSecondary,
       textTransform: "uppercase",
       textAlign: "center",
     },
     dateText: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textSecondary,
       marginTop: 5,
       textAlign: "center",

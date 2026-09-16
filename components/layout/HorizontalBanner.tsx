@@ -33,8 +33,8 @@ const HorizontalBanner: React.FC<HorizontalBannerProps> = ({
   data,
   onPress,
 }) => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(newTheme, spacing, typography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = styling(newTheme, spacing, svaTypography);
 
   const scrollX = useRef(new Animated.Value(0)).current;
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -116,7 +116,7 @@ const HorizontalBanner: React.FC<HorizontalBannerProps> = ({
   );
 };
 
-const styling = (newTheme: any, spacing: any, typography: any) =>
+const styling = (newTheme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     banner: {
       height: 160,
@@ -137,12 +137,12 @@ const styling = (newTheme: any, spacing: any, typography: any) =>
       justifyContent: "center",
     },
     title: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: newTheme.textPrimary,
       marginBottom: spacing.xs,
     },
     subtitle: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: newTheme.textSecondary,
     },
     button: {
@@ -154,7 +154,7 @@ const styling = (newTheme: any, spacing: any, typography: any) =>
       alignSelf: "flex-start",
     },
     buttonText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: newTheme.buttonPrimaryText,
       fontWeight: "700",
     },

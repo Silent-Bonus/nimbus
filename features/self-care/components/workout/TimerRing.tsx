@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { ColorSet, Typography } from "@/theme/types";
+import type { ColorSet, TypographyTokens } from "@/theme/types";
 
 interface TimerRingProps {
   size: number;
@@ -20,8 +20,8 @@ const TimerRing: React.FC<TimerRingProps> = ({
   statusText,
   mode,
 }) => {
-  const { newTheme: theme, typography } = useContext(ThemeContext);
-  const styles = useMemo(() => styling(theme, typography), [theme, typography]);
+  const { newTheme: theme, svaTypography } = useContext(ThemeContext);
+  const styles = useMemo(() => styling(theme, svaTypography), [theme, svaTypography]);
 
   const strokeWidth = 16;
   const radius = (size - strokeWidth) / 2;
@@ -69,7 +69,7 @@ const TimerRing: React.FC<TimerRingProps> = ({
   );
 };
 
-const styling = (theme: ColorSet, typography: Typography) =>
+const styling = (theme: ColorSet, svaTypography: any) =>
   StyleSheet.create({
     container: {
       justifyContent: "center",
@@ -81,14 +81,14 @@ const styling = (theme: ColorSet, typography: Typography) =>
       justifyContent: "center",
     },
     timeText: {
-      ...typography.h2,
+      ...svaTypography.textStyle.heading2,
       color: theme.textPrimary,
       fontSize: 34,
       lineHeight: 38,
       fontWeight: "600",
     },
     statusText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginTop: 4,
       letterSpacing: 2,

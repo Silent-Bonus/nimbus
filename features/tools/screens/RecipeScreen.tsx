@@ -35,7 +35,6 @@ import {
 import type {
   Spacing,
   SvaColorSet,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 import type { RecipeCardItem } from "@/features/tools/types/recipeTypes";
@@ -53,11 +52,11 @@ import {
 export const RecipeScreen: React.FC = () => {
   const navigation = useNavigation();
   const params = useLocalSearchParams<{ query?: string | string[] }>();
-  const { svaColors, svaTypography, spacing, typography } =
+  const { svaColors, svaTypography, spacing } =
     useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(svaColors, svaTypography, spacing, typography),
-    [spacing, svaColors, svaTypography, typography]
+    () => styling(svaColors, svaTypography, spacing),
+    [spacing, svaColors, svaTypography]
   );
   const searchInputRef = useRef<TextInput>(null);
 
@@ -406,9 +405,8 @@ export const RecipeScreen: React.FC = () => {
 
 const styling = (
   colors: SvaColorSet,
-  svaTypography: TypographyTokens | undefined,
-  spacing: Spacing,
-  typography: Typography
+  svaTypography: TypographyTokens,
+  spacing: Spacing
 ) =>
   StyleSheet.create({
     screen: {
@@ -454,7 +452,7 @@ const styling = (
       paddingVertical: 0,
       marginLeft: spacing.sm,
       color: colors.text.primary,
-      ...(svaTypography?.textStyle?.input ?? typography.body),
+      ...(svaTypography?.textStyle?.input ?? svaTypography.textStyle.body),
       textAlignVertical: "center",
     },
     clearButton: {

@@ -7,7 +7,6 @@ import ThemeContext from "@/contexts/ThemeContext";
 import type {
   ColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 import {
@@ -23,7 +22,7 @@ type MeditationAnchorPulseOrbProps = {
   anchorAt: Date | null;
 };
 
-const getDisplayFont = (svaTypography?: TypographyTokens) =>
+const getDisplayFont = (svaTypography: any) =>
   svaTypography?.textStyle.authTitle?.fontFamily ??
   svaTypography?.textStyle.displayMedium?.fontFamily ??
   undefined;
@@ -31,10 +30,9 @@ const getDisplayFont = (svaTypography?: TypographyTokens) =>
 const makeStyles = (
   theme: ColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography?: TypographyTokens
+  svaTypography: TypographyTokens
 ) => {
-  const displayFont = getDisplayFont(svaTypography) ?? typography.h1.fontFamily;
+  const displayFont = getDisplayFont(svaTypography) ?? svaTypography.textStyle.heading1.fontFamily;
 
   return StyleSheet.create({
     card: {
@@ -60,13 +58,13 @@ const makeStyles = (
       marginBottom: spacing.md,
     },
     sectionLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       opacity: 0.78,
       letterSpacing: 1.7,
     },
     subTitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginTop: 6,
       lineHeight: 18,
@@ -84,13 +82,13 @@ const makeStyles = (
       minWidth: 70,
     },
     goalChipValue: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textPrimary,
       fontWeight: "800",
       fontSize: 13,
     },
     goalChipLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       marginTop: 1,
     },
@@ -127,7 +125,7 @@ const makeStyles = (
       backgroundColor: "rgba(255,255,255,0.05)",
     },
     orbMinutes: {
-      ...typography.h1,
+      ...svaTypography.textStyle.heading1,
       color: theme.textPrimary,
       fontFamily: displayFont,
       fontSize: 40,
@@ -135,19 +133,19 @@ const makeStyles = (
       letterSpacing: -0.8,
     },
     orbGoal: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
       fontWeight: "700",
       marginTop: -2,
     },
     orbLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 2,
       marginTop: 8,
     },
     orbRemaining: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textPrimary,
       opacity: 0.88,
       marginTop: 8,
@@ -166,14 +164,14 @@ const makeStyles = (
       alignItems: "center",
     },
     orbStatValue: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       fontFamily: displayFont,
       fontSize: 22,
       lineHeight: 24,
     },
     orbStatLabel: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginTop: 4,
     },
@@ -190,11 +188,11 @@ export const MeditationAnchorPulseOrb = ({
   elapsedSeconds,
   anchorAt,
 }: MeditationAnchorPulseOrbProps) => {
-  const { newTheme: theme, spacing, typography, svaTypography } =
+  const { newTheme: theme, spacing, svaTypography } =
     useContext(ThemeContext);
   const styles = useMemo(
-    () => makeStyles(theme, spacing, typography, svaTypography),
-    [theme, spacing, typography, svaTypography]
+    () => makeStyles(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
 
   const pulseA = useRef(new Animated.Value(0)).current;

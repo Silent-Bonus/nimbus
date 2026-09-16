@@ -295,4 +295,3 @@ def write_xlsx() -> None:
 if __name__ == "__main__":
     write_xlsx()
     print(OUTPUT_FILE)
-

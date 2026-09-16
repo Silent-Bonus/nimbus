@@ -210,7 +210,7 @@ export default function ReminderDetail({
   onSaved,
   onClose,
 }: Props) {
-  const { svaColors, svaTypography, typography, spacing } =
+  const { svaColors, svaTypography, spacing } =
     useContext(ThemeContext);
   const { updateProfile } = useAuth();
   const toast = useNimbusToast();
@@ -223,18 +223,13 @@ export default function ReminderDetail({
   const fonts = useMemo<NotificationDetailTypography>(
     () => ({
       bodyFamily:
-        svaTypography?.textStyle.body.fontFamily ??
-        typography.body.fontFamily ??
-        "Outfit_400Regular",
+        svaTypography.fontFamily.body,
       bodyStrongFamily:
-        svaTypography?.textStyle.bodyMedium.fontFamily ??
-        typography.bodyStrong.fontFamily ??
-        "Outfit_600SemiBold",
+        svaTypography.fontFamily.bodyMedium,
       monoFamily:
-        svaTypography?.textStyle.authMonoLabel.fontFamily ??
-        "SpaceMono-Regular",
+        svaTypography.fontFamily.mono,
     }),
-    [svaTypography, typography]
+    [svaTypography]
   );
 
   const styles: NotificationDetailStyles = useMemo(

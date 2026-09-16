@@ -29,7 +29,7 @@ type Props = {
 
 const MentalHealthTestResult: React.FC<Props> = ({ data }) => {
   const navigation = useNavigation();
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
 
   const [resultData, setResultData] = useState<ResultData | null>(null);
 
@@ -38,8 +38,8 @@ const MentalHealthTestResult: React.FC<Props> = ({ data }) => {
   }, [data]);
 
   const styles = useMemo(
-    () => styling(newTheme, spacing, typography),
-    [newTheme, spacing, typography]
+    () => styling(newTheme, spacing, svaTypography),
+    [newTheme, spacing, svaTypography]
   );
 
   if (!resultData) {
@@ -137,7 +137,7 @@ export default MentalHealthTestResult;
 
 // ───────────────────────── styles ─────────────────────────
 
-const styling = (t: any, spacing: any, typography: any) =>
+const styling = (t: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -152,7 +152,7 @@ const styling = (t: any, spacing: any, typography: any) =>
       alignItems: "center",
     },
     loadingText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: t.textSecondary,
     },
 
@@ -172,19 +172,19 @@ const styling = (t: any, spacing: any, typography: any) =>
       marginBottom: spacing.lg,
     },
     resultLabel: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       textTransform: "uppercase",
       letterSpacing: 1.1,
       color: t.textSecondary,
       marginBottom: spacing.xs,
     },
     resultTitle: {
-      ...typography.h2,
+      ...svaTypography.textStyle.heading2,
       color: t.textPrimary,
       marginBottom: spacing.xs,
     },
     resultQuote: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: t.textSecondary,
       fontStyle: "italic",
       marginBottom: spacing.lg,
@@ -235,12 +235,12 @@ const styling = (t: any, spacing: any, typography: any) =>
       borderColor: t.borderMuted,
     },
     statValue: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       fontWeight: "700",
       color: t.accent,
     },
     statLabel: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: t.textSecondary,
       marginTop: 2,
     },
@@ -258,12 +258,12 @@ const styling = (t: any, spacing: any, typography: any) =>
       borderColor: t.borderMuted,
     },
     sectionTitle: {
-      ...typography.h4,
+      ...svaTypography.textStyle.authLabel,
       color: t.textPrimary,
       marginBottom: spacing.sm,
     },
     descriptionText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: t.textSecondary,
       lineHeight: 22,
     },
@@ -281,7 +281,7 @@ const styling = (t: any, spacing: any, typography: any) =>
       marginRight: spacing.sm,
     },
     tipText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: t.textSecondary,
       flex: 1,
     },

@@ -19,7 +19,6 @@ import type {
   Spacing,
   SvaColorSet,
   SvaTokens,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 import { MealCardSurface } from "./MealCardSurface";
@@ -81,11 +80,11 @@ export function MealPlannerSlotCard({
   onOpenRecipeSearch,
   onMarkConsumed,
 }: MealPlannerSlotCardProps) {
-  const { svaColors, spacing, typography, svaTypography, tokens } =
+  const { svaColors, spacing, svaTypography, tokens } =
     useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(svaColors, spacing, typography, svaTypography, tokens),
-    [svaColors, spacing, typography, svaTypography, tokens]
+    () => styling(svaColors, spacing, svaTypography, tokens),
+    [svaColors, spacing, svaTypography, tokens]
   );
 
   const slotMeta = MEAL_SLOT_META[mealType];
@@ -189,8 +188,7 @@ export function MealPlannerSlotCard({
 const styling = (
   theme: SvaColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: TypographyTokens,
   tokens: SvaTokens
 ) =>
   StyleSheet.create({
@@ -229,18 +227,18 @@ const styling = (
       flex: 1,
     },
     mealType: {
-      ...(svaTypography?.textStyle.authTinyLabel ?? typography.caption),
+      ...(svaTypography?.textStyle.authTinyLabel ?? svaTypography.textStyle.caption),
       color: theme.chart.blue,
       fontWeight: "700",
       letterSpacing: 1,
       marginBottom: 4,
     },
     mealTitle: {
-      ...(svaTypography?.textStyle.bodyMedium ?? typography.bodyStrong),
+      ...(svaTypography?.textStyle.bodyMedium ?? svaTypography.textStyle.bodyMedium),
       color: theme.text.primary,
     },
     mealMeta: {
-      ...(svaTypography?.textStyle.caption ?? typography.caption),
+      ...(svaTypography?.textStyle.caption ?? svaTypography.textStyle.caption),
       color: theme.text.secondary,
       marginTop: 2,
     },
@@ -287,7 +285,7 @@ const styling = (
       paddingHorizontal: spacing.lg,
     },
     ghostText: {
-      ...(svaTypography?.textStyle.body ?? typography.body),
+      ...(svaTypography?.textStyle.body ?? svaTypography.textStyle.body),
       color: theme.text.secondary,
       fontStyle: "italic",
     },

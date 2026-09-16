@@ -10,6 +10,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { SvgUri } from "react-native-svg";
 import ThemeContext from "@/contexts/ThemeContext";
+import { SVATypography } from "@/theme/typography";
 import type { ColorSet } from "@/theme/types";
 
 type Props = {
@@ -42,19 +43,17 @@ const ProfileHeader: React.FC<Props> = ({
   onPressManagePlan,
   onPressBadge,
 }) => {
-  const { newTheme, svaTypography, typography } = useContext(ThemeContext);
+  const { newTheme, svaTypography } = useContext(ThemeContext);
 
   const styles = useMemo(
     () =>
       styling(
         newTheme,
-        svaTypography?.textStyle.authTitle.fontFamily ??
-          "CormorantGaramond_500Medium",
-        svaTypography?.textStyle.authMonoLabel.fontFamily ??
-          "SpaceMono-Regular",
-        typography.bodyStrong.fontFamily ?? "Outfit_600SemiBold"
+        svaTypography.fontFamily.display,
+        svaTypography.fontFamily.mono,
+        svaTypography.textStyle.bodyMedium.fontFamily ?? SVATypography.fontFamily.bodyStrong
       ),
-    [newTheme, svaTypography, typography.bodyStrong.fontFamily]
+    [newTheme, svaTypography.textStyle.bodyMedium.fontFamily]
   );
 
   const resolvedName = displayName ?? username ?? "Nimbus Member";

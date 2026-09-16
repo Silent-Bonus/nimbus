@@ -5,7 +5,6 @@ import ThemeContext from "@/contexts/ThemeContext";
 import type {
   ColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 import type { AffirmationRecommendation } from "@/features/self-care/utils/affirmationPresentation";
@@ -24,7 +23,7 @@ const AffirmationRecommendationSection = ({
   selectedId,
   onSelect,
 }: AffirmationRecommendationSectionProps) => {
-  const { newTheme, spacing, typography, svaTypography } =
+  const { newTheme, spacing, svaTypography } =
     useContext(ThemeContext);
 
   const windowWidth = Dimensions.get("window").width;
@@ -34,8 +33,8 @@ const AffirmationRecommendationSection = ({
   );
 
   const styles = useMemo(
-    () => styling(newTheme, spacing, typography, svaTypography),
-    [newTheme, spacing, typography, svaTypography]
+    () => styling(newTheme, spacing, svaTypography),
+    [newTheme, spacing, svaTypography]
   );
 
   if (!items.length) {
@@ -74,8 +73,7 @@ const AffirmationRecommendationSection = ({
 const styling = (
   theme: ColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography: TypographyTokens | undefined
+  svaTypography: TypographyTokens
 ) =>
   StyleSheet.create({
     section: {
@@ -87,7 +85,7 @@ const styling = (
     eyebrow: {
       fontFamily:
         svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
+        svaTypography.textStyle.authTinyLabel.fontFamily,
       fontSize: 10,
       lineHeight: 14,
       letterSpacing: 2.4,

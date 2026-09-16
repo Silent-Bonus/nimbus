@@ -25,7 +25,7 @@ const ManifestSection: React.FC<ManifestSectionProps> = ({
   );
 };
 
-const styling = (colors: any, spacing: any, typography: any) =>
+const styling = (colors: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     wrap: {
       marginBottom: spacing.xl,
@@ -34,7 +34,7 @@ const styling = (colors: any, spacing: any, typography: any) =>
       marginBottom: spacing.lg,
     },
     title: {
-      ...typography.textStyle.authTinyLabel,
+      ...svaTypography.textStyle.authTinyLabel,
       color: colors.brand.primary,
       fontSize: 10,
       lineHeight: 12,

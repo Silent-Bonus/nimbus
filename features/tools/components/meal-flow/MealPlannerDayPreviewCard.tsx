@@ -13,7 +13,6 @@ import type {
   Spacing,
   SvaColorSet,
   SvaTokens,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 import { MealCardSurface } from "./MealCardSurface";
@@ -46,11 +45,11 @@ export function MealPlannerDayPreviewCard({
   onSelectMealType,
   onRemoveSlot,
 }: MealPlannerDayPreviewCardProps) {
-  const { svaColors, spacing, typography, svaTypography, tokens } =
+  const { svaColors, spacing, svaTypography, tokens } =
     useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(svaColors, spacing, typography, svaTypography, tokens),
-    [svaColors, spacing, typography, svaTypography, tokens]
+    () => styling(svaColors, spacing, svaTypography, tokens),
+    [svaColors, spacing, svaTypography, tokens]
   );
 
   const plannedCount = Object.values(draft).filter((entry) => entry?.foodName).length;
@@ -115,8 +114,7 @@ export function MealPlannerDayPreviewCard({
 const styling = (
   theme: SvaColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: TypographyTokens,
   tokens: SvaTokens
 ) =>
   StyleSheet.create({
@@ -131,11 +129,11 @@ const styling = (
       marginBottom: spacing.xs,
     },
     title: {
-      ...(svaTypography?.textStyle.bodyMedium ?? typography.bodyStrong),
+      ...(svaTypography?.textStyle.bodyMedium ?? svaTypography.textStyle.bodyMedium),
       color: theme.text.primary,
     },
     status: {
-      ...(svaTypography?.textStyle.caption ?? typography.caption),
+      ...(svaTypography?.textStyle.caption ?? svaTypography.textStyle.caption),
       color: theme.text.secondary,
     },
     row: {
@@ -160,13 +158,13 @@ const styling = (
       gap: spacing.xs - 2,
     },
     mealType: {
-      ...(svaTypography?.textStyle.authTinyLabel ?? typography.caption),
+      ...(svaTypography?.textStyle.authTinyLabel ?? svaTypography.textStyle.caption),
       color: theme.text.secondary,
       textTransform: "uppercase",
       letterSpacing: 0.6,
     },
     mealName: {
-      ...(svaTypography?.textStyle.body ?? typography.body),
+      ...(svaTypography?.textStyle.body ?? svaTypography.textStyle.body),
       color: theme.text.primary,
     },
     mealNameMuted: {

@@ -15,8 +15,8 @@ const AudiobookThumbnail: React.FC<AudiobookThumbnailProps> = ({
   audiobook,
   onPress,
 }) => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(newTheme, spacing, typography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = styling(newTheme, spacing, svaTypography);
 
   return (
     <Pressable
@@ -51,7 +51,7 @@ const AudiobookThumbnail: React.FC<AudiobookThumbnailProps> = ({
 
 export default AudiobookThumbnail;
 
-const styling = (newTheme: any, spacing: any, typography: any) =>
+const styling = (newTheme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     container: {
       width: 180,
@@ -102,13 +102,13 @@ const styling = (newTheme: any, spacing: any, typography: any) =>
       borderTopColor: "rgba(255,255,255,0.08)",
     },
     title: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: "#FFFFFF",
       fontWeight: "700",
       marginBottom: 4,
     },
     author: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: "rgba(255,255,255,0.85)",
       fontWeight: "500",
     },

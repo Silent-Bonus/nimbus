@@ -26,8 +26,7 @@ export default function SettingsScreenHeader({
   const { newTheme, svaTypography } = useContext(ThemeContext);
   const insets = useSafeAreaInsets();
   const titleFamily =
-    svaTypography?.textStyle.authTitle.fontFamily ??
-    "CormorantGaramond_500Medium";
+    svaTypography.fontFamily.display;
 
   const handleShare = () => {
     if (onShare) {

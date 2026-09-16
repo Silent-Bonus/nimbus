@@ -1,7 +1,7 @@
 import React, { useContext, useMemo, useState } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import ThemeContext from "@/contexts/ThemeContext";
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "@/theme/types";
 
 interface Props {
   completedDays?: number[]; // e.g. [21, 22, 23, 24, 25]
@@ -30,10 +30,10 @@ export default function MonthlyOverviewPanel({ completedDays = [] }: Props) {
   const [currentMonth] = useState(now.getMonth());
   const [currentYear] = useState(now.getFullYear());
 
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(newTheme, spacing, typography),
-    [newTheme, spacing, typography]
+    () => styling(newTheme, spacing, svaTypography),
+    [newTheme, spacing, svaTypography]
   );
 
   // Build matrix of weeks for current month, Monday-first
@@ -115,7 +115,7 @@ export default function MonthlyOverviewPanel({ completedDays = [] }: Props) {
   );
 }
 
-const styling = (newTheme: ColorSet, spacing: Spacing, typography: Typography) =>
+const styling = (newTheme: ColorSet, spacing: Spacing, svaTypography: TypographyTokens) =>
   StyleSheet.create({
     card: {
       borderWidth: 1,
@@ -137,7 +137,7 @@ const styling = (newTheme: ColorSet, spacing: Spacing, typography: Typography) =
       paddingHorizontal: spacing.md,
     },
     headerText: {
-      ...typography.bodyStrong,
+      ...svaTypography.textStyle.bodyMedium,
       color: newTheme.textPrimary,
       marginRight: spacing.xs,
     },
@@ -147,7 +147,7 @@ const styling = (newTheme: ColorSet, spacing: Spacing, typography: Typography) =
       marginVertical: spacing.xs,
     },
     weekDay: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: newTheme.textSecondary,
       width: 30,
       textAlign: "center",
@@ -163,7 +163,7 @@ const styling = (newTheme: ColorSet, spacing: Spacing, typography: Typography) =
       alignItems: "center",
     },
     dayText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: newTheme.textPrimary,
     },
     // Teardrop / pill marker for completed days
@@ -177,7 +177,7 @@ const styling = (newTheme: ColorSet, spacing: Spacing, typography: Typography) =
       transform: [{ rotate: "45deg" }],
     },
     dropText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: newTheme.background,
       fontWeight: "600",
       transform: [{ rotate: "-45deg" }],

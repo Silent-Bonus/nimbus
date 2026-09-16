@@ -5,6 +5,7 @@ import { router } from "expo-router";
 
 import { NimbusButton } from "@/components/ui/theme-components/NimbusButton";
 import ThemeContext from "@/contexts/ThemeContext";
+import { SVATypography } from "@/theme/typography";
 import { ROUTES } from "@/constants/routes";
 import { type ManifestProtocolStep } from "@/features/tools/data/curatedManifests";
 
@@ -93,7 +94,7 @@ const ManifestProtocolCard: React.FC<ManifestProtocolCardProps> = ({
   );
 };
 
-const styling = (colors: any, spacing: any, typography: any) =>
+const styling = (colors: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     card: {
       borderRadius: 26,
@@ -123,14 +124,14 @@ const styling = (colors: any, spacing: any, typography: any) =>
       borderColor: "rgba(163,190,140,0.14)",
     },
     stepText: {
-      ...typography.textStyle.authTinyLabel,
+      ...svaTypography.textStyle.authTinyLabel,
       color: colors.brand.primary,
       fontSize: 10,
       lineHeight: 12,
       letterSpacing: 1.6,
     },
     title: {
-      fontFamily: "CormorantGaramond_600SemiBold",
+      fontFamily: SVATypography.fontFamily.displayStrong,
       fontSize: 24,
       lineHeight: 28,
       color: colors.text.primary,
@@ -138,7 +139,7 @@ const styling = (colors: any, spacing: any, typography: any) =>
       marginBottom: spacing.sm,
     },
     description: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: colors.text.secondary,
       marginBottom: spacing.md,
     },
@@ -162,14 +163,14 @@ const styling = (colors: any, spacing: any, typography: any) =>
       gap: 6,
     },
     metaLabel: {
-      ...typography.textStyle.authTinyLabel,
+      ...svaTypography.textStyle.authTinyLabel,
       color: colors.text.secondary,
       fontSize: 10,
       lineHeight: 12,
       letterSpacing: 1.4,
     },
     metaValue: {
-      fontFamily: "CormorantGaramond_600SemiBold",
+      fontFamily: SVATypography.fontFamily.displayStrong,
       fontSize: 18,
       lineHeight: 20,
       color: colors.text.primary,

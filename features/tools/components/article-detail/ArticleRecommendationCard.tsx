@@ -10,6 +10,7 @@ import {
 } from "react-native";
 
 import ThemeContext from "@/contexts/ThemeContext";
+import { SVATypography } from "@/theme/typography";
 import type { Spacing, SvaColorSet, TypographyTokens } from "@/theme/types";
 
 type ArticleRecommendationCardProps = {
@@ -73,7 +74,7 @@ const ArticleRecommendationCard: React.FC<ArticleRecommendationCardProps> = ({
 const styling = (
   colors: SvaColorSet,
   spacing: Spacing,
-  typography?: TypographyTokens
+  svaTypography?: TypographyTokens
 ) =>
   StyleSheet.create({
     card: {
@@ -111,7 +112,7 @@ const styling = (
       paddingRight: spacing.sm,
     },
     label: {
-      ...typography?.textStyle?.authTinyLabel,
+      ...svaTypography?.textStyle?.authTinyLabel,
       color: colors.brand.primary,
       fontSize: 9.5,
       lineHeight: 12,
@@ -120,7 +121,7 @@ const styling = (
     },
     title: {
       fontFamily:
-        typography?.textStyle?.authTitle?.fontFamily ??
+        svaTypography?.textStyle?.authTitle?.fontFamily ??
         "CormorantGaramond_600SemiBold",
       fontSize: 20,
       lineHeight: 22,
@@ -129,7 +130,7 @@ const styling = (
     },
     subtitle: {
       fontFamily:
-        typography?.textStyle?.authBody?.fontFamily ?? "Outfit_400Regular",
+        svaTypography?.textStyle?.authBody?.fontFamily ?? SVATypography.fontFamily.body,
       fontSize: 12.5,
       lineHeight: 17,
       color: colors.text.secondary,
@@ -137,8 +138,8 @@ const styling = (
     },
     tag: {
       fontFamily:
-        typography?.textStyle?.authTinyLabel?.fontFamily ??
-        "Outfit_600SemiBold",
+        svaTypography?.textStyle?.authTinyLabel?.fontFamily ??
+        SVATypography.fontFamily.bodyStrong,
       fontSize: 9,
       lineHeight: 11,
       letterSpacing: 1.5,

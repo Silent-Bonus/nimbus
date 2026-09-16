@@ -12,7 +12,6 @@ import ThemeContext from "@/contexts/ThemeContext";
 import type {
   SvaColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 
@@ -33,10 +32,10 @@ export function MealFlowSection({
   titleStyle,
   descriptionStyle,
 }: MealFlowSectionProps) {
-  const { svaColors, spacing, typography, svaTypography } = useContext(ThemeContext);
+  const { svaColors, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(svaColors, spacing, typography, svaTypography),
-    [svaColors, spacing, typography, svaTypography]
+    () => styling(svaColors, spacing, svaTypography),
+    [svaColors, spacing, svaTypography]
   );
 
   return (
@@ -55,8 +54,7 @@ export function MealFlowSection({
 const styling = (
   theme: SvaColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography: TypographyTokens | undefined
+  svaTypography: TypographyTokens
 ) =>
   StyleSheet.create({
     section: {
@@ -64,12 +62,12 @@ const styling = (
       marginBottom: spacing.xl,
     },
     title: {
-      ...(svaTypography?.textStyle.bodyMedium ?? typography.bodyStrong),
+      ...(svaTypography?.textStyle.bodyMedium ?? svaTypography.textStyle.bodyMedium),
       color: theme.text.primary,
       marginBottom: spacing.md,
     },
     description: {
-      ...(svaTypography?.textStyle.caption ?? typography.caption),
+      ...(svaTypography?.textStyle.caption ?? svaTypography.textStyle.caption),
       color: theme.text.secondary,
       marginBottom: spacing.sm,
     },

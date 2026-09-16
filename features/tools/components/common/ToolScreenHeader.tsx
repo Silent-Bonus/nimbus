@@ -29,8 +29,8 @@ const ToolScreenHeader: React.FC<ToolScreenHeaderProps> = ({
   rightIcon,
   onRightPress,
 }) => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(newTheme, spacing, typography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = styling(newTheme, spacing, svaTypography);
 
   return (
     <View style={[styles.container, containerStyle]}>
@@ -64,7 +64,7 @@ const ToolScreenHeader: React.FC<ToolScreenHeaderProps> = ({
   );
 };
 
-const styling = (newTheme: any, spacing: any, typography: any) =>
+const styling = (newTheme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     container: {
       marginBottom: spacing.lg,
@@ -83,11 +83,11 @@ const styling = (newTheme: any, spacing: any, typography: any) =>
     },
     textBlock: {},
     title: {
-      ...typography.h2,
+      ...svaTypography.textStyle.heading2,
       color: newTheme.textPrimary,
     },
     subtitle: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: newTheme.textSecondary,
       marginTop: spacing.xs,
     },

@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
 import ThemeContext from "@/contexts/ThemeContext";
+import { SVATypography } from "@/theme/typography";
 import { NimbusButton } from "@/components/ui/theme-components/NimbusButton";
 import type { SvaColorSet, Spacing } from "@/theme/types";
 
@@ -42,28 +43,21 @@ export default function PremiumGateModal({
   primaryLabel = "Upgrade to Plus",
   secondaryLabel = "Keep previewing",
 }: PremiumGateModalProps) {
-  const { svaColors, svaTypography, typography, spacing } =
+  const { svaColors, svaTypography, spacing } =
     useContext(ThemeContext);
 
   const fonts = useMemo<PremiumGateModalTypography>(
     () => ({
       titleFamily:
-        svaTypography?.textStyle.authTitle.fontFamily ??
-        typography.h2.fontFamily ??
-        "CormorantGaramond_500Medium",
+        svaTypography.textStyle.authTitle.fontFamily ?? SVATypography.fontFamily.display,
       bodyFamily:
-        svaTypography?.textStyle.body.fontFamily ??
-        typography.body.fontFamily ??
-        "Outfit_400Regular",
+        svaTypography.textStyle.body.fontFamily ?? SVATypography.fontFamily.body,
       bodyStrongFamily:
-        svaTypography?.textStyle.bodyMedium.fontFamily ??
-        typography.bodyStrong.fontFamily ??
-        "Outfit_600SemiBold",
+        svaTypography.textStyle.bodyMedium.fontFamily ?? SVATypography.fontFamily.bodyMedium,
       monoFamily:
-        svaTypography?.textStyle.authMonoLabel.fontFamily ??
-        "SpaceMono-Regular",
+        svaTypography.textStyle.authMonoLabel.fontFamily ?? SVATypography.fontFamily.mono,
     }),
-    [svaTypography, typography]
+    [svaTypography]
   );
 
   const styles = useMemo(

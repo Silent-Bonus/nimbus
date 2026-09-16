@@ -134,7 +134,7 @@ export default function NotificationListModal({
   onClose,
   onSelectReminder,
 }: Props) {
-  const { svaColors, svaTypography, typography, spacing } = useContext(ThemeContext);
+  const { svaColors, svaTypography, spacing } = useContext(ThemeContext);
   const { loadUserFromStorage } = useAuth();
 
   const [notifications, setNotifications] = useState<NotificationReminderItem[]>(
@@ -145,18 +145,13 @@ export default function NotificationListModal({
   const fonts = useMemo<NotificationListTypography>(
     () => ({
       bodyFamily:
-        svaTypography?.textStyle.body.fontFamily ??
-        typography.body.fontFamily ??
-        "Outfit_400Regular",
+        svaTypography.fontFamily.body,
       bodyStrongFamily:
-        svaTypography?.textStyle.bodyMedium.fontFamily ??
-        typography.bodyStrong.fontFamily ??
-        "Outfit_600SemiBold",
+        svaTypography.fontFamily.bodyMedium,
       monoFamily:
-        svaTypography?.textStyle.authMonoLabel.fontFamily ??
-        "SpaceMono-Regular",
+        svaTypography.fontFamily.mono,
     }),
-    [svaTypography, typography]
+    [svaTypography]
   );
 
   const styles: NotificationListStyles = useMemo(

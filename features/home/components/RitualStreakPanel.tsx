@@ -55,8 +55,8 @@ type Props = { date: string };
 
 const RitualStreakPanel = ({ date }: Props) => {
   const router = useRouter();
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(newTheme, spacing, typography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = styling(newTheme, spacing, svaTypography);
 
   const [items, setItems] = useState<CardItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -200,7 +200,7 @@ const RitualStreakPanel = ({ date }: Props) => {
   );
 };
 
-const styling = (theme: any, spacing: any, typography: any) =>
+const styling = (theme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     container: {
       marginTop: spacing.lg,

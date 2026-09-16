@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import Slider from "@react-native-community/slider";
 
 import ThemeContext from "../../../../contexts/ThemeContext";
-import type { ColorSet, Spacing, Typography } from "../../../../theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "../../../../theme/types";
 import { REMINDER_OPTIONS } from "../../utils/hydration";
 
 type HydrationReminderFrequencyCardProps = {
@@ -11,7 +11,7 @@ type HydrationReminderFrequencyCardProps = {
   onChange: (index: number) => void;
 };
 
-const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
+const makeStyles = (theme: ColorSet, spacing: Spacing, svaTypography: any) =>
   StyleSheet.create({
     card: {
       marginTop: spacing.lg,
@@ -35,14 +35,14 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       marginBottom: spacing.md,
     },
     sectionLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       opacity: 0.78,
       letterSpacing: 1.7,
       textTransform: "uppercase",
     },
     cardSubTitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginTop: 6,
       lineHeight: 18,
@@ -56,7 +56,7 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       borderColor: "rgba(255,255,255,0.06)",
     },
     reminderBadgeText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textPrimary,
       fontWeight: "700",
     },
@@ -82,7 +82,7 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       marginBottom: 8,
     },
     reminderLabel: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       opacity: 0.7,
     },
@@ -97,10 +97,10 @@ export const HydrationReminderFrequencyCard = ({
   reminderIndex,
   onChange,
 }: HydrationReminderFrequencyCardProps) => {
-  const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme: theme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => makeStyles(theme, spacing, typography),
-    [theme, spacing, typography]
+    () => makeStyles(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
 
   const reminderMinutes = REMINDER_OPTIONS[reminderIndex] ?? REMINDER_OPTIONS[1];

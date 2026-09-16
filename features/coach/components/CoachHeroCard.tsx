@@ -17,8 +17,8 @@ export default function CoachHeroCard({
   onAsk,
   onUpgrade,
 }: Props) {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const s = styles(newTheme, spacing, typography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const s = styles(newTheme, spacing, svaTypography);
 
   const secondaryLabel = useMemo(
     () => (isPremium ? "Notify me" : "Get Premium"),
@@ -90,7 +90,7 @@ export default function CoachHeroCard({
   );
 }
 
-const styles = (newTheme: any, spacing: any, typography: any) =>
+const styles = (newTheme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     card: {
       borderRadius: 28,
@@ -164,7 +164,7 @@ const styles = (newTheme: any, spacing: any, typography: any) =>
       backgroundColor: "rgba(167, 201, 180, 0.85)",
     },
     chipText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: "rgba(255,255,255,0.72)",
       fontWeight: "900",
       letterSpacing: 0.3,
@@ -176,20 +176,20 @@ const styles = (newTheme: any, spacing: any, typography: any) =>
       marginHorizontal: 2,
     },
     chipMeta: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: "rgba(255,255,255,0.55)",
       fontWeight: "800",
     },
 
     title: {
-      ...typography.h2,
+      ...svaTypography.textStyle.heading2,
       color: newTheme.textPrimary,
       fontWeight: "900",
       marginTop: spacing.md,
       lineHeight: 34,
     },
     body: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: "rgba(255,255,255,0.70)",
       marginTop: 10,
       lineHeight: 20,
@@ -202,7 +202,7 @@ const styles = (newTheme: any, spacing: any, typography: any) =>
       marginTop: spacing.sm,
     },
     metaText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: "rgba(255,255,255,0.60)",
       fontWeight: "800",
     },
@@ -225,7 +225,7 @@ const styles = (newTheme: any, spacing: any, typography: any) =>
       backgroundColor: "rgba(167, 201, 180, 0.40)",
     },
     insetTitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: "rgba(255,255,255,0.65)",
       fontWeight: "900",
       letterSpacing: 0.5,
@@ -233,7 +233,7 @@ const styles = (newTheme: any, spacing: any, typography: any) =>
       marginBottom: 8,
     },
     insetText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: "rgba(255,255,255,0.78)",
       lineHeight: 20,
     },
@@ -255,13 +255,13 @@ const styles = (newTheme: any, spacing: any, typography: any) =>
       backgroundColor: newTheme.accent,
     },
     primaryText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: "#0B0B0C",
       fontWeight: "900",
       lineHeight: 18,
     },
     primarySub: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: "#0B0B0C",
       fontWeight: "900",
       opacity: 0.9,
@@ -279,7 +279,7 @@ const styles = (newTheme: any, spacing: any, typography: any) =>
       borderColor: "rgba(255,255,255,0.10)",
     },
     ghostText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: "rgba(255,255,255,0.90)",
       fontWeight: "900",
     },

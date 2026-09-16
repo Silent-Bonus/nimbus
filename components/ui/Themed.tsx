@@ -17,7 +17,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 // import { useColorScheme } from "./UseColorScheme";
 import { useContext } from "react";
 import ThemeContext from "@/contexts/ThemeContext";
-import { Spacing, Typography } from "@/theme/types";
+import { Spacing, TypographyTokens } from "@/theme/types";
+import { SVATypography } from "@/theme/typography";
 import { Ionicons } from "@expo/vector-icons";
 
 type ThemeProps = {
@@ -99,10 +100,10 @@ export const StyledInput = ({
   // Set focused state to false when input is blurred
   const handleBlur = () => setIsFocused(false);
 
-  const { toggleTheme, spacing, typography, newTheme, useSystemTheme } =
+  const { toggleTheme, spacing, svaTypography, newTheme, useSystemTheme } =
     useContext(ThemeContext);
 
-  const styles = styledInputStyling(newTheme, isFocused, spacing, typography);
+  const styles = styledInputStyling(newTheme, isFocused, spacing, svaTypography);
 
   // Styles are now JS objects for inline styling
   return (
@@ -158,7 +159,7 @@ const styledInputStyling = (
   newTheme: any,
   isFocused: boolean,
   spacing: Spacing,
-  typography: Typography
+  svaTypography: TypographyTokens
 ) =>
   StyleSheet.create({
     // Container for the label and the input box
@@ -167,11 +168,10 @@ const styledInputStyling = (
     },
     // Style for the label text above the input
     label: {
+      ...SVATypography.textStyle.inputLabel,
       color: "#FFFFFF",
       fontSize: 16,
-      fontWeight: "500",
       marginBottom: 10,
-      fontFamily: "System", // A common default font
     },
     // Container that holds the icon and the TextInput
     inputContainer: {
@@ -199,8 +199,7 @@ const styledInputStyling = (
     input: {
       flex: 1,
       color: "#FFFFFF",
-      fontSize: 16,
       paddingVertical: 14,
-      fontFamily: "System",
+      ...SVATypography.textStyle.input,
     },
   });

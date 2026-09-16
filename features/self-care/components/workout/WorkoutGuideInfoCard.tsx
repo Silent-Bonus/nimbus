@@ -6,7 +6,6 @@ import ThemeContext from "@/contexts/ThemeContext";
 import type {
   ColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 
@@ -23,11 +22,11 @@ const WorkoutGuideInfoCard: React.FC<WorkoutGuideInfoCardProps> = ({
   items,
   testID,
 }) => {
-  const { newTheme: theme, svaTypography, spacing, typography } =
+  const { newTheme: theme, svaTypography, spacing } =
     useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(theme, svaTypography, spacing, typography),
-    [theme, svaTypography, spacing, typography]
+    () => styling(theme, svaTypography, spacing),
+    [theme, svaTypography, spacing]
   );
 
   return (
@@ -55,9 +54,9 @@ const WorkoutGuideInfoCard: React.FC<WorkoutGuideInfoCardProps> = ({
 
 const styling = (
   theme: ColorSet,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: any | undefined,
   spacing: Spacing,
-  typography: Typography
+
 ) =>
   StyleSheet.create({
     card: {
@@ -76,14 +75,14 @@ const styling = (
     eyebrow: {
       fontFamily:
         svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.caption.fontFamily,
+        svaTypography.textStyle.caption.fontFamily,
       color: theme.chart2 ?? theme.buttonPrimary,
       fontSize: 11,
       letterSpacing: 1.6,
       marginBottom: spacing.sm,
     },
     description: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textPrimary,
       lineHeight: 22,
     },
@@ -103,7 +102,7 @@ const styling = (
       paddingTop: 8,
     },
     listText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
       flex: 1,
       lineHeight: 22,
@@ -111,4 +110,3 @@ const styling = (
   });
 
 export default WorkoutGuideInfoCard;
-

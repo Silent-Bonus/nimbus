@@ -291,7 +291,7 @@ export const ScribbleDetailScreen = () => {
 const styling = (
   theme: ColorSet,
   spacing: Spacing,
-  svaTypography?: TypographyTokens
+  svaTypography: TypographyTokens
 ) =>
   StyleSheet.create({
     center: {

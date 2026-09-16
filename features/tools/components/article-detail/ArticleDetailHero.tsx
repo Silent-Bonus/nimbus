@@ -10,6 +10,7 @@ import {
 } from "react-native";
 
 import ThemeContext from "@/contexts/ThemeContext";
+import { SVATypography } from "@/theme/typography";
 import type { Spacing, SvaColorSet, TypographyTokens } from "@/theme/types";
 
 type ArticleDetailHeroProps = {
@@ -73,7 +74,7 @@ const ArticleDetailHero: React.FC<ArticleDetailHeroProps> = ({
 const styling = (
   colors: SvaColorSet,
   spacing: Spacing,
-  typography?: TypographyTokens
+  svaTypography?: TypographyTokens
 ) =>
   StyleSheet.create({
     card: {
@@ -117,20 +118,20 @@ const styling = (
       marginBottom: spacing.sm,
     },
     category: {
-      ...typography?.textStyle?.authTinyLabel,
+      ...svaTypography?.textStyle?.authTinyLabel,
       color: colors.brand.primary,
       fontSize: 10,
       letterSpacing: 2.1,
     },
     readingTime: {
-      ...typography?.textStyle?.authTinyLabel,
+      ...svaTypography?.textStyle?.authTinyLabel,
       color: colors.text.secondary,
       fontSize: 9.5,
       letterSpacing: 2,
     },
     title: {
       fontFamily:
-        typography?.textStyle?.authTitle?.fontFamily ??
+        svaTypography?.textStyle?.authTitle?.fontFamily ??
         "CormorantGaramond_600SemiBold",
       fontSize: 30,
       lineHeight: 34,
@@ -139,7 +140,7 @@ const styling = (
       marginBottom: spacing.sm,
     },
     subtitle: {
-      fontFamily: typography?.textStyle?.authBody?.fontFamily ?? "Outfit_400Regular",
+      fontFamily: svaTypography?.textStyle?.authBody?.fontFamily ?? SVATypography.fontFamily.body,
       fontSize: 14,
       lineHeight: 22,
       color: colors.text.secondary,
@@ -165,13 +166,13 @@ const styling = (
       flex: 1,
     },
     authorName: {
-      fontFamily: typography?.textStyle?.authBody?.fontFamily ?? "Outfit_500Medium",
+      fontFamily: svaTypography?.textStyle?.authBody?.fontFamily ?? SVATypography.fontFamily.bodyMedium,
       fontSize: 12,
       lineHeight: 16,
       color: colors.text.primary,
     },
     authorRole: {
-      fontFamily: typography?.textStyle?.authTinyLabel?.fontFamily ?? "Outfit_400Regular",
+      fontFamily: svaTypography?.textStyle?.authTinyLabel?.fontFamily ?? SVATypography.fontFamily.body,
       fontSize: 10,
       lineHeight: 13,
       color: colors.text.secondary,

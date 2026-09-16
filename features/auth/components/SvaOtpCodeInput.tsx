@@ -8,6 +8,7 @@ import {
 } from "react-native";
 
 import ThemeContext from "@/contexts/ThemeContext";
+import { SVATypography } from "@/theme/typography";
 
 export type SvaOtpCodeInputProps = {
   length?: number;
@@ -142,7 +143,7 @@ const s = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     textAlign: "center",
     fontSize: 20,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: SVATypography.fontFamily.bodyStrong,
     fontWeight: "600",
     letterSpacing: 2,
     paddingVertical: 8,

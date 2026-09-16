@@ -226,7 +226,7 @@ export default function AdvancedSettingsModal({
   visible: boolean;
   onClose: () => void;
 }) {
-  const { svaColors, svaTypography, typography, spacing } =
+  const { svaColors, svaTypography, spacing } =
     useContext(ThemeContext);
   const { loadUserFromStorage, updateProfile } = useAuth();
   const toast = useNimbusToast();
@@ -242,18 +242,13 @@ export default function AdvancedSettingsModal({
   const fonts = useMemo<AdvancedSettingsTypography>(
     () => ({
       bodyFamily:
-        svaTypography?.textStyle.body.fontFamily ??
-        typography.body.fontFamily ??
-        "Outfit_400Regular",
+        svaTypography.fontFamily.body,
       bodyStrongFamily:
-        svaTypography?.textStyle.bodyMedium.fontFamily ??
-        typography.bodyStrong.fontFamily ??
-        "Outfit_600SemiBold",
+        svaTypography.fontFamily.bodyMedium,
       monoFamily:
-        svaTypography?.textStyle.authMonoLabel.fontFamily ??
-        "SpaceMono-Regular",
+        svaTypography.fontFamily.mono,
     }),
-    [svaTypography, typography]
+    [svaTypography]
   );
 
   const styles: AdvancedSettingsStyles = useMemo(

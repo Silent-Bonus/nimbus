@@ -25,6 +25,7 @@ import type { HeaderRightAction } from "@/components/layout/AppHeader";
 import { NimbusButton } from "@/components/ui/theme-components/NimbusButton";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import ThemeContext from "@/contexts/ThemeContext";
+import { SVATypography } from "@/theme/typography";
 import { ROUTES } from "@/constants/routes";
 import {
   readFavoriteIds,
@@ -41,7 +42,6 @@ import type { SoundscapeTrack } from "@/features/self-care/types/soundscapeTypes
 import type {
   Spacing,
   SvaColorSet,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 
@@ -67,7 +67,7 @@ export default function SoundscapeDetailScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<SoundscapeDetailParams>();
-  const { svaColors, svaTypography, spacing, typography } =
+  const { svaColors, svaTypography, spacing } =
     useContext(ThemeContext);
 
   const soundscapeId = parseParam(params.soundscapeId) ?? "";
@@ -76,8 +76,8 @@ export default function SoundscapeDetailScreen() {
   const routedDate = parseParam(params.date);
 
   const styles = useMemo(
-    () => styling(svaColors, svaTypography, spacing, typography),
-    [svaColors, svaTypography, spacing, typography]
+    () => styling(svaColors, svaTypography, spacing),
+    [svaColors, svaTypography, spacing]
   );
 
   // Cached soundscape data keeps the transition from library to detail fast,
@@ -488,9 +488,8 @@ export default function SoundscapeDetailScreen() {
 
 const styling = (
   theme: SvaColorSet,
-  svaTypography: TypographyTokens | undefined,
-  spacing: Spacing,
-  typography: Typography
+  svaTypography: any | undefined,
+  spacing: Spacing
 ) =>
   StyleSheet.create({
     screen: {
@@ -582,7 +581,7 @@ const styling = (
       color: theme.text.primary,
     },
     heroSubtext: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.text.secondary,
       marginTop: 10,
       letterSpacing: 0.3,
@@ -606,7 +605,7 @@ const styling = (
       alignSelf: "flex-start",
     },
     heroMetaText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.text.primary,
       letterSpacing: 1,
     },
@@ -624,7 +623,7 @@ const styling = (
       borderColor: "rgba(255, 255, 255, 0.08)",
     },
     loadingChipText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.text.secondary,
       textTransform: "uppercase",
       letterSpacing: 1.2,
@@ -689,20 +688,20 @@ const styling = (
       textTransform: "uppercase",
     },
     cardMeta: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.text.secondary,
       textTransform: "uppercase",
     },
     descriptionText: {
       fontFamily:
-        svaTypography?.textStyle.body.fontFamily ?? "Outfit_400Regular",
+        svaTypography.textStyle.body.fontFamily ?? SVATypography.fontFamily.body,
       fontSize: 16,
       lineHeight: 26,
       color: theme.text.primary,
       opacity: 0.96,
     },
     errorText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: "#C85B5B",
       marginTop: spacing.sm,
       textTransform: "uppercase",
@@ -723,7 +722,7 @@ const styling = (
       borderColor: theme.border.subtle,
     },
     signalText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.text.secondary,
       textTransform: "uppercase",
       letterSpacing: 1.1,
@@ -743,7 +742,7 @@ const styling = (
       borderColor: "rgba(163,190,140,0.16)",
     },
     tagText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.brand.primary,
       letterSpacing: 1.1,
     },
@@ -759,7 +758,7 @@ const styling = (
       borderColor: theme.border.subtle,
     },
     miniPillText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.text.secondary,
       letterSpacing: 1,
     },
@@ -796,7 +795,7 @@ const styling = (
     },
     benefitText: {
       flex: 1,
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.text.primary,
       lineHeight: 24,
     },

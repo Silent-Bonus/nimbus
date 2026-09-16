@@ -4,7 +4,6 @@ import ThemeContext from "@/contexts/ThemeContext";
 import type {
   ColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 
@@ -27,11 +26,11 @@ const DifficultyTabs: React.FC<DifficultyTabsProps> = ({
   onChange,
   style,
 }) => {
-  const { newTheme, svaTypography, spacing, typography } =
+  const { newTheme, svaTypography, spacing } =
     useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(newTheme, svaTypography, spacing, typography),
-    [newTheme, svaTypography, spacing, typography]
+    () => styling(newTheme, svaTypography, spacing),
+    [newTheme, svaTypography, spacing]
   );
 
   return (
@@ -63,9 +62,9 @@ const DifficultyTabs: React.FC<DifficultyTabsProps> = ({
 
 const styling = (
   theme: ColorSet,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: any | undefined,
   spacing: Spacing,
-  typography: Typography
+
 ) =>
   StyleSheet.create({
     container: {
@@ -100,7 +99,7 @@ const styling = (
     textInactive: {
       fontFamily:
         svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.caption.fontFamily,
+        svaTypography.textStyle.caption.fontFamily,
       color: theme.textSecondary,
       fontSize: 12,
       letterSpacing: 0.8,
@@ -108,7 +107,7 @@ const styling = (
     textActive: {
       fontFamily:
         svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.caption.fontFamily,
+        svaTypography.textStyle.caption.fontFamily,
       color: theme.buttonPrimaryText,
       fontSize: 12,
       letterSpacing: 0.8,

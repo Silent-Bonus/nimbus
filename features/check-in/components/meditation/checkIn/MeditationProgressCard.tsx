@@ -7,7 +7,6 @@ import ThemeContext from "@/contexts/ThemeContext";
 import type {
   ColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 import {
@@ -21,12 +20,12 @@ type MeditationProgressCardProps = {
   completedMinutes: number;
   goalMinutes: number;
   anchoredAt: Date | null;
-  onAddMinutes: (step: number) => Promise<void> | void;
-  onResetMinutes: () => void;
+  onAddMinutes: (step: number) => void;
+  onResetMinutes?: () => void;
   onAnchorHold: () => void;
 };
 
-const getDisplayFont = (svaTypography?: TypographyTokens) =>
+const getDisplayFont = (svaTypography: any) =>
   svaTypography?.textStyle.displayMedium?.fontFamily ??
   svaTypography?.textStyle.authTitle?.fontFamily ??
   undefined;
@@ -34,8 +33,7 @@ const getDisplayFont = (svaTypography?: TypographyTokens) =>
 const makeStyles = (
   theme: ColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography?: TypographyTokens
+  svaTypography: TypographyTokens
 ) => {
   const displayFont = getDisplayFont(svaTypography);
 
@@ -53,6 +51,7 @@ const makeStyles = (
       shadowOffset: { width: 0, height: 12 },
       shadowRadius: 20,
       elevation: 8,
+      minHeight: 420,
     },
     heroGlow: {
       position: "absolute",
@@ -80,13 +79,13 @@ const makeStyles = (
       marginBottom: spacing.md,
     },
     sectionLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       opacity: 0.78,
       letterSpacing: 1.7,
     },
     cardSubTitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginTop: 6,
       lineHeight: 18,
@@ -97,18 +96,18 @@ const makeStyles = (
       borderRadius: 999,
       backgroundColor: "rgba(255,255,255,0.05)",
       borderWidth: 1,
-      borderColor: theme.borderMuted,
+      borderColor: "rgba(255,255,255,0.06)",
       alignItems: "center",
       justifyContent: "center",
       minWidth: 70,
     },
     goalChipValue: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textPrimary,
       fontWeight: "800",
     },
     goalChipLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       marginTop: 1,
     },
@@ -124,7 +123,7 @@ const makeStyles = (
       borderRadius: 88,
       backgroundColor: "rgba(0,0,0,0.10)",
       borderWidth: 1,
-      borderColor: theme.borderMuted,
+      borderColor: "rgba(255,255,255,0.05)",
       alignItems: "center",
       justifyContent: "center",
       paddingHorizontal: spacing.md,
@@ -134,41 +133,49 @@ const makeStyles = (
       color: theme.textPrimary,
     },
     ringValueMain: {
-      ...typography.h1,
+      ...svaTypography.textStyle.heading1,
       color: theme.textPrimary,
       fontFamily: displayFont,
       letterSpacing: -0.8,
     },
     ringValueGoal: {
-      ...typography.h4,
+      ...svaTypography.textStyle.authLabel,
       color: theme.textSecondary,
       fontWeight: "700",
     },
     ringLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 2,
       marginTop: 6,
       textAlign: "center",
     },
     anchorStamp: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textPrimary,
       fontWeight: "700",
       marginTop: 10,
       textAlign: "center",
     },
+    anchorStampMuted: {
+      ...svaTypography.textStyle.caption,
+      color: theme.textSecondary,
+      opacity: 0.86,
+      marginTop: 10,
+      textAlign: "center",
+      lineHeight: 18,
+    },
     quickAddHeader: {
       marginTop: spacing.lg,
     },
     quickAddLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       opacity: 0.78,
       letterSpacing: 1.5,
     },
     quickAddHint: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginTop: 4,
       lineHeight: 18,
@@ -184,8 +191,8 @@ const makeStyles = (
       minHeight: 44,
       borderRadius: 999,
       borderWidth: 1,
-      borderColor: theme.borderMuted,
-      backgroundColor: theme.surfaceMuted,
+      borderColor: "rgba(255,255,255,0.08)",
+      backgroundColor: "rgba(255,255,255,0.04)",
       alignItems: "center",
       justifyContent: "center",
       shadowColor: theme.shadow,
@@ -199,24 +206,10 @@ const makeStyles = (
       transform: [{ scale: 0.98 }],
     },
     quickAddChipText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textPrimary,
       fontWeight: "800",
       letterSpacing: 0.6,
-    },
-    resetButton: {
-      minHeight: 44,
-      alignItems: "center",
-      justifyContent: "center",
-      marginTop: spacing.sm,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: theme.borderMuted,
-    },
-    resetButtonText: {
-      ...typography.button,
-      color: theme.textSecondary,
-      fontSize: 14,
     },
     anchorStage: {
       marginTop: spacing.lg,
@@ -228,9 +221,9 @@ const makeStyles = (
       borderRadius: 45,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: theme.surfaceMuted,
+      backgroundColor: "rgba(255,255,255,0.03)",
       borderWidth: 1,
-      borderColor: theme.borderMuted,
+      borderColor: "rgba(255,255,255,0.08)",
       shadowColor: theme.shadow,
       shadowOpacity: 0.22,
       shadowRadius: 16,
@@ -251,17 +244,17 @@ const makeStyles = (
       justifyContent: "center",
       backgroundColor: theme.background,
       borderWidth: 1,
-      borderColor: theme.borderMuted,
+      borderColor: theme.borderMuted ?? "rgba(255,255,255,0.06)",
     },
     anchorButtonLabel: {
-      ...typography.button,
+      ...svaTypography.textStyle.button,
       color: theme.textPrimary,
       textTransform: "uppercase",
       letterSpacing: 1.4,
       marginTop: 12,
     },
     anchorButtonSubLabel: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       textAlign: "center",
       marginTop: 6,
@@ -275,18 +268,16 @@ export const MeditationProgressCard = ({
   goalMinutes,
   anchoredAt,
   onAddMinutes,
-  onResetMinutes,
   onAnchorHold,
 }: MeditationProgressCardProps) => {
   const {
     newTheme: theme,
     spacing,
-    typography,
     svaTypography,
   } = useContext(ThemeContext);
   const styles = useMemo(
-    () => makeStyles(theme, spacing, typography, svaTypography),
-    [theme, spacing, typography, svaTypography]
+    () => makeStyles(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
 
   const progress = clamp(completedMinutes / Math.max(goalMinutes, 1), 0, 1);
@@ -362,7 +353,11 @@ export const MeditationProgressCard = ({
             <Text style={styles.anchorStamp}>
               Anchored · {formatClockTime(anchoredAt)}
             </Text>
-          ) : null}
+          ) : (
+            <Text style={styles.anchorStampMuted}>
+              Hold the anchor to lock in the session.
+            </Text>
+          )}
         </View>
       </View>
 
@@ -378,8 +373,6 @@ export const MeditationProgressCard = ({
           <Pressable
             key={step}
             onPress={() => onAddMinutes(step)}
-            accessibilityRole="button"
-            accessibilityLabel={`Add ${step} meditation minutes`}
             style={({ pressed }) => [
               styles.quickAddChip,
               pressed && styles.quickAddChipPressed,
@@ -390,27 +383,10 @@ export const MeditationProgressCard = ({
         ))}
       </View>
 
-      {/*
-      <Pressable
-        onPress={onResetMinutes}
-        accessibilityRole="button"
-        accessibilityLabel="Reset meditation minutes"
-        style={({ pressed }) => [
-          styles.resetButton,
-          pressed && styles.quickAddChipPressed,
-        ]}
-      >
-        <Text style={styles.resetButtonText}>Reset to 0 minutes</Text>
-      </Pressable>
-      */}
-
       <View style={styles.anchorStage}>
         <Pressable
           onLongPress={onAnchorHold}
           delayLongPress={650}
-          accessibilityRole="button"
-          accessibilityLabel="Hold to anchor meditation session"
-          accessibilityHint="Press and hold to seal the session."
           style={({ pressed }) => [
             styles.anchorButton,
             pressed && styles.anchorButtonPressed,

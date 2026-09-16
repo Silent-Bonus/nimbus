@@ -116,7 +116,7 @@ function PasswordField({
 }
 
 export default function ChangePasswordModal({ visible, onClose }: Props) {
-  const { svaColors, svaTypography, typography } = useContext(ThemeContext);
+  const { svaColors, svaTypography } = useContext(ThemeContext);
   const insets = useSafeAreaInsets();
 
   const [newPassword, setNewPassword] = useState("");
@@ -132,21 +132,18 @@ export default function ChangePasswordModal({ visible, onClose }: Props) {
     () => ({
       titleFamily:
         svaTypography?.textStyle.authTitle.fontFamily ??
-        typography.h2.fontFamily ??
+        svaTypography.textStyle.heading2.fontFamily ??
         "CormorantGaramond_500Medium",
       bodyFamily:
-        svaTypography?.textStyle.body.fontFamily ??
-        typography.body.fontFamily ??
+        svaTypography.fontFamily.body ??
         "Inter_400Regular",
       bodyStrongFamily:
-        svaTypography?.textStyle.bodyMedium.fontFamily ??
-        typography.bodyStrong.fontFamily ??
+        svaTypography.fontFamily.bodyMedium ??
         "Inter_600SemiBold",
       monoFamily:
-        svaTypography?.textStyle.authMonoLabel.fontFamily ??
-        "SpaceMono-Regular",
+        svaTypography.fontFamily.mono,
     }),
-    [svaTypography, typography]
+    [svaTypography]
   );
 
   const styles = useMemo(

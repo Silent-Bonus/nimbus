@@ -15,8 +15,8 @@ export default function RewardsPlaceholder({
   onUpgrade,
   onPreview,
 }: Props) {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const s = styles(newTheme, spacing, typography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const s = styles(newTheme, spacing, svaTypography);
 
   return (
     <View style={s.wrap}>
@@ -108,7 +108,7 @@ export default function RewardsPlaceholder({
   );
 }
 
-const styles = (newTheme: any, spacing: any, typography: any) =>
+const styles = (newTheme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     wrap: {
       marginTop: spacing.md,
@@ -153,12 +153,12 @@ const styles = (newTheme: any, spacing: any, typography: any) =>
       borderColor: "rgba(255,255,255,0.10)",
     },
     heroTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: newTheme.textPrimary,
       fontWeight: "900",
     },
     heroSubtitle: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: newTheme.textSecondary,
       marginTop: 6,
       lineHeight: 19,
@@ -178,7 +178,7 @@ const styles = (newTheme: any, spacing: any, typography: any) =>
       backgroundColor: newTheme.accent,
     },
     primaryText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: "#0B0B0C",
       fontWeight: "900",
     },
@@ -193,18 +193,18 @@ const styles = (newTheme: any, spacing: any, typography: any) =>
       borderColor: "rgba(255,255,255,0.10)",
     },
     secondaryText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: newTheme.textPrimary,
       fontWeight: "800",
     },
     footnote: {
       marginTop: spacing.md,
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: "rgba(255,255,255,0.55)",
     },
 
     sectionTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: newTheme.textPrimary,
       marginBottom: spacing.md,
     },
@@ -284,7 +284,7 @@ const styles = (newTheme: any, spacing: any, typography: any) =>
 
     // ✅ baseline alignment for labels (prevents “wobble”)
     badgeLabel: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: newTheme.textSecondary,
       marginTop: 12,
       textAlign: "center",

@@ -11,8 +11,8 @@ type Props = {
 };
 
 const MedicalTestHeader: React.FC<Props> = ({ title, subtitle, onBack }) => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = getStyles(newTheme, spacing, typography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = getStyles(newTheme, spacing, svaTypography);
 
   return (
     <View style={styles.wrapper}>
@@ -40,7 +40,7 @@ const MedicalTestHeader: React.FC<Props> = ({ title, subtitle, onBack }) => {
   );
 };
 
-const getStyles = (t: any, spacing: any, typography: any) =>
+const getStyles = (t: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     wrapper: {
       paddingHorizontal: spacing.md,
@@ -56,11 +56,11 @@ const getStyles = (t: any, spacing: any, typography: any) =>
       paddingRight: spacing.lg,
     },
     title: {
-      ...typography.h2,
+      ...svaTypography.textStyle.heading2,
       color: t.textPrimary,
     },
     subtitle: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: t.textSecondary,
       marginTop: spacing.xs,
     },

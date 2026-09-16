@@ -2,6 +2,7 @@ import React, { useContext, useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import ThemeContext from "@/contexts/ThemeContext";
+import { SVATypography } from "@/theme/typography";
 import type { NewsletterReviewSummary } from "@/features/tools/types/newsletterTypes";
 import type { Spacing, SvaColorSet, TypographyTokens } from "@/theme/types";
 
@@ -82,7 +83,7 @@ const ArticleReviewPanel: React.FC<ArticleReviewPanelProps> = ({
 const styling = (
   colors: SvaColorSet,
   spacing: Spacing,
-  typography?: TypographyTokens
+  svaTypography?: TypographyTokens
 ) =>
   StyleSheet.create({
     wrap: {
@@ -103,8 +104,8 @@ const styling = (
     },
     summaryLabel: {
       fontFamily:
-        typography?.textStyle?.authTinyLabel?.fontFamily ??
-        "Outfit_600SemiBold",
+        svaTypography?.textStyle?.authTinyLabel?.fontFamily ??
+        SVATypography.fontFamily.bodyStrong,
       fontSize: 10,
       lineHeight: 12,
       letterSpacing: 1.4,
@@ -114,7 +115,7 @@ const styling = (
     },
     summaryValue: {
       fontFamily:
-        typography?.textStyle?.authTitle?.fontFamily ??
+        svaTypography?.textStyle?.authTitle?.fontFamily ??
         "CormorantGaramond_600SemiBold",
       fontSize: 24,
       lineHeight: 28,
@@ -131,7 +132,7 @@ const styling = (
     },
     reviewer: {
       fontFamily:
-        typography?.textStyle?.authTitle?.fontFamily ??
+        svaTypography?.textStyle?.authTitle?.fontFamily ??
         "CormorantGaramond_600SemiBold",
       fontSize: 20,
       lineHeight: 24,
@@ -139,7 +140,7 @@ const styling = (
     },
     reviewText: {
       fontFamily:
-        typography?.textStyle?.authBody?.fontFamily ?? "Outfit_400Regular",
+        svaTypography?.textStyle?.authBody?.fontFamily ?? SVATypography.fontFamily.body,
       fontSize: 14,
       lineHeight: 22,
       color: colors.text.secondary,
@@ -160,8 +161,8 @@ const styling = (
     },
     badgeText: {
       fontFamily:
-        typography?.textStyle?.authTinyLabel?.fontFamily ??
-        "Outfit_600SemiBold",
+        svaTypography?.textStyle?.authTinyLabel?.fontFamily ??
+        SVATypography.fontFamily.bodyStrong,
       fontSize: 10,
       lineHeight: 12,
       letterSpacing: 1,
@@ -179,7 +180,7 @@ const styling = (
     },
     placeholderTitle: {
       fontFamily:
-        typography?.textStyle?.authTitle?.fontFamily ??
+        svaTypography?.textStyle?.authTitle?.fontFamily ??
         "CormorantGaramond_600SemiBold",
       fontSize: 22,
       lineHeight: 26,
@@ -187,7 +188,7 @@ const styling = (
     },
     placeholderBody: {
       fontFamily:
-        typography?.textStyle?.authBody?.fontFamily ?? "Outfit_400Regular",
+        svaTypography?.textStyle?.authBody?.fontFamily ?? SVATypography.fontFamily.body,
       fontSize: 14,
       lineHeight: 22,
       color: colors.text.secondary,

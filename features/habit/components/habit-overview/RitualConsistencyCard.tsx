@@ -24,19 +24,16 @@ export default function RitualConsistencyCard({
   data,
   completionLabel = "Average completion",
 }: RitualConsistencyCardProps) {
-  const { svaColors, svaTypography, typography } = useContext(ThemeContext);
+  const { svaColors, svaTypography } = useContext(ThemeContext);
 
   const fonts = useMemo<RitualConsistencyTypography>(
     () => ({
       monoFamily:
-        svaTypography?.textStyle.authMonoLabel.fontFamily ??
-        "SpaceMono-Regular",
+        svaTypography.fontFamily.mono,
       bodyStrongFamily:
-        svaTypography?.textStyle.bodyMedium.fontFamily ??
-        typography.bodyStrong.fontFamily ??
-        "Outfit_600SemiBold",
+        svaTypography.fontFamily.bodyMedium,
     }),
-    [svaTypography, typography]
+    [svaTypography]
   );
 
   const styles: RitualConsistencyStyles = useMemo(

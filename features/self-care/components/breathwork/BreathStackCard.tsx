@@ -7,7 +7,6 @@ import type { BreathPattern } from "@/features/self-care/types/wellnessContentTy
 import type {
   ColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 import type { BreathRecommendation } from "@/features/self-care/types/wellnessContentTypes";
@@ -27,12 +26,12 @@ const BreathStackCard = ({
   onPlay,
   recommendation,
 }: BreathStackCardProps) => {
-  const { newTheme, spacing, typography, svaTypography } =
+  const { newTheme, spacing, svaTypography } =
     useContext(ThemeContext);
 
   const styles = useMemo(
-    () => styling(newTheme, spacing, typography, svaTypography),
-    [newTheme, spacing, typography, svaTypography]
+    () => styling(newTheme, spacing, svaTypography),
+    [newTheme, spacing, svaTypography]
   );
 
   return (
@@ -147,8 +146,7 @@ const BreathStackCard = ({
 const styling = (
   theme: ColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography: TypographyTokens | undefined
+  svaTypography: TypographyTokens
 ) =>
   StyleSheet.create({
     card: {
@@ -206,7 +204,7 @@ const styling = (
     playButtonText: {
       fontFamily:
         svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
+        svaTypography.textStyle.authTinyLabel.fontFamily,
       fontSize: 10,
       lineHeight: 12,
       letterSpacing: 1.2,
@@ -251,7 +249,7 @@ const styling = (
       letterSpacing: -0.25,
     },
     subtitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       opacity: 0.9,
     },
@@ -274,7 +272,7 @@ const styling = (
     tagText: {
       fontFamily:
         svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
+        svaTypography.textStyle.authTinyLabel.fontFamily,
       fontSize: 10,
       lineHeight: 12,
       letterSpacing: 1.15,

@@ -2,12 +2,12 @@ import { useContext, useMemo } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import ThemeContext from "../../../../contexts/ThemeContext";
-import type { ColorSet, Spacing, Typography } from "../../../../theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "../../../../theme/types";
 
 const createStyles = (
   theme: ColorSet,
   spacing: Spacing,
-  typography: Typography
+  svaTypography: any
 ) =>
   StyleSheet.create({
     card: {
@@ -27,13 +27,13 @@ const createStyles = (
       elevation: 8,
     },
     title: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       marginTop: spacing.md,
       textAlign: "center",
     },
     subtitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginTop: spacing.xs,
       textAlign: "center",
@@ -42,10 +42,10 @@ const createStyles = (
   });
 
 export const HydrationLoadingState = () => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => createStyles(newTheme, spacing, typography),
-    [newTheme, spacing, typography]
+    () => createStyles(newTheme, spacing, svaTypography),
+    [newTheme, spacing, svaTypography]
   );
 
   const accent = newTheme.chart2 ?? newTheme.accent;

@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { ColorSet, Typography } from "@/theme/types";
+import type { ColorSet, TypographyTokens } from "@/theme/types";
 import LogSheet, { LogPayload } from "../common/logSheet/SleepLogSheet";
 import { setHM } from "@/features/check-in/utils/sleepLog";
 import {
@@ -17,25 +17,24 @@ import {
 type Props = {
   asleepMinutes: number;
   goalMinutes: number;
+  ratingLabel?: string;
   onSleepSessionStart?: (startedAt: Date) => void;
   onSleepSessionInvalid?: () => void;
   onSleepSessionComplete?: (durationHours: number) => Promise<void> | void;
-  onPastSleepComplete?: (
-    durationHours: number,
-    sleepDate: Date
-  ) => Promise<void> | void;
+  onPastSleepComplete?: (durationHours: number, sleepDate: Date) => Promise<void> | void;
 };
 
 export default function SleepPerformanceCard({
   asleepMinutes,
   goalMinutes,
+  ratingLabel,
   onSleepSessionStart,
   onSleepSessionInvalid,
   onSleepSessionComplete,
   onPastSleepComplete,
 }: Props) {
-  const { newTheme: theme, typography } = useContext(ThemeContext);
-  const styles = useMemo(() => styling(theme, typography), [theme, typography]);
+  const { newTheme: theme, svaTypography } = useContext(ThemeContext);
+  const styles = useMemo(() => styling(theme, svaTypography), [theme, svaTypography]);
   const [open, setOpen] = useState(false);
   const [sleepNowProcessing, setSleepNowProcessing] = useState(false);
   const [sleepStartedAt, setSleepStartedAt] = useState<Date | null>(null);
@@ -44,6 +43,14 @@ export default function SleepPerformanceCard({
     if (!goalMinutes) return 0;
     return clamp(asleepMinutes / goalMinutes, 0, 1);
   }, [asleepMinutes, goalMinutes]);
+
+  const centerLabel =
+    ratingLabel ??
+    (progress >= 0.92
+      ? "Aligned recovery"
+      : progress >= 0.75
+      ? "Recovery in progress"
+      : "Deep recovery in progress");
 
   const ringSize = 184;
   const strokeWidth = 15;
@@ -68,23 +75,14 @@ export default function SleepPerformanceCard({
     setSleepNowProcessing(true);
     try {
       const now = new Date();
-      const elapsedHours = (now.getTime() - sleepStartedAt.getTime()) / 3600000;
       const durationHours = Math.min(
         8,
-        Math.round(Math.max(0, elapsedHours) * 100) / 100
+        Math.round(Math.max(0, now.getTime() - sleepStartedAt.getTime()) / 36000) / 100
       );
-
       if (durationHours <= 0) {
         onSleepSessionInvalid?.();
         return;
       }
-
-      console.log("[Nidra Sync] sleep session completed", {
-        startedAt: sleepStartedAt.toISOString(),
-        wokeAt: now.toISOString(),
-        durationHours,
-      });
-
       await onSleepSessionComplete?.(durationHours);
       setSleepStartedAt(null);
     } finally {
@@ -93,8 +91,7 @@ export default function SleepPerformanceCard({
   };
 
   const handleSaveManual = (payload: LogPayload) => {
-    const durationHours = payload.durationMin / 60;
-    return onPastSleepComplete?.(durationHours, payload.bedTime);
+    return onPastSleepComplete?.(payload.durationMin / 60, payload.bedTime);
   };
 
   return (
@@ -116,6 +113,10 @@ export default function SleepPerformanceCard({
           </Text>
         </View>
 
+        <View style={styles.goalChip}>
+          <Text style={styles.goalChipText}>{formatGoalHours(goalMinutes)}</Text>
+          <Text style={styles.goalChipSub}>goal</Text>
+        </View>
       </View>
 
       <View style={styles.ringStage}>
@@ -147,6 +148,7 @@ export default function SleepPerformanceCard({
             <Text style={styles.centerPrimary}>{formatHours(asleepMinutes)}</Text>
             <Text style={styles.centerSecondary}> / {formatGoalHours(goalMinutes)}</Text>
           </Text>
+          <Text style={styles.centerLabel}>{centerLabel}</Text>
         </View>
       </View>
 
@@ -178,11 +180,7 @@ export default function SleepPerformanceCard({
             color={sleepNowProcessing ? (theme.textSecondary ?? theme.textPrimary) : theme.textPrimary}
           />
           <Text style={styles.primaryActionText}>
-            {sleepNowProcessing
-              ? "Saving sleep..."
-              : sleepStartedAt
-              ? "Wake up"
-              : "Sleep now"}
+            {sleepNowProcessing ? "Saving sleep..." : sleepStartedAt ? "Wake up" : "Sleep now"}
           </Text>
         </Pressable>
 
@@ -214,14 +212,14 @@ export default function SleepPerformanceCard({
         manualDateSelection="pastWeek"
         defaultDurationMinutes={goalMinutes}
         manualTitleText="Select sleep date"
-        manualSubtitleText="Choose one of the last five days or any future date."
+        manualSubtitleText="Choose a date from the past week and set duration."
         saveText="Add past sleep"
       />
     </View>
   );
 }
 
-const styling = (theme: ColorSet, typography: Typography) =>
+const styling = (theme: ColorSet, svaTypography: any) =>
   StyleSheet.create({
     card: {
       borderRadius: 28,
@@ -252,16 +250,39 @@ const styling = (theme: ColorSet, typography: Typography) =>
       flex: 1,
     },
     sectionLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 1.6,
       textTransform: "uppercase",
     },
     cardSubTitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       marginTop: 4,
       color: theme.textSecondary,
       opacity: 0.86,
+    },
+    goalChip: {
+      alignItems: "flex-end",
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 16,
+      backgroundColor: "rgba(255,255,255,0.03)",
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.06)",
+    },
+    goalChipText: {
+      ...svaTypography.textStyle.caption,
+      color: theme.textPrimary,
+      fontWeight: "800",
+      letterSpacing: 0.1,
+    },
+    goalChipSub: {
+      ...svaTypography.textStyle.authTinyLabel,
+      marginTop: 1,
+      color: theme.textSecondary,
+      fontWeight: "700",
+      letterSpacing: 1.1,
+      textTransform: "uppercase",
     },
     ringStage: {
       alignItems: "center",
@@ -284,18 +305,18 @@ const styling = (theme: ColorSet, typography: Typography) =>
       textAlign: "center",
     },
     centerPrimary: {
-      ...typography.h1,
+      ...svaTypography.textStyle.heading1,
       color: theme.textPrimary,
       fontWeight: "800",
       letterSpacing: -0.4,
     },
     centerSecondary: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textSecondary,
       fontWeight: "700",
     },
     centerLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       marginTop: 6,
       color: theme.textSecondary,
       fontWeight: "800",
@@ -320,13 +341,13 @@ const styling = (theme: ColorSet, typography: Typography) =>
       opacity: 0.9,
     },
     metricValue: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       fontWeight: "800",
       letterSpacing: 0.2,
     },
     metricLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       marginTop: 2,
       color: theme.textSecondary,
       fontWeight: "700",
@@ -372,13 +393,13 @@ const styling = (theme: ColorSet, typography: Typography) =>
       opacity: 0.94,
     },
     primaryActionText: {
-      ...typography.button,
+      ...svaTypography.textStyle.button,
       color: theme.textPrimary,
       fontWeight: "800",
       letterSpacing: 0.2,
     },
     secondaryActionText: {
-      ...typography.button,
+      ...svaTypography.textStyle.button,
       color: theme.textPrimary,
       fontWeight: "800",
       letterSpacing: 0.2,

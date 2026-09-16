@@ -14,6 +14,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ThemeContext from "@/contexts/ThemeContext";
+import { SVATypography } from "@/theme/typography";
 import { ROUTES } from "@/constants/routes";
 import AppHeader from "@/components/layout/AppHeader";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
@@ -191,7 +192,7 @@ const SelfCareSectionCard = ({
 };
 
 export default function SelfCare() {
-  const { newTheme: theme, svaTypography, spacing, typography } =
+  const { newTheme: theme, svaTypography, spacing } =
     useContext(ThemeContext);
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -206,10 +207,13 @@ export default function SelfCare() {
         svaTypography?.textStyle.authTitle.fontFamily ??
         "CormorantGaramond_500Medium",
       mono:
-        svaTypography?.textStyle.authMonoLabel.fontFamily ?? "SpaceMono-Regular",
-      action: typography.button.fontFamily ?? "Outfit_600SemiBold",
+        svaTypography?.textStyle.authMonoLabel.fontFamily ??
+        SVATypography.fontFamily.mono,
+      action:
+        svaTypography.textStyle.button.fontFamily ??
+        SVATypography.fontFamily.bodyStrong,
     }),
-    [svaTypography, typography.button.fontFamily]
+    [svaTypography]
   );
 
   const styles = useMemo(

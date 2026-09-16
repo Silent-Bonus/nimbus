@@ -16,7 +16,7 @@ import DateTimePicker, {
   DateTimePickerEvent,
 } from "@react-native-community/datetimepicker";
 import ThemeContext from "@/contexts/ThemeContext";
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "@/theme/types";
 import { Tab } from "./components/Tabs";
 import { TimeRow } from "./components/TimeRow";
 import { GhostButton } from "./components/GhostButton";
@@ -112,8 +112,8 @@ export default function LogSheet({
   );
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(newTheme, spacing, typography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = styling(newTheme, spacing, svaTypography);
 
   const durationMin = useMemo(
     () => diffMinutes(bedTime, wakeTime),
@@ -479,7 +479,7 @@ export default function LogSheet({
 const styling = (
   newTheme: ColorSet,
   spacing: Spacing,
-  typography: Typography
+  svaTypography: TypographyTokens
 ) =>
   StyleSheet.create({
     backdrop: {
@@ -518,7 +518,7 @@ const styling = (
       marginBottom: spacing.sm,
     },
     title: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: newTheme.textPrimary,
       fontWeight: "800",
     },
@@ -555,7 +555,7 @@ const styling = (
       transform: [{ scale: 0.99 }],
     },
     dateChipDay: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: newTheme.textSecondary,
       fontWeight: "800",
       letterSpacing: 1.1,
@@ -565,7 +565,7 @@ const styling = (
       color: newTheme.textPrimary,
     },
     dateChipValue: {
-      ...typography.bodyStrong,
+      ...svaTypography.textStyle.bodyMedium,
       marginTop: 2,
       color: newTheme.textPrimary,
       fontWeight: "800",
@@ -581,13 +581,13 @@ const styling = (
       gap: 10,
     },
     durationDialLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       fontWeight: "700",
       letterSpacing: 0.8,
       textTransform: "uppercase",
     },
     durationDialValue: {
-      ...typography.h2,
+      ...svaTypography.textStyle.heading2,
       fontWeight: "800",
       letterSpacing: -0.3,
     },
@@ -600,7 +600,7 @@ const styling = (
       justifyContent: "space-between",
     },
     durationScaleText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       fontWeight: "700",
       letterSpacing: 0.4,
     },
@@ -612,13 +612,13 @@ const styling = (
       gap: 3,
     },
     durationPreviewLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       fontWeight: "700",
       letterSpacing: 0.7,
       textTransform: "uppercase",
     },
     durationPreviewValue: {
-      ...typography.bodyStrong,
+      ...svaTypography.textStyle.bodyMedium,
       fontWeight: "800",
       letterSpacing: 0.1,
     },
@@ -635,7 +635,7 @@ const styling = (
       borderColor: newTheme.borderMuted,
     },
     datePickerButtonText: {
-      ...typography.bodyStrong,
+      ...svaTypography.textStyle.bodyMedium,
       flex: 1,
       color: newTheme.textPrimary,
     },
@@ -655,7 +655,7 @@ const styling = (
       backgroundColor: newTheme.accent,
     },
     datePickerDoneText: {
-      ...typography.button,
+      ...svaTypography.textStyle.button,
       color: newTheme.background,
       fontWeight: "800",
     },

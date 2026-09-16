@@ -25,11 +25,11 @@ export function MeasurementInputRow({
   onBlur,
   unit = "cm",
 }: MeasurementInputRowProps) {
-  const { newTheme, spacing, typography, svaTypography } =
+  const { newTheme, spacing, svaTypography } =
     useContext(ThemeContext);
   const resolvedTypography = useMemo(
-    () => resolveBodyVitalsTypography(svaTypography, typography),
-    [svaTypography, typography]
+    () => resolveBodyVitalsTypography(svaTypography),
+    [svaTypography]
   );
   const styles = useMemo(
     () => makeMeasurementInputStyles(newTheme, spacing, resolvedTypography),
@@ -67,7 +67,7 @@ export function MeasurementInputRow({
 const makeMeasurementInputStyles = (
   theme: ColorSet,
   spacing: Spacing,
-  typography: BodyVitalsTypography
+  type: BodyVitalsTypography
 ) =>
   StyleSheet.create({
     row: {
@@ -83,12 +83,12 @@ const makeMeasurementInputStyles = (
       minWidth: 0,
     },
     label: {
-      ...typography.sectionLabel,
+      ...type.sectionLabel,
       color: theme.textSecondary,
       opacity: 0.88,
     },
     helper: {
-      ...typography.caption,
+      ...type.caption,
       color: theme.textSecondary,
       opacity: 0.72,
       marginTop: 4,
@@ -101,7 +101,7 @@ const makeMeasurementInputStyles = (
       justifyContent: "flex-end",
     },
     input: {
-      ...typography.numericValue,
+      ...type.numericValue,
       minWidth: 56,
       padding: 0,
       margin: 0,
@@ -115,7 +115,7 @@ const makeMeasurementInputStyles = (
       textAlignVertical: "center",
     },
     unit: {
-      ...typography.sectionLabel,
+      ...type.sectionLabel,
       color: theme.textSecondary,
       opacity: 0.9,
     },

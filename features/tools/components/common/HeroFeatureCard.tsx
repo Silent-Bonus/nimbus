@@ -30,8 +30,8 @@ const HeroFeatureCard: React.FC<HeroFeatureCardProps> = ({
   colors,
   bgImage,
 }) => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(newTheme, spacing, typography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = styling(newTheme, spacing, svaTypography);
 
   return (
     <TouchableOpacity
@@ -81,7 +81,7 @@ const HeroFeatureCard: React.FC<HeroFeatureCardProps> = ({
   );
 };
 
-const styling = (theme: any, spacing: any, typography: any) =>
+const styling = (theme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     cardContainer: {
       width: width - spacing.md * 2, // Full width minus padding
@@ -129,13 +129,13 @@ const styling = (theme: any, spacing: any, typography: any) =>
       justifyContent: "center",
     },
     title: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: "#FFF", // Always white for contrast on gradients
       fontSize: 18,
       marginBottom: 2,
     },
     subtitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: "rgba(255,255,255,0.85)",
       fontSize: 13,
       lineHeight: 18,

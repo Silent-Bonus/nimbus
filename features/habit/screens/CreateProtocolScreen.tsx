@@ -667,7 +667,7 @@ const CreateProtocolScreen = () => {
   );
 };
 
-const styling = (colors: any, typography: any, spacing: any) =>
+const styling = (colors: any, svaTypography: any, spacing: any) =>
   StyleSheet.create({
     screenView: {
       paddingHorizontal: spacing.md,
@@ -689,12 +689,12 @@ const styling = (colors: any, typography: any, spacing: any) =>
       marginBottom: spacing.xl,
     },
     label: {
-      ...typography.textStyle.authTinyLabel,
+      ...svaTypography.textStyle.authTinyLabel,
       color: colors.text.secondary,
       marginBottom: spacing.sm,
     },
     nameInput: {
-      ...typography.textStyle.heading2,
+      ...svaTypography.textStyle.heading2,
       color: colors.text.primary,
       paddingVertical: spacing.md,
       borderBottomWidth: 1,
@@ -723,7 +723,7 @@ const styling = (colors: any, typography: any, spacing: any) =>
       alignItems: "center",
     },
     counterValue: {
-      ...typography.textStyle.title,
+      ...svaTypography.textStyle.title,
       color: colors.text.primary,
       flex: 1,
       textAlign: "center",
@@ -738,7 +738,7 @@ const styling = (colors: any, typography: any, spacing: any) =>
       gap: spacing.xs,
     },
     unitText: {
-      ...typography.textStyle.body,
+      ...svaTypography.textStyle.body,
       color: colors.text.primary,
     },
     durationSection: {
@@ -770,7 +770,7 @@ const styling = (colors: any, typography: any, spacing: any) =>
       gap: spacing.xs,
     },
     reminderValue: {
-      ...typography.textStyle.body,
+      ...svaTypography.textStyle.body,
       color: colors.text.primary,
       fontWeight: "600",
     },
@@ -789,7 +789,7 @@ const styling = (colors: any, typography: any, spacing: any) =>
       marginBottom: spacing.lg,
     },
     divineTitle: {
-      ...typography.textStyle.authTinyLabel,
+      ...svaTypography.textStyle.authTinyLabel,
       color: colors.state.info,
     },
     gridContainer: {
@@ -828,7 +828,7 @@ const styling = (colors: any, typography: any, spacing: any) =>
       marginBottom: 6,
     },
     gridLabel: {
-      ...typography.textStyle.authTinyLabel,
+      ...svaTypography.textStyle.authTinyLabel,
       color: colors.text.secondary,
       marginBottom: 0,
     },
@@ -841,16 +841,16 @@ const styling = (colors: any, typography: any, spacing: any) =>
       alignItems: "flex-start",
     },
     gridEmoji: {
-      fontSize: typography.fontSize.md,
+      fontSize: svaTypography.fontSize.md,
     },
     gridValueText: {
-      ...typography.textStyle.subtitle,
+      ...svaTypography.textStyle.subtitle,
       color: colors.text.primary,
       fontWeight: "600",
     },
     gridValueSubtext: {
       marginTop: 3,
-      ...typography.textStyle.caption,
+      ...svaTypography.textStyle.caption,
       color: colors.text.secondary,
     },
     colorDot: {
@@ -868,7 +868,7 @@ const styling = (colors: any, typography: any, spacing: any) =>
       gap: 6,
     },
     natureChipText: {
-      ...typography.textStyle.caption,
+      ...svaTypography.textStyle.caption,
       color: colors.text.primary,
     },
     buttonContainer: {
@@ -887,7 +887,7 @@ const styling = (colors: any, typography: any, spacing: any) =>
       elevation: 5,
     },
     sealButtonText: {
-      ...typography.textStyle.button,
+      ...svaTypography.textStyle.button,
       color: colors.text.inverse,
       letterSpacing: 2,
     },

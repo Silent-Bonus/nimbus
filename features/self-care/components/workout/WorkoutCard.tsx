@@ -13,7 +13,6 @@ import ThemeContext from "@/contexts/ThemeContext";
 import type {
   ColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 import type { WorkoutCardModel } from "@/features/self-care/utils/workoutLibrary";
@@ -25,11 +24,11 @@ interface WorkoutCardProps {
 }
 
 const WorkoutCard: FC<WorkoutCardProps> = ({ item, onPress, testID }) => {
-  const { newTheme: theme, svaTypography, spacing, typography } =
+  const { newTheme: theme, svaTypography, spacing } =
     useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(theme, svaTypography, spacing, typography),
-    [theme, svaTypography, spacing, typography]
+    () => styling(theme, svaTypography, spacing),
+    [theme, svaTypography, spacing]
   );
 
   return (
@@ -78,9 +77,9 @@ const normalizeImageSource = (
 
 const styling = (
   theme: ColorSet,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: any | undefined,
   spacing: Spacing,
-  typography: Typography
+
 ) =>
   StyleSheet.create({
     card: {
@@ -119,7 +118,7 @@ const styling = (
     },
     title: {
       fontFamily:
-        svaTypography?.textStyle.authTitle.fontFamily ?? typography.h4.fontFamily,
+        svaTypography?.textStyle.authTitle.fontFamily ?? svaTypography.textStyle.authLabel.fontFamily,
       color: theme.textPrimary,
       fontSize: 17,
       lineHeight: 22,
@@ -128,7 +127,7 @@ const styling = (
     subtitle: {
       fontFamily:
         svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.caption.fontFamily,
+        svaTypography.textStyle.caption.fontFamily,
       color: theme.textSecondary,
       fontSize: 11,
       lineHeight: 14,
@@ -148,7 +147,7 @@ const styling = (
       marginTop: spacing.sm,
     },
     ctaText: {
-      ...typography.button,
+      ...svaTypography.textStyle.button,
       color: theme.textPrimary,
       fontSize: 14,
       letterSpacing: 0.8,

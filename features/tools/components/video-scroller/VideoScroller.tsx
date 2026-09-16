@@ -27,8 +27,8 @@ const VideoScroller: React.FC = () => {
   const [selectedVideo, setSelectedVideo] = useState<VideoData | null>(null);
   const [isPlayerVisible, setPlayerVisible] = useState(false);
 
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(newTheme, spacing, typography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = styling(newTheme, spacing, svaTypography);
 
   useEffect(() => {
     const loadVideos = async () => {
@@ -104,13 +104,13 @@ const VideoScroller: React.FC = () => {
 
 export default VideoScroller;
 
-const styling = (newTheme: any, spacing: any, typography: any) =>
+const styling = (newTheme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     container: {
       paddingVertical: spacing.lg,
     },
     header: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: newTheme.textPrimary,
       marginBottom: spacing.md,
       fontWeight: "700",

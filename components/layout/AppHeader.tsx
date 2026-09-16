@@ -15,7 +15,6 @@ import type {
   Spacing,
   SvaColorSet,
   SvaTokens,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 
@@ -55,12 +54,12 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   subtitleStyle,
   containerStyle,
 }) => {
-  const { svaColors, spacing, typography, svaTypography, tokens } =
+  const { svaColors, spacing, svaTypography, tokens } =
     useContext(ThemeContext);
 
   const styles = useMemo(
-    () => styling(svaColors, spacing, typography, svaTypography, tokens),
-    [svaColors, spacing, typography, svaTypography, tokens]
+    () => styling(svaColors, spacing, svaTypography, tokens),
+    [svaColors, spacing, svaTypography, tokens]
   );
 
   const actions = rightActions.length
@@ -129,8 +128,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
 const styling = (
   theme: SvaColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: TypographyTokens,
   tokens: SvaTokens
 ) =>
   StyleSheet.create({
@@ -180,11 +178,11 @@ const styling = (
       paddingHorizontal: spacing.xs,
     },
     title: {
-      ...(svaTypography?.textStyle.authTitle ?? typography.h2),
+      ...svaTypography.textStyle.authTitle,
       color: theme.text.primary,
     },
     subtitle: {
-      ...(svaTypography?.textStyle.body ?? typography.body),
+      ...svaTypography.textStyle.body,
       color: theme.text.secondary,
       marginTop: spacing.xs,
     },

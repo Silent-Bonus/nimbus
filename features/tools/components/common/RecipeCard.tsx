@@ -36,7 +36,7 @@ const RecipeCard: React.FC<RecipeCardProps> = ({
   onPress,
   onFavoritePress,
 }) => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
   const [isFav, setIsFav] = useState(initialFavorite);
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -98,7 +98,7 @@ const RecipeCard: React.FC<RecipeCardProps> = ({
     }
   };
 
-  const styles = styling(newTheme, spacing, typography, height);
+  const styles = styling(newTheme, spacing, svaTypography, height);
 
   return (
     <Animated.View style={[styles.card, { transform: [{ scale: scaleAnim }] }]}>
@@ -164,7 +164,7 @@ const RecipeCard: React.FC<RecipeCardProps> = ({
   );
 };
 
-const styling = (theme: any, spacing: any, typography: any, height: number) =>
+const styling = (theme: any, spacing: any, svaTypography: any, height: number) =>
   StyleSheet.create({
     card: {
       flex: 1,
@@ -235,7 +235,7 @@ const styling = (theme: any, spacing: any, typography: any, height: number) =>
       alignSelf: "flex-start",
     },
     tagText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.accent,
       textTransform: "uppercase",
       letterSpacing: 0.5,
@@ -246,11 +246,11 @@ const styling = (theme: any, spacing: any, typography: any, height: number) =>
       gap: 4,
     },
     timeLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
     },
     title: {
-      ...typography.h4,
+      ...svaTypography.textStyle.authLabel,
       color: theme.textPrimary,
       marginVertical: 1,
     },
@@ -265,7 +265,7 @@ const styling = (theme: any, spacing: any, typography: any, height: number) =>
     //   gap: 4,
     // },
     // metaText: {
-    //   ...typography.caption,
+    //   ...svaTypography.textStyle.caption,
     //   color: theme.textSecondary,
     //   fontSize: 11,
     // },

@@ -47,7 +47,7 @@ export default function PreferenceDetailModal({
   onSave,
   onClose,
 }: Props) {
-  const { svaColors, svaTypography, typography, spacing } =
+  const { svaColors, svaTypography, spacing } =
     useContext(ThemeContext);
   const [selected, setSelected] = useState<string>(selectedUnit ?? "");
   const [saving, setSaving] = useState(false);
@@ -55,18 +55,13 @@ export default function PreferenceDetailModal({
   const fonts = useMemo<PreferenceDetailTypography>(
     () => ({
       bodyFamily:
-        svaTypography?.textStyle.body.fontFamily ??
-        typography.body.fontFamily ??
-        "Outfit_400Regular",
+        svaTypography.fontFamily.body,
       bodyStrongFamily:
-        svaTypography?.textStyle.bodyMedium.fontFamily ??
-        typography.bodyStrong.fontFamily ??
-        "Outfit_600SemiBold",
+        svaTypography.fontFamily.bodyMedium,
       monoFamily:
-        svaTypography?.textStyle.authMonoLabel.fontFamily ??
-        "SpaceMono-Regular",
+        svaTypography.fontFamily.mono,
     }),
-    [svaTypography, typography]
+    [svaTypography]
   );
 
   const styles: PreferenceDetailStyles = useMemo(

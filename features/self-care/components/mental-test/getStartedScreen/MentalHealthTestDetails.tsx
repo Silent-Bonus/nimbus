@@ -17,8 +17,8 @@ const MentalHealthTestDetails: React.FC<Props> = ({
   onStart,
   medicalTestData,
 }) => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(newTheme, spacing, typography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = styling(newTheme, spacing, svaTypography);
 
   const illustration = useMemo(
     () =>
@@ -89,7 +89,7 @@ const MentalHealthTestDetails: React.FC<Props> = ({
 
 export default MentalHealthTestDetails;
 
-const styling = (t: any, spacing: any, typography: any) =>
+const styling = (t: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     scrollContent: {
       paddingHorizontal: spacing.sm,
@@ -138,7 +138,7 @@ const styling = (t: any, spacing: any, typography: any) =>
       elevation: 8,
     },
     cardTitle: {
-      ...typography.h4,
+      ...svaTypography.textStyle.authLabel,
       fontSize: 16,
       color: t.accent, // #A3BE8C
       letterSpacing: 0.3,
@@ -146,7 +146,7 @@ const styling = (t: any, spacing: any, typography: any) =>
       fontWeight: "700",
     },
     cardBody: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: t.textPrimary,
       lineHeight: 22,
     },
@@ -155,13 +155,13 @@ const styling = (t: any, spacing: any, typography: any) =>
       marginTop: spacing.md,
     },
     sectionTitle: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       fontWeight: "600",
       color: "rgba(236,239,244,0.92)",
       marginBottom: spacing.xs,
     },
     sectionBody: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: t.textSecondary,
       lineHeight: 22,
     },
@@ -190,7 +190,7 @@ const styling = (t: any, spacing: any, typography: any) =>
       alignItems: "center",
     },
     ctaText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       marginTop: spacing.xs,
       color: t.textSecondary,
     },

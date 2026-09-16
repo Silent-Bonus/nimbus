@@ -23,26 +23,14 @@ export interface FontSet {
   letterSpacing?: number;
 }
 
-/**
- * @interface Typography
- * @description Defines the typographic scale for the application.
- */
-export interface Typography {
-  h1: FontSet;
-  h2: FontSet;
-  h3: FontSet;
-  h4: FontSet;
-  body: FontSet;
-  bodyStrong: FontSet;
-  caption: FontSet;
-  smallCaption: FontSet;
-  button: FontSet;
-}
-
 export interface TypographyTokens {
   fontFamily: {
     body: string;
+    bodyMedium: string;
+    bodyStrong: string;
+    bodyBold: string;
     display: string;
+    displayStrong: string;
     mono: string;
   };
   fontSize: {
@@ -442,10 +430,9 @@ export type AppTheme = {
   name: ThemeName;
   colors: ColorSet;
   svaColors?: SvaColorSet;
-  svaTypography?: TypographyTokens;
+  svaTypography: TypographyTokens;
   svaSpacing?: SpacingTokens;
   svaComponents?: ComponentTokens;
   spacing: Spacing;
-  typography: Typography;
   tokens: SvaTokens;
 };

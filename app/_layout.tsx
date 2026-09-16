@@ -15,15 +15,6 @@ import {
   CormorantGaramond_500Medium,
   CormorantGaramond_600SemiBold,
 } from "@expo-google-fonts/cormorant-garamond";
-import {
-  Outfit_300Light,
-  Outfit_400Regular,
-  Outfit_600SemiBold,
-} from "@expo-google-fonts/outfit";
-import {
-  Urbanist_600SemiBold,
-  Urbanist_700Bold,
-} from "@expo-google-fonts/urbanist";
 
 import AuthProvider from "@/contexts/AuthContext";
 import { PremiumGateProvider } from "@/contexts/PremiumGateContext";
@@ -51,11 +42,6 @@ export default function RootLayout() {
     CormorantGaramond_500Medium,
     CormorantGaramond_600SemiBold,
     "SpaceMono-Regular": require("../assets/fonts/SpaceMono-Regular.ttf"),
-    Outfit_300Light,
-    Outfit_400Regular,
-    Outfit_600SemiBold,
-    Urbanist_600SemiBold,
-    Urbanist_700Bold,
   });
 
   useEffect(() => {

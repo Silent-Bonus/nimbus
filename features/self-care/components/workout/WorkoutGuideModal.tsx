@@ -30,7 +30,6 @@ import type { WorkoutCardModel } from "@/features/self-care/utils/workoutLibrary
 import type {
   ColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 
@@ -45,11 +44,11 @@ const WorkoutGuideModal: React.FC<WorkoutGuideModalProps> = ({
   onClose,
   initialLevel = "easy",
 }) => {
-  const { newTheme: theme, svaTypography, spacing, typography } =
+  const { newTheme: theme, svaTypography, spacing } =
     useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(theme, svaTypography, spacing, typography),
-    [theme, svaTypography, spacing, typography]
+    () => styling(theme, svaTypography, spacing),
+    [theme, svaTypography, spacing]
   );
   const { width } = useWindowDimensions();
 
@@ -203,9 +202,9 @@ const WorkoutGuideModal: React.FC<WorkoutGuideModalProps> = ({
 
 const styling = (
   theme: ColorSet,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: any | undefined,
   spacing: Spacing,
-  typography: Typography
+
 ) =>
   StyleSheet.create({
     backdrop: {
@@ -245,7 +244,7 @@ const styling = (
     eyebrow: {
       fontFamily:
         svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.caption.fontFamily,
+        svaTypography.textStyle.caption.fontFamily,
       color: theme.chart2 ?? theme.buttonPrimary,
       fontSize: 11,
       letterSpacing: 1.8,
@@ -254,14 +253,14 @@ const styling = (
     title: {
       fontFamily:
         svaTypography?.textStyle.displayMedium.fontFamily ??
-        typography.h2.fontFamily,
+        svaTypography.textStyle.heading2.fontFamily,
       color: theme.textPrimary,
       fontSize: 28,
       lineHeight: 34,
       letterSpacing: -0.5,
     },
     subtitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginTop: 4,
     },
@@ -291,7 +290,7 @@ const styling = (
     carouselLabel: {
       fontFamily:
         svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.caption.fontFamily,
+        svaTypography.textStyle.caption.fontFamily,
       color: theme.textSecondary,
       fontSize: 11,
       letterSpacing: 1.2,
@@ -300,7 +299,7 @@ const styling = (
     carouselIndex: {
       fontFamily:
         svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.caption.fontFamily,
+        svaTypography.textStyle.caption.fontFamily,
       color: theme.chart2 ?? theme.buttonPrimary,
       fontSize: 11,
       letterSpacing: 1.1,

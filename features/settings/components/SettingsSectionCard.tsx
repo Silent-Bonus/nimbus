@@ -25,11 +25,10 @@ export default function SettingsSectionCard({
   children,
   style,
 }: Props) {
-  const { newTheme, svaTypography, typography } = useContext(ThemeContext);
+  const { newTheme, svaTypography } = useContext(ThemeContext);
   const headerFamily =
     svaTypography?.textStyle.authActionLabel.fontFamily ??
-    typography.button.fontFamily ??
-    "Outfit_600SemiBold";
+    svaTypography.textStyle.button.fontFamily;
 
   return (
     <View

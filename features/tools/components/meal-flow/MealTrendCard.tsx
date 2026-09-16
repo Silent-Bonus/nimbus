@@ -7,7 +7,6 @@ import { MealCardSurface } from "./MealCardSurface";
 import type {
   SvaColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
   SvaTokens,
 } from "@/theme/types";
@@ -55,11 +54,11 @@ export function MealTrendCard({
   style,
   testID,
 }: MealTrendCardProps) {
-  const { svaColors, spacing, typography, svaTypography, tokens } =
+  const { svaColors, spacing, svaTypography, tokens } =
     useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(svaColors, spacing, typography, svaTypography, tokens),
-    [svaColors, spacing, typography, svaTypography, tokens]
+    () => styling(svaColors, spacing, svaTypography, tokens),
+    [svaColors, spacing, svaTypography, tokens]
   );
 
   return (
@@ -136,8 +135,7 @@ export function MealTrendCard({
 const styling = (
   theme: SvaColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: TypographyTokens,
   tokens: SvaTokens
 ) =>
   StyleSheet.create({
@@ -165,17 +163,17 @@ const styling = (
       borderColor: theme.border.default,
     },
     eyebrow: {
-      ...(svaTypography?.textStyle.authTinyLabel ?? typography.smallCaption),
+      ...(svaTypography?.textStyle.authTinyLabel ?? svaTypography.textStyle.authTinyLabel),
       color: theme.text.primary,
       letterSpacing: 1.1,
       textTransform: "uppercase",
     },
     title: {
-      ...(svaTypography?.textStyle.title ?? typography.h3),
+      ...(svaTypography?.textStyle.title ?? svaTypography.textStyle.title),
       color: theme.text.primary,
     },
     caption: {
-      ...(svaTypography?.textStyle.body ?? typography.body),
+      ...(svaTypography?.textStyle.body ?? svaTypography.textStyle.body),
       color: theme.text.secondary,
       maxWidth: "94%",
     },
@@ -199,15 +197,15 @@ const styling = (
       gap: spacing.xs - 1,
     },
     summaryValue: {
-      ...(svaTypography?.textStyle.heading2 ?? typography.h3),
+      ...(svaTypography?.textStyle.heading2 ?? svaTypography.textStyle.title),
       color: theme.text.primary,
     },
     summaryUnit: {
-      ...(svaTypography?.textStyle.caption ?? typography.caption),
+      ...(svaTypography?.textStyle.caption ?? svaTypography.textStyle.caption),
       color: theme.text.secondary,
     },
     summaryLabel: {
-      ...(svaTypography?.textStyle.authTinyLabel ?? typography.smallCaption),
+      ...(svaTypography?.textStyle.authTinyLabel ?? svaTypography.textStyle.authTinyLabel),
       color: theme.text.secondary,
       letterSpacing: 0.9,
       textTransform: "uppercase",
@@ -239,7 +237,7 @@ const styling = (
       borderRadius: 99,
     },
     metricLabel: {
-      ...(svaTypography?.textStyle.authTinyLabel ?? typography.smallCaption),
+      ...(svaTypography?.textStyle.authTinyLabel ?? svaTypography.textStyle.authTinyLabel),
       color: theme.text.secondary,
       letterSpacing: 1,
       textTransform: "uppercase",
@@ -256,7 +254,7 @@ const styling = (
       borderColor: theme.border.default,
     },
     directionLabel: {
-      ...(svaTypography?.textStyle.authTinyLabel ?? typography.smallCaption),
+      ...(svaTypography?.textStyle.authTinyLabel ?? svaTypography.textStyle.authTinyLabel),
       letterSpacing: 0.8,
       textTransform: "uppercase",
     },
@@ -266,15 +264,15 @@ const styling = (
       paddingRight: spacing.xs,
     },
     metricValue: {
-      ...(svaTypography?.textStyle.heading2 ?? typography.h3),
+      ...(svaTypography?.textStyle.heading2 ?? svaTypography.textStyle.title),
       color: theme.text.primary,
     },
     metricUnit: {
-      ...(svaTypography?.textStyle.caption ?? typography.caption),
+      ...(svaTypography?.textStyle.caption ?? svaTypography.textStyle.caption),
       color: theme.text.secondary,
     },
     metricMeta: {
-      ...(svaTypography?.textStyle.caption ?? typography.caption),
+      ...(svaTypography?.textStyle.caption ?? svaTypography.textStyle.caption),
       color: theme.text.secondary,
     },
   });

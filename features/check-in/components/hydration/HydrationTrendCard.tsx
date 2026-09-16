@@ -3,14 +3,14 @@ import { StyleSheet, Text, View } from "react-native";
 import { LineChart } from "react-native-gifted-charts";
 
 import ThemeContext from "../../../../contexts/ThemeContext";
-import type { ColorSet, Spacing, Typography } from "../../../../theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "../../../../theme/types";
 import { getAverage, type WeeklyPoint } from "../../utils/hydration";
 
 type HydrationTrendCardProps = {
   data: WeeklyPoint[];
 };
 
-const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
+const makeStyles = (theme: ColorSet, spacing: Spacing, svaTypography: any) =>
   StyleSheet.create({
     card: {
       marginTop: spacing.lg,
@@ -34,14 +34,14 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       marginBottom: spacing.md,
     },
     sectionLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       opacity: 0.78,
       letterSpacing: 1.7,
       textTransform: "uppercase",
     },
     cardSubTitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginTop: 6,
       lineHeight: 18,
@@ -64,27 +64,15 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       borderRadius: 4,
     },
     trendBadgeText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textPrimary,
       fontWeight: "700",
       flexShrink: 1,
     },
-    weekLegend: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginTop: spacing.xs,
-      paddingHorizontal: 2,
-    },
-    weekLegendItem: {
-      flex: 1,
-      alignItems: "center",
-    },
-    weekLegendText: {
-      ...typography.caption,
-      color: theme.textPrimary,
-      fontWeight: "700",
-      textAlign: "center",
+    chartLabel: {
+      ...svaTypography.textStyle.caption,
+      color: theme.textSecondary,
+      marginTop: 6,
     },
     trendFooter: {
       flexDirection: "row",
@@ -93,30 +81,30 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       marginTop: 4,
     },
     trendFooterValue: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       fontWeight: "800",
       letterSpacing: 0.2,
     },
     trendFooterLabel: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       opacity: 0.78,
     },
   });
 
 export const HydrationTrendCard = ({ data }: HydrationTrendCardProps) => {
-  const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme: theme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => makeStyles(theme, spacing, typography),
-    [theme, spacing, typography]
+    () => makeStyles(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
 
   const chartData = useMemo(
     () =>
       data.map((item) => ({
         value: item.percent,
-        label: "",
+        label: item.day,
         dataPointColor: theme.chart2 ?? theme.accent,
         dataPointRadius: item.percent > 0 ? 4 : 3,
       })),
@@ -169,17 +157,10 @@ export const HydrationTrendCard = ({ data }: HydrationTrendCardProps) => {
         dataPointsRadius={4}
         initialSpacing={10}
         endSpacing={10}
+        xAxisLabelTextStyle={styles.chartLabel}
         backgroundColor="transparent"
         isAnimated
       />
-
-      <View style={styles.weekLegend} accessibilityLabel="Past 7 days">
-        {data.map((item) => (
-          <View key={item.day} style={styles.weekLegendItem}>
-            <Text style={styles.weekLegendText}>{item.day}</Text>
-          </View>
-        ))}
-      </View>
 
       <View style={styles.trendFooter}>
         <Text style={styles.trendFooterValue}>{Math.round(average)}%</Text>

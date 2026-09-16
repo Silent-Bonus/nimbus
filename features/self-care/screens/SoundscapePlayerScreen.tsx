@@ -39,7 +39,7 @@ import {
   pauseWellnessSession,
   resumeWellnessSession,
 } from "@/features/self-care/services/wellnessSessionService";
-import type { ColorSet, Spacing, Typography, TypographyTokens } from "@/theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "@/theme/types";
 
 type SoundscapePlayerParams = {
   soundscapeId?: string | string[];
@@ -64,7 +64,7 @@ export default function SoundscapePlayerScreen() {
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const params = useLocalSearchParams<SoundscapePlayerParams>();
-  const { newTheme: theme, svaTypography, spacing, typography } =
+  const { newTheme: theme, svaTypography, spacing } =
     useContext(ThemeContext);
   const isCompactLayout = windowHeight < 900;
 
@@ -78,8 +78,8 @@ export default function SoundscapePlayerScreen() {
     [soundscapeId]
   );
   const styles = useMemo(
-    () => styling(theme, svaTypography, spacing, typography, isCompactLayout),
-    [theme, svaTypography, spacing, typography, isCompactLayout]
+    () => styling(theme, svaTypography, spacing, isCompactLayout),
+    [theme, svaTypography, spacing, isCompactLayout]
   );
 
   useEffect(() => {
@@ -176,9 +176,8 @@ export default function SoundscapePlayerScreen() {
 
 const styling = (
   theme: ColorSet,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: any | undefined,
   spacing: Spacing,
-  typography: Typography,
   isCompactLayout: boolean
 ) =>
   StyleSheet.create({
@@ -271,7 +270,7 @@ const styling = (
       textAlign: "center",
     },
     subtitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginTop: 8,
       letterSpacing: 0.8,
@@ -365,7 +364,7 @@ const styling = (
       borderColor: "rgba(255,255,255,0.08)",
     },
     loadingText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textPrimary,
       letterSpacing: 0.9,
     },
@@ -437,12 +436,12 @@ const styling = (
       transform: [{ scale: 0.98 }],
     },
     sideControlLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 1.1,
     },
     sideControlValue: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       fontSize: 12,
       lineHeight: 16,
       color: theme.textPrimary,
@@ -486,7 +485,7 @@ const styling = (
       marginBottom: isCompactLayout ? 8 : 10,
     },
     progressMeta: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 1,
     },
@@ -522,7 +521,7 @@ const styling = (
       alignItems: "center",
     },
     timeText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       letterSpacing: 0.8,
     },
@@ -545,7 +544,7 @@ const styling = (
       textAlign: "center",
     },
     emptyText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       textAlign: "center",
       maxWidth: 320,

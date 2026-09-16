@@ -6,7 +6,6 @@ import ThemeContext from "@/contexts/ThemeContext";
 import type {
   ColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 import type { BreathRecommendation } from "@/features/self-care/types/wellnessContentTypes";
@@ -29,15 +28,15 @@ const BreathRecommendationCard = ({
   onPlay,
   width,
 }: BreathRecommendationCardProps) => {
-  const { newTheme, spacing, typography, svaTypography } =
+  const { newTheme, spacing, svaTypography } =
     useContext(ThemeContext);
 
   const screenWidth = Dimensions.get("window").width;
   const cardWidth = width ?? getBreathRecommendationCardWidth(screenWidth);
 
   const styles = useMemo(
-    () => styling(newTheme, spacing, typography, svaTypography, cardWidth),
-    [newTheme, spacing, typography, svaTypography, cardWidth]
+    () => styling(newTheme, spacing, svaTypography, cardWidth),
+    [newTheme, spacing, svaTypography, cardWidth]
   );
 
   return (
@@ -149,8 +148,7 @@ const BreathRecommendationCard = ({
 const styling = (
   theme: ColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: TypographyTokens,
   cardWidth: number
 ) =>
   StyleSheet.create({
@@ -206,7 +204,7 @@ const styling = (
     playButtonText: {
       fontFamily:
         svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
+        svaTypography.textStyle.authTinyLabel.fontFamily,
       fontSize: 10,
       lineHeight: 12,
       letterSpacing: 1.2,
@@ -242,7 +240,7 @@ const styling = (
       letterSpacing: -0.3,
     },
     subtitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       opacity: 0.92,
     },
@@ -265,7 +263,7 @@ const styling = (
     tagText: {
       fontFamily:
         svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
+        svaTypography.textStyle.authTinyLabel.fontFamily,
       fontSize: 10,
       lineHeight: 12,
       letterSpacing: 1.2,

@@ -15,6 +15,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import type { ImageSourcePropType } from "react-native";
 
 import ThemeContext from "@/contexts/ThemeContext";
+import { SVATypography } from "@/theme/typography";
 import type { SvaColorSet, Spacing, TypographyTokens } from "@/theme/types";
 
 export type ProtocolTemplateCardItem = {
@@ -129,7 +130,7 @@ const ProtocolTemplateCard: React.FC<ProtocolTemplateCardProps> = ({
 
 const styling = (
   colors: SvaColorSet,
-  typography: TypographyTokens | undefined,
+  svaTypography: TypographyTokens | undefined,
   spacing: Spacing
 ) =>
   StyleSheet.create({
@@ -196,7 +197,7 @@ const styling = (
       gap: spacing.sm,
     },
     title: {
-      fontFamily: "CormorantGaramond_600SemiBold",
+      fontFamily: SVATypography.fontFamily.displayStrong,
       fontSize: 19,
       lineHeight: 22,
       color: colors.text.primary,
@@ -218,7 +219,7 @@ const styling = (
       marginBottom: spacing.xs,
     },
     tagText: {
-      ...(typography?.textStyle.authTinyLabel ?? {}),
+      ...(svaTypography?.textStyle.authTinyLabel ?? {}),
       color: colors.brand.primary,
       fontSize: 10,
       lineHeight: 12,

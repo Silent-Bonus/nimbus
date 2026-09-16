@@ -150,7 +150,7 @@ function NotificationRow({
 }
 
 export const NotificationsScreen = () => {
-  const { newTheme, svaColors, svaTypography, typography, spacing } =
+  const { newTheme, svaColors, svaTypography, spacing } =
     useContext(ThemeContext);
   const { loadUserFromStorage } = useAuth();
   const insets = useSafeAreaInsets();
@@ -166,18 +166,13 @@ export const NotificationsScreen = () => {
   const fonts = useMemo<NotificationsTypography>(
     () => ({
       bodyFamily:
-        svaTypography?.textStyle.body.fontFamily ??
-        typography.body.fontFamily ??
-        "Outfit_400Regular",
+        svaTypography.fontFamily.body,
       bodyStrongFamily:
-        svaTypography?.textStyle.bodyMedium.fontFamily ??
-        typography.bodyStrong.fontFamily ??
-        "Outfit_600SemiBold",
+        svaTypography.fontFamily.bodyMedium,
       monoFamily:
-        svaTypography?.textStyle.authMonoLabel.fontFamily ??
-        "SpaceMono-Regular",
+        svaTypography.fontFamily.mono,
     }),
-    [svaTypography, typography]
+    [svaTypography]
   );
 
   const styles: NotificationsStyles = useMemo(

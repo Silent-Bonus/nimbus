@@ -30,7 +30,7 @@ const RecipeIngredientList: React.FC<RecipeIngredientListProps> = ({ items }) =>
 const styling = (
   colors: SvaColorSet,
   spacing: Spacing,
-  typography?: TypographyTokens
+  svaTypography?: TypographyTokens
 ) =>
   StyleSheet.create({
     wrap: {
@@ -46,7 +46,7 @@ const styling = (
     },
     text: {
       flex: 1,
-      ...typography?.textStyle?.authBody,
+      ...svaTypography?.textStyle?.authBody,
       color: colors.text.primary,
       fontSize: 15,
       lineHeight: 22,

@@ -23,8 +23,8 @@ interface VideoThumbnailProps {
 }
 
 const VideoThumbnail: React.FC<VideoThumbnailProps> = ({ video, onPress }) => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(newTheme, spacing, typography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = styling(newTheme, spacing, svaTypography);
 
   return (
     <Pressable
@@ -70,7 +70,7 @@ const VideoThumbnail: React.FC<VideoThumbnailProps> = ({ video, onPress }) => {
 
 export default VideoThumbnail;
 
-const styling = (newTheme: any, spacing: any, typography: any) =>
+const styling = (newTheme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     container: {
       width: 180,
@@ -120,7 +120,7 @@ const styling = (newTheme: any, spacing: any, typography: any) =>
       backgroundColor: "rgba(0,0,0,0.35)",
     },
     categoryText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       fontSize: 11,
       color: "rgba(255,255,255,0.86)",
       fontWeight: "500",
@@ -142,13 +142,13 @@ const styling = (newTheme: any, spacing: any, typography: any) =>
       borderTopColor: "rgba(255,255,255,0.08)",
     },
     title: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: "#FFFFFF",
       fontWeight: "700",
       marginBottom: 4,
     },
     views: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: "rgba(255,255,255,0.8)",
       fontWeight: "500",
     },

@@ -2,17 +2,17 @@ import React, { useContext, useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "@/theme/types";
 
 interface WorkoutTipBannerProps {
   text: string;
 }
 
 const WorkoutTipBanner: React.FC<WorkoutTipBannerProps> = ({ text }) => {
-  const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme: theme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(theme, spacing, typography),
-    [theme, spacing, typography]
+    () => styling(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
 
   return (
@@ -22,7 +22,7 @@ const WorkoutTipBanner: React.FC<WorkoutTipBannerProps> = ({ text }) => {
   );
 };
 
-const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
+const styling = (theme: ColorSet, spacing: Spacing, svaTypography: any) =>
   StyleSheet.create({
     container: {
       borderRadius: 18,
@@ -33,7 +33,7 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       paddingVertical: spacing.md,
     },
     text: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       textAlign: "center",
       lineHeight: 18,

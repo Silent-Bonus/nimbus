@@ -2,7 +2,7 @@ import React, { useContext, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ThemeContext from "@/contexts/ThemeContext";
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "@/theme/types";
 
 interface Props {
   title: string;
@@ -19,8 +19,8 @@ export default function HeaderPanel({
 }: Props) {
   const [selected, setSelected] = useState("Today");
   const [open, setOpen] = useState(false);
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(newTheme, spacing, typography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = styling(newTheme, spacing, svaTypography);
 
   const weekly = ["Current week", "Previous week", "Future weeks"];
   const monthly = ["Current month", "Previous month", "Future month"];
@@ -87,7 +87,7 @@ export default function HeaderPanel({
   );
 }
 
-const styling = (newTheme: ColorSet, spacing: Spacing, typography: Typography) =>
+const styling = (newTheme: ColorSet, spacing: Spacing, svaTypography: TypographyTokens) =>
   StyleSheet.create({
     container: {
       flexDirection: "row",
@@ -96,7 +96,7 @@ const styling = (newTheme: ColorSet, spacing: Spacing, typography: Typography) =
       marginBottom: spacing.sm,
     },
     title: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: newTheme.textPrimary,
     },
     dropdownButton: {
@@ -108,7 +108,7 @@ const styling = (newTheme: ColorSet, spacing: Spacing, typography: Typography) =
     },
     dropdownText: {
       color: newTheme.textSecondary,
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       marginRight: spacing.xs,
     },
     dropdownMenu: {
@@ -128,7 +128,7 @@ const styling = (newTheme: ColorSet, spacing: Spacing, typography: Typography) =
       paddingVertical: spacing.sm,
     },
     dropdownItemText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: newTheme.textPrimary,
     },
   });

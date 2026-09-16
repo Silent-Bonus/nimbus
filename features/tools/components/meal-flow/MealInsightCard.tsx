@@ -7,7 +7,6 @@ import { MealCardSurface } from "./MealCardSurface";
 import type {
   SvaColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
   SvaTokens,
 } from "@/theme/types";
@@ -16,7 +15,7 @@ export type MealInsightCardProps = {
   title: string;
   eyebrow?: string;
   caption?: string;
-  insights: readonly string[];
+  insights: readonly unknown[];
   style?: StyleProp<ViewStyle>;
   testID?: string;
 };
@@ -29,15 +28,25 @@ export function MealInsightCard({
   style,
   testID,
 }: MealInsightCardProps) {
-  const { svaColors, spacing, typography, svaTypography, tokens } =
+  const { svaColors, spacing, svaTypography, tokens } =
     useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(svaColors, spacing, typography, svaTypography, tokens),
-    [svaColors, spacing, typography, svaTypography, tokens]
+    () => styling(svaColors, spacing, svaTypography, tokens),
+    [svaColors, spacing, svaTypography, tokens]
   );
 
-  const leadInsight = insights[0] ?? "Keep logging your meals to unlock stronger nutrition insights.";
-  const supportingInsights = insights.slice(1, 3);
+  const displayInsights = insights
+    .map((insight) => {
+      if (typeof insight === "string") return insight;
+      if (insight && typeof insight === "object" && "message" in insight) {
+        const message = (insight as { message?: unknown }).message;
+        return typeof message === "string" ? message : null;
+      }
+      return null;
+    })
+    .filter((insight): insight is string => Boolean(insight));
+  const leadInsight = displayInsights[0] ?? "Keep logging your meals to unlock stronger nutrition insights.";
+  const supportingInsights = displayInsights.slice(1, 3);
 
   return (
     <MealCardSurface
@@ -102,8 +111,7 @@ export function MealInsightCard({
 const styling = (
   theme: SvaColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: TypographyTokens,
   tokens: SvaTokens
 ) =>
   StyleSheet.create({
@@ -131,17 +139,17 @@ const styling = (
       borderColor: theme.border.default,
     },
     eyebrow: {
-      ...(svaTypography?.textStyle.authTinyLabel ?? typography.smallCaption),
+      ...(svaTypography?.textStyle.authTinyLabel ?? svaTypography.textStyle.authTinyLabel),
       color: theme.text.primary,
       letterSpacing: 1.1,
       textTransform: "uppercase",
     },
     title: {
-      ...(svaTypography?.textStyle.title ?? typography.h3),
+      ...(svaTypography?.textStyle.title ?? svaTypography.textStyle.title),
       color: theme.text.primary,
     },
     caption: {
-      ...(svaTypography?.textStyle.body ?? typography.body),
+      ...(svaTypography?.textStyle.body ?? svaTypography.textStyle.body),
       color: theme.text.secondary,
       maxWidth: "92%",
     },
@@ -185,13 +193,13 @@ const styling = (
       borderColor: theme.border.default,
     },
     heroLabel: {
-      ...(svaTypography?.textStyle.authTinyLabel ?? typography.smallCaption),
+      ...(svaTypography?.textStyle.authTinyLabel ?? svaTypography.textStyle.authTinyLabel),
       color: theme.text.secondary,
       letterSpacing: 1.1,
       textTransform: "uppercase",
     },
     heroInsight: {
-      ...(svaTypography?.textStyle.heading2 ?? typography.h3),
+      ...(svaTypography?.textStyle.heading2 ?? svaTypography.textStyle.title),
       color: theme.text.primary,
     },
     supportPanel: {
@@ -225,14 +233,14 @@ const styling = (
       gap: 4,
     },
     listLabel: {
-      ...(svaTypography?.textStyle.authTinyLabel ?? typography.smallCaption),
+      ...(svaTypography?.textStyle.authTinyLabel ?? svaTypography.textStyle.authTinyLabel),
       color: theme.text.secondary,
       letterSpacing: 1,
       textTransform: "uppercase",
     },
     listText: {
       flex: 1,
-      ...(svaTypography?.textStyle.body ?? typography.body),
+      ...(svaTypography?.textStyle.body ?? svaTypography.textStyle.body),
       color: theme.text.primary,
     },
   });

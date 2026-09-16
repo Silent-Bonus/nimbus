@@ -822,7 +822,7 @@ export const MealCreationScreen = () => {
 const styling = (
   theme: SvaColorSet,
   spacing: Spacing,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: TypographyTokens,
   tokens: SvaTokens
 ) =>
   StyleSheet.create({

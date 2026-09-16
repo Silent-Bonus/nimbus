@@ -39,7 +39,6 @@ import type {
 import type {
   ColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 
@@ -51,7 +50,7 @@ export const BreathWorkScreen = () => {
     newTheme: theme,
     svaTypography,
     spacing,
-    typography,
+
   } = useContext(ThemeContext);
 
   // This screen renders breathwork cards directly, so state stores the
@@ -70,8 +69,8 @@ export const BreathWorkScreen = () => {
     useState<string>("");
 
   const styles = useMemo(
-    () => styling(theme, svaTypography, spacing, typography),
-    [theme, svaTypography, spacing, typography]
+    () => styling(theme, svaTypography, spacing),
+    [theme, svaTypography, spacing]
   );
 
   useLayoutEffect(() => {
@@ -389,9 +388,9 @@ export const BreathWorkScreen = () => {
 
 const styling = (
   theme: ColorSet,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: any | undefined,
   spacing: Spacing,
-  typography: Typography
+
 ) =>
   StyleSheet.create({
     screen: {
@@ -453,7 +452,7 @@ const styling = (
       marginBottom: 4,
     },
     sectionTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
     },
     countPill: {
@@ -537,13 +536,13 @@ const styling = (
       gap: spacing.sm,
     },
     emptyTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       marginTop: spacing.sm,
       marginBottom: 4,
     },
     emptyText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
       textAlign: "center",
       maxWidth: 280,

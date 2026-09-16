@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ThemeContext from "@/contexts/ThemeContext";
 import { useMeditationSession } from "@/contexts/MeditationSessionContext";
 import { capSessionSeconds, formatSessionSeconds } from "@/utils/sessionTime";
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "@/theme/types";
 
 const getModeIcon = (mode: string) => {
   switch (mode) {
@@ -20,7 +20,7 @@ const getModeIcon = (mode: string) => {
   }
 };
 
-const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
+const makeStyles = (theme: ColorSet, spacing: Spacing, svaTypography: TypographyTokens) =>
   StyleSheet.create({
     wrap: {
       position: "absolute",
@@ -60,12 +60,12 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       minWidth: 0,
     },
     title: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textPrimary,
       fontWeight: "800",
     },
     meta: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       marginTop: 2,
       letterSpacing: 0.7,
@@ -97,7 +97,7 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
 
 export function FloatingMeditationControl() {
   const insets = useSafeAreaInsets();
-  const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme: theme, spacing, svaTypography } = useContext(ThemeContext);
   const {
     activeSession,
     status,
@@ -106,8 +106,8 @@ export function FloatingMeditationControl() {
     stopSession,
   } = useMeditationSession();
   const styles = useMemo(
-    () => makeStyles(theme, spacing, typography),
-    [theme, spacing, typography]
+    () => makeStyles(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
 
   if (!activeSession) {

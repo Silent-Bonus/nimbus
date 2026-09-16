@@ -29,14 +29,14 @@ const ArticleDetailSection: React.FC<ArticleDetailSectionProps> = ({
 const styling = (
   colors: SvaColorSet,
   spacing: Spacing,
-  typography?: TypographyTokens
+  svaTypography?: TypographyTokens
 ) =>
   StyleSheet.create({
     wrap: {
       gap: spacing.md,
     },
     eyebrow: {
-      ...typography?.textStyle?.authTinyLabel,
+      ...svaTypography?.textStyle?.authTinyLabel,
       color: colors.brand.primary,
       fontSize: 10,
       lineHeight: 12,

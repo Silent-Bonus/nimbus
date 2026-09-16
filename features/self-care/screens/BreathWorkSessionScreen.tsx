@@ -105,7 +105,7 @@ export default function BreathWorkSessionScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const params = useLocalSearchParams<BreathWorkSessionParams>();
-  const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme: theme, spacing, svaTypography } = useContext(ThemeContext);
   const { breathworkId, breathworkSlug } = parseBreathWorkRouteParams(params);
   const detailIdentifier = breathworkSlug || breathworkId;
 
@@ -162,8 +162,8 @@ export default function BreathWorkSessionScreen() {
   const initialPhase = phases[0] ?? DEFAULT_PHASE;
 
   const styles = useMemo(
-    () => makeBreathWorkSessionStyles(theme, spacing, typography),
-    [theme, spacing, typography]
+    () => makeBreathWorkSessionStyles(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
 
   const resetCycleProgress = useCallback(() => {
@@ -761,7 +761,7 @@ export default function BreathWorkSessionScreen() {
                   motionSize={motionSize}
                   accent={detail.palette.accent}
                   shadow={theme.shadow}
-                  typography={typography}
+                  svaTypography={svaTypography}
                   textSecondary={theme.textSecondary}
                   surface={theme.surface}
                   motionCoreStart={motionCoreStart}

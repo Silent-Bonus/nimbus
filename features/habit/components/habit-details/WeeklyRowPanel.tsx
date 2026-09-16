@@ -1,21 +1,26 @@
 import ThemeContext from "@/contexts/ThemeContext";
 import React, { useContext, useMemo } from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
 
 interface Props {
+  habitName?: string;
+  frequency?: string;
+  icon?: string; // emoji for now
   data: { day: string; done: boolean; date: string }[];
   onToggle?: (day: string) => void;
 }
 
 export default function WeeklyHabitRow({
+  habitName,
+  frequency,
+  icon = "🧘",
   data,
   onToggle,
 }: Props) {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(newTheme, spacing, typography),
-    [newTheme, spacing, typography]
+    () => styling(newTheme, spacing, svaTypography),
+    [newTheme, spacing, svaTypography]
   );
 
   const WEEK_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -27,6 +32,22 @@ export default function WeeklyHabitRow({
 
   return (
     <View style={styles.card}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Text style={styles.icon}>{icon}</Text>
+          <Text style={styles.habitName} numberOfLines={1}>
+            {habitName}
+          </Text>
+        </View>
+
+        <View style={styles.frequencyPill}>
+          <Text style={styles.frequencyText}>{frequency}</Text>
+        </View>
+      </View>
+
+      <View style={styles.divider} />
+
       {/* Days row */}
       <View style={styles.daysRow}>
         {normalized.map((item) => (
@@ -56,7 +77,7 @@ export default function WeeklyHabitRow({
   );
 }
 
-const styling = (newTheme: ColorSet, spacing: Spacing, typography: Typography) =>
+const styling = (newTheme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     card: {
       backgroundColor: newTheme.surface,
@@ -70,6 +91,45 @@ const styling = (newTheme: ColorSet, spacing: Spacing, typography: Typography) =
       shadowOpacity: 0.14,
       shadowRadius: 10,
       elevation: 3,
+    },
+
+    // Header
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: spacing.sm,
+    },
+    headerLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      flexShrink: 1,
+    },
+    icon: {
+      fontSize: 20,
+      marginRight: spacing.sm,
+    },
+    habitName: {
+      ...svaTypography.bodyMedium,
+      color: newTheme.textPrimary,
+      fontWeight: "600",
+      flexShrink: 1,
+    },
+    frequencyPill: {
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs,
+      borderRadius: 999,
+      backgroundColor: newTheme.surfaceSoft ?? newTheme.disabled,
+    },
+    frequencyText: {
+      ...svaTypography.textStyle.caption,
+      color: newTheme.textSecondary,
+    },
+
+    divider: {
+      height: 1,
+      backgroundColor: newTheme.divider,
+      marginVertical: spacing.sm,
     },
 
     // Days
@@ -86,9 +146,9 @@ const styling = (newTheme: ColorSet, spacing: Spacing, typography: Typography) =
       width: 32,
       height: 32,
       borderRadius: 16,
-      backgroundColor: newTheme.surfaceMuted,
+      backgroundColor: newTheme.disabled,
       borderWidth: 1,
-      borderColor: newTheme.borderMuted,
+      borderColor: newTheme.divider,
       justifyContent: "center",
       alignItems: "center",
     },
@@ -107,13 +167,13 @@ const styling = (newTheme: ColorSet, spacing: Spacing, typography: Typography) =
     },
     check: {
       fontSize: 16,
-      color: newTheme.background,
+      color: newTheme.surface,
       fontWeight: "600",
     },
     dayLabel: {
       width: 32,
       textAlign: "center",
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: newTheme.textSecondary,
     },
   });

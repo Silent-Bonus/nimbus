@@ -53,7 +53,7 @@ export default function ReflectionEntryScreen() {
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<ReflectionRouteParams>();
 
-  const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme: theme, spacing, svaTypography } = useContext(ThemeContext);
   const toast = useNimbusToast();
 
   const journalTitle =
@@ -92,8 +92,8 @@ export default function ReflectionEntryScreen() {
   );
 
   const styles = useMemo(
-    () => styling(theme, spacing, typography),
-    [theme, spacing, typography]
+    () => styling(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
 
   const presetTags = useMemo(
@@ -562,7 +562,7 @@ export default function ReflectionEntryScreen() {
   );
 }
 
-const styling = (theme: any, spacing: any, typography: any) =>
+const styling = (theme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     screen: {
       paddingHorizontal: spacing.md,
@@ -591,12 +591,12 @@ const styling = (theme: any, spacing: any, typography: any) =>
       gap: spacing.sm,
     },
     hydrationTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       textAlign: "center",
     },
     hydrationText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
       textAlign: "center",
     },
@@ -613,12 +613,12 @@ const styling = (theme: any, spacing: any, typography: any) =>
       marginBottom: 8,
     },
     progressLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       letterSpacing: 2.4,
       color: theme.textSecondary,
     },
     progressValue: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       fontWeight: "700",
     },
@@ -647,27 +647,27 @@ const styling = (theme: any, spacing: any, typography: any) =>
       marginBottom: 16,
     },
     promptEyebrow: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       letterSpacing: 2.8,
       textTransform: "uppercase",
       color: theme.textSecondary,
     },
     promptQuestion: {
-      ...typography.h2,
+      ...svaTypography.textStyle.heading2,
       lineHeight: 34,
       letterSpacing: -0.8,
       color: theme.textPrimary,
     },
     promptContext: {
       marginTop: 10,
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
     },
     fieldBlock: {
       marginTop: 18,
     },
     fieldLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       letterSpacing: 2.2,
       color: theme.textSecondary,
       marginBottom: 10,
@@ -681,7 +681,7 @@ const styling = (theme: any, spacing: any, typography: any) =>
       borderColor: theme.borderMuted ?? "rgba(255,255,255,0.05)",
       paddingHorizontal: 16,
       paddingVertical: 14,
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       lineHeight: 25,
       color: theme.textPrimary,
     },
@@ -690,7 +690,7 @@ const styling = (theme: any, spacing: any, typography: any) =>
       backgroundColor: theme.surface,
     },
     reviewHint: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginBottom: 10,
     },
@@ -709,12 +709,12 @@ const styling = (theme: any, spacing: any, typography: any) =>
       borderColor: theme.accent,
     },
     tagLabelInactive: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 1.1,
     },
     tagLabelActive: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textPrimary,
       letterSpacing: 1.1,
     },
@@ -741,7 +741,7 @@ const styling = (theme: any, spacing: any, typography: any) =>
       opacity: 0.55,
     },
     actionButtonText: {
-      ...typography.button,
+      ...svaTypography.textStyle.button,
       letterSpacing: 1.4,
       textTransform: "uppercase",
       color: theme.background,

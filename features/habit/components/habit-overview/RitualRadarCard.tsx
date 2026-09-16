@@ -20,23 +20,18 @@ type RitualRadarTypography = {
 type RitualRadarStyles = ReturnType<typeof createStyles>;
 
 export default function RitualRadarCard({ data }: RitualRadarCardProps) {
-  const { svaColors, svaTypography, typography } = useContext(ThemeContext);
+  const { svaColors, svaTypography } = useContext(ThemeContext);
 
   const fonts = useMemo<RitualRadarTypography>(
     () => ({
       monoFamily:
-        svaTypography?.textStyle.authMonoLabel.fontFamily ??
-        "SpaceMono-Regular",
+        svaTypography.fontFamily.mono,
       bodyFamily:
-        svaTypography?.textStyle.body.fontFamily ??
-        typography.body.fontFamily ??
-        "Outfit_400Regular",
+        svaTypography.fontFamily.body,
       bodyStrongFamily:
-        svaTypography?.textStyle.bodyMedium.fontFamily ??
-        typography.bodyStrong.fontFamily ??
-        "Outfit_600SemiBold",
+        svaTypography.fontFamily.bodyMedium,
     }),
-    [svaTypography, typography]
+    [svaTypography]
   );
 
   const styles: RitualRadarStyles = useMemo(

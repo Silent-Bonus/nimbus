@@ -17,17 +17,17 @@ import type {
   RadarAxisPoint,
   TrendPoint,
 } from "@/features/habit/components/habit-overview/overviewTypes";
-import type { Spacing, Typography, TypographyTokens } from "@/theme/types";
+import type { Spacing, TypographyTokens } from "@/theme/types";
 
 type HabitOverviewStyles = ReturnType<typeof createStyles>;
 
 export const HabitOverviewScreen: React.FC = () => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const { svaColors, spacing, typography, svaTypography } = useContext(ThemeContext);
+  const { svaColors, spacing, svaTypography } = useContext(ThemeContext);
   const styles: HabitOverviewStyles = useMemo(
-    () => createStyles(spacing, insets.bottom, typography, svaTypography),
-    [spacing, insets.bottom, typography, svaTypography]
+    () => createStyles(spacing, insets.bottom, svaTypography),
+    [spacing, insets.bottom, svaTypography]
   );
 
   useEffect(() => {
@@ -179,8 +179,7 @@ export const HabitOverviewScreen: React.FC = () => {
 function createStyles(
   spacing: Spacing,
   bottomInset: number,
-  typography: Typography,
-  svaTypography?: TypographyTokens
+  svaTypography: TypographyTokens
 ) {
   return StyleSheet.create({
     screen: {
@@ -195,11 +194,11 @@ function createStyles(
       marginBottom: spacing.sm,
     },
     headerTitle: {
-      ...(svaTypography?.textStyle.authTitle ?? typography.h2),
+      ...svaTypography.textStyle.authTitle,
       textAlign: "center",
     },
     headerSubtitle: {
-      ...(svaTypography?.textStyle.authSubtitle ?? typography.caption),
+      ...svaTypography.textStyle.authSubtitle,
       textAlign: "center",
       marginTop: spacing.xs,
     },

@@ -29,8 +29,8 @@ function TopicTile({
   icon: keyof typeof Ionicons.glyphMap;
   locked?: boolean;
 }) {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const s = tileStyles(newTheme, spacing, typography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const s = tileStyles(newTheme, spacing, svaTypography);
 
   return (
     <View style={s.tile}>
@@ -61,8 +61,8 @@ export default function CoachPlaceholder({
   isPremium = false,
   onUpgrade,
 }: Props) {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const s = styles(newTheme, spacing, typography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const s = styles(newTheme, spacing, svaTypography);
 
   const summary = useMemo(() => {
     const days = stats?.daysTracked ?? 0;
@@ -148,7 +148,7 @@ export default function CoachPlaceholder({
   );
 }
 
-const styles = (newTheme: any, spacing: any, typography: any) =>
+const styles = (newTheme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     screen: {
       paddingHorizontal: spacing.xs,
@@ -172,7 +172,7 @@ const styles = (newTheme: any, spacing: any, typography: any) =>
       borderColor: "rgba(255,255,255,0.08)",
     },
     headerTitle: {
-      ...typography.h2,
+      ...svaTypography.textStyle.heading2,
       color: newTheme.textPrimary,
       fontWeight: "900",
       letterSpacing: 0.2,
@@ -183,12 +183,12 @@ const styles = (newTheme: any, spacing: any, typography: any) =>
       marginBottom: spacing.md,
     },
     sectionTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: newTheme.textPrimary,
       fontWeight: "900",
     },
     sectionHint: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: "rgba(255,255,255,0.55)",
       marginTop: 4,
     },
@@ -218,7 +218,7 @@ const styles = (newTheme: any, spacing: any, typography: any) =>
       backgroundColor: "rgba(167, 201, 180, 0.55)",
     },
     adviceText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: newTheme.textPrimary,
       fontWeight: "800",
       flex: 1,
@@ -226,13 +226,13 @@ const styles = (newTheme: any, spacing: any, typography: any) =>
 
     footerHint: {
       marginTop: spacing.xl,
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: "rgba(255,255,255,0.55)",
       textAlign: "center",
     },
   });
 
-const tileStyles = (newTheme: any, spacing: any, typography: any) =>
+const tileStyles = (newTheme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     tile: {
       width: "48%",
@@ -262,18 +262,18 @@ const tileStyles = (newTheme: any, spacing: any, typography: any) =>
       borderColor: "rgba(255,255,255,0.10)",
     },
     lockText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: "rgba(255,255,255,0.70)",
       fontWeight: "800",
     },
     title: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: newTheme.textPrimary,
       fontWeight: "900",
       lineHeight: 20,
     },
     meta: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: "rgba(255,255,255,0.55)",
       marginTop: spacing.sm,
     },

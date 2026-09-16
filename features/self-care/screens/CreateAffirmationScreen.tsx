@@ -30,7 +30,6 @@ import { resolveAffirmationToneFromTags } from "@/features/self-care/utils/affir
 import type {
   ColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 
@@ -57,7 +56,7 @@ export const CreateAffirmationScreen = () => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const toast = useNimbusToast();
-  const { newTheme: theme, svaTypography, spacing, typography } =
+  const { newTheme: theme, svaTypography, spacing } =
     useContext(ThemeContext);
 
   const [title, setTitle] = useState("");
@@ -67,8 +66,8 @@ export const CreateAffirmationScreen = () => {
   const [isSaving, setIsSaving] = useState(false);
 
   const styles = useMemo(
-    () => styling(theme, spacing, typography, svaTypography),
-    [theme, spacing, typography, svaTypography]
+    () => styling(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
 
   const normalizedTags = useMemo(() => normalizeTagList(tag), [tag]);
@@ -348,8 +347,7 @@ export const CreateAffirmationScreen = () => {
 const styling = (
   theme: ColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography?: TypographyTokens
+  svaTypography: TypographyTokens
 ) =>
   StyleSheet.create({
     screen: {
@@ -403,7 +401,7 @@ const styling = (
       color: theme.textPrimary,
     },
     heroSubtitle: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
       lineHeight: 22,
     },
@@ -421,7 +419,7 @@ const styling = (
     fieldLabel: {
       fontFamily:
         svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
+        svaTypography.textStyle.authTinyLabel.fontFamily,
       fontSize: 10,
       lineHeight: 14,
       letterSpacing: 2.4,
@@ -429,7 +427,7 @@ const styling = (
       color: theme.textSecondary,
     },
     fieldHint: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
     },
     titleInput: {
@@ -442,14 +440,14 @@ const styling = (
       minHeight: 44,
     },
     tagInput: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textPrimary,
       paddingVertical: 0,
       minHeight: 28,
       lineHeight: 22,
     },
     detailInput: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textPrimary,
       minHeight: 88,
       paddingVertical: 0,
@@ -465,7 +463,7 @@ const styling = (
     sectionEyebrow: {
       fontFamily:
         svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
+        svaTypography.textStyle.authTinyLabel.fontFamily,
       fontSize: 10,
       lineHeight: 14,
       letterSpacing: 2.4,
@@ -474,7 +472,7 @@ const styling = (
       marginBottom: 4,
     },
     sectionTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       lineHeight: 24,
     },
@@ -507,7 +505,7 @@ const styling = (
     statementIndexText: {
       fontFamily:
         svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
+        svaTypography.textStyle.authTinyLabel.fontFamily,
       fontSize: 10,
       lineHeight: 12,
       letterSpacing: 1.1,
@@ -515,11 +513,11 @@ const styling = (
       color: theme.textPrimary,
     },
     statementHint: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
     },
     statementInput: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textPrimary,
       minHeight: 92,
       textAlignVertical: "top",
@@ -550,8 +548,8 @@ const styling = (
     addButtonText: {
       fontFamily:
         svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.button.fontFamily ??
-        typography.body.fontFamily,
+        svaTypography.textStyle.button.fontFamily ??
+        svaTypography.textStyle.body.fontFamily,
       fontSize: 12,
       lineHeight: 14,
       letterSpacing: 1.2,
@@ -562,7 +560,7 @@ const styling = (
       color: theme.textSecondary,
     },
     helperCopy: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       textAlign: "center",
       paddingHorizontal: spacing.lg,

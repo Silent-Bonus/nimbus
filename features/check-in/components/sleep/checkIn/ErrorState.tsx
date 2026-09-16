@@ -3,14 +3,14 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "@/theme/types";
 
 type SleepErrorStateProps = {
   message: string;
   onRetry: () => void;
 };
 
-const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
+const makeStyles = (theme: ColorSet, spacing: Spacing, svaTypography: any) =>
   StyleSheet.create({
     card: {
       marginTop: spacing.lg,
@@ -39,13 +39,13 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       borderColor: "rgba(255,255,255,0.08)",
     },
     title: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       textAlign: "center",
       marginTop: spacing.md,
     },
     subtitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       textAlign: "center",
       lineHeight: 20,
@@ -60,17 +60,17 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       backgroundColor: theme.accent,
     },
     buttonText: {
-      ...typography.button,
+      ...svaTypography.textStyle.button,
       color: theme.background,
       textAlign: "center",
     },
   });
 
 export const SleepErrorState = ({ message, onRetry }: SleepErrorStateProps) => {
-  const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme: theme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => makeStyles(theme, spacing, typography),
-    [theme, spacing, typography]
+    () => makeStyles(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
 
   const accent = theme.chart2 ?? theme.accent;

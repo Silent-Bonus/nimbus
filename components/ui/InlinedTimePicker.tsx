@@ -37,6 +37,7 @@ export default function InlineTimePicker({
 }: Props) {
   const { newTheme } = useContext(ThemeContext);
   const styles = styling(newTheme);
+  const [showAndroidPicker, setShowAndroidPicker] = React.useState(false);
 
   // iOS needs the union type MinuteInterval
   const minuteInterval: MinuteInterval = (ALLOWED_MINUTES.find(
@@ -72,8 +73,6 @@ export default function InlineTimePicker({
   /**
    * Android — standard system picker (via pressable)
    */
-  const [showAndroidPicker, setShowAndroidPicker] = React.useState(false);
-
   const onAndroidChange = (event: DateTimePickerEvent, d?: Date) => {
     setShowAndroidPicker(false);
     if (event.type === "set" && d) {

@@ -12,7 +12,6 @@ import type {
   Spacing,
   SvaColorSet,
   SvaTokens,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 import { MealCardSurface } from "./MealCardSurface";
@@ -36,11 +35,11 @@ export function MealPlannerReviewList({
   weekDates,
   weeklyPlan,
 }: MealPlannerReviewListProps) {
-  const { svaColors, spacing, typography, svaTypography, tokens } =
+  const { svaColors, spacing, svaTypography, tokens } =
     useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(svaColors, spacing, typography, svaTypography, tokens),
-    [svaColors, spacing, typography, svaTypography, tokens]
+    () => styling(svaColors, spacing, svaTypography, tokens),
+    [svaColors, spacing, svaTypography, tokens]
   );
 
   return (
@@ -88,8 +87,7 @@ export function MealPlannerReviewList({
 const styling = (
   theme: SvaColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: TypographyTokens,
   tokens: SvaTokens
 ) =>
   StyleSheet.create({
@@ -97,7 +95,7 @@ const styling = (
       paddingBottom: spacing.xl + spacing.sm,
     },
     header: {
-      ...(svaTypography?.textStyle.title ?? typography.h3),
+      ...(svaTypography?.textStyle.title ?? svaTypography.textStyle.title),
       color: theme.text.primary,
       marginBottom: spacing.lg,
     },
@@ -115,11 +113,11 @@ const styling = (
       marginBottom: spacing.md,
     },
     dayDate: {
-      ...(svaTypography?.textStyle.bodyMedium ?? typography.bodyStrong),
+      ...(svaTypography?.textStyle.bodyMedium ?? svaTypography.textStyle.bodyMedium),
       color: theme.brand.primary,
     },
     dayStatus: {
-      ...(svaTypography?.textStyle.caption ?? typography.caption),
+      ...(svaTypography?.textStyle.caption ?? svaTypography.textStyle.caption),
       color: theme.text.secondary,
     },
     mealRow: {
@@ -129,12 +127,12 @@ const styling = (
       marginBottom: spacing.sm,
     },
     mealType: {
-      ...(svaTypography?.textStyle.caption ?? typography.caption),
+      ...(svaTypography?.textStyle.caption ?? svaTypography.textStyle.caption),
       color: theme.text.secondary,
       width: 80,
     },
     mealFood: {
-      ...(svaTypography?.textStyle.body ?? typography.body),
+      ...(svaTypography?.textStyle.body ?? svaTypography.textStyle.body),
       color: theme.text.primary,
       flex: 1,
       textAlign: "right",

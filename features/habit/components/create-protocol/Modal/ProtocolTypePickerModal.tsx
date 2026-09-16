@@ -32,7 +32,7 @@ export default function ProtocolTypePickerModal({
   onSelect,
   title = "Select Protocol Type",
 }: ProtocolTypePickerModalProps) {
-  const { newTheme, spacing, svaTypography, typography } =
+  const { newTheme, spacing, svaTypography } =
     useContext(ThemeContext);
   const [search, setSearch] = useState("");
 
@@ -42,7 +42,7 @@ export default function ProtocolTypePickerModal({
     }
   }, [visible]);
 
-  const bodyTextStyle = svaTypography?.textStyle?.body ?? typography.body;
+  const bodyTextStyle = svaTypography?.textStyle?.body ?? svaTypography.textStyle.body;
 
   const styles = useMemo(
     () => makeStyles(newTheme, spacing, bodyTextStyle),

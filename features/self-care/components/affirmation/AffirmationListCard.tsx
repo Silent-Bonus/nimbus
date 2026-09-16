@@ -12,7 +12,6 @@ import type { AffirmationCard } from "@/features/self-care/types/affirmation";
 import type {
   ColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 
@@ -27,7 +26,7 @@ const AffirmationListCard = ({
   onPress,
   selected = false,
 }: AffirmationListCardProps) => {
-  const { newTheme, spacing, typography, svaTypography } =
+  const { newTheme, spacing, svaTypography } =
     useContext(ThemeContext);
 
   const palette = useMemo<AffirmationRecommendationPalette>(
@@ -36,8 +35,8 @@ const AffirmationListCard = ({
   );
 
   const styles = useMemo(
-    () => styling(newTheme, spacing, typography, svaTypography),
-    [newTheme, spacing, typography, svaTypography]
+    () => styling(newTheme, spacing, svaTypography),
+    [newTheme, spacing, svaTypography]
   );
 
   return (
@@ -151,8 +150,7 @@ const AffirmationListCard = ({
 const styling = (
   theme: ColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography: TypographyTokens | undefined
+  svaTypography: TypographyTokens
 ) =>
   StyleSheet.create({
     card: {
@@ -221,7 +219,7 @@ const styling = (
     toneText: {
       fontFamily:
         svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
+        svaTypography.textStyle.authTinyLabel.fontFamily,
       fontSize: 10,
       lineHeight: 12,
       letterSpacing: 1.3,
@@ -238,7 +236,7 @@ const styling = (
     selectedText: {
       fontFamily:
         svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
+        svaTypography.textStyle.authTinyLabel.fontFamily,
       fontSize: 10,
       lineHeight: 12,
       letterSpacing: 1.2,
@@ -269,7 +267,7 @@ const styling = (
       letterSpacing: -0.25,
     },
     detail: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       fontSize: 15,
       lineHeight: 21,
       opacity: 0.93,
@@ -283,7 +281,7 @@ const styling = (
     footerText: {
       fontFamily:
         svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
+        svaTypography.textStyle.authTinyLabel.fontFamily,
       fontSize: 10,
       lineHeight: 12,
       letterSpacing: 1.3,

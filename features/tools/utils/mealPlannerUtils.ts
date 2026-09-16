@@ -106,6 +106,31 @@ const MEAL_STATUS_ORDER: DashboardMealKey[] = [
   "snack",
 ];
 
+const normalizeInsight = (value: unknown): string | null => {
+  if (typeof value === "string" && value.trim()) {
+    return value;
+  }
+
+  if (value && typeof value === "object" && "message" in value) {
+    const message = (value as { message?: unknown }).message;
+    return typeof message === "string" && message.trim() ? message : null;
+  }
+
+  return null;
+};
+
+const normalizeInsights = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [...DEFAULT_INSIGHTS];
+  }
+
+  const insights = value
+    .map(normalizeInsight)
+    .filter((insight): insight is string => Boolean(insight));
+
+  return insights.length > 0 ? insights : [...DEFAULT_INSIGHTS];
+};
+
 const toNumber = (value: unknown, fallback = 0): number => {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -196,6 +221,19 @@ const normalizeTodayMeals = (
   };
 };
 
+const normalizeDashboardMealKey = (value: unknown): DashboardMealKey | null => {
+  if (
+    value === "breakfast" ||
+    value === "lunch" ||
+    value === "dinner" ||
+    value === "snack"
+  ) {
+    return value;
+  }
+
+  return null;
+};
+
 const getDashboardStatus = (
   meals: NormalizedMealDashboardData["today"]["meals"],
   explicitStatus?: Partial<NormalizedMealDashboardData["today"]["status"]>
@@ -208,7 +246,7 @@ const getDashboardStatus = (
     });
 
   const nextPendingMeal =
-    explicitStatus?.next_pending_meal ??
+    normalizeDashboardMealKey(explicitStatus?.next_pending_meal) ??
     MEAL_STATUS_ORDER.find((mealKey) => {
       const meal = meals[mealKey];
       return meal.planned && !meal.consumed;
@@ -216,7 +254,7 @@ const getDashboardStatus = (
     null;
 
   const lastLoggedMeal =
-    explicitStatus?.last_logged_meal ??
+    normalizeDashboardMealKey(explicitStatus?.last_logged_meal) ??
     [...MEAL_STATUS_ORDER]
       .reverse()
       .find((mealKey) => meals[mealKey].consumed) ??
@@ -746,10 +784,7 @@ export const transformMealDashboardResponse = (
           fiber: rawData.trends?.direction?.fiber ?? "down",
         },
       },
-      insights:
-        rawData.insights && rawData.insights.length > 0
-          ? rawData.insights
-          : DEFAULT_INSIGHTS,
+      insights: normalizeInsights(rawData.insights),
     },
   };
 };

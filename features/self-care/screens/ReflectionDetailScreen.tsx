@@ -47,7 +47,7 @@ export default function ReflectionDetailScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<ReflectionRouteParams>();
-  const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme: theme, spacing, svaTypography } = useContext(ThemeContext);
   const toast = useNimbusToast();
 
   const reflectionSlug = parseReflectionRouteParam(params.journalSlug) ?? "";
@@ -61,8 +61,8 @@ export default function ReflectionDetailScreen() {
   const [showExistingSessionAlert, setShowExistingSessionAlert] = useState(false);
 
   const styles = useMemo(
-    () => styling(theme, spacing, typography),
-    [theme, spacing, typography]
+    () => styling(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
 
   useEffect(() => {
@@ -449,7 +449,7 @@ export default function ReflectionDetailScreen() {
 const styling = (
   theme: any,
   spacing: any,
-  typography: any
+  svaTypography: any
 ) =>
   StyleSheet.create({
     screen: {
@@ -469,7 +469,7 @@ const styling = (
       gap: spacing.md,
     },
     loadingText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
     },
     emptyState: {
@@ -479,13 +479,13 @@ const styling = (
       paddingHorizontal: spacing.xl,
     },
     emptyTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       marginTop: spacing.md,
       textAlign: "center",
     },
     emptyText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
       marginTop: spacing.xs,
       textAlign: "center",
@@ -539,19 +539,19 @@ const styling = (
       bottom: spacing.lg,
     },
     heroKicker: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       letterSpacing: 2.4,
       color: theme.textSecondary,
       textTransform: "uppercase",
       marginBottom: 8,
     },
     heroTitle: {
-      ...typography.h2,
+      ...svaTypography.textStyle.heading2,
       letterSpacing: -0.8,
       color: theme.textPrimary,
     },
     heroSubtext: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginTop: 10,
       letterSpacing: 0.3,
@@ -592,18 +592,18 @@ const styling = (
       marginBottom: 14,
     },
     cardLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       letterSpacing: 2.2,
       color: theme.textSecondary,
       textTransform: "uppercase",
     },
     cardMeta: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       textTransform: "uppercase",
     },
     descriptionText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textPrimary,
       lineHeight: 26,
       opacity: 0.96,
@@ -623,7 +623,7 @@ const styling = (
       borderColor: "rgba(163,190,140,0.16)",
     },
     tagText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.chart2 ?? theme.accent,
       letterSpacing: 1.1,
     },
@@ -639,7 +639,7 @@ const styling = (
       borderColor: theme.borderMuted ?? "rgba(255,255,255,0.05)",
     },
     miniPillText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 1,
     },
@@ -662,7 +662,7 @@ const styling = (
     },
     benefitText: {
       flex: 1,
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textPrimary,
       lineHeight: 24,
     },

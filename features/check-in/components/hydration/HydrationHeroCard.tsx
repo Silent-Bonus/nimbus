@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
 import ThemeContext from "../../../../contexts/ThemeContext";
-import type { ColorSet, Spacing, Typography } from "../../../../theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "../../../../theme/types";
 import {
   WATER_STEP_ML,
   clamp,
@@ -19,7 +19,7 @@ type HydrationHeroCardProps = {
   onCommit?: (value: number) => void;
 };
 
-const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
+const makeStyles = (theme: ColorSet, spacing: Spacing, svaTypography: any) =>
   StyleSheet.create({
     card: {
       marginTop: spacing.lg,
@@ -45,7 +45,7 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       flex: 1,
     },
     heroEyebrow: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       opacity: 0.72,
       letterSpacing: 1.6,
@@ -56,13 +56,13 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       color: theme.textPrimary,
     },
     heroAmountValue: {
-      ...typography.h1,
+      ...svaTypography.textStyle.heading1,
       color: theme.textPrimary,
       fontWeight: "800",
       letterSpacing: -0.6,
     },
     heroAmountGoal: {
-      ...typography.h4,
+      ...svaTypography.textStyle.authLabel,
       color: theme.textSecondary,
       fontWeight: "700",
     },
@@ -79,7 +79,7 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       alignSelf: "flex-start",
     },
     heroBadgeText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textPrimary,
       fontWeight: "700",
     },
@@ -88,7 +88,7 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       marginTop: spacing.lg,
     },
     jarHint: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       opacity: 0.74,
       letterSpacing: 2.4,
@@ -155,7 +155,7 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       marginTop: 2,
     },
     scaleLabel: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       opacity: 0.74,
     },
@@ -167,10 +167,10 @@ export const HydrationHeroCard = ({
   onChange,
   onCommit,
 }: HydrationHeroCardProps) => {
-  const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme: theme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => makeStyles(theme, spacing, typography),
-    [theme, spacing, typography]
+    () => makeStyles(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
 
   const progress = goalMl > 0 ? clamp(currentMl / goalMl, 0, 1) : 0;
