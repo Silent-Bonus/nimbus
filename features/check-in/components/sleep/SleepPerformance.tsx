@@ -5,7 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { ColorSet, Typography } from "@/theme/types";
+import type { ColorSet, TypographyTokens } from "@/theme/types";
 import LogSheet, { LogPayload } from "../common/logSheet/SleepLogSheet";
 import { setHM } from "@/features/check-in/utils/sleepLog";
 import {
@@ -25,8 +25,8 @@ export default function SleepPerformanceCard({
   goalMinutes,
   ratingLabel,
 }: Props) {
-  const { newTheme: theme, typography } = useContext(ThemeContext);
-  const styles = useMemo(() => styling(theme, typography), [theme, typography]);
+  const { newTheme: theme, svaTypography } = useContext(ThemeContext);
+  const styles = useMemo(() => styling(theme, svaTypography), [theme, svaTypography]);
   const [open, setOpen] = useState(false);
   const [sleepNowProcessing, setSleepNowProcessing] = useState(false);
 
@@ -199,7 +199,7 @@ export default function SleepPerformanceCard({
   );
 }
 
-const styling = (theme: ColorSet, typography: Typography) =>
+const styling = (theme: ColorSet, svaTypography: any) =>
   StyleSheet.create({
     card: {
       borderRadius: 28,
@@ -230,13 +230,13 @@ const styling = (theme: ColorSet, typography: Typography) =>
       flex: 1,
     },
     sectionLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 1.6,
       textTransform: "uppercase",
     },
     cardSubTitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       marginTop: 4,
       color: theme.textSecondary,
       opacity: 0.86,
@@ -251,13 +251,13 @@ const styling = (theme: ColorSet, typography: Typography) =>
       borderColor: "rgba(255,255,255,0.06)",
     },
     goalChipText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textPrimary,
       fontWeight: "800",
       letterSpacing: 0.1,
     },
     goalChipSub: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       marginTop: 1,
       color: theme.textSecondary,
       fontWeight: "700",
@@ -285,18 +285,18 @@ const styling = (theme: ColorSet, typography: Typography) =>
       textAlign: "center",
     },
     centerPrimary: {
-      ...typography.h1,
+      ...svaTypography.textStyle.heading1,
       color: theme.textPrimary,
       fontWeight: "800",
       letterSpacing: -0.4,
     },
     centerSecondary: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textSecondary,
       fontWeight: "700",
     },
     centerLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       marginTop: 6,
       color: theme.textSecondary,
       fontWeight: "800",
@@ -321,13 +321,13 @@ const styling = (theme: ColorSet, typography: Typography) =>
       opacity: 0.9,
     },
     metricValue: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       fontWeight: "800",
       letterSpacing: 0.2,
     },
     metricLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       marginTop: 2,
       color: theme.textSecondary,
       fontWeight: "700",
@@ -373,13 +373,13 @@ const styling = (theme: ColorSet, typography: Typography) =>
       opacity: 0.94,
     },
     primaryActionText: {
-      ...typography.button,
+      ...svaTypography.textStyle.button,
       color: theme.textPrimary,
       fontWeight: "800",
       letterSpacing: 0.2,
     },
     secondaryActionText: {
-      ...typography.button,
+      ...svaTypography.textStyle.button,
       color: theme.textPrimary,
       fontWeight: "800",
       letterSpacing: 0.2,

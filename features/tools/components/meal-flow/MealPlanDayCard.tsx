@@ -18,7 +18,6 @@ import { MealCardSurface } from "./MealCardSurface";
 import type {
   SvaColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
   SvaTokens,
 } from "@/theme/types";
@@ -55,11 +54,11 @@ export function MealPlanDayCard({
   titleStyle,
   testID,
 }: MealPlanDayCardProps) {
-  const { svaColors, spacing, typography, svaTypography, tokens } =
+  const { svaColors, spacing, svaTypography, tokens } =
     useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(svaColors, spacing, typography, svaTypography, tokens),
-    [svaColors, spacing, typography, svaTypography, tokens]
+    () => styling(svaColors, spacing, svaTypography, tokens),
+    [svaColors, spacing, svaTypography, tokens]
   );
 
   return (
@@ -179,8 +178,7 @@ export function MealPlanDayCard({
 const styling = (
   theme: SvaColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: TypographyTokens,
   tokens: SvaTokens
 ) =>
   StyleSheet.create({
@@ -210,7 +208,7 @@ const styling = (
       gap: spacing.sm,
     },
     title: {
-      ...(svaTypography?.textStyle.heading2 ?? typography.h3),
+      ...(svaTypography?.textStyle.heading2 ?? svaTypography.textStyle.title),
       color: theme.text.primary,
     },
     statusRow: {
@@ -231,7 +229,7 @@ const styling = (
       borderRadius: 99,
     },
     statusText: {
-      ...(svaTypography?.textStyle.authTinyLabel ?? typography.caption),
+      ...(svaTypography?.textStyle.authTinyLabel ?? svaTypography.textStyle.caption),
       letterSpacing: 1.2,
       textTransform: "uppercase",
     },
@@ -277,13 +275,13 @@ const styling = (
       paddingRight: spacing.sm,
     },
     mealType: {
-      ...(svaTypography?.textStyle.authTinyLabel ?? typography.caption),
+      ...(svaTypography?.textStyle.authTinyLabel ?? svaTypography.textStyle.caption),
       color: theme.text.secondary,
       textTransform: "uppercase",
       letterSpacing: 1.6,
     },
     mealName: {
-      ...(svaTypography?.textStyle.bodyMedium ?? typography.bodyStrong),
+      ...(svaTypography?.textStyle.bodyMedium ?? svaTypography.textStyle.bodyMedium),
       color: theme.text.primary,
     },
     actionButton: {
@@ -308,7 +306,7 @@ const styling = (
       borderColor: theme.border.default,
     },
     emptyText: {
-      ...(svaTypography?.textStyle.subtitle ?? typography.caption),
+      ...(svaTypography?.textStyle.subtitle ?? svaTypography.textStyle.caption),
       color: theme.text.secondary,
       flex: 1,
     },
@@ -339,7 +337,7 @@ const styling = (
       alignItems: "center",
     },
     shareText: {
-      ...(svaTypography?.textStyle.authActionLabel ?? typography.button),
+      ...(svaTypography?.textStyle.authActionLabel ?? svaTypography.textStyle.button),
       color: theme.text.primary,
       letterSpacing: 0.2,
     },

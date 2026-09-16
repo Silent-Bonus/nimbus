@@ -33,9 +33,9 @@ const TrendingCardCarousel: React.FC<TrendingCardCarouselProps> = ({
   onPress,
   onClickOfAll,
 }) => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
 
-  const styles = styling(newTheme, spacing, typography);
+  const styles = styling(newTheme, spacing, svaTypography);
 
   return (
     <View style={styles.container}>
@@ -94,7 +94,7 @@ const TrendingCardCarousel: React.FC<TrendingCardCarouselProps> = ({
   );
 };
 
-const styling = (newTheme: any, spacing: any, typography: any) =>
+const styling = (newTheme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     container: {
       marginVertical: spacing.lg,
@@ -107,11 +107,11 @@ const styling = (newTheme: any, spacing: any, typography: any) =>
       // paddingHorizontal: spacing.md,
     },
     headerText: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: newTheme.textPrimary,
     },
     seeAll: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: newTheme.accent,
       fontWeight: "600",
     },
@@ -155,7 +155,7 @@ const styling = (newTheme: any, spacing: any, typography: any) =>
       backgroundColor: newTheme.overlayStrong,
     },
     cardTitle: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: newTheme.textPrimary,
       fontWeight: "600",
     },

@@ -2,6 +2,7 @@ import React, { useContext } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import ThemeContext from "@/contexts/ThemeContext";
+import { SVATypography } from "@/theme/typography";
 import type { Spacing, SvaColorSet, TypographyTokens } from "@/theme/types";
 
 type ArticleContextCardProps = {
@@ -42,7 +43,7 @@ const ArticleContextCard: React.FC<ArticleContextCardProps> = ({
 const styling = (
   colors: SvaColorSet,
   spacing: Spacing,
-  typography?: TypographyTokens
+  svaTypography?: TypographyTokens
 ) =>
   StyleSheet.create({
     card: {
@@ -69,8 +70,8 @@ const styling = (
     },
     metricLabel: {
       fontFamily:
-        typography?.textStyle?.authTinyLabel?.fontFamily ??
-        "Outfit_600SemiBold",
+        svaTypography?.textStyle?.authTinyLabel?.fontFamily ??
+        SVATypography.fontFamily.bodyStrong,
       fontSize: 9.5,
       lineHeight: 12,
       letterSpacing: 1.6,
@@ -79,7 +80,7 @@ const styling = (
     },
     metricValue: {
       fontFamily:
-        typography?.textStyle?.authTitle?.fontFamily ??
+        svaTypography?.textStyle?.authTitle?.fontFamily ??
         "CormorantGaramond_600SemiBold",
       fontSize: 22,
       lineHeight: 24,
@@ -87,7 +88,7 @@ const styling = (
       letterSpacing: -0.2,
     },
     description: {
-      fontFamily: typography?.textStyle?.body?.fontFamily ?? "Outfit_400Regular",
+      fontFamily: svaTypography?.textStyle?.body?.fontFamily ?? SVATypography.fontFamily.body,
       fontSize: 14,
       lineHeight: 22,
       color: colors.text.secondary,

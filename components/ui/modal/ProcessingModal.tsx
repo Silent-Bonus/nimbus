@@ -76,10 +76,10 @@ export default function ProcessingModal({
   onActionPress,
   onRequestClose,
 }: ProcessingModalProps) {
-  const { newTheme, spacing, svaColors, svaTypography, typography } =
+  const { newTheme, spacing, svaColors, svaTypography } =
     useContext(ThemeContext);
 
-  const bodyTextStyle = svaTypography?.textStyle?.body ?? typography.body;
+  const bodyTextStyle = svaTypography.textStyle.body;
   const accentColor = svaColors?.brand?.primary ?? newTheme.accent ?? "#B8D39B";
   const isLoading = status === "loading";
   const statusIconColor =

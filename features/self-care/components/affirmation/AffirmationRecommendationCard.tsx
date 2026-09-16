@@ -7,7 +7,6 @@ import ThemeContext from "@/contexts/ThemeContext";
 import type {
   ColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 import type { AffirmationRecommendation } from "@/features/self-care/utils/affirmationPresentation";
@@ -28,15 +27,15 @@ const AffirmationRecommendationCard = ({
   onPress,
   width,
 }: AffirmationRecommendationCardProps) => {
-  const { newTheme, spacing, typography, svaTypography } =
+  const { newTheme, spacing, svaTypography } =
     useContext(ThemeContext);
 
   const screenWidth = Dimensions.get("window").width;
   const cardWidth = width ?? getAffirmationRecommendationCardWidth(screenWidth);
 
   const styles = useMemo(
-    () => styling(newTheme, spacing, typography, svaTypography, cardWidth),
-    [newTheme, spacing, typography, svaTypography, cardWidth]
+    () => styling(newTheme, spacing, svaTypography, cardWidth),
+    [newTheme, spacing, svaTypography, cardWidth]
   );
 
   return (
@@ -155,8 +154,7 @@ const AffirmationRecommendationCard = ({
 const styling = (
   theme: ColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: TypographyTokens,
   cardWidth: number
 ) =>
   StyleSheet.create({
@@ -224,7 +222,7 @@ const styling = (
     tagText: {
       fontFamily:
         svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
+        svaTypography.textStyle.authTinyLabel.fontFamily,
       fontSize: 10,
       lineHeight: 12,
       letterSpacing: 1.4,
@@ -241,7 +239,7 @@ const styling = (
     selectedText: {
       fontFamily:
         svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
+        svaTypography.textStyle.authTinyLabel.fontFamily,
       fontSize: 10,
       lineHeight: 12,
       letterSpacing: 1.2,
@@ -272,7 +270,7 @@ const styling = (
       letterSpacing: -0.3,
     },
     affirmation: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       fontSize: 15,
       lineHeight: 22,
       opacity: 0.94,
@@ -286,7 +284,7 @@ const styling = (
     footerText: {
       fontFamily:
         svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
+        svaTypography.textStyle.authTinyLabel.fontFamily,
       fontSize: 10,
       lineHeight: 12,
       letterSpacing: 1.3,

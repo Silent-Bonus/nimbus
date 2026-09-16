@@ -25,8 +25,8 @@ import AppHeader from "@/components/layout/AppHeader";
 
 export const CalorieCalculatorScreen = () => {
   const navigation = useNavigation();
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(newTheme, spacing, typography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = styling(newTheme, spacing, svaTypography);
 
   const [age, setAge] = useState("");
   const [height, setHeight] = useState("");
@@ -213,7 +213,7 @@ export const CalorieCalculatorScreen = () => {
   );
 };
 
-const styling = (theme: any, spacing: any, typography: any) =>
+const styling = (theme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -242,14 +242,14 @@ const styling = (theme: any, spacing: any, typography: any) =>
       borderColor: theme.divider,
     },
     resultTitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       textTransform: "uppercase",
       letterSpacing: 1,
       marginBottom: spacing.xs,
     },
     resultLine: {
-      ...typography.bodySmall,
+      ...svaTypography.textStyle.caption,
       color: theme.textPrimary,
       marginTop: 4,
     },

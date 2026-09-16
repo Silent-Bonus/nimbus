@@ -7,7 +7,6 @@ import ThemeContext from "@/contexts/ThemeContext";
 import type {
   ColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 
@@ -22,7 +21,7 @@ type MeditationAnchorSuggestionCardProps = {
   onPress: () => void;
 };
 
-const getDisplayFont = (svaTypography?: TypographyTokens) =>
+const getDisplayFont = (svaTypography: any) =>
   svaTypography?.textStyle.authTitle?.fontFamily ??
   svaTypography?.textStyle.displayMedium?.fontFamily ??
   undefined;
@@ -30,10 +29,9 @@ const getDisplayFont = (svaTypography?: TypographyTokens) =>
 const makeStyles = (
   theme: ColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography?: TypographyTokens
+  svaTypography: TypographyTokens
 ) => {
-  const displayFont = getDisplayFont(svaTypography) ?? typography.h3.fontFamily;
+  const displayFont = getDisplayFont(svaTypography) ?? svaTypography.textStyle.title.fontFamily;
 
   return StyleSheet.create({
     card: {
@@ -77,12 +75,12 @@ const makeStyles = (
       borderColor: "rgba(255,255,255,0.06)",
     },
     metaChipText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textPrimary,
       fontWeight: "700",
     },
     title: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       fontFamily: displayFont,
       fontSize: 22,
@@ -90,7 +88,7 @@ const makeStyles = (
       letterSpacing: -0.25,
     },
     description: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
       lineHeight: 22,
       marginTop: 8,
@@ -105,7 +103,7 @@ const makeStyles = (
       justifyContent: "space-between",
     },
     action: {
-      ...typography.button,
+      ...svaTypography.textStyle.button,
       fontSize: 14,
       fontWeight: "800",
       letterSpacing: 0.7,
@@ -123,11 +121,11 @@ export const MeditationAnchorSuggestionCard = ({
   accent,
   onPress,
 }: MeditationAnchorSuggestionCardProps) => {
-  const { newTheme: theme, spacing, typography, svaTypography } =
+  const { newTheme: theme, spacing, svaTypography } =
     useContext(ThemeContext);
   const styles = useMemo(
-    () => makeStyles(theme, spacing, typography, svaTypography),
-    [theme, spacing, typography, svaTypography]
+    () => makeStyles(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
 
   return (

@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { ColorSet, Typography } from "@/theme/types";
+import type { ColorSet, TypographyTokens } from "@/theme/types";
 
 type MeditationPlayerActionButtonProps = {
   icon: keyof typeof Ionicons.glyphMap;
@@ -18,10 +18,10 @@ export default function MeditationPlayerActionButton({
   active,
   onPress,
 }: MeditationPlayerActionButtonProps) {
-  const { newTheme: theme, typography } = useContext(ThemeContext);
+  const { newTheme: theme, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(theme, typography),
-    [theme, typography]
+    () => styling(theme, svaTypography),
+    [theme, svaTypography]
   );
 
   return (
@@ -47,7 +47,7 @@ export default function MeditationPlayerActionButton({
   );
 }
 
-const styling = (theme: ColorSet, typography: Typography) =>
+const styling = (theme: ColorSet, svaTypography: any) =>
   StyleSheet.create({
     button: {
       flex: 1,
@@ -70,7 +70,7 @@ const styling = (theme: ColorSet, typography: Typography) =>
       opacity: 0.92,
     },
     label: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 1.1,
     },

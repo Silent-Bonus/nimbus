@@ -20,11 +20,11 @@ const ReflectionEntryCard: React.FC<ReflectionEntryCardProps> = ({
   onActionPress,
   variant = "default",
 }) => {
-  const { newTheme: theme, svaTypography, spacing, typography } =
+  const { newTheme: theme, svaTypography, spacing } =
     useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(theme, svaTypography, spacing, typography),
-    [theme, svaTypography, spacing, typography]
+    () => styling(theme, svaTypography, spacing),
+    [theme, svaTypography, spacing]
   );
   const isSessionVariant = variant === "session";
   const resolvedTotalSteps = Math.max(item.questionCount ?? 1, 1);
@@ -193,7 +193,7 @@ const ReflectionEntryCard: React.FC<ReflectionEntryCardProps> = ({
   );
 };
 
-const styling = (theme: any, svaTypography: any, spacing: any, typography: any) =>
+const styling = (theme: any, svaTypography: any, spacing: any) =>
   StyleSheet.create({
     card: {
       borderRadius: 26,
@@ -238,13 +238,13 @@ const styling = (theme: any, svaTypography: any, spacing: any, typography: any) 
       marginBottom: 14,
     },
     sessionKicker: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.accent,
       letterSpacing: 1.2,
       textTransform: "uppercase",
     },
     sessionDate: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 0.8,
       textTransform: "uppercase",
@@ -268,7 +268,7 @@ const styling = (theme: any, svaTypography: any, spacing: any, typography: any) 
       borderColor: theme.borderMuted ?? "rgba(255,255,255,0.06)",
     },
     sessionStepText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 0.3,
     },
@@ -284,13 +284,13 @@ const styling = (theme: any, svaTypography: any, spacing: any, typography: any) 
       marginBottom: 8,
     },
     progressLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 0.8,
       textTransform: "uppercase",
     },
     progressValue: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.accent,
       fontWeight: "700",
     },
@@ -357,20 +357,20 @@ const styling = (theme: any, svaTypography: any, spacing: any, typography: any) 
       backgroundColor: theme.surfaceMuted,
     },
     statusText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.accent,
       textTransform: "uppercase",
       letterSpacing: 1,
     },
     cardDate: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       flexShrink: 1,
       color: theme.textSecondary,
       textTransform: "uppercase",
       textAlign: "right",
     },
     cardDescription: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
     },
     tagsRow: {
@@ -388,7 +388,7 @@ const styling = (theme: any, svaTypography: any, spacing: any, typography: any) 
       borderColor: "rgba(163,190,140,0.16)",
     },
     tagText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.chart2 ?? theme.accent,
       letterSpacing: 1.1,
     },
@@ -415,7 +415,7 @@ const styling = (theme: any, svaTypography: any, spacing: any, typography: any) 
       transform: [{ scale: 0.99 }],
     },
     actionButtonText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.buttonPrimaryText,
       fontWeight: "700",
     },

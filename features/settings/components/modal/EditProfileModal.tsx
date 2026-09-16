@@ -398,7 +398,7 @@ function SectionCard({
 }
 
 export default function EditProfileModal({ visible, onClose, onSaved }: Props) {
-  const { svaColors, svaTypography, typography, spacing } = useContext(ThemeContext);
+  const { svaColors, svaTypography, spacing } = useContext(ThemeContext);
   const insets = useSafeAreaInsets();
   const { loadUserFromStorage, updateProfile } = useAuth();
   const toast = useNimbusToast();
@@ -421,21 +421,16 @@ export default function EditProfileModal({ visible, onClose, onSaved }: Props) {
     () => ({
       titleFamily:
         svaTypography?.textStyle.authTitle.fontFamily ??
-        typography.h2.fontFamily ??
+        svaTypography.textStyle.heading2.fontFamily ??
         "CormorantGaramond_500Medium",
       bodyFamily:
-        svaTypography?.textStyle.body.fontFamily ??
-        typography.body.fontFamily ??
-        "Outfit_400Regular",
+        svaTypography.fontFamily.body,
       bodyStrongFamily:
-        svaTypography?.textStyle.bodyMedium.fontFamily ??
-        typography.bodyStrong.fontFamily ??
-        "Outfit_600SemiBold",
+        svaTypography.fontFamily.bodyMedium,
       monoFamily:
-        svaTypography?.textStyle.authMonoLabel.fontFamily ??
-        "SpaceMono-Regular",
+        svaTypography.fontFamily.mono,
     }),
-    [svaTypography, typography]
+    [svaTypography]
   );
 
   const styles: EditProfileStyles = useMemo(
@@ -996,7 +991,7 @@ function AvatarPickerModal({
   onClose: () => void;
   onSelect: (key: AvatarKey) => void;
 }) {
-  const { svaColors, svaTypography, typography, spacing } = useContext(ThemeContext);
+  const { svaColors, svaTypography, spacing } = useContext(ThemeContext);
   const insets = useSafeAreaInsets();
   const [selectedId, setSelectedId] = useState<AvatarKey>(initial ?? null);
 
@@ -1004,21 +999,16 @@ function AvatarPickerModal({
     () => ({
       titleFamily:
         svaTypography?.textStyle.authTitle.fontFamily ??
-        typography.h2.fontFamily ??
+        svaTypography.textStyle.heading2.fontFamily ??
         "CormorantGaramond_500Medium",
       bodyFamily:
-        svaTypography?.textStyle.body.fontFamily ??
-        typography.body.fontFamily ??
-        "Outfit_400Regular",
+        svaTypography.fontFamily.body,
       bodyStrongFamily:
-        svaTypography?.textStyle.bodyMedium.fontFamily ??
-        typography.bodyStrong.fontFamily ??
-        "Outfit_600SemiBold",
+        svaTypography.fontFamily.bodyMedium,
       monoFamily:
-        svaTypography?.textStyle.authMonoLabel.fontFamily ??
-        "SpaceMono-Regular",
+        svaTypography.fontFamily.mono,
     }),
-    [svaTypography, typography]
+    [svaTypography]
   );
 
   const styles = useMemo(

@@ -15,6 +15,7 @@ import ProtocolTemplateCard from "@/components/common/ProtocolTemplateCard";
 import { ScreenView } from "@/components/ui/Themed";
 import PillFilters from "@/components/ui/PillFilters";
 import ThemeContext from "@/contexts/ThemeContext";
+import { SVATypography } from "@/theme/typography";
 import ScreenHeader from "@/components/layout/ScreenHeader";
 import EmptyState from "@/features/tools/components/common/EmptyState";
 import { ROUTES } from "@/constants/routes";
@@ -74,6 +75,7 @@ export const CuratedManifestsScreen: React.FC = () => {
   }, [query, selectedFilter]);
 
   const handleCardPress = (item: CuratedManifest) => {
+    console.log("coming from here");
     router.push({
       pathname: ROUTES.AUTH.TOOLS_CURATED_MANIFEST_DETAIL,
       params: { id: item.id },
@@ -208,7 +210,7 @@ const styling = (colors: any, spacing: any) =>
       marginLeft: spacing.sm,
       color: colors.text.primary,
       fontSize: 15,
-      fontFamily: "Outfit_400Regular",
+      fontFamily: SVATypography.fontFamily.body,
     },
     clearButton: {
       marginLeft: spacing.xs,

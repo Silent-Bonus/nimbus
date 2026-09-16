@@ -11,7 +11,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { ColorSet, Spacing, Typography, TypographyTokens } from "@/theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "@/theme/types";
 
 type PremiumBannerVariant = "info" | "warning" | "success";
 type PremiumBannerLayout = "default" | "compact";
@@ -80,17 +80,16 @@ function getVariantPalette(
 function makeStyles(
   theme: ColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: TypographyTokens,
   palette: VariantPalette,
   pressable: boolean,
   compact: boolean
 ) {
-  const titleStyle = svaTypography?.textStyle.displayMedium ?? typography.h3;
-  const eyebrowStyle = svaTypography?.textStyle.authTinyLabel ?? typography.smallCaption;
-  const messageStyle = svaTypography?.textStyle.body ?? typography.body;
-  const metaStyle = svaTypography?.textStyle.caption ?? typography.caption;
-  const ctaStyle = svaTypography?.textStyle.authActionLabel ?? typography.button;
+  const titleStyle = svaTypography.textStyle.displayMedium;
+  const eyebrowStyle = svaTypography.textStyle.authTinyLabel;
+  const messageStyle = svaTypography.textStyle.body;
+  const metaStyle = svaTypography.textStyle.caption;
+  const ctaStyle = svaTypography.textStyle.authActionLabel;
 
   return StyleSheet.create({
     pressable: {
@@ -242,7 +241,7 @@ export default function PremiumBanner({
   titleNumberOfLines,
   messageNumberOfLines,
 }: PremiumBannerProps) {
-  const { newTheme, spacing, typography, svaTypography } = useContext(ThemeContext);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
   const compact = layout === "compact";
 
   const palette = useMemo(
@@ -254,13 +253,12 @@ export default function PremiumBanner({
       makeStyles(
         newTheme,
         spacing,
-        typography,
         svaTypography,
         palette,
         Boolean(onPress),
         compact
       ),
-    [compact, newTheme, spacing, typography, svaTypography, palette, onPress]
+    [compact, newTheme, spacing, svaTypography, palette, onPress]
   );
 
   if (!visible || !message) {

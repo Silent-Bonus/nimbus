@@ -53,7 +53,7 @@ export default function ReflectionSubmissionScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<ReflectionSubmissionParams>();
-  const { newTheme: theme, svaTypography, spacing, typography } =
+  const { newTheme: theme, svaTypography, spacing } =
     useContext(ThemeContext);
   const [sessionState, setSessionState] = useState<ReflectionSessionState | null>(
     null
@@ -77,8 +77,8 @@ export default function ReflectionSubmissionScreen() {
   }, [params.questionCount]);
 
   const styles = useMemo(
-    () => styling(theme, svaTypography, spacing, typography),
-    [theme, svaTypography, spacing, typography]
+    () => styling(theme, svaTypography, spacing),
+    [theme, svaTypography, spacing]
   );
 
   useEffect(() => {
@@ -405,7 +405,7 @@ const styling = (
   theme: any,
   svaTypography: any,
   spacing: any,
-  typography: any
+
 ) =>
   StyleSheet.create({
     screen: {
@@ -490,7 +490,7 @@ const styling = (
       color: theme.textPrimary,
     },
     heroDescription: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
       marginTop: 10,
     },
@@ -524,7 +524,7 @@ const styling = (
       textTransform: "uppercase",
     },
     summaryDate: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       textTransform: "uppercase",
     },
@@ -555,12 +555,12 @@ const styling = (
       flexWrap: "wrap",
     },
     summaryLoadingTitle: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textPrimary,
       fontWeight: "700",
     },
     summaryLoadingText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       width: "100%",
       marginLeft: 28,
@@ -577,12 +577,12 @@ const styling = (
       gap: spacing.xs,
     },
     summaryPlaceholderTitle: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textPrimary,
       fontWeight: "700",
     },
     summaryPlaceholderText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       lineHeight: 20,
     },
@@ -602,7 +602,7 @@ const styling = (
       borderColor: "rgba(163,190,140,0.16)",
     },
     tagText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.chart2 ?? theme.accent,
       letterSpacing: 1.1,
     },
@@ -618,7 +618,7 @@ const styling = (
       borderColor: theme.borderMuted ?? "rgba(255,255,255,0.05)",
     },
     metaText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 1.1,
     },
@@ -703,7 +703,7 @@ const styling = (
       borderColor: theme.borderMuted ?? "rgba(255,255,255,0.05)",
     },
     reviewPillText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 1,
     },
@@ -718,7 +718,7 @@ const styling = (
       marginBottom: 10,
     },
     reviewDescription: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
       marginBottom: spacing.lg,
     },
@@ -750,20 +750,20 @@ const styling = (
       borderColor: theme.borderMuted ?? "rgba(255,255,255,0.05)",
     },
     responseIndexText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.accent,
       fontWeight: "700",
       letterSpacing: 1,
     },
     responsePrompt: {
       flex: 1,
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textPrimary,
       fontWeight: "700",
       lineHeight: 22,
     },
     responseAnswer: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
       lineHeight: 24,
     },
@@ -787,7 +787,7 @@ const styling = (
       marginBottom: 10,
     },
     noteText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textPrimary,
       lineHeight: 26,
     },

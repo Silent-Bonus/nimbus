@@ -9,7 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Circle, Line, Path, Svg } from "react-native-svg";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "@/theme/types";
 import {
   CLOCK_TICK_MINUTES,
   describeClockArc,
@@ -27,7 +27,7 @@ type CircadianAlignmentCardProps = {
   onChangeWake: (value: number) => void;
 };
 
-const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
+const makeStyles = (theme: ColorSet, spacing: Spacing, svaTypography: any) =>
   StyleSheet.create({
     card: {
       borderRadius: 28,
@@ -50,14 +50,14 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       gap: spacing.sm,
     },
     sectionLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       fontWeight: "800",
       letterSpacing: 1.8,
       opacity: 0.88,
     },
     cardSubTitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       marginTop: 4,
       color: theme.textSecondary,
       lineHeight: 16,
@@ -85,12 +85,12 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       borderColor: "rgba(255,255,255,0.05)",
     },
     clockPrimary: {
-      ...typography.h1,
+      ...svaTypography.textStyle.heading1,
       color: theme.textPrimary,
       letterSpacing: -0.4,
     },
     clockSecondary: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 1.5,
       textTransform: "uppercase",
@@ -117,7 +117,7 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       marginTop: 8,
     },
     clockRangeText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
       fontWeight: "700",
       letterSpacing: 0.1,
@@ -131,10 +131,10 @@ export const CircadianAlignmentCard = ({
   onChangeBed,
   onChangeWake,
 }: CircadianAlignmentCardProps) => {
-  const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme: theme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => makeStyles(theme, spacing, typography),
-    [theme, spacing, typography]
+    () => makeStyles(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
 
   const clockRef = useRef<View>(null);

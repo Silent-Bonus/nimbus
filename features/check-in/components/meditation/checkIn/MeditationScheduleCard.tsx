@@ -4,7 +4,7 @@ import Slider from "@react-native-community/slider";
 import { Ionicons } from "@expo/vector-icons";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "@/theme/types";
 import {
   REMINDER_OPTIONS,
   formatClockTime,
@@ -17,7 +17,7 @@ type MeditationScheduleCardProps = {
   onReminderChange: (index: number) => void;
 };
 
-const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
+const makeStyles = (theme: ColorSet, spacing: Spacing, svaTypography: any) =>
   StyleSheet.create({
     card: {
       marginTop: spacing.lg,
@@ -41,13 +41,13 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       marginBottom: spacing.md,
     },
     sectionLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       opacity: 0.78,
       letterSpacing: 1.7,
     },
     cardSubTitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginTop: 6,
       lineHeight: 18,
@@ -65,7 +65,7 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       flexShrink: 1,
     },
     reminderBadgeText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textPrimary,
       fontWeight: "700",
       flexShrink: 1,
@@ -85,13 +85,13 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       transform: [{ scale: 0.99 }],
     },
     timeFieldLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       opacity: 0.78,
       letterSpacing: 1.4,
     },
     timeFieldValue: {
-      ...typography.h2,
+      ...svaTypography.textStyle.heading2,
       color: theme.textPrimary,
       letterSpacing: -0.5,
       marginTop: 4,
@@ -121,7 +121,7 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       backgroundColor: theme.surfaceMuted ?? "rgba(255,255,255,0.12)",
     },
     reminderLabel: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       fontWeight: "700",
       letterSpacing: 0.5,
@@ -137,10 +137,10 @@ export const MeditationScheduleCard = ({
   onOpenTimePicker,
   onReminderChange,
 }: MeditationScheduleCardProps) => {
-  const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme: theme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => makeStyles(theme, spacing, typography),
-    [theme, spacing, typography]
+    () => makeStyles(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
 
   const reminderMinutes = REMINDER_OPTIONS[reminderIndex] ?? REMINDER_OPTIONS[1];

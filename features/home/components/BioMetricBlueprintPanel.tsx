@@ -29,10 +29,10 @@ import { makeStyles } from "@/features/home/components/biometricBlueprint/styles
 
 const Panel = ({ date }: BiometricBlueprintPanelProps) => {
   const router = useRouter();
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => makeStyles(newTheme, spacing, typography),
-    [newTheme, spacing, typography]
+    () => makeStyles(newTheme, spacing, svaTypography),
+    [newTheme, spacing, svaTypography]
   );
 
   const [items, setItems] = useState<LoadedCheckin[]>([]);

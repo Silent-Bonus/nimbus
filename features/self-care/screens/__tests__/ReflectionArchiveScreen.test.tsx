@@ -45,7 +45,6 @@ const themeValue = {
   newTheme: theme.colors,
   svaColors: theme.svaColors,
   spacing: theme.spacing,
-  typography: theme.typography,
   svaTypography: theme.svaTypography,
   svaSpacing: theme.svaSpacing,
   svaComponents: theme.svaComponents,

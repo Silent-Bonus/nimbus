@@ -13,7 +13,6 @@ import type {
   Spacing,
   SvaColorSet,
   SvaTokens,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 import { MealCardSurface } from "./MealCardSurface";
@@ -45,11 +44,11 @@ export function MealPlannerSearchDropdown({
   onSelectOption,
   onSelectCustom,
 }: MealPlannerSearchDropdownProps) {
-  const { svaColors, spacing, typography, svaTypography, tokens } =
+  const { svaColors, spacing, svaTypography, tokens } =
     useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(svaColors, spacing, typography, svaTypography, tokens),
-    [svaColors, spacing, typography, svaTypography, tokens]
+    () => styling(svaColors, spacing, svaTypography, tokens),
+    [svaColors, spacing, svaTypography, tokens]
   );
 
   const trimmedQuery = query.trim();
@@ -112,8 +111,7 @@ export function MealPlannerSearchDropdown({
 const styling = (
   theme: SvaColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: TypographyTokens,
   tokens: SvaTokens
 ) =>
   StyleSheet.create({
@@ -137,7 +135,7 @@ const styling = (
       borderBottomColor: theme.border.default,
     },
     resultText: {
-      ...(svaTypography?.textStyle.body ?? typography.body),
+      ...(svaTypography?.textStyle.body ?? svaTypography.textStyle.body),
       color: theme.text.primary,
       flex: 1,
     },

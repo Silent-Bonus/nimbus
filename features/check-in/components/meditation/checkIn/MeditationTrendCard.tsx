@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LineChart } from "react-native-gifted-charts";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "@/theme/types";
 import {
   getAverage,
   type WeeklyPoint,
@@ -16,7 +16,7 @@ type MeditationTrendCardProps = {
   longestStreak: number;
 };
 
-const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
+const makeStyles = (theme: ColorSet, spacing: Spacing, svaTypography: any) =>
   StyleSheet.create({
     card: {
       marginTop: spacing.lg,
@@ -40,13 +40,13 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       marginBottom: spacing.md,
     },
     sectionLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       opacity: 0.78,
       letterSpacing: 1.7,
     },
     cardSubTitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginTop: 6,
       lineHeight: 18,
@@ -64,7 +64,7 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       flexShrink: 1,
     },
     trendBadgeText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textPrimary,
       fontWeight: "700",
       flexShrink: 1,
@@ -83,12 +83,12 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       flex: 1,
     },
     trendMetricValue: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       letterSpacing: -0.3,
     },
     trendMetricLabel: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       opacity: 0.78,
       marginTop: 4,
@@ -105,10 +105,10 @@ export const MeditationTrendCard = ({
   currentStreak,
   longestStreak,
 }: MeditationTrendCardProps) => {
-  const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme: theme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => makeStyles(theme, spacing, typography),
-    [theme, spacing, typography]
+    () => makeStyles(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
 
   const chartData = useMemo(
@@ -168,7 +168,7 @@ export const MeditationTrendCard = ({
         backgroundColor="transparent"
         isAnimated
         xAxisLabelTextStyle={{
-          ...typography.caption,
+          ...svaTypography.textStyle.caption,
           color: theme.textSecondary,
           marginTop: 6,
         }}

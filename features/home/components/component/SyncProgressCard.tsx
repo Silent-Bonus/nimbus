@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useRef } from "react";
 import { View, Text, StyleSheet, Animated } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import ThemeContext from "@/contexts/ThemeContext";
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "@/theme/types";
 
 interface SyncProgressCardProps {
   percentage: number; // 0 to 100
@@ -15,7 +15,7 @@ const SyncProgressCard: React.FC<SyncProgressCardProps> = ({
   currentPhase = "Flow State",
   nextPhase = "Master Healer",
 }) => {
-  const { newTheme, typography, spacing } = useContext(ThemeContext);
+  const { newTheme, svaTypography, spacing } = useContext(ThemeContext);
 
   // Animation for the progress bar
   const widthAnim = useRef(new Animated.Value(0)).current;
@@ -33,7 +33,7 @@ const SyncProgressCard: React.FC<SyncProgressCardProps> = ({
     outputRange: ["0%", "100%"],
   });
 
-  const styles = styling(newTheme, spacing, typography);
+  const styles = styling(newTheme, spacing, svaTypography);
 
   return (
     <View style={styles.container}>
@@ -88,7 +88,7 @@ const SyncProgressCard: React.FC<SyncProgressCardProps> = ({
   );
 };
 
-const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
+const styling = (theme: ColorSet, spacing: Spacing, svaTypography: TypographyTokens) =>
   StyleSheet.create({
     container: {
       marginTop: spacing.lg,
@@ -121,7 +121,7 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       flex: 1,
     },
     sectionTitle: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       fontSize: 10,
       fontWeight: "700",
       letterSpacing: 1.8,
@@ -146,7 +146,7 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       borderColor: "rgba(255,255,255,0.08)",
     },
     percentValue: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       fontSize: 18,
       fontWeight: "800",
       lineHeight: 22,
@@ -154,7 +154,7 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       letterSpacing: -0.2,
     },
     percentLabel: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       fontSize: 12,
       fontWeight: "600",
       lineHeight: 16,
@@ -196,7 +196,7 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       alignItems: "flex-end",
     },
     footerLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       fontSize: 9,
       fontWeight: "600",
       lineHeight: 13,
@@ -206,7 +206,7 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       marginBottom: 2,
     },
     footerValue: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       opacity: 0.9,
       fontSize: 11,

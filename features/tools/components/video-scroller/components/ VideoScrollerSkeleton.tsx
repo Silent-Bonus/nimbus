@@ -7,8 +7,8 @@ import ThemeContext from "@/contexts/ThemeContext";
 const SKELETON_ITEMS = [1, 2, 3];
 
 const VideoScrollerSkeleton: React.FC = () => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(newTheme, spacing, typography);
+  const { newTheme, spacing } = useContext(ThemeContext);
+  const styles = styling(newTheme, spacing);
 
   const shimmer = useRef(new Animated.Value(0)).current;
 
@@ -52,7 +52,7 @@ const VideoScrollerSkeleton: React.FC = () => {
 
 export default VideoScrollerSkeleton;
 
-const styling = (newTheme: any, spacing: any, typography: any) =>
+const styling = (newTheme: any, spacing: any) =>
   StyleSheet.create({
     container: {
       paddingVertical: spacing.lg,

@@ -1,4 +1,4 @@
-import type { AppTheme, ColorSet, Spacing, Typography, ThemeName } from "./types";
+import type { AppTheme, ColorSet, Spacing, ThemeName } from "./types";
 import { tokens } from "./tokens";
 import { svaColors } from "./palettes/nimbus";
 import { SVATypography } from "./typography";
@@ -13,62 +13,6 @@ const spacing: Spacing = {
   xl: SVASpacing.scale.xl,
   xxl: SVASpacing.scale.xxl,
   "2xl": SVASpacing.scale.xl,
-};
-
-const typography: Typography = {
-  h1: {
-    fontFamily: "Urbanist_700Bold",
-    fontSize: 32,
-    fontWeight: "700",
-    lineHeight: 40,
-  },
-  h2: {
-    fontFamily: "Urbanist_700Bold",
-    fontSize: 24,
-    fontWeight: "700",
-    lineHeight: 32,
-  },
-  h3: {
-    fontFamily: "Urbanist_600SemiBold",
-    fontSize: 20,
-    fontWeight: "600",
-    lineHeight: 28,
-  },
-  h4: {
-    fontFamily: "Urbanist_600SemiBold",
-    fontSize: 14,
-    fontWeight: "600",
-    lineHeight: 18,
-  },
-  body: {
-    fontFamily: "Outfit_400Regular",
-    fontSize: 16,
-    fontWeight: "400",
-    lineHeight: 24,
-  },
-  bodyStrong: {
-    fontFamily: "Outfit_600SemiBold",
-    fontSize: 16,
-    fontWeight: "600",
-    lineHeight: 24,
-  },
-  caption: {
-    fontFamily: "Outfit_400Regular",
-    fontSize: 12,
-    fontWeight: "400",
-    lineHeight: 16,
-  },
-  smallCaption: {
-    fontFamily: "Outfit_600SemiBold",
-    fontSize: 10,
-    fontWeight: "600",
-    lineHeight: 14,
-  },
-  button: {
-    fontFamily: "Outfit_600SemiBold",
-    fontSize: 16,
-    fontWeight: "600",
-  },
 };
 
 function createLegacyColors(source: typeof svaColors): ColorSet {
@@ -130,7 +74,6 @@ const themes: Record<ThemeName, AppTheme> = {
     colors: legacyColors,
     svaColors,
     spacing,
-    typography,
     svaTypography: SVATypography,
     svaSpacing: SVASpacing,
     svaComponents: SVAComponents,
@@ -141,7 +84,6 @@ const themes: Record<ThemeName, AppTheme> = {
     colors: legacyColors,
     svaColors,
     spacing,
-    typography,
     svaTypography: SVATypography,
     svaSpacing: SVASpacing,
     svaComponents: SVAComponents,
@@ -152,7 +94,6 @@ const themes: Record<ThemeName, AppTheme> = {
     colors: legacyColors,
     svaColors,
     spacing,
-    typography,
     svaTypography: SVATypography,
     svaSpacing: SVASpacing,
     svaComponents: SVAComponents,

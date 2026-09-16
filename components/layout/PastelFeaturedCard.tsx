@@ -37,12 +37,12 @@ const PastelFeaturedCard: React.FC<PastelFeaturedCardProps> = ({
   colors,
   width,
 }) => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
 
   const styles = styling(
     newTheme,
     spacing,
-    typography,
+    svaTypography,
     colors,
     width ?? DEFAULT_CARD_WIDTH
   );
@@ -81,7 +81,7 @@ const PastelFeaturedCard: React.FC<PastelFeaturedCardProps> = ({
 const styling = (
   newTheme: any,
   spacing: any,
-  typography: any,
+  svaTypography: any,
   colors: { bg: string; footer: string },
   cardWidth: number
 ) =>
@@ -122,13 +122,13 @@ const styling = (
     },
     // Text colors tuned for LIGHT pastel cards (Nimbus-ish olives)
     title: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       fontSize: 18,
       color: "#141813", // deep olive-black
       marginBottom: 4,
     },
     subtitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: "#4B5347", // muted olive-grey
     },
     footer: {
@@ -139,7 +139,7 @@ const styling = (
       borderTopColor: "rgba(0,0,0,0.05)",
     },
     description: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: "#22261F",
     },
   });

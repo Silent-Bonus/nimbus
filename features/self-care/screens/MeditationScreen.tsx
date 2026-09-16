@@ -31,7 +31,6 @@ import { ROUTES } from "@/constants/routes";
 import type {
   ColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 import type {
@@ -48,7 +47,7 @@ export const MeditationScreen: React.FC = () => {
     newTheme: theme,
     svaTypography,
     spacing,
-    typography,
+
   } = useContext(ThemeContext);
 
   // Raw API items stay in state; UI templates are derived below.
@@ -61,8 +60,8 @@ export const MeditationScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   const styles = useMemo(
-    () => styling(theme, svaTypography, spacing, typography),
-    [theme, svaTypography, spacing, typography]
+    () => styling(theme, svaTypography, spacing),
+    [theme, svaTypography, spacing]
   );
 
   // The screen renders its own branded header instead of the router header.
@@ -330,9 +329,9 @@ export const MeditationScreen: React.FC = () => {
 
 const styling = (
   theme: ColorSet,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: any | undefined,
   spacing: Spacing,
-  typography: Typography
+
 ) =>
   StyleSheet.create({
     screen: {
@@ -369,7 +368,7 @@ const styling = (
       marginBottom: 4,
     },
     featuredTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
     },
     featuredCardWrap: {
@@ -419,7 +418,7 @@ const styling = (
       marginBottom: 4,
     },
     sectionTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
     },
     countPill: {
@@ -435,7 +434,7 @@ const styling = (
       flexShrink: 0,
     },
     countText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 0.9,
     },
@@ -446,13 +445,13 @@ const styling = (
       paddingHorizontal: spacing.xl,
     },
     emptyTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       marginTop: spacing.md,
       textAlign: "center",
     },
     emptyText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
       marginTop: spacing.xs,
       textAlign: "center",

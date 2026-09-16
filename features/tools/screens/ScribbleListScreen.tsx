@@ -210,7 +210,7 @@ export const ScribbleListScreen = () => {
 const styling = (
   theme: ColorSet,
   spacing: Spacing,
-  svaTypography?: TypographyTokens
+  svaTypography: TypographyTokens
 ) =>
   StyleSheet.create({
     filterRow: {

@@ -449,7 +449,7 @@ export const ArticleListScreen: React.FC = () => {
 const styling = (
   colors: SvaColorSet,
   spacing: Spacing,
-  typography?: TypographyTokens
+  svaTypography?: TypographyTokens
 ) =>
   StyleSheet.create({
     screen: {
@@ -482,7 +482,7 @@ const styling = (
       marginBottom: spacing.sm,
     },
     searchInput: {
-      ...(typography?.textStyle?.body ?? {}),
+      ...(svaTypography?.textStyle?.body ?? {}),
       flex: 1,
       minWidth: 0,
       height: "100%",
@@ -498,8 +498,8 @@ const styling = (
       marginLeft: spacing.xs,
     },
     searchHint: {
-      ...(typography?.textStyle?.caption ??
-        typography?.textStyle?.authTinyLabel ??
+      ...(svaTypography?.textStyle?.caption ??
+        svaTypography?.textStyle?.authTinyLabel ??
         {}),
       color: colors.text.secondary,
       fontSize: 12,

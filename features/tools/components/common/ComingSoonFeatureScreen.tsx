@@ -41,8 +41,8 @@ const ComingSoonFeatureScreen: React.FC<ComingSoonFeatureScreenProps> = ({
   onBack,
   config,
 }) => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(newTheme, spacing, typography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = styling(newTheme, spacing, svaTypography);
 
   const titleWithEmoji = config.title;
 
@@ -126,7 +126,7 @@ const ComingSoonFeatureScreen: React.FC<ComingSoonFeatureScreenProps> = ({
   );
 };
 
-const styling = (theme: any, spacing: any, typography: any) =>
+const styling = (theme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     root: {
       flex: 1,
@@ -148,7 +148,7 @@ const styling = (theme: any, spacing: any, typography: any) =>
       marginBottom: spacing.md,
     },
     badgeText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       letterSpacing: 1,
       textTransform: "uppercase",
       color: theme.textSecondary,
@@ -202,7 +202,7 @@ const styling = (theme: any, spacing: any, typography: any) =>
 
     // Text blocks
     description: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textPrimary,
       marginBottom: spacing.md,
     },
@@ -223,7 +223,7 @@ const styling = (theme: any, spacing: any, typography: any) =>
       marginRight: spacing.sm,
     },
     benefitText: {
-      ...typography.bodySmall,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       flex: 1,
     },
@@ -241,7 +241,7 @@ const styling = (theme: any, spacing: any, typography: any) =>
 
     // Footnote
     footnote: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       textAlign: "center",
       marginTop: spacing.sm,

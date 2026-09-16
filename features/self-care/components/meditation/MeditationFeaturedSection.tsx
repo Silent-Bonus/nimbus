@@ -19,8 +19,8 @@ const MeditationFeaturedSection: React.FC<MeditationFeaturedSectionProps> = ({
   onPress,
   colorPalette,
 }) => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(newTheme, spacing, typography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = styling(newTheme, spacing, svaTypography);
 
   if (!data.length) return null;
 
@@ -48,13 +48,13 @@ const MeditationFeaturedSection: React.FC<MeditationFeaturedSectionProps> = ({
   );
 };
 
-const styling = (newTheme: any, spacing: any, typography: any) =>
+const styling = (newTheme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     sectionContainer: {
       marginBottom: spacing.lg,
     },
     sectionTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: newTheme.textPrimary,
       marginBottom: spacing.sm,
     },

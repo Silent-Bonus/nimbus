@@ -55,9 +55,7 @@ export function SvaAuthLayout({
               },
             ]}
           >
-            <Text
-              style={[s.brandWordmark, { color: svaColors.brand.primary }]}
-            >
+            <Text style={[s.brandWordmark, { color: svaColors.brand.primary }]}>
               SVA
             </Text>
           </View>
@@ -92,8 +90,8 @@ export function SvaAuthLayout({
               style={({ pressed }) => [
                 s.backBtn,
                 {
-                  backgroundColor: svaColors.surface.raised,
-                  borderColor: svaColors.border.default,
+                  // backgroundColor: svaColors.surface.raised,
+                  // borderColor: svaColors.border.default,
                   opacity: !onBack ? 0 : pressed ? 0.9 : 1,
                 },
               ]}
@@ -136,15 +134,17 @@ const s = StyleSheet.create({
   },
   backRow: {
     alignItems: "flex-start",
-    marginTop: 18,
+    marginTop: 20,
+    marginLeft: 0,
+    paddingLeft: 0,
   },
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 999,
+    // width: 40,
+    // height: 40,
+    // borderRadius: 0,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: StyleSheet.hairlineWidth,
+    // borderWidth: 0,
   },
   progressTrack: {
     height: 2,

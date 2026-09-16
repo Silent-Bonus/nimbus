@@ -11,7 +11,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import ThemeContext from "@/contexts/ThemeContext";
-import type { ColorSet, Spacing, Typography, SvaColorSet } from "@/theme/types";
+import type { ColorSet, Spacing, TypographyTokens, SvaColorSet } from "@/theme/types";
 
 export interface NimbusUltraFeaturedCardProps {
   title: string;
@@ -40,7 +40,7 @@ type FeaturedCardTheme = {
   newTheme: ColorSet;
   svaColors?: SvaColorSet;
   spacing: Spacing;
-  typography: Typography;
+  svaTypography: TypographyTokens;
 };
 
 const NimbusUltraFeaturedCard: React.FC<NimbusUltraFeaturedCardProps> = ({
@@ -55,7 +55,7 @@ const NimbusUltraFeaturedCard: React.FC<NimbusUltraFeaturedCardProps> = ({
   width,
 }) => {
   const { width: windowWidth } = useWindowDimensions();
-  const { newTheme, svaColors, spacing, typography } =
+  const { newTheme, svaColors, spacing, svaTypography } =
     useContext(ThemeContext) as FeaturedCardTheme;
 
   const cardWidth = width ?? Math.min(440, Math.max(280, windowWidth * 0.86));
@@ -75,7 +75,7 @@ const NimbusUltraFeaturedCard: React.FC<NimbusUltraFeaturedCardProps> = ({
     };
   }, [accent, newTheme, svaColors?.border.muted, svaColors?.brand.primary, svaColors?.text.primary, svaColors?.text.secondary, tint]);
 
-  const styles = styling(spacing, typography, colors, cardWidth);
+  const styles = styling(spacing, svaTypography, colors, cardWidth);
 
   return (
     <Pressable
@@ -150,7 +150,7 @@ const NimbusUltraFeaturedCard: React.FC<NimbusUltraFeaturedCardProps> = ({
 
 const styling = (
   spacing: Spacing,
-  typography: Typography,
+  svaTypography: TypographyTokens,
   c: FeaturedCardPalette,
   cardWidth: number
 ) =>
@@ -247,19 +247,19 @@ const styling = (
       opacity: 0.95,
     },
     badgeText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: c.sub,
       letterSpacing: 0.9,
     },
     title: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       fontSize: 19,
       lineHeight: 24,
       color: c.text,
       letterSpacing: -0.2,
     },
     subtitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: c.sub,
       letterSpacing: 0.1,
     },
@@ -288,7 +288,7 @@ const styling = (
       opacity: 0.78,
     },
     description: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: c.text,
       opacity: 0.88,
       lineHeight: 20,
@@ -307,7 +307,7 @@ const styling = (
       flexShrink: 0,
     },
     chevronText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: c.sub,
       letterSpacing: 0.9,
     },

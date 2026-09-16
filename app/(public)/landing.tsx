@@ -10,7 +10,7 @@ import RelaxMenIcon from "@/assets/images/logoNew/1.svg";
 
 const LandingScreen = () => {
   const navigation = useNavigation();
-  const { newTheme, tokens, typography, spacing } = useContext(ThemeContext);
+  const { newTheme, tokens, svaTypography, spacing } = useContext(ThemeContext);
 
   const { width } = Dimensions.get("window");
 
@@ -20,7 +20,7 @@ const LandingScreen = () => {
     });
   }, [navigation]);
 
-  const styles = styling(newTheme, tokens, typography, spacing);
+  const styles = styling(newTheme, tokens, svaTypography, spacing);
 
   const firstBtnSegmentBtnClick = () => {
     router.push(ROUTES.PUBLIC.REGISTER);
@@ -42,7 +42,7 @@ const LandingScreen = () => {
 
         {/* Hero / Tagline */}
         <Text style={styles.tagline}>
-          🌩️ Nimbus — Your Everyday Growth Companion
+          🌩️ SVA — Your Everyday Growth Companion
         </Text>
 
         {/* Headline */}
@@ -61,7 +61,7 @@ const LandingScreen = () => {
         {/* Buttons */}
 
         <NimbusButton
-          label="I’m new to Nimbus"
+          label="I’m new to SVA"
           variant="primary"
           onPress={firstBtnSegmentBtnClick}
         />
@@ -74,7 +74,7 @@ const LandingScreen = () => {
   );
 };
 
-const styling = (newTheme: any, tokens: any, typography: any, spacing: any) =>
+const styling = (newTheme: any, tokens: any, svaTypography: any, spacing: any) =>
   StyleSheet.create({
     container: {
       backgroundColor: newTheme.background,
@@ -89,19 +89,19 @@ const styling = (newTheme: any, tokens: any, typography: any, spacing: any) =>
       alignItems: "center",
     },
     helper: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: newTheme.textSecondary,
       marginTop: spacing.sm,
       textAlign: "center",
     },
     secondaryButton: {
-      ...typography.button,
+      ...svaTypography.textStyle.button,
       marginTop: spacing.md,
       color: newTheme.textPrimary,
       textAlign: "center",
     },
     tagline: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       marginTop: spacing.xl,
       textAlign: "center",
       color: newTheme.accent,
@@ -109,7 +109,7 @@ const styling = (newTheme: any, tokens: any, typography: any, spacing: any) =>
       letterSpacing: 1,
     },
     headline: {
-      ...typography.h2,
+      ...svaTypography.textStyle.heading2,
       color: newTheme.textPrimary,
       marginTop: spacing.sm,
       marginBottom: spacing.xs,

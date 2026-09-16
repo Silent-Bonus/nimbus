@@ -132,7 +132,7 @@ const RecipeReviewModal: React.FC<RecipeReviewModalProps> = ({
   onClose,
   onSubmitSuccess,
 }) => {
-  const { newTheme, spacing, svaColors, svaTypography, typography } =
+  const { newTheme, spacing, svaColors, svaTypography } =
     useContext(ThemeContext);
   const insets = useSafeAreaInsets();
 
@@ -141,7 +141,7 @@ const RecipeReviewModal: React.FC<RecipeReviewModalProps> = ({
   const [feedback, setFeedback] = useState<FeedbackState>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const bodyTextStyle = svaTypography?.textStyle?.body ?? typography.body;
+  const bodyTextStyle = svaTypography?.textStyle?.body ?? svaTypography.textStyle.body;
 
   const styles = useMemo(
     () =>

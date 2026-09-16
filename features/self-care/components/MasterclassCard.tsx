@@ -20,7 +20,7 @@ const MasterclassCard: React.FC<VideoClassCardType> = ({
   courses = 9,
   tag = "ADHD",
 }) => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
 
   return (
     <View
@@ -70,7 +70,7 @@ const MasterclassCard: React.FC<VideoClassCardType> = ({
       <View style={{ padding: spacing.md }}>
         <Text
           style={[
-            typography.caption,
+            svaTypography.textStyle.caption,
             { color: newTheme.textSecondary, marginBottom: spacing.xs },
           ]}
         >
@@ -79,7 +79,7 @@ const MasterclassCard: React.FC<VideoClassCardType> = ({
 
         <Text
           style={[
-            typography.h3,
+            svaTypography.textStyle.title,
             { color: newTheme.textPrimary, marginBottom: spacing.xs },
           ]}
         >
@@ -89,7 +89,7 @@ const MasterclassCard: React.FC<VideoClassCardType> = ({
         <View style={styles.footer}>
           <Text
             style={[
-              typography.body,
+              svaTypography.textStyle.body,
               { color: newTheme.textSecondary, flex: 1 },
             ]}
           >
@@ -109,7 +109,7 @@ const MasterclassCard: React.FC<VideoClassCardType> = ({
           >
             <Text
               style={[
-                typography.caption,
+                svaTypography.textStyle.caption,
                 { color: newTheme.buttonPrimaryText, fontWeight: "700" },
               ]}
             >

@@ -78,7 +78,7 @@ const HorizontalRuler = ({
   onChange: (val: number) => void;
   unit?: string;
 }) => {
-  const { newTheme, typography } = useContext(ThemeContext);
+  const { newTheme, svaTypography } = useContext(ThemeContext);
   const flatListRef = useRef<FlatList>(null);
 
   const data = useMemo(() => {
@@ -143,7 +143,7 @@ const HorizontalRuler = ({
             <View style={{ width: RULER_ITEM_WIDTH, alignItems: "center" }}>
               <Text
                 style={[
-                  typography.h2,
+                  svaTypography.textStyle.heading2,
                   {
                     color: isSelected
                       ? newTheme.primary // Blue for selected
@@ -159,7 +159,7 @@ const HorizontalRuler = ({
               {isSelected && unit ? (
                 <Text
                   style={{
-                    ...typography.caption,
+                    ...svaTypography.textStyle.caption,
                     color: newTheme.primary,
                     marginTop: -4,
                   }}
@@ -194,7 +194,7 @@ const MeasurementCard = ({
   min?: number;
   max?: number;
 }) => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
 
   return (
     <View
@@ -218,18 +218,18 @@ const MeasurementCard = ({
         <View style={styles.cardTexts}>
           <Text
             style={[
-              typography.h3,
+              svaTypography.textStyle.title,
               { color: newTheme.textPrimary, fontSize: 18 },
             ]}
           >
             {label}
           </Text>
-          <Text style={[typography.caption, { color: newTheme.textSecondary }]}>
+          <Text style={[svaTypography.textStyle.caption, { color: newTheme.textSecondary }]}>
             {sublabel}
           </Text>
         </View>
         {/* Current Value Display (Static) */}
-        <Text style={[typography.h1, { color: newTheme.primary }]}>
+        <Text style={[svaTypography.textStyle.heading1, { color: newTheme.primary }]}>
           {value}
         </Text>
       </View>
@@ -252,7 +252,7 @@ const MeasurementCard = ({
 const BodyShapeCalculator = () => {
   const router = useRouter();
   const navigation = useNavigation();
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
 
   // Measurements State (Inches by default based on screenshot, but code uses cm? Screenshot says "INCHES")
   // The existing code used generic numbers. I'll stick to the existing code's logic but adapted.
@@ -370,7 +370,7 @@ const BodyShapeCalculator = () => {
             color={newTheme.textPrimary}
           />
         </TouchableOpacity>
-        <Text style={[typography.h3, { color: newTheme.textPrimary }]}>
+        <Text style={[svaTypography.textStyle.title, { color: newTheme.textPrimary }]}>
           Body Blueprint
         </Text>
         <TouchableOpacity
@@ -395,7 +395,7 @@ const BodyShapeCalculator = () => {
         <View style={styles.titleBlock}>
           <Text
             style={[
-              typography.h1,
+              svaTypography.textStyle.heading1,
               { color: newTheme.textPrimary, fontSize: 32 },
             ]}
           >
@@ -403,7 +403,7 @@ const BodyShapeCalculator = () => {
           </Text>
           <Text
             style={[
-              typography.body,
+              svaTypography.textStyle.body,
               { color: newTheme.textSecondary, marginTop: 4 },
             ]}
           >
@@ -469,7 +469,7 @@ const BodyShapeCalculator = () => {
           />
           <Text
             style={[
-              typography.caption,
+              svaTypography.textStyle.caption,
               { color: newTheme.textSecondary, flex: 1, lineHeight: 18 },
             ]}
           >
@@ -484,7 +484,7 @@ const BodyShapeCalculator = () => {
           <View style={[styles.resultCard, { borderColor: newTheme.primary }]}>
             <View style={styles.resultTextPart}>
               <Text style={styles.resultLabel}>YOUR SHAPE</Text>
-              <Text style={[typography.h2, { color: newTheme.textPrimary }]}>
+              <Text style={[svaTypography.textStyle.heading2, { color: newTheme.textPrimary }]}>
                 {result}
               </Text>
               {response?.shape && response.shape !== result && (
@@ -509,7 +509,7 @@ const BodyShapeCalculator = () => {
         >
           <Text
             style={[
-              typography.button,
+              svaTypography.textStyle.button,
               { color: "#FFFFFF", fontSize: 18, marginRight: 8 },
             ]}
           >

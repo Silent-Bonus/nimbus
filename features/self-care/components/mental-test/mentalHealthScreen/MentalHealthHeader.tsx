@@ -9,8 +9,8 @@ type Props = {
 };
 
 const MentalHealthHeader: React.FC<Props> = ({ onBack }) => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(newTheme, spacing, typography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = styling(newTheme, spacing, svaTypography);
 
   return (
     <View style={styles.container}>
@@ -28,7 +28,7 @@ const MentalHealthHeader: React.FC<Props> = ({ onBack }) => {
 
 export default MentalHealthHeader;
 
-const styling = (theme: any, spacing: any, typography: any) =>
+const styling = (theme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     container: {
       marginBottom: spacing.lg,
@@ -37,11 +37,11 @@ const styling = (theme: any, spacing: any, typography: any) =>
       marginBottom: spacing.md,
     },
     title: {
-      ...typography.h2,
+      ...svaTypography.textStyle.heading2,
       color: theme.textPrimary,
     },
     subtitle: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
       marginTop: spacing.xs,
     },

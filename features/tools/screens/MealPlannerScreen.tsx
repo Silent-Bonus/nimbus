@@ -45,7 +45,6 @@ import {
 import type {
   SvaColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
   SvaTokens,
 } from "@/theme/types";
@@ -58,8 +57,13 @@ type OverviewStat = {
 
 const DASHBOARD_RANGE_DAYS = 30;
 
-const formatMealSlotLabel = (value?: string | null) =>
-  value ? value.charAt(0).toUpperCase() + value.slice(1) : "None";
+const formatMealSlotLabel = (value: unknown) => {
+  if (typeof value !== "string" || !value.trim()) {
+    return "None";
+  }
+
+  return value.charAt(0).toUpperCase() + value.slice(1);
+};
 
 const getMealItems = (meal: Meal | Meal[] | null | undefined): Meal[] => {
   if (!meal) {
@@ -108,7 +112,7 @@ const applyGoalOverride = (
 };
 
 export const MealPlannerScreen = () => {
-  const { svaColors, spacing, typography, svaTypography, tokens } =
+  const { svaColors, spacing, svaTypography, tokens } =
     useContext(ThemeContext);
   const toast = useNimbusToast();
   const params = useLocalSearchParams<{
@@ -116,8 +120,8 @@ export const MealPlannerScreen = () => {
     protein?: string | string[];
   }>();
   const styles = useMemo(
-    () => styling(svaColors, spacing, typography, svaTypography, tokens),
-    [svaColors, spacing, typography, svaTypography, tokens]
+    () => styling(svaColors, spacing, svaTypography, tokens),
+    [svaColors, spacing, svaTypography, tokens]
   );
 
   const [dashboardData, setDashboardData] =
@@ -425,7 +429,7 @@ export const MealPlannerScreen = () => {
       void fetchDashboardData();
       void fetchDailyPlan(new Date(), false);
 
-      const mealLabel = mealType.charAt(0).toUpperCase() + mealType.slice(1);
+      const mealLabel = formatMealSlotLabel(mealType);
       toast.show({
         variant: "success",
         title:
@@ -597,8 +601,7 @@ export const MealPlannerScreen = () => {
 const styling = (
   theme: SvaColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: TypographyTokens,
   tokens: SvaTokens
 ) =>
   StyleSheet.create({
@@ -632,7 +635,7 @@ const styling = (
       gap: spacing.sm,
     },
     dashboardLoaderText: {
-      ...(svaTypography?.textStyle.body ?? typography.body),
+      ...(svaTypography?.textStyle.body ?? svaTypography.textStyle.body),
       color: theme.text.secondary,
       fontSize: 13,
       lineHeight: 18,
@@ -648,20 +651,20 @@ const styling = (
       gap: 6,
     },
     overviewEyebrow: {
-      ...(svaTypography?.textStyle.authTinyLabel ?? typography.smallCaption),
+      ...(svaTypography?.textStyle.authTinyLabel ?? svaTypography.textStyle.authTinyLabel),
       color: theme.text.secondary,
       fontSize: 11,
       letterSpacing: 1.4,
       textTransform: "uppercase",
     },
     overviewTitle: {
-      ...(svaTypography?.textStyle.title ?? typography.h3),
+      ...(svaTypography?.textStyle.title ?? svaTypography.textStyle.title),
       color: theme.text.primary,
       fontSize: 20,
       lineHeight: 24,
     },
     overviewCaption: {
-      ...(svaTypography?.textStyle.body ?? typography.body),
+      ...(svaTypography?.textStyle.body ?? svaTypography.textStyle.body),
       color: theme.text.secondary,
       fontSize: 13,
       lineHeight: 18,
@@ -678,7 +681,7 @@ const styling = (
       borderColor: theme.border.default,
     },
     overviewBadgeText: {
-      ...(svaTypography?.textStyle.bodyMedium ?? typography.bodyStrong),
+      ...(svaTypography?.textStyle.bodyMedium ?? svaTypography.textStyle.bodyMedium),
       color: theme.brand.primary,
       fontSize: 16,
     },
@@ -698,14 +701,14 @@ const styling = (
       justifyContent: "space-between",
     },
     overviewStatLabel: {
-      ...(svaTypography?.textStyle.authTinyLabel ?? typography.smallCaption),
+      ...(svaTypography?.textStyle.authTinyLabel ?? svaTypography.textStyle.authTinyLabel),
       color: theme.text.secondary,
       fontSize: 10,
       letterSpacing: 1.1,
       textTransform: "uppercase",
     },
     overviewStatValue: {
-      ...(svaTypography?.textStyle.bodyMedium ?? typography.bodyStrong),
+      ...(svaTypography?.textStyle.bodyMedium ?? svaTypography.textStyle.bodyMedium),
       color: theme.text.primary,
       fontSize: 16,
       lineHeight: 20,
@@ -740,7 +743,7 @@ const styling = (
       elevation: 8,
     },
     fabLabel: {
-      ...(svaTypography?.textStyle.authActionLabel ?? typography.bodyStrong),
+      ...(svaTypography?.textStyle.authActionLabel ?? svaTypography.textStyle.bodyMedium),
       color: theme.button.primary.text,
     },
   });

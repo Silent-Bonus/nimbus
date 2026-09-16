@@ -32,7 +32,6 @@ import {
 import { MealPlanDayCard } from "@/features/tools/components/meal-flow";
 import type {
   Spacing,
-  Typography,
   SvaColorSet,
   TypographyTokens,
   SvaTokens,
@@ -45,11 +44,11 @@ import {
 } from "@/features/tools/utils/mealPlannerUtils";
 
 export const MealWeeklyViewScreen = () => {
-  const { svaColors, spacing, typography, svaTypography, tokens } =
+  const { svaColors, spacing, svaTypography, tokens } =
     useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(svaColors, spacing, typography, svaTypography, tokens),
-    [svaColors, spacing, typography, svaTypography, tokens]
+    () => styling(svaColors, spacing, svaTypography, tokens),
+    [svaColors, spacing, svaTypography, tokens]
   );
   const toast = useNimbusToast();
 
@@ -298,8 +297,7 @@ export const MealWeeklyViewScreen = () => {
 const styling = (
   theme: SvaColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: TypographyTokens,
   tokens: SvaTokens
 ) =>
   StyleSheet.create({
@@ -317,7 +315,7 @@ const styling = (
       gap: spacing.md,
     },
     filterLabel: {
-      ...(svaTypography?.textStyle.authTinyLabel ?? typography.smallCaption),
+      ...(svaTypography?.textStyle.authTinyLabel ?? svaTypography.textStyle.authTinyLabel),
       color: theme.text.secondary,
       letterSpacing: 0.8,
       textTransform: "uppercase",
@@ -356,11 +354,11 @@ const styling = (
       gap: 2,
     },
     weekShareLabel: {
-      ...(svaTypography?.textStyle.bodyMedium ?? typography.bodyStrong),
+      ...(svaTypography?.textStyle.bodyMedium ?? svaTypography.textStyle.bodyMedium),
       color: theme.text.primary,
     },
     weekShareMeta: {
-      ...(svaTypography?.textStyle.caption ?? typography.caption),
+      ...(svaTypography?.textStyle.caption ?? svaTypography.textStyle.caption),
       color: theme.text.secondary,
     },
     scrollContent: {

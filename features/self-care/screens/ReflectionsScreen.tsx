@@ -36,7 +36,7 @@ import type {
 
 export const ReflectionsScreen = () => {
   const navigation = useNavigation();
-  const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme: theme, spacing, svaTypography } = useContext(ThemeContext);
 
   const [loading, setLoading] = useState(true);
   const [reflections, setReflections] = useState<ReflectionCard[]>([]);
@@ -44,8 +44,8 @@ export const ReflectionsScreen = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   const styles = useMemo(
-    () => styling(theme, spacing, typography),
-    [theme, spacing, typography]
+    () => styling(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
 
   useEffect(() => {
@@ -294,7 +294,7 @@ export const ReflectionsScreen = () => {
   );
 };
 
-const styling = (theme: any, spacing: any, typography: any) =>
+const styling = (theme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     screen: {
       paddingHorizontal: spacing.md,
@@ -327,7 +327,7 @@ const styling = (theme: any, spacing: any, typography: any) =>
       borderColor: theme.borderMuted ?? "rgba(255,255,255,0.05)",
     },
     filterTextInactive: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       letterSpacing: 1.1,
       color: theme.textSecondary,
     },
@@ -341,7 +341,7 @@ const styling = (theme: any, spacing: any, typography: any) =>
       marginBottom: spacing.md,
     },
     loadingText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       fontWeight: "700",
     },
@@ -366,13 +366,13 @@ const styling = (theme: any, spacing: any, typography: any) =>
       gap: 2,
     },
     sectionEyebrow: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.accent,
       textTransform: "uppercase",
       letterSpacing: 1.4,
     },
     sectionTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
     },
     sessionCountPill: {
@@ -387,12 +387,12 @@ const styling = (theme: any, spacing: any, typography: any) =>
       borderColor: theme.borderMuted ?? "rgba(255,255,255,0.06)",
     },
     sessionCountText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textPrimary,
       fontWeight: "700",
     },
     sectionSubtitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginBottom: spacing.md,
     },
@@ -408,14 +408,14 @@ const styling = (theme: any, spacing: any, typography: any) =>
       marginBottom: spacing.sm,
     },
     libraryEyebrow: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       textTransform: "uppercase",
       letterSpacing: 1.4,
       marginBottom: spacing.xs * 0.5,
     },
     libraryTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
     },
     emptyState: {
@@ -425,12 +425,12 @@ const styling = (theme: any, spacing: any, typography: any) =>
       paddingHorizontal: spacing.xl,
     },
     emptyTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       marginTop: spacing.md,
     },
     emptyText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
       marginTop: spacing.xs,
       textAlign: "center",

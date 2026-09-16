@@ -23,7 +23,7 @@ const ArticlePullQuote: React.FC<ArticlePullQuoteProps> = ({ quote }) => {
 const styling = (
   colors: SvaColorSet,
   spacing: Spacing,
-  typography?: TypographyTokens
+  svaTypography?: TypographyTokens
 ) =>
   StyleSheet.create({
     card: {
@@ -45,7 +45,7 @@ const styling = (
     quote: {
       flex: 1,
       fontFamily:
-        typography?.textStyle?.authTitle?.fontFamily ??
+        svaTypography?.textStyle?.authTitle?.fontFamily ??
         "CormorantGaramond_600SemiBold",
       fontSize: 22,
       lineHeight: 28,

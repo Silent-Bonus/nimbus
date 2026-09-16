@@ -9,7 +9,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "@/theme/types";
 
 export type TimerMode = "workout" | "rest";
 
@@ -26,10 +26,10 @@ const RestInfoRow: React.FC<RestInfoRowProps> = ({
   remainingSeconds,
   onPress,
 }) => {
-  const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme: theme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(theme, spacing, typography),
-    [theme, spacing, typography]
+    () => styling(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
 
   const isResting = mode === "rest";
@@ -60,7 +60,7 @@ const RestInfoRow: React.FC<RestInfoRowProps> = ({
   );
 };
 
-const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
+const styling = (theme: ColorSet, spacing: Spacing, svaTypography: any) =>
   StyleSheet.create({
     container: {
       flexDirection: "row",
@@ -89,12 +89,12 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       flex: 1,
     },
     timeLabel: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textPrimary,
       fontWeight: "700",
     },
     caption: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginTop: 2,
     },

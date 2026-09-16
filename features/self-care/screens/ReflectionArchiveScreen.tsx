@@ -43,7 +43,7 @@ const REFLECTION_SESSION_FILTERS: readonly {
 
 export const ReflectionArchiveScreen = () => {
   const navigation = useNavigation();
-  const { newTheme: theme, svaTypography, spacing, typography } =
+  const { newTheme: theme, svaTypography, spacing } =
     useContext(ThemeContext);
 
   const [loading, setLoading] = useState(true);
@@ -52,8 +52,8 @@ export const ReflectionArchiveScreen = () => {
     useState<ReflectionSessionFilter>("all");
 
   const styles = useMemo(
-    () => styling(theme, svaTypography, spacing, typography),
-    [theme, svaTypography, spacing, typography]
+    () => styling(theme, svaTypography, spacing),
+    [theme, svaTypography, spacing]
   );
 
   useEffect(() => {
@@ -213,7 +213,7 @@ export const ReflectionArchiveScreen = () => {
   );
 };
 
-const styling = (theme: any, svaTypography: any, spacing: any, typography: any) =>
+const styling = (theme: any, svaTypography: any, spacing: any) =>
   StyleSheet.create({
     screen: {
       paddingHorizontal: spacing.md,
@@ -262,7 +262,7 @@ const styling = (theme: any, svaTypography: any, spacing: any, typography: any) 
       marginBottom: spacing.md,
     },
     loadingText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       fontWeight: "700",
     },
@@ -273,7 +273,7 @@ const styling = (theme: any, svaTypography: any, spacing: any, typography: any) 
       marginBottom: spacing.md,
     },
     countText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       fontWeight: "700",
       letterSpacing: 0.2,
@@ -285,12 +285,12 @@ const styling = (theme: any, svaTypography: any, spacing: any, typography: any) 
       paddingHorizontal: spacing.xl,
     },
     emptyTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       marginTop: spacing.md,
     },
     emptyText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
       marginTop: spacing.xs,
       textAlign: "center",

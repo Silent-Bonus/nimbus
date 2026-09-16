@@ -9,8 +9,8 @@ type BenefitListProps = {
 };
 
 const BenefitList: React.FC<BenefitListProps> = ({ items }) => {
-  const { svaColors, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(svaColors, spacing, typography);
+  const { svaColors, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = styling(svaColors, spacing, svaTypography);
 
   return (
     <View style={styles.list}>
@@ -26,7 +26,7 @@ const BenefitList: React.FC<BenefitListProps> = ({ items }) => {
   );
 };
 
-const styling = (colors: any, spacing: any, typography: any) =>
+const styling = (colors: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     list: {
       gap: spacing.md,
@@ -48,7 +48,7 @@ const styling = (colors: any, spacing: any, typography: any) =>
       borderColor: "rgba(163, 190, 140, 0.08)",
     },
     text: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: colors.text.primary,
       flex: 1,
     },

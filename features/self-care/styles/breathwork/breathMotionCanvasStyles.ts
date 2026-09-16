@@ -1,10 +1,10 @@
 import { StyleSheet } from "react-native";
 
-import type { Typography } from "@/theme/types";
+import type { TypographyTokens } from "@/theme/types";
 
 export const BOX_FRAME_RADIUS = 28;
 
-export const makeBreathMotionCanvasStyles = (typography: Typography) =>
+export const makeBreathMotionCanvasStyles = (svaTypography: any) =>
   StyleSheet.create({
     motionStage: {
       alignItems: "center",
@@ -29,7 +29,7 @@ export const makeBreathMotionCanvasStyles = (typography: Typography) =>
     },
     edgeLabel: {
       position: "absolute",
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       textTransform: "uppercase",
       letterSpacing: 1.8,
       backgroundColor: "rgba(0,0,0,0.18)",
@@ -90,7 +90,7 @@ export const makeBreathMotionCanvasStyles = (typography: Typography) =>
       elevation: 5,
     },
     orbLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       position: "absolute",
       bottom: 18,
       letterSpacing: 2,

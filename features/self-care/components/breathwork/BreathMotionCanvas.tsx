@@ -11,7 +11,7 @@ import type {
   BreathPhase,
 } from "@/features/self-care/types/wellnessContentTypes";
 import { resolveBreathworkColor } from "@/features/self-care/utils/breathworkUtils";
-import type { Typography } from "@/theme/types";
+import type { TypographyTokens } from "@/theme/types";
 
 type BreathMotionCanvasProps = {
   motionVariant: BreathMotionVariant;
@@ -23,7 +23,7 @@ type BreathMotionCanvasProps = {
   accent: string;
   motionFrameBorder: string;
   shadow: string;
-  typography: Typography;
+  svaTypography: TypographyTokens;
   textSecondary: string;
   surface: string;
   motionCoreStart: string;
@@ -63,14 +63,14 @@ const BreathMotionCanvas = ({
   accent,
   motionFrameBorder,
   shadow,
-  typography,
+  svaTypography,
   textSecondary,
   surface,
   motionCoreStart,
   motionCoreEnd,
   motionGlow,
 }: BreathMotionCanvasProps) => {
-  const s = useMemo(() => makeBreathMotionCanvasStyles(typography), [typography]);
+  const s = useMemo(() => makeBreathMotionCanvasStyles(svaTypography), [svaTypography]);
   const frameSize = Math.max(220, motionSize - 40);
   const ballSize = 26;
   const cornerInset = Math.max(0, BOX_FRAME_RADIUS - ballSize / 2);

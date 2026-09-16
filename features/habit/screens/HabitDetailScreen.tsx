@@ -21,7 +21,7 @@ import { DeleteHabitModal } from "@/features/habit/components/habit-details/Dele
 export const HabitDetailScreen = () => {
   const router = useRouter();
   const navigation = useNavigation();
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
 
   const { id, date } = useLocalSearchParams<{
     id: string | string[];

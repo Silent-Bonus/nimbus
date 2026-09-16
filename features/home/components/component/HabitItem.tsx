@@ -11,7 +11,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import ThemeContext from "@/contexts/ThemeContext";
 import { router } from "expo-router";
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "@/theme/types";
 
 interface HabitItemProps {
   selectedDate: string;
@@ -29,6 +29,9 @@ interface HabitItemProps {
   // onHabitDelete:() => {};
   onToggle: (id: string, actual_count: any) => void;
 }
+
+const isEmojiIcon = (value: string) =>
+  value.length <= 2 || /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(value);
 
 const formatMetric = (metric: any) => {
   const count = metric?.count ?? "--";
@@ -56,10 +59,10 @@ export const HabitItemCardLegacy: React.FC<HabitItemProps> = ({
   color,
   onToggle,
 }) => {
-  const { newTheme, spacing, typography } = React.useContext(ThemeContext);
+  const { newTheme, spacing, svaTypography } = React.useContext(ThemeContext);
   const styles = useMemo(
-    () => legacyStyling(newTheme, spacing, typography),
-    [newTheme, spacing, typography]
+    () => legacyStyling(newTheme, spacing, svaTypography),
+    [newTheme, spacing, svaTypography]
   );
 
   const handleToggle = (e: GestureResponderEvent) => {
@@ -150,10 +153,10 @@ const HabitItemCard: React.FC<HabitItemProps> = ({
   color,
   onToggle,
 }) => {
-  const { newTheme, spacing, typography } = React.useContext(ThemeContext);
+  const { newTheme, spacing, svaTypography } = React.useContext(ThemeContext);
   const styles = useMemo(
-    () => protocolStyling(newTheme, spacing, typography),
-    [newTheme, spacing, typography]
+    () => protocolStyling(newTheme, spacing, svaTypography),
+    [newTheme, spacing, svaTypography]
   );
 
   const handleToggle = (e: GestureResponderEvent) => {
@@ -206,7 +209,7 @@ const HabitItemCard: React.FC<HabitItemProps> = ({
         );
       }
 
-      if (icon.length <= 2) {
+      if (isEmojiIcon(icon)) {
         return <Text style={styles.iconEmoji}>{icon}</Text>;
       }
 
@@ -305,7 +308,7 @@ const HabitItemCard: React.FC<HabitItemProps> = ({
   );
 };
 
-const protocolStyling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
+const protocolStyling = (theme: ColorSet, spacing: Spacing, svaTypography: TypographyTokens) =>
   StyleSheet.create({
     card: {
       position: "relative",
@@ -356,7 +359,7 @@ const protocolStyling = (theme: ColorSet, spacing: Spacing, typography: Typograp
       gap: 2,
     },
     title: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       fontSize: 17,
       lineHeight: 21,
       fontWeight: "800",
@@ -364,7 +367,7 @@ const protocolStyling = (theme: ColorSet, spacing: Spacing, typography: Typograp
       letterSpacing: 0.1,
     },
     subtitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       fontSize: 11,
       lineHeight: 15,
       color: theme.textSecondary,
@@ -399,7 +402,7 @@ const protocolStyling = (theme: ColorSet, spacing: Spacing, typography: Typograp
       borderWidth: 1,
     },
     actionButtonText: {
-      ...typography.button,
+      ...svaTypography.textStyle.button,
       fontSize: 10,
       lineHeight: 12,
       fontWeight: "800",
@@ -430,7 +433,7 @@ const protocolStyling = (theme: ColorSet, spacing: Spacing, typography: Typograp
     },
   });
 
-const legacyStyling = (theme: any, spacing: any, typography: any) =>
+const legacyStyling = (theme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     card: {
       flexDirection: "row",
@@ -464,17 +467,17 @@ const legacyStyling = (theme: any, spacing: any, typography: any) =>
       justifyContent: "center",
     },
     title: {
-      ...typography.bodyLarge,
+      ...svaTypography.textStyle.body,
       fontWeight: "600",
       color: theme.textPrimary,
     },
     subtitle: {
-      ...typography.bodySmall,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginTop: 2,
     },
     description: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textMuted ?? theme.textSecondary,
       marginTop: 2,
     },

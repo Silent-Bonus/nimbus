@@ -25,15 +25,15 @@ import {
 import type { ColorSet, Spacing } from "@/theme/types";
 
 export default function CalorieThresholdScreen() {
-  const { newTheme, spacing, typography, svaTypography } =
+  const { newTheme, spacing, svaTypography } =
     useContext(ThemeContext);
   const { width } = useWindowDimensions();
   const params = useLocalSearchParams();
   const [savedVitalsContext, setSavedVitalsContext] =
     useState<BodyVitalsContext | null>(null);
   const t = useMemo(
-    () => resolveBodyVitalsTypography(svaTypography, typography),
-    [svaTypography, typography]
+    () => resolveBodyVitalsTypography(svaTypography),
+    [svaTypography]
   );
 
   useEffect(() => {

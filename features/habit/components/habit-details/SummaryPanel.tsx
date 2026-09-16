@@ -12,10 +12,10 @@ interface Props {
 }
 
 export default function SummaryPanel({ data }: Props) {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(newTheme, spacing, typography),
-    [newTheme, spacing, typography]
+    () => styling(newTheme, spacing, svaTypography),
+    [newTheme, spacing, svaTypography]
   );
 
   const formatValue = (item: SummaryItem): string => {
@@ -58,7 +58,7 @@ export default function SummaryPanel({ data }: Props) {
   );
 }
 
-const styling = (theme: any, spacing: any, typography: any) =>
+const styling = (theme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     container: {
       flexDirection: "row",
@@ -81,12 +81,12 @@ const styling = (theme: any, spacing: any, typography: any) =>
       elevation: 3,
     },
     label: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginBottom: spacing.xs,
     },
     value: {
-      ...typography.bodyLarge,
+      ...svaTypography.bodyLarge,
       fontWeight: "700",
       color: theme.textPrimary,
     },

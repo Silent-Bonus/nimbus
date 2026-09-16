@@ -29,14 +29,14 @@ const RecipeDetailSection: React.FC<RecipeDetailSectionProps> = ({
 const styling = (
   colors: SvaColorSet,
   spacing: Spacing,
-  typography?: TypographyTokens
+  svaTypography?: TypographyTokens
 ) =>
   StyleSheet.create({
     wrap: {
       marginBottom: spacing.xl,
     },
     eyebrow: {
-      ...typography?.textStyle?.authTinyLabel,
+      ...svaTypography?.textStyle?.authTinyLabel,
       color: colors.brand.primary,
       fontSize: 10,
       lineHeight: 12,

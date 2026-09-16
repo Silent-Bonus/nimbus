@@ -17,10 +17,10 @@ export default function HabitDetailsPanel({
   metric_count,
   metric_unit,
 }: Props) {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(newTheme, spacing, typography),
-    [newTheme, spacing, typography]
+    () => styling(newTheme, spacing, svaTypography),
+    [newTheme, spacing, svaTypography]
   );
 
   // Only show fields that are NOT already in the header:
@@ -71,7 +71,7 @@ function DetailRow({ label, value, styles }: DetailRowProps) {
   );
 }
 
-const styling = (theme: any, spacing: any, typography: any) =>
+const styling = (theme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     card: {
       backgroundColor: theme.surface,
@@ -87,11 +87,11 @@ const styling = (theme: any, spacing: any, typography: any) =>
       marginBottom: spacing.sm,
     },
     label: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
     },
     value: {
-      ...typography.bodyMedium,
+      ...svaTypography.bodyMedium,
       fontWeight: "600",
       color: theme.textPrimary,
       marginLeft: spacing.md,

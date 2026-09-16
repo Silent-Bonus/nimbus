@@ -4,9 +4,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
 import ThemeContext from "../../../../contexts/ThemeContext";
-import type { ColorSet, Spacing, Typography } from "../../../../theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "../../../../theme/types";
 
-const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
+const makeStyles = (theme: ColorSet, spacing: Spacing, svaTypography: any) =>
   StyleSheet.create({
     card: {
       marginTop: spacing.lg,
@@ -39,26 +39,26 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       borderColor: "rgba(121,169,242,0.14)",
     },
     sectionLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       opacity: 0.78,
       letterSpacing: 1.7,
       textTransform: "uppercase",
     },
     tipQuote: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       fontStyle: "italic",
-      lineHeight: typography.h3.lineHeight,
+      lineHeight: svaTypography.textStyle.title.lineHeight,
       letterSpacing: 0,
     },
   });
 
 export const HydrationTipCard = () => {
-  const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme: theme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => makeStyles(theme, spacing, typography),
-    [theme, spacing, typography]
+    () => makeStyles(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
   const accent = theme.chart2 ?? theme.accent;
 

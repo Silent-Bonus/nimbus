@@ -51,8 +51,8 @@ const FullScreenAudioPlayer: React.FC<FullScreenAudioPlayerProps> = ({
   );
   const [isLoading, setIsLoading] = useState(false);
 
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(newTheme, spacing, typography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = styling(newTheme, spacing, svaTypography);
 
   const isPlaying = playbackStatus?.isLoaded && playbackStatus.isPlaying;
   const positionMillis = playbackStatus?.isLoaded
@@ -246,7 +246,7 @@ const FullScreenAudioPlayer: React.FC<FullScreenAudioPlayerProps> = ({
 
 export default FullScreenAudioPlayer;
 
-const styling = (newTheme: any, spacing: any, typography: any) =>
+const styling = (newTheme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -283,7 +283,7 @@ const styling = (newTheme: any, spacing: any, typography: any) =>
       marginRight: spacing.sm,
     },
     topTitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       flex: 1,
       color: "rgba(255,255,255,0.9)",
       fontWeight: "600",
@@ -326,14 +326,14 @@ const styling = (newTheme: any, spacing: any, typography: any) =>
       marginBottom: spacing.md,
     },
     title: {
-      ...typography.h4,
+      ...svaTypography.textStyle.authLabel,
       textAlign: "center",
       color: "#FFFFFF",
       fontWeight: "700",
       marginBottom: 4,
     },
     author: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: "rgba(255,255,255,0.75)",
     },
 
@@ -350,7 +350,7 @@ const styling = (newTheme: any, spacing: any, typography: any) =>
       marginTop: 4,
     },
     timeText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: "rgba(255,255,255,0.7)",
       fontSize: 12,
     },

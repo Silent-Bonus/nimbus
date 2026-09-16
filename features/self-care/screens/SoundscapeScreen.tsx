@@ -367,7 +367,7 @@ export const SoundscapeScreen = () => {
 
 const styling = (
   colors: SvaColorSet,
-  typography: TypographyTokens | undefined,
+  svaTypography: TypographyTokens | undefined,
   spacing: Spacing
 ) =>
   StyleSheet.create({
@@ -383,7 +383,7 @@ const styling = (
       marginBottom: spacing.sm,
     },
     headerSubtitle: {
-      ...(typography?.textStyle?.authTinyLabel ?? {}),
+      ...(svaTypography?.textStyle?.authTinyLabel ?? {}),
       lineHeight: 16,
       minHeight: 32,
       textTransform: "uppercase",
@@ -401,7 +401,7 @@ const styling = (
       paddingRight: spacing.md,
     },
     filterLabel: {
-      ...(typography?.textStyle?.authTinyLabel ?? {}),
+      ...(svaTypography?.textStyle?.authTinyLabel ?? {}),
       fontSize: 11,
       lineHeight: 16,
       letterSpacing: 1.4,
@@ -463,7 +463,7 @@ const styling = (
       opacity: 0.92,
     },
     favoriteTagText: {
-      ...(typography?.textStyle?.authTinyLabel ?? {}),
+      ...(svaTypography?.textStyle?.authTinyLabel ?? {}),
       fontSize: 9.5,
       lineHeight: 12,
       letterSpacing: 1.1,
@@ -477,7 +477,7 @@ const styling = (
       paddingHorizontal: spacing.lg,
     },
     emptyTitle: {
-      ...(typography?.textStyle?.authTitle ?? {}),
+      ...(svaTypography?.textStyle?.authTitle ?? {}),
       fontSize: 22,
       lineHeight: 26,
       color: colors.text.primary,
@@ -485,7 +485,7 @@ const styling = (
       marginBottom: spacing.xs,
     },
     emptySubtitle: {
-      ...(typography?.textStyle?.body ?? {}),
+      ...(svaTypography?.textStyle?.body ?? {}),
       color: colors.text.secondary,
       textAlign: "center",
     },

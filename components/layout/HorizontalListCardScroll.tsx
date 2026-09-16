@@ -44,7 +44,7 @@ const HorizontalListCardScroll: React.FC<PropType> = (props) => {
     chunkedData.push(itemList.slice(i, i + rowCount));
   }
 
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
 
   // compute section-specific background variations
   const { outerBg, innerBg } = getVariantColors(
@@ -53,7 +53,7 @@ const HorizontalListCardScroll: React.FC<PropType> = (props) => {
     backgroundColor
   );
 
-  const styles = styling(newTheme, spacing, typography);
+  const styles = styling(newTheme, spacing, svaTypography);
 
   const handleItemClick = (title: string, entry: any) => {
     const lowerTitle = title.toLowerCase();
@@ -266,7 +266,7 @@ const getVariantColors = (
   };
 };
 
-const styling = (newTheme: any, spacing: any, typography: any) =>
+const styling = (newTheme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     card: {
       marginVertical: spacing.lg,
@@ -285,16 +285,16 @@ const styling = (newTheme: any, spacing: any, typography: any) =>
       marginBottom: spacing.xs,
     },
     cardTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: newTheme.textPrimary,
     },
     cardDescription: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: newTheme.textSecondary,
       marginBottom: spacing.md,
     },
     allButton: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: newTheme.accent,
       fontWeight: "600",
     },
@@ -324,12 +324,12 @@ const styling = (newTheme: any, spacing: any, typography: any) =>
       marginLeft: spacing.sm,
     },
     itemTitle: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: newTheme.textPrimary,
       marginBottom: 4,
     },
     itemDuration: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: newTheme.textSecondary,
     },
     bottomPlayer: {
@@ -353,12 +353,12 @@ const styling = (newTheme: any, spacing: any, typography: any) =>
       marginLeft: spacing.sm,
     },
     playerTitle: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: newTheme.textPrimary,
       fontWeight: "600",
     },
     playerDuration: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: newTheme.textSecondary,
     },
   });

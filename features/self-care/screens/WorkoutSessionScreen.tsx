@@ -31,7 +31,6 @@ import { type WorkoutGuideLevel } from "@/features/self-care/utils/workoutGuide"
 import type {
   ColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 
@@ -67,11 +66,11 @@ const buildWorkoutFallback = (
 
 export const WorkoutSessionScreen: React.FC = () => {
   const navigation = useNavigation();
-  const { newTheme: theme, svaTypography, spacing, typography } =
+  const { newTheme: theme, svaTypography, spacing } =
     useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(theme, svaTypography, spacing, typography),
-    [theme, svaTypography, spacing, typography]
+    () => styling(theme, svaTypography, spacing),
+    [theme, svaTypography, spacing]
   );
 
   const params = useLocalSearchParams<WorkoutSessionParams>();
@@ -295,9 +294,9 @@ export const WorkoutSessionScreen: React.FC = () => {
 
 const styling = (
   theme: ColorSet,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: any | undefined,
   spacing: Spacing,
-  typography: Typography
+
 ) =>
   StyleSheet.create({
     screen: {
@@ -312,7 +311,7 @@ const styling = (
     headerTitle: {
       fontFamily:
         svaTypography?.textStyle.displayMedium.fontFamily ??
-        typography.h2.fontFamily,
+        svaTypography.textStyle.heading2.fontFamily,
       fontSize: 30,
       lineHeight: 36,
       letterSpacing: -0.6,
@@ -344,12 +343,12 @@ const styling = (
       paddingHorizontal: spacing.xl,
     },
     emptyTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       textAlign: "center",
     },
     emptyText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
       marginTop: spacing.sm,
       textAlign: "center",

@@ -189,7 +189,7 @@ const s = StyleSheet.create({
   label: {
     ...SVATypography.textStyle.inputLabel,
     fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: SVATypography.fontFamily.bodyStrong,
     fontWeight: "600",
     letterSpacing: 2.2,
     marginBottom: 12,
@@ -211,7 +211,7 @@ const s = StyleSheet.create({
     minHeight: 22,
     paddingVertical: 0,
     ...SVATypography.textStyle.body,
-    fontFamily: "Inter_400Regular",
+    fontFamily: SVATypography.fontFamily.body,
     fontSize: 16,
     fontWeight: "400",
   },
@@ -226,6 +226,6 @@ const s = StyleSheet.create({
   feedback: {
     marginTop: 8,
     ...SVATypography.textStyle.caption,
-    fontFamily: "Inter_400Regular",
+    fontFamily: SVATypography.fontFamily.body,
   },
 });

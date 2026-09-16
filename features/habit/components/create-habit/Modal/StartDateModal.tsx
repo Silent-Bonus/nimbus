@@ -67,9 +67,9 @@ export default function StartDateModal({
   title = "Start date",
   subtitle = "Choose when this habit begins — and optionally repeats.",
 }: HabitDateModalProps) {
-  const { newTheme, spacing, svaTypography, typography } =
+  const { newTheme, spacing, svaTypography } =
     useContext(ThemeContext);
-  const bodyTextStyle = svaTypography?.textStyle?.body ?? typography.body;
+  const bodyTextStyle = svaTypography?.textStyle?.body ?? svaTypography.textStyle.body;
   const styles = useMemo(
     () => styling(newTheme, spacing, bodyTextStyle, svaTypography),
     [newTheme, spacing, bodyTextStyle, svaTypography]

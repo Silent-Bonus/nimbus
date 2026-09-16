@@ -80,9 +80,9 @@ const HabitTagsModal: React.FC<TaskTagsModalProps> = ({
     onClose();
   };
 
-  const { newTheme, spacing, svaTypography, typography } =
+  const { newTheme, spacing, svaTypography } =
     useContext(ThemeContext);
-  const bodyTextStyle = svaTypography?.textStyle?.body ?? typography.body;
+  const bodyTextStyle = svaTypography?.textStyle?.body ?? svaTypography.textStyle.body;
   const styles = useMemo(
     () => styling(newTheme, spacing, bodyTextStyle),
     [newTheme, spacing, bodyTextStyle]

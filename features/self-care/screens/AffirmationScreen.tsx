@@ -42,7 +42,6 @@ import type {
 import type {
   ColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 
@@ -59,7 +58,7 @@ export const AffirmationScreen = () => {
     newTheme: theme,
     svaTypography,
     spacing,
-    typography,
+
   } = useContext(ThemeContext);
 
   const [affirmationDeck, setAffirmationDeck] = useState<AffirmationDeck>(
@@ -75,8 +74,8 @@ export const AffirmationScreen = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const styles = useMemo(
-    () => styling(theme, svaTypography, spacing, typography),
-    [theme, svaTypography, spacing, typography]
+    () => styling(theme, svaTypography, spacing),
+    [theme, svaTypography, spacing]
   );
 
   useLayoutEffect(() => {
@@ -394,9 +393,9 @@ export const AffirmationScreen = () => {
 
 const styling = (
   theme: ColorSet,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: any | undefined,
   spacing: Spacing,
-  typography: Typography
+
 ) =>
   StyleSheet.create({
     screen: {
@@ -458,7 +457,7 @@ const styling = (
       marginBottom: 4,
     },
     sectionTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
     },
     countPill: {
@@ -488,13 +487,13 @@ const styling = (
       paddingHorizontal: spacing.xl,
     },
     emptyTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       marginTop: spacing.md,
       textAlign: "center",
     },
     emptyText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
       marginTop: spacing.xs,
       textAlign: "center",
@@ -516,12 +515,12 @@ const styling = (
       marginBottom: spacing.md,
     },
     stateTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       textAlign: "center",
     },
     stateText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
       textAlign: "center",
       marginTop: spacing.sm,

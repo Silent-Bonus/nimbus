@@ -31,7 +31,7 @@ import {
   toHydrationMl,
   type WeeklyPoint,
 } from "../utils/hydration";
-import type { ColorSet, Spacing, Typography } from "../../../theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "../../../theme/types";
 
 const getErrorMessage = (error: unknown) => {
   if (typeof error === "string") {
@@ -54,10 +54,10 @@ const getErrorMessage = (error: unknown) => {
 
 export const HydrationCheckInScreen = () => {
   const navigation = useNavigation();
-  const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme: theme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => makeStyles(theme, spacing, typography),
-    [theme, spacing, typography]
+    () => makeStyles(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
 
   const { id, date } = useLocalSearchParams<{ id?: string; date?: string }>();
@@ -195,7 +195,7 @@ export const HydrationCheckInScreen = () => {
   );
 };
 
-const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
+const makeStyles = (theme: ColorSet, spacing: Spacing, svaTypography: any) =>
   StyleSheet.create({
     scrollContent: {
       paddingHorizontal: spacing.md,
@@ -210,7 +210,7 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       paddingTop: spacing.md,
     },
     refreshingText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
     },
     bottomSpacer: {

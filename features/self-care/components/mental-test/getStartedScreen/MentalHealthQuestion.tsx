@@ -54,10 +54,10 @@ const MentalHealthQuestion: React.FC<Props> = ({
     null
   );
 
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(newTheme, spacing, typography),
-    [newTheme, spacing, typography]
+    () => styling(newTheme, spacing, svaTypography),
+    [newTheme, spacing, svaTypography]
   );
 
   const isLast = currentStep === totalSteps;
@@ -167,7 +167,7 @@ export default MentalHealthQuestion;
 
 // ───────────────────────── styles ─────────────────────────
 
-const styling = (t: any, spacing: any, typography: any) =>
+const styling = (t: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     root: {
       flex: 1,
@@ -192,7 +192,7 @@ const styling = (t: any, spacing: any, typography: any) =>
       marginBottom: spacing.lg,
     },
     progressLabel: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: t.textSecondary,
       marginBottom: spacing.xs,
     },
@@ -205,12 +205,12 @@ const styling = (t: any, spacing: any, typography: any) =>
       marginTop: spacing.md,
     },
     helperText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: t.textSecondary,
       marginBottom: spacing.sm,
     },
     questionText: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: t.textPrimary,
       marginBottom: spacing.lg,
       lineHeight: 28,
@@ -247,7 +247,7 @@ const styling = (t: any, spacing: any, typography: any) =>
       shadowOffset: { width: 0, height: 6 },
     },
     optionText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       fontSize: 17,
       color: t.textPrimary,
     },

@@ -107,7 +107,7 @@ function getErrorMessage(error: unknown) {
 }
 
 export default function ContactUsModal({ visible, onClose }: Props) {
-  const { svaColors, svaTypography, typography } = useContext(ThemeContext);
+  const { svaColors, svaTypography } = useContext(ThemeContext);
   const insets = useSafeAreaInsets();
 
   const [category, setCategory] = useState<ContactCategory>("BUG");
@@ -135,21 +135,16 @@ export default function ContactUsModal({ visible, onClose }: Props) {
     () => ({
       titleFamily:
         svaTypography?.textStyle.authTitle.fontFamily ??
-        typography.h2.fontFamily ??
+        svaTypography.textStyle.heading2.fontFamily ??
         "CormorantGaramond_500Medium",
       bodyFamily:
-        svaTypography?.textStyle.body.fontFamily ??
-        typography.body.fontFamily ??
-        "Outfit_400Regular",
+        svaTypography.fontFamily.body,
       bodyStrongFamily:
-        svaTypography?.textStyle.bodyMedium.fontFamily ??
-        typography.bodyStrong.fontFamily ??
-        "Outfit_600SemiBold",
+        svaTypography.fontFamily.bodyMedium,
       monoFamily:
-        svaTypography?.textStyle.authMonoLabel.fontFamily ??
-        "SpaceMono-Regular",
+        svaTypography.fontFamily.mono,
     }),
-    [svaTypography, typography]
+    [svaTypography]
   );
 
   const styles: ContactUsStyles = useMemo(

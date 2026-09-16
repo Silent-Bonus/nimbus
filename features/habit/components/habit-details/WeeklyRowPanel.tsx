@@ -17,10 +17,10 @@ export default function WeeklyHabitRow({
   data,
   onToggle,
 }: Props) {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(newTheme, spacing, typography),
-    [newTheme, spacing, typography]
+    () => styling(newTheme, spacing, svaTypography),
+    [newTheme, spacing, svaTypography]
   );
 
   const WEEK_ORDER = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -77,7 +77,7 @@ export default function WeeklyHabitRow({
   );
 }
 
-const styling = (newTheme: any, spacing: any, typography: any) =>
+const styling = (newTheme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     card: {
       backgroundColor: newTheme.surface,
@@ -110,7 +110,7 @@ const styling = (newTheme: any, spacing: any, typography: any) =>
       marginRight: spacing.sm,
     },
     habitName: {
-      ...typography.bodyMedium,
+      ...svaTypography.bodyMedium,
       color: newTheme.textPrimary,
       fontWeight: "600",
       flexShrink: 1,
@@ -122,7 +122,7 @@ const styling = (newTheme: any, spacing: any, typography: any) =>
       backgroundColor: newTheme.surfaceSoft ?? newTheme.disabled,
     },
     frequencyText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: newTheme.textSecondary,
     },
 
@@ -173,7 +173,7 @@ const styling = (newTheme: any, spacing: any, typography: any) =>
     dayLabel: {
       width: 32,
       textAlign: "center",
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: newTheme.textSecondary,
     },
   });

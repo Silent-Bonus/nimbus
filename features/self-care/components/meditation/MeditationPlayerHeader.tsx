@@ -44,7 +44,7 @@ export default function MeditationPlayerHeader({
 
 const styling = (
   theme: ColorSet,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: any | undefined,
   spacing: Spacing
 ) =>
   StyleSheet.create({

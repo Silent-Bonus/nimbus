@@ -21,13 +21,13 @@ import { resolveBodyVitalsTypography } from "@/features/self-care/utils/bodyVita
 import type { ColorSet, Spacing } from "@/theme/types";
 
 export const ProteinCalculatorScreen = () => {
-  const { newTheme, spacing, typography, svaTypography } =
+  const { newTheme, spacing, svaTypography } =
     useContext(ThemeContext);
   const params = useLocalSearchParams();
   const { width } = useWindowDimensions();
   const t = useMemo(
-    () => resolveBodyVitalsTypography(svaTypography, typography),
-    [svaTypography, typography]
+    () => resolveBodyVitalsTypography(svaTypography),
+    [svaTypography]
   );
 
   const proteinPanelData = useMemo(

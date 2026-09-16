@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import AppHeader from "@/components/layout/AppHeader";
 import ThemeContext from "@/contexts/ThemeContext";
+import { SVATypography } from "@/theme/typography";
 import { ROUTES } from "@/constants/routes";
 import {
   getRecipeDetails,
@@ -433,7 +434,7 @@ const RecipeDetailScreen: React.FC = () => {
 const styling = (
   colors: SvaColorSet,
   spacing: Spacing,
-  typography?: TypographyTokens
+  svaTypography?: TypographyTokens
 ) =>
   StyleSheet.create({
     screen: {
@@ -453,7 +454,7 @@ const styling = (
     },
     headerTitle: {
       fontFamily:
-        typography?.textStyle?.authTitle?.fontFamily ??
+        svaTypography?.textStyle?.authTitle?.fontFamily ??
         "CormorantGaramond_600SemiBold",
       fontSize: 24,
       lineHeight: 28,
@@ -479,7 +480,7 @@ const styling = (
       fontSize: 15,
       lineHeight: 24,
       fontFamily:
-        typography?.textStyle?.authBody?.fontFamily ?? "Outfit_400Regular",
+        svaTypography?.textStyle?.authBody?.fontFamily ?? SVATypography.fontFamily.body,
     },
   });
 

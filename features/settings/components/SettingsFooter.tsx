@@ -1,6 +1,7 @@
 import React, { useContext } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import ThemeContext from "@/contexts/ThemeContext";
+import { SVATypography } from "@/theme/typography";
 
 type Props = {
   label?: string;
@@ -11,7 +12,7 @@ export default function SettingsFooter({
 }: Props) {
   const { newTheme, svaTypography } = useContext(ThemeContext);
   const monoFamily =
-    svaTypography?.textStyle.authMonoLabel.fontFamily ?? "SpaceMono-Regular";
+    svaTypography?.textStyle.authMonoLabel.fontFamily ?? SVATypography.fontFamily.mono;
 
   return (
     <View style={styles.wrap}>

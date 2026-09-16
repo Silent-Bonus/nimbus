@@ -31,19 +31,18 @@ export default function OverviewSectionHeader({
   style,
   titleStyle,
 }: OverviewSectionHeaderProps) {
-  const { svaColors, svaTypography, typography, spacing } = useContext(ThemeContext);
+  const { svaColors, svaTypography, spacing } = useContext(ThemeContext);
 
   const fonts = useMemo<OverviewTypography>(
     () => ({
       titleFamily:
         svaTypography?.textStyle.authTitle.fontFamily ??
-        typography.h2.fontFamily ??
+        svaTypography.textStyle.heading2.fontFamily ??
         "CormorantGaramond_500Medium",
       monoFamily:
-        svaTypography?.textStyle.authMonoLabel.fontFamily ??
-        "SpaceMono-Regular",
+        svaTypography.fontFamily.mono,
     }),
-    [svaTypography, typography]
+    [svaTypography]
   );
 
   const styles: OverviewSectionHeaderStyles = useMemo(

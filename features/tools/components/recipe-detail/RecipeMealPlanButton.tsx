@@ -37,7 +37,7 @@ const RecipeMealPlanButton: React.FC<RecipeMealPlanButtonProps> = ({
 const styling = (
   colors: SvaColorSet,
   spacing: Spacing,
-  typography?: TypographyTokens
+  svaTypography?: TypographyTokens
 ) =>
   StyleSheet.create({
     button: {
@@ -61,7 +61,7 @@ const styling = (
       transform: [{ scale: 0.99 }],
     },
     label: {
-      ...typography?.textStyle?.authLabelStrong,
+      ...svaTypography?.textStyle?.authLabelStrong,
       color: colors.text.primary,
       fontSize: 13,
       lineHeight: 16,

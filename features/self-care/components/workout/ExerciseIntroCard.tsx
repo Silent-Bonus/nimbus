@@ -13,7 +13,6 @@ import ThemeContext from "@/contexts/ThemeContext";
 import type {
   ColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 
@@ -34,11 +33,11 @@ const ExerciseIntroCard: React.FC<ExerciseIntroCardProps> = ({
   subtitle,
   onPress,
 }) => {
-  const { newTheme: theme, svaTypography, spacing, typography } =
+  const { newTheme: theme, svaTypography, spacing } =
     useContext(ThemeContext);
   const styles = useMemo(
-    () => styling(theme, svaTypography, spacing, typography),
-    [theme, svaTypography, spacing, typography]
+    () => styling(theme, svaTypography, spacing),
+    [theme, svaTypography, spacing]
   );
 
   const content = (
@@ -112,9 +111,9 @@ const normalizeImageSource = (
 
 const styling = (
   theme: ColorSet,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: any | undefined,
   spacing: Spacing,
-  typography: Typography
+
 ) =>
   StyleSheet.create({
     card: {
@@ -159,7 +158,7 @@ const styling = (
     eyebrow: {
       fontFamily:
         svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.caption.fontFamily,
+        svaTypography.textStyle.caption.fontFamily,
       color: theme.textSecondary,
       fontSize: 11,
       letterSpacing: 1.6,
@@ -168,7 +167,7 @@ const styling = (
     title: {
       fontFamily:
         svaTypography?.textStyle.displayMedium.fontFamily ??
-        typography.h4.fontFamily,
+        svaTypography.textStyle.authLabel.fontFamily,
       color: theme.textPrimary,
       fontSize: 18,
       lineHeight: 22,
@@ -182,12 +181,12 @@ const styling = (
       marginTop: spacing.sm,
     },
     repsText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textPrimary,
       fontWeight: "700",
     },
     description: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       lineHeight: 19,
       marginTop: spacing.xs,
@@ -205,7 +204,7 @@ const styling = (
       marginTop: spacing.sm,
     },
     ctaText: {
-      ...typography.button,
+      ...svaTypography.textStyle.button,
       color: theme.textPrimary,
     },
   });

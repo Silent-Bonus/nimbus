@@ -31,8 +31,8 @@ const BottomPlayer: React.FC<BottomPlayerProps> = ({
   onPlayPause,
   onClose,
 }) => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(newTheme, spacing, typography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = styling(newTheme, spacing, svaTypography);
 
   return (
     <View style={styles.wrapper}>
@@ -76,7 +76,7 @@ const BottomPlayer: React.FC<BottomPlayerProps> = ({
   );
 };
 
-const styling = (newTheme: any, spacing: any, typography: any) =>
+const styling = (newTheme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     wrapper: {
       position: "absolute",
@@ -112,12 +112,12 @@ const styling = (newTheme: any, spacing: any, typography: any) =>
       marginRight: spacing.xs,
     },
     title: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: newTheme.textPrimary,
       fontWeight: "600",
     },
     subtitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: newTheme.textSecondary,
       marginTop: 2,
     },

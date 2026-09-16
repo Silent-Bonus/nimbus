@@ -13,8 +13,8 @@ export default function ProgressPill({
   style,
   textStyle,
 }: ProgressPillProps) {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = pillStyles(newTheme, spacing, typography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = pillStyles(newTheme, spacing, svaTypography);
 
   return (
     <View style={[styles.pill, style]}>
@@ -23,7 +23,7 @@ export default function ProgressPill({
   );
 }
 
-const pillStyles = (theme: any, spacing: any, typography: any) =>
+const pillStyles = (theme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     pill: {
       backgroundColor: theme.surface,
@@ -35,7 +35,7 @@ const pillStyles = (theme: any, spacing: any, typography: any) =>
       justifyContent: "center",
     },
     pillText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       fontWeight: "500",
     },

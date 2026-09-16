@@ -49,11 +49,11 @@ export const NumericMetricTile = ({
   accentTint,
   style,
 }: NumericMetricTileProps) => {
-  const { newTheme, spacing, typography, svaTypography } =
+  const { newTheme, spacing, svaTypography } =
     useContext(ThemeContext);
   const t = useMemo(
-    () => resolveBodyVitalsTypography(svaTypography, typography),
-    [svaTypography, typography]
+    () => resolveBodyVitalsTypography(svaTypography),
+    [svaTypography]
   );
 
   const styles = useMemo(
@@ -183,11 +183,11 @@ export const NumericMetricTileStepperRow = ({
   onIncrement,
   label,
 }: StepperRowProps) => {
-  const { newTheme, spacing, typography, svaTypography } =
+  const { newTheme, spacing, svaTypography } =
     useContext(ThemeContext);
   const t = useMemo(
-    () => resolveBodyVitalsTypography(svaTypography, typography),
-    [svaTypography, typography]
+    () => resolveBodyVitalsTypography(svaTypography),
+    [svaTypography]
   );
   const styles = useMemo(
     () => styling(newTheme, spacing, t),

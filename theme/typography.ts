@@ -1,11 +1,17 @@
 import { TypographyTokens } from "./types";
 
+const svaFontFamily = {
+  body: "Inter_400Regular",
+  bodyMedium: "Inter_500Medium",
+  bodyStrong: "Inter_600SemiBold",
+  bodyBold: "Inter_700Bold",
+  display: "CormorantGaramond_500Medium",
+  displayStrong: "CormorantGaramond_600SemiBold",
+  mono: "SpaceMono-Regular",
+} as const;
+
 export const SVATypography: TypographyTokens = {
-  fontFamily: {
-    body: "Inter_400Regular",
-    display: "CormorantGaramond_500Medium",
-    mono: "SpaceMono-Regular",
-  },
+  fontFamily: svaFontFamily,
 
   fontSize: {
     xs: 12,
@@ -48,7 +54,7 @@ export const SVATypography: TypographyTokens = {
 
   textStyle: {
     displayLarge: {
-      fontFamily: "CormorantGaramond_500Medium",
+      fontFamily: svaFontFamily.display,
       fontSize: 64,
       fontWeight: "500",
       lineHeight: 1.05 * 64,
@@ -56,7 +62,7 @@ export const SVATypography: TypographyTokens = {
     },
 
     displayMedium: {
-      fontFamily: "CormorantGaramond_500Medium",
+      fontFamily: svaFontFamily.display,
       fontSize: 48,
       fontWeight: "500",
       lineHeight: 1.1 * 48,
@@ -64,7 +70,7 @@ export const SVATypography: TypographyTokens = {
     },
 
     heading1: {
-      fontFamily: "Inter_600SemiBold",
+      fontFamily: svaFontFamily.bodyBold,
       fontSize: 28,
       fontWeight: "600",
       lineHeight: 1.25 * 28,
@@ -72,7 +78,7 @@ export const SVATypography: TypographyTokens = {
     },
 
     heading2: {
-      fontFamily: "Inter_600SemiBold",
+      fontFamily: svaFontFamily.bodyBold,
       fontSize: 22,
       fontWeight: "600",
       lineHeight: 1.3 * 22,
@@ -80,7 +86,7 @@ export const SVATypography: TypographyTokens = {
     },
 
     title: {
-      fontFamily: "Inter_500Medium",
+      fontFamily: svaFontFamily.bodyMedium,
       fontSize: 18,
       fontWeight: "500",
       lineHeight: 1.4 * 18,
@@ -88,7 +94,7 @@ export const SVATypography: TypographyTokens = {
     },
 
     subtitle: {
-      fontFamily: "Inter_400Regular",
+      fontFamily: svaFontFamily.body,
       fontSize: 14,
       fontWeight: "400",
       lineHeight: 1.4 * 14,
@@ -96,7 +102,7 @@ export const SVATypography: TypographyTokens = {
     },
 
     authTitle: {
-      fontFamily: "CormorantGaramond_500Medium",
+      fontFamily: svaFontFamily.display,
       fontSize: 31,
       fontWeight: "500",
       lineHeight: 34,
@@ -104,7 +110,7 @@ export const SVATypography: TypographyTokens = {
     },
 
     authSubtitle: {
-      fontFamily: "Inter_400Regular",
+      fontFamily: svaFontFamily.body,
       fontSize: 14,
       fontWeight: "400",
       lineHeight: 20,
@@ -112,7 +118,7 @@ export const SVATypography: TypographyTokens = {
     },
 
     authBody: {
-      fontFamily: "Inter_400Regular",
+      fontFamily: svaFontFamily.body,
       fontSize: 12,
       fontWeight: "400",
       lineHeight: 18,
@@ -120,7 +126,7 @@ export const SVATypography: TypographyTokens = {
     },
 
     authFootnote: {
-      fontFamily: "Inter_400Regular",
+      fontFamily: svaFontFamily.body,
       fontSize: 11,
       fontWeight: "400",
       lineHeight: 18,
@@ -128,7 +134,7 @@ export const SVATypography: TypographyTokens = {
     },
 
     brandWordmark: {
-      fontFamily: "Inter_700Bold",
+      fontFamily: svaFontFamily.bodyStrong,
       fontSize: 18,
       fontWeight: "700",
       lineHeight: 22,
@@ -136,7 +142,7 @@ export const SVATypography: TypographyTokens = {
     },
 
     authLabel: {
-      fontFamily: "Inter_600SemiBold",
+      fontFamily: svaFontFamily.bodyStrong,
       fontSize: 12,
       fontWeight: "600",
       lineHeight: 18,
@@ -144,7 +150,7 @@ export const SVATypography: TypographyTokens = {
     },
 
     authLabelStrong: {
-      fontFamily: "Inter_700Bold",
+      fontFamily: svaFontFamily.bodyStrong,
       fontSize: 12,
       fontWeight: "700",
       lineHeight: 18,
@@ -152,7 +158,7 @@ export const SVATypography: TypographyTokens = {
     },
 
     authTinyLabel: {
-      fontFamily: "Inter_600SemiBold",
+      fontFamily: svaFontFamily.bodyStrong,
       fontSize: 11,
       fontWeight: "600",
       lineHeight: 16,
@@ -160,7 +166,7 @@ export const SVATypography: TypographyTokens = {
     },
 
     authActionLabel: {
-      fontFamily: "Inter_600SemiBold",
+      fontFamily: svaFontFamily.bodyStrong,
       fontSize: 13,
       fontWeight: "600",
       lineHeight: 18,
@@ -168,7 +174,7 @@ export const SVATypography: TypographyTokens = {
     },
 
     authMonoLabel: {
-      fontFamily: "SpaceMono-Regular",
+      fontFamily: svaFontFamily.mono,
       fontSize: 11,
       fontWeight: "400",
       lineHeight: 16,
@@ -176,7 +182,7 @@ export const SVATypography: TypographyTokens = {
     },
 
     body: {
-      fontFamily: "Inter_400Regular",
+      fontFamily: svaFontFamily.body,
       fontSize: 16,
       fontWeight: "400",
       lineHeight: 1.5 * 16,
@@ -184,7 +190,7 @@ export const SVATypography: TypographyTokens = {
     },
 
     bodyMedium: {
-      fontFamily: "Inter_500Medium",
+      fontFamily: svaFontFamily.bodyMedium,
       fontSize: 16,
       fontWeight: "500",
       lineHeight: 1.5 * 16,
@@ -192,7 +198,7 @@ export const SVATypography: TypographyTokens = {
     },
 
     caption: {
-      fontFamily: "Inter_400Regular",
+      fontFamily: svaFontFamily.body,
       fontSize: 12,
       fontWeight: "400",
       lineHeight: 1.4 * 12,
@@ -200,7 +206,7 @@ export const SVATypography: TypographyTokens = {
     },
 
     label: {
-      fontFamily: "Inter_500Medium",
+      fontFamily: svaFontFamily.bodyMedium,
       fontSize: 13,
       fontWeight: "500",
       lineHeight: 1.3 * 13,
@@ -208,7 +214,7 @@ export const SVATypography: TypographyTokens = {
     },
 
     button: {
-      fontFamily: "Inter_600SemiBold",
+      fontFamily: svaFontFamily.bodyStrong,
       fontSize: 16,
       fontWeight: "600",
       lineHeight: 1.2 * 16,
@@ -216,7 +222,7 @@ export const SVATypography: TypographyTokens = {
     },
 
     input: {
-      fontFamily: "Inter_400Regular",
+      fontFamily: svaFontFamily.body,
       fontSize: 16,
       fontWeight: "400",
       lineHeight: 1.5 * 16,
@@ -224,7 +230,7 @@ export const SVATypography: TypographyTokens = {
     },
 
     inputLabel: {
-      fontFamily: "Inter_500Medium",
+      fontFamily: svaFontFamily.bodyMedium,
       fontSize: 12,
       fontWeight: "500",
       lineHeight: 1.2 * 12,

@@ -33,23 +33,18 @@ const TONE_MAP: Record<
 };
 
 export default function CoreVitalsBlock({ metrics }: CoreVitalsBlockProps) {
-  const { svaColors, svaTypography, typography } = useContext(ThemeContext);
+  const { svaColors, svaTypography } = useContext(ThemeContext);
 
   const fonts = useMemo<CoreVitalsTypography>(
     () => ({
       monoFamily:
-        svaTypography?.textStyle.authMonoLabel.fontFamily ??
-        "SpaceMono-Regular",
+        svaTypography.fontFamily.mono,
       bodyFamily:
-        svaTypography?.textStyle.body.fontFamily ??
-        typography.body.fontFamily ??
-        "Outfit_400Regular",
+        svaTypography.fontFamily.body,
       bodyStrongFamily:
-        svaTypography?.textStyle.bodyMedium.fontFamily ??
-        typography.bodyStrong.fontFamily ??
-        "Outfit_600SemiBold",
+        svaTypography.fontFamily.bodyMedium,
     }),
-    [svaTypography, typography]
+    [svaTypography]
   );
 
   const styles: CoreVitalsStyles = useMemo(

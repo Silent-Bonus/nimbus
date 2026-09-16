@@ -12,7 +12,6 @@ import ThemeContext from "@/contexts/ThemeContext";
 import type {
   ColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 
@@ -35,8 +34,8 @@ const DailySutraCard: React.FC<DailySutraCardProps> = ({
   iconName = "leaf-outline",
   style,
 }) => {
-  const { newTheme, spacing, typography, svaTypography } = useContext(ThemeContext);
-  const styles = makeStyles(newTheme, spacing, typography, svaTypography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = makeStyles(newTheme, spacing, svaTypography);
 
   return (
     <View style={[styles.card, style]}>
@@ -67,8 +66,7 @@ const DailySutraCard: React.FC<DailySutraCardProps> = ({
 const makeStyles = (
   theme: ColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography?: TypographyTokens
+  svaTypography: TypographyTokens
 ) =>
   StyleSheet.create({
     card: {
@@ -97,7 +95,7 @@ const makeStyles = (
       transform: [{ rotate: "-10deg" }],
     },
     sectionLabel: {
-      ...(svaTypography?.textStyle?.authTinyLabel ?? typography.smallCaption),
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       opacity: 0.74,
       letterSpacing: 4,
@@ -105,7 +103,7 @@ const makeStyles = (
       marginBottom: spacing.lg,
     },
     quote: {
-      ...(svaTypography?.textStyle?.displayMedium ?? typography.h2),
+      ...svaTypography.textStyle.displayMedium,
       color: theme.textPrimary,
       textAlign: "center",
       fontSize: 22,
@@ -124,7 +122,7 @@ const makeStyles = (
       marginBottom: spacing.sm,
     },
     ritualLabel: {
-      ...(svaTypography?.textStyle?.authTinyLabel ?? typography.smallCaption),
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       opacity: 0.82,
       letterSpacing: 3.6,

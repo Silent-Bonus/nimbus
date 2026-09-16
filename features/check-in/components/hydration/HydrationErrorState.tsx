@@ -8,12 +8,12 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 
 import ThemeContext from "../../../../contexts/ThemeContext";
-import type { ColorSet, Spacing, Typography } from "../../../../theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "../../../../theme/types";
 
 const createStyles = (
   theme: ColorSet,
   spacing: Spacing,
-  typography: Typography
+  svaTypography: any
 ) =>
   StyleSheet.create({
     card: {
@@ -40,12 +40,12 @@ const createStyles = (
       marginBottom: spacing.sm,
     },
     title: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       textAlign: "center",
     },
     subtitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       textAlign: "center",
       lineHeight: 20,
@@ -60,7 +60,7 @@ const createStyles = (
       backgroundColor: theme.accent,
     },
     buttonText: {
-      ...typography.button,
+      ...svaTypography.textStyle.button,
       color: theme.background,
       textAlign: "center",
     },
@@ -75,10 +75,10 @@ export const HydrationErrorState = ({
   message,
   onRetry,
 }: HydrationErrorStateProps) => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => createStyles(newTheme, spacing, typography),
-    [newTheme, spacing, typography]
+    () => createStyles(newTheme, spacing, svaTypography),
+    [newTheme, spacing, svaTypography]
   );
 
   const accent = newTheme.chart2 ?? newTheme.accent;

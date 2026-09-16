@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { NimbusButton } from "@/components/ui/theme-components/NimbusButton";
 
 import ThemeContext from "@/contexts/ThemeContext";
+import { SVATypography } from "@/theme/typography";
 import type { Spacing, SvaColorSet, TypographyTokens } from "@/theme/types";
 
 type ArticleReflectionCardProps = {
@@ -50,7 +51,7 @@ const ArticleReflectionCard: React.FC<ArticleReflectionCardProps> = ({
 const styling = (
   colors: SvaColorSet,
   spacing: Spacing,
-  typography?: TypographyTokens
+  svaTypography?: TypographyTokens
 ) =>
   StyleSheet.create({
     card: {
@@ -81,8 +82,8 @@ const styling = (
     },
     eyebrow: {
       fontFamily:
-        typography?.textStyle?.authTinyLabel?.fontFamily ??
-        "Outfit_600SemiBold",
+        svaTypography?.textStyle?.authTinyLabel?.fontFamily ??
+        SVATypography.fontFamily.bodyStrong,
       color: colors.brand.primary,
       fontSize: 10,
       lineHeight: 12,
@@ -91,7 +92,7 @@ const styling = (
     },
     title: {
       fontFamily:
-        typography?.textStyle?.authTitle?.fontFamily ??
+        svaTypography?.textStyle?.authTitle?.fontFamily ??
         "CormorantGaramond_600SemiBold",
       fontSize: 26,
       lineHeight: 30,
@@ -101,14 +102,14 @@ const styling = (
     },
     prompt: {
       fontFamily:
-        typography?.textStyle?.authBody?.fontFamily ?? "Outfit_400Regular",
+        svaTypography?.textStyle?.authBody?.fontFamily ?? SVATypography.fontFamily.body,
       fontSize: 15,
       lineHeight: 24,
       color: colors.text.secondary,
       textAlign: "center",
     },
     helper: {
-      fontFamily: typography?.textStyle?.caption?.fontFamily ?? "Outfit_400Regular",
+      fontFamily: svaTypography?.textStyle?.caption?.fontFamily ?? SVATypography.fontFamily.body,
       fontSize: 12,
       lineHeight: 18,
       color: colors.text.secondary,

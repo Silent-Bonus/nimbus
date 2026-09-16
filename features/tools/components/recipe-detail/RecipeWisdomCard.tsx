@@ -30,7 +30,7 @@ const RecipeWisdomCard: React.FC<RecipeWisdomCardProps> = ({ title, body }) => {
 const styling = (
   colors: SvaColorSet,
   spacing: Spacing,
-  typography?: TypographyTokens
+  svaTypography?: TypographyTokens
 ) =>
   StyleSheet.create({
     card: {
@@ -57,7 +57,7 @@ const styling = (
       borderColor: "rgba(163, 190, 140, 0.12)",
     },
     title: {
-      ...typography?.textStyle?.authTinyLabel,
+      ...svaTypography?.textStyle?.authTinyLabel,
       color: colors.brand.primary,
       fontSize: 10,
       lineHeight: 12,

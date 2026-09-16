@@ -24,7 +24,7 @@ const NavigationIconButton = ({
   isActive,
   onPress,
 }: NavigationIconButtonProps) => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
 
   return (
     <View style={{ width: 72, alignItems: "center", marginRight: spacing.md }}>
@@ -56,7 +56,7 @@ const NavigationIconButton = ({
           marginTop: spacing.xs,
           color: isActive ? newTheme.accent : newTheme.textSecondary,
           textAlign: "center",
-          ...typography.caption,
+          ...svaTypography.textStyle.caption,
         }}
       >
         {label}

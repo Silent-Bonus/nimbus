@@ -2,9 +2,9 @@ import { useContext, useMemo } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "@/theme/types";
 
-const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
+const makeStyles = (theme: ColorSet, spacing: Spacing, svaTypography: any) =>
   StyleSheet.create({
     card: {
       marginTop: spacing.lg,
@@ -23,13 +23,13 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       elevation: 8,
     },
     title: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       marginTop: spacing.md,
       textAlign: "center",
     },
     subtitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginTop: spacing.xs,
       textAlign: "center",
@@ -38,10 +38,10 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
   });
 
 export const SleepLoadingState = () => {
-  const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme: theme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => makeStyles(theme, spacing, typography),
-    [theme, spacing, typography]
+    () => makeStyles(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
 
   const accent = theme.chart2 ?? theme.accent;

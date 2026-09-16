@@ -16,10 +16,9 @@ import type {
   ThemeName,
   ColorSet,
   Spacing,
-  Typography,
+  TypographyTokens,
   SvaTokens,
   SvaColorSet,
-  TypographyTokens,
   SpacingTokens,
   ComponentTokens,
 } from "@/theme/types";
@@ -32,8 +31,7 @@ interface ThemeContextData {
   newTheme: ColorSet;
   svaColors: SvaColorSet;
   spacing: Spacing;
-  typography: Typography;
-  svaTypography?: TypographyTokens;
+  svaTypography: TypographyTokens;
   svaSpacing?: SpacingTokens;
   svaComponents?: ComponentTokens;
   tokens: SvaTokens;
@@ -59,7 +57,6 @@ const ThemeContext = createContext<ThemeContextData>({
   newTheme: defaultTheme.colors,
   svaColors: defaultTheme.svaColors ?? defaultSvaColors,
   spacing: defaultTheme.spacing,
-  typography: defaultTheme.typography,
   svaTypography: defaultTheme.svaTypography,
   svaSpacing: defaultTheme.svaSpacing,
   svaComponents: defaultTheme.svaComponents,
@@ -131,7 +128,6 @@ export const ThemeProvider: FC<ThemeProviderProps> = ({ children }) => {
     newTheme: activeTheme.colors,
     svaColors: activeTheme.svaColors ?? defaultSvaColors,
     spacing: activeTheme.spacing,
-    typography: activeTheme.typography,
     svaTypography: activeTheme.svaTypography,
     svaSpacing: activeTheme.svaSpacing,
     svaComponents: activeTheme.svaComponents,

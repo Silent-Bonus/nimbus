@@ -12,6 +12,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ThemeContext from "@/contexts/ThemeContext";
+import { SVATypography } from "@/theme/typography";
 import type { SvaColorSet } from "@/theme/types";
 
 type HelpCenterFaq = {
@@ -127,7 +128,7 @@ type Props = {
 };
 
 export default function FAQModal({ visible, onClose }: Props) {
-  const { svaColors, svaTypography, typography } = useContext(ThemeContext);
+  const { svaColors, svaTypography } = useContext(ThemeContext);
   const insets = useSafeAreaInsets();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
@@ -139,18 +140,14 @@ export default function FAQModal({ visible, onClose }: Props) {
 
   const titleFamily =
     svaTypography?.textStyle.authTitle.fontFamily ??
-    typography.h2.fontFamily ??
+    svaTypography.textStyle.heading2.fontFamily ??
     "CormorantGaramond_500Medium";
   const bodyFamily =
-    svaTypography?.textStyle.body.fontFamily ??
-    typography.body.fontFamily ??
-    "Outfit_400Regular";
+    svaTypography.fontFamily.body;
   const bodyStrongFamily =
-    svaTypography?.textStyle.bodyMedium.fontFamily ??
-    typography.bodyStrong.fontFamily ??
-    "Outfit_600SemiBold";
+    svaTypography.fontFamily.bodyMedium;
   const monoFamily =
-    svaTypography?.textStyle.authMonoLabel.fontFamily ?? "SpaceMono-Regular";
+    svaTypography?.textStyle.authMonoLabel.fontFamily ?? SVATypography.fontFamily.mono;
 
   const styles = useMemo(
     () =>

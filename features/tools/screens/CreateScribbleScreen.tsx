@@ -177,7 +177,7 @@ export const CreateScribbleScreen = () => {
 const styling = (
   theme: ColorSet,
   spacing: Spacing,
-  svaTypography?: TypographyTokens
+  svaTypography: TypographyTokens
 ) =>
   StyleSheet.create({
     header: {

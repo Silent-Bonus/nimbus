@@ -1,11 +1,11 @@
 import { Platform, StyleSheet } from "react-native";
 
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "@/theme/types";
 
 export const makeBreathWorkSessionStyles = (
   theme: ColorSet,
   spacing: Spacing,
-  typography: Typography
+  svaTypography: any
 ) =>
   StyleSheet.create({
     screen: {
@@ -69,18 +69,18 @@ export const makeBreathWorkSessionStyles = (
       gap: 6,
     },
     heroKicker: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       letterSpacing: 2.2,
       color: "#D5DBC8",
       textTransform: "uppercase",
       opacity: 0.92,
     },
     heroTitle: {
-      ...typography.h1,
+      ...svaTypography.textStyle.heading1,
       color: "#F4F2E8",
     },
     heroSubtext: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: "#E6E8D7",
       maxWidth: 320,
       opacity: 0.88,
@@ -99,7 +99,7 @@ export const makeBreathWorkSessionStyles = (
       borderColor: "rgba(255,255,255,0.08)",
     },
     loadingChipText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textPrimary,
       letterSpacing: 0.8,
     },
@@ -110,7 +110,7 @@ export const makeBreathWorkSessionStyles = (
       gap: spacing.md,
     },
     loadingTitle: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textPrimary,
       textAlign: "center",
     },
@@ -157,12 +157,12 @@ export const makeBreathWorkSessionStyles = (
       gap: 8,
     },
     phaseLabel: {
-      ...typography.h2,
+      ...svaTypography.textStyle.heading2,
       color: theme.textPrimary,
       letterSpacing: -0.2,
     },
     phaseStartPrompt: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       lineHeight: 18,
     },
@@ -177,7 +177,7 @@ export const makeBreathWorkSessionStyles = (
       minHeight: 100,
     },
     phaseCueLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 2,
       textTransform: "uppercase",
@@ -201,7 +201,7 @@ export const makeBreathWorkSessionStyles = (
       borderWidth: 1,
     },
     phaseStartText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       textTransform: "uppercase",
       letterSpacing: 1.4,
     },
@@ -215,12 +215,12 @@ export const makeBreathWorkSessionStyles = (
       paddingVertical: 6,
     },
     phasePillText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       textTransform: "uppercase",
       letterSpacing: 1.4,
     },
     phaseCue: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textPrimary,
       lineHeight: 24,
       minHeight: 48,
@@ -239,11 +239,11 @@ export const makeBreathWorkSessionStyles = (
       alignItems: "center",
     },
     metricValue: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
     },
     metricLabel: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginTop: 4,
     },
@@ -261,7 +261,7 @@ export const makeBreathWorkSessionStyles = (
       gap: spacing.md,
     },
     sequenceLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 2,
       textTransform: "uppercase",
@@ -289,12 +289,12 @@ export const makeBreathWorkSessionStyles = (
       borderWidth: 1,
     },
     sequenceChipLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       textTransform: "uppercase",
       letterSpacing: 1.4,
     },
     sequenceChipValue: {
-      ...typography.button,
+      ...svaTypography.textStyle.button,
       fontSize: 14,
       lineHeight: 18,
       marginTop: 2,
@@ -316,11 +316,11 @@ export const makeBreathWorkSessionStyles = (
       gap: spacing.sm,
     },
     errorTitle: {
-      ...typography.button,
+      ...svaTypography.textStyle.button,
       color: "#F7C48B",
     },
     errorText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
       lineHeight: 22,
     },
@@ -333,18 +333,18 @@ export const makeBreathWorkSessionStyles = (
       gap: spacing.sm,
     },
     insightLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 2,
       textTransform: "uppercase",
     },
     insightText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textPrimary,
       lineHeight: 24,
     },
     insightSubtext: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       lineHeight: 18,
     },
@@ -356,7 +356,7 @@ export const makeBreathWorkSessionStyles = (
     },
     tipText: {
       flex: 1,
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       lineHeight: 18,
     },

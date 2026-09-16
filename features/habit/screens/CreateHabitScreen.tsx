@@ -68,8 +68,8 @@ export const CreateHabitScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   // context
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(newTheme, spacing, typography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = styling(newTheme, spacing, svaTypography);
 
   // navigation & safe area
   const navigation = useNavigation();
@@ -431,7 +431,7 @@ export const CreateHabitScreen = () => {
 };
 
 /* ----- Styles ----- */
-const styling = (newTheme: any, spacing: any, typography: any) =>
+const styling = (newTheme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     gestureContainer: { flex: 1 },
     header: { color: newTheme.textPrimary },
@@ -440,12 +440,12 @@ const styling = (newTheme: any, spacing: any, typography: any) =>
       marginBottom: spacing.sm,
     },
     sectionTitle: {
-      ...typography.bodyLarge,
+      ...svaTypography.bodyLarge,
       fontWeight: "600",
       color: newTheme.textPrimary,
     },
     sectionSubtitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: newTheme.textSecondary,
       marginTop: 4,
       marginBottom: spacing.sm,
@@ -473,7 +473,7 @@ const styling = (newTheme: any, spacing: any, typography: any) =>
       borderRadius: 26,
       backgroundColor: newTheme.surface,
       paddingHorizontal: spacing.lg,
-      ...typography.bodyMedium,
+      ...svaTypography.bodyMedium,
       color: newTheme.textPrimary,
       includeFontPadding: false,
       textAlign: "center",

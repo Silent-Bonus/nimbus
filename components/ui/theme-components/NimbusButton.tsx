@@ -43,7 +43,7 @@ export function NimbusButton({
   accessibilityLabel,
   accessibilityHint,
 }: NimbusButtonProps) {
-  const { newTheme, svaColors, typography } = useContext(ThemeContext);
+  const { newTheme, svaColors, svaTypography } = useContext(ThemeContext);
   const isDisabled = !!disabled || !!loading;
 
   // Determine base colors based on variant
@@ -105,7 +105,7 @@ export function NimbusButton({
           {leftIcon && <View style={s.iconLeft}>{leftIcon}</View>}
           <Text
             style={[
-              typography.button,
+              svaTypography.textStyle.button,
               { color: isDisabled ? newTheme.textDisabled : textColor },
               textStyle,
             ]}

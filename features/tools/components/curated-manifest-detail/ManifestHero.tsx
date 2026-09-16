@@ -5,6 +5,7 @@ import type { ImageSourcePropType } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
 import ThemeContext from "@/contexts/ThemeContext";
+import { SVATypography } from "@/theme/typography";
 
 type ManifestHeroProps = {
   image: ImageSourcePropType;
@@ -91,7 +92,7 @@ const styling = (colors: any, spacing: any) =>
       marginBottom: 8,
     },
     titleText: {
-      fontFamily: "CormorantGaramond_600SemiBold",
+      fontFamily: SVATypography.fontFamily.displayStrong,
       fontSize: 28,
       lineHeight: 30,
       color: colors.text.primary,

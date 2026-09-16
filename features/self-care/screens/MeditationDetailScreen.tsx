@@ -46,7 +46,6 @@ import type {
 import type {
   ColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 
@@ -60,7 +59,7 @@ export default function MeditationDetailScreen() {
     newTheme: theme,
     svaTypography,
     spacing,
-    typography,
+
   } = useContext(ThemeContext);
 
   // Local UI state for detail loading, optimistic actions, and fetched data.
@@ -79,8 +78,8 @@ export default function MeditationDetailScreen() {
   const detailIdentifier = meditationSlug || meditationId;
 
   const styles = useMemo(
-    () => styling(theme, svaTypography, spacing, typography),
-    [theme, svaTypography, spacing, typography]
+    () => styling(theme, svaTypography, spacing),
+    [theme, svaTypography, spacing]
   );
 
   useEffect(() => {
@@ -521,9 +520,9 @@ export default function MeditationDetailScreen() {
 
 const styling = (
   theme: ColorSet,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: any | undefined,
   spacing: Spacing,
-  typography: Typography
+
 ) =>
   StyleSheet.create({
     screen: {
@@ -605,7 +604,7 @@ const styling = (
       color: theme.textPrimary,
     },
     heroSubtext: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginTop: 10,
       letterSpacing: 0.3,
@@ -628,7 +627,7 @@ const styling = (
       borderColor: "rgba(255,255,255,0.08)",
     },
     heroMetaText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textPrimary,
       letterSpacing: 0.8,
     },
@@ -646,7 +645,7 @@ const styling = (
       borderColor: "rgba(255,255,255,0.08)",
     },
     loadingChipText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textPrimary,
       letterSpacing: 0.8,
     },
@@ -769,7 +768,7 @@ const styling = (
       textTransform: "uppercase",
     },
     cardMeta: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       textTransform: "uppercase",
     },
@@ -804,7 +803,7 @@ const styling = (
       borderColor: "rgba(163,190,140,0.16)",
     },
     tagText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.chart2 ?? theme.accent,
       letterSpacing: 1.1,
     },
@@ -820,7 +819,7 @@ const styling = (
       borderColor: theme.borderMuted ?? "rgba(255,255,255,0.05)",
     },
     miniPillText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 1,
     },
@@ -847,7 +846,7 @@ const styling = (
       minWidth: 0,
     },
     instructorName: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       marginBottom: 4,
     },
@@ -891,18 +890,18 @@ const styling = (
       minWidth: 0,
     },
     benefitTitle: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textPrimary,
       fontWeight: "600",
       marginBottom: 4,
     },
     benefitText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
       lineHeight: 24,
     },
     scienceTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       marginBottom: 10,
     },
@@ -916,23 +915,23 @@ const styling = (
       marginTop: 12,
     },
     errorTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: "#F7C48B",
     },
     errorText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: "#F4D8B5",
       marginTop: 8,
       textAlign: "center",
     },
     stateTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       marginTop: 12,
       textAlign: "center",
     },
     stateText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
       marginTop: 8,
       textAlign: "center",

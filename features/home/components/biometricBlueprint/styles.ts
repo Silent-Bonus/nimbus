@@ -1,11 +1,11 @@
 import { StyleSheet } from "react-native";
 
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "@/theme/types";
 
 export const makeStyles = (
   theme: ColorSet,
   spacing: Spacing,
-  typography: Typography
+  svaTypography: TypographyTokens
 ) =>
   StyleSheet.create({
     container: {
@@ -20,7 +20,7 @@ export const makeStyles = (
       paddingHorizontal: 4,
     },
     sectionTitle: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       fontSize: 11,
       fontWeight: "700",
@@ -133,7 +133,7 @@ export const makeStyles = (
       marginBottom: 4,
     },
     compactTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       fontSize: 19,
       lineHeight: 22,
       color: theme.textPrimary,
@@ -158,7 +158,7 @@ export const makeStyles = (
       justifyContent: "center",
     },
     wideTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       fontSize: 19,
       lineHeight: 22,

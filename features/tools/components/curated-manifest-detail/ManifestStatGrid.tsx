@@ -2,6 +2,7 @@ import React, { useContext } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import ThemeContext from "@/contexts/ThemeContext";
+import { SVATypography } from "@/theme/typography";
 
 type StatItem = {
   label: string;
@@ -32,7 +33,7 @@ const ManifestStatGrid: React.FC<ManifestStatGridProps> = ({ items }) => {
   );
 };
 
-const styling = (colors: any, spacing: any, typography: any) =>
+const styling = (colors: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     row: {
       flexDirection: "row",
@@ -49,7 +50,7 @@ const styling = (colors: any, spacing: any, typography: any) =>
       borderColor: colors.border.subtle,
     },
     label: {
-      ...typography.textStyle.authTinyLabel,
+      ...svaTypography.textStyle.authTinyLabel,
       color: colors.text.secondary,
       fontSize: 10,
       lineHeight: 12,
@@ -57,13 +58,13 @@ const styling = (colors: any, spacing: any, typography: any) =>
       marginBottom: 10,
     },
     value: {
-      fontFamily: "CormorantGaramond_600SemiBold",
+      fontFamily: SVATypography.fontFamily.displayStrong,
       fontSize: 19,
       lineHeight: 22,
       color: colors.text.primary,
     },
     hint: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: colors.text.secondary,
       marginTop: 4,
     },

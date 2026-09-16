@@ -11,12 +11,11 @@ import { getAffirmationRecommendationCardWidth } from "@/features/self-care/comp
 import type {
   ColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 
 const AffirmationLibrarySkeleton = () => {
-  const { newTheme, spacing, typography, svaTypography } =
+  const { newTheme, spacing, svaTypography } =
     useContext(ThemeContext);
   const cardWidth = getAffirmationRecommendationCardWidth(
     Dimensions.get("window").width
@@ -24,8 +23,8 @@ const AffirmationLibrarySkeleton = () => {
 
   const styles = useMemo(
     () =>
-      styling(newTheme, spacing, typography, svaTypography, cardWidth),
-    [newTheme, spacing, typography, svaTypography, cardWidth]
+      styling(newTheme, spacing, svaTypography, cardWidth),
+    [newTheme, spacing, svaTypography, cardWidth]
   );
 
   return (
@@ -111,8 +110,7 @@ const AffirmationLibrarySkeleton = () => {
 const styling = (
   theme: ColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: TypographyTokens,
   cardWidth: number
 ) =>
   StyleSheet.create({
@@ -186,7 +184,7 @@ const styling = (
     },
     libraryTitle: {
       width: 164,
-      height: typography.h3.lineHeight ?? 28,
+      height: svaTypography.textStyle.title.lineHeight ?? 28,
       borderRadius: 12,
       backgroundColor: theme.surfaceMuted,
     },
@@ -237,7 +235,7 @@ const styling = (
       width: "78%",
       height:
         svaTypography?.textStyle.authBody?.fontSize ??
-        typography.h3.fontSize ??
+        svaTypography.textStyle.title.fontSize ??
         24,
       borderRadius: 12,
       backgroundColor: theme.surface,

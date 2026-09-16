@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import ThemeContext from "@/contexts/ThemeContext";
+import { SVATypography } from "@/theme/typography";
 import type { RecipeTip } from "@/features/tools/types/recipeTypes";
 import type { Spacing, SvaColorSet, TypographyTokens } from "@/theme/types";
 
@@ -34,7 +35,7 @@ const RecipeTipCards: React.FC<RecipeTipCardsProps> = ({ tips }) => {
 const styling = (
   colors: SvaColorSet,
   spacing: Spacing,
-  typography?: TypographyTokens
+  svaTypography?: TypographyTokens
 ) =>
   StyleSheet.create({
     wrap: {
@@ -64,7 +65,7 @@ const styling = (
       borderColor: "rgba(163, 190, 140, 0.12)",
     },
     cardTitle: {
-      ...typography?.textStyle?.authTinyLabel,
+      ...svaTypography?.textStyle?.authTinyLabel,
       color: colors.brand.primary,
       fontSize: 10,
       lineHeight: 12,
@@ -74,7 +75,7 @@ const styling = (
       color: colors.text.secondary,
       fontSize: 14,
       lineHeight: 21,
-      fontFamily: typography?.textStyle?.authBody?.fontFamily ?? "Outfit_400Regular",
+      fontFamily: svaTypography?.textStyle?.authBody?.fontFamily ?? SVATypography.fontFamily.body,
     },
   });
 

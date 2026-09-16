@@ -28,12 +28,12 @@ export const ActivityLevelCard = ({
   value,
   onChange,
 }: ActivityLevelCardProps) => {
-  const { newTheme, spacing, typography, svaTypography } =
+  const { newTheme, spacing, svaTypography } =
     useContext(ThemeContext);
   const selectedOption = getActivityOption(value);
   const t = useMemo(
-    () => resolveBodyVitalsTypography(svaTypography, typography),
-    [svaTypography, typography]
+    () => resolveBodyVitalsTypography(svaTypography),
+    [svaTypography]
   );
 
   const styles = useMemo(

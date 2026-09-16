@@ -127,14 +127,14 @@ const ArticleReviewModal: React.FC<ArticleReviewModalProps> = ({
   onClose,
   onSubmitSuccess,
 }) => {
-  const { spacing, svaColors, svaTypography, typography } = useContext(ThemeContext);
+  const { spacing, svaColors, svaTypography } = useContext(ThemeContext);
   const insets = useSafeAreaInsets();
 
   const [form, setForm] = useState<ReviewFormState>(INITIAL_FORM);
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackState>(null);
 
-  const bodyTextStyle = svaTypography?.textStyle?.body ?? typography.body;
+  const bodyTextStyle = svaTypography?.textStyle?.body ?? svaTypography.textStyle.body;
 
   const styles = useMemo(
     () =>
@@ -497,7 +497,7 @@ const makeStyles = (
   colors: SvaColorSet,
   spacing: Spacing,
   bodyTextStyle: FontSet,
-  svaTypography: TypographyTokens | undefined,
+  svaTypography: TypographyTokens,
   safeBottomInset: number
 ) =>
   StyleSheet.create({

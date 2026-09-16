@@ -16,6 +16,7 @@ import AppHeader from "@/components/layout/AppHeader";
 import ProcessingModal from "@/components/ui/modal/ProcessingModal";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import ThemeContext from "@/contexts/ThemeContext";
+import { SVATypography } from "@/theme/typography";
 import { ROUTES } from "@/constants/routes";
 import {
   addNewsletterFavorite,
@@ -523,7 +524,7 @@ const ArticleDetailScreen: React.FC = () => {
 const styling = (
   colors: SvaColorSet,
   spacing: Spacing,
-  typography?: TypographyTokens
+  svaTypography?: TypographyTokens
 ) =>
   StyleSheet.create({
     screen: {
@@ -560,8 +561,8 @@ const styling = (
     },
     footerBadgeText: {
       fontFamily:
-        typography?.textStyle?.authTinyLabel?.fontFamily ??
-        "Outfit_600SemiBold",
+        svaTypography?.textStyle?.authTinyLabel?.fontFamily ??
+        SVATypography.fontFamily.bodyStrong,
       fontSize: 9.5,
       lineHeight: 12,
       letterSpacing: 2.2,
@@ -578,7 +579,7 @@ const styling = (
       lineHeight: 20,
       textAlign: "center",
       fontFamily:
-        typography?.textStyle?.authBody?.fontFamily ?? "Outfit_400Regular",
+        svaTypography?.textStyle?.authBody?.fontFamily ?? SVATypography.fontFamily.body,
     },
     favoriteResultPill: {
       borderRadius: 999,
@@ -590,8 +591,8 @@ const styling = (
     },
     favoriteResultPillText: {
       fontFamily:
-        typography?.textStyle?.authTinyLabel?.fontFamily ??
-        "Outfit_600SemiBold",
+        svaTypography?.textStyle?.authTinyLabel?.fontFamily ??
+        SVATypography.fontFamily.bodyStrong,
       fontSize: 10,
       lineHeight: 12,
       letterSpacing: 1.2,

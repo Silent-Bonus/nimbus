@@ -48,8 +48,8 @@ function NimbusDropdown<T = any>({
   setItems,
   containerStyle,
 }: Props<T>) {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(newTheme, spacing, typography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = styling(newTheme, spacing, svaTypography);
 
   // Keep items internal; parent usually doesn't need to mutate them
   const [internalItems, setInternalItems] = useState<ItemType<T>[]>(items);
@@ -92,14 +92,14 @@ function NimbusDropdown<T = any>({
 
 export default NimbusDropdown;
 
-const styling = (newTheme: any, spacing: any, typography: any) =>
+const styling = (newTheme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     wrapper: {
       width: "100%",
       marginBottom: spacing.md,
     },
     label: {
-      ...typography.bodySmall,
+      ...svaTypography.textStyle.body,
       color: newTheme.textSecondary,
       marginBottom: spacing.xs,
     },
@@ -131,11 +131,11 @@ const styling = (newTheme: any, spacing: any, typography: any) =>
       elevation: 6,
     },
     itemText: {
-      ...typography.bodySmall,
+      ...svaTypography.textStyle.body,
       color: newTheme.textPrimary,
     },
     placeholder: {
-      ...typography.bodySmall,
+      ...svaTypography.textStyle.body,
       color: newTheme.textSecondary,
       opacity: 0.7,
     },

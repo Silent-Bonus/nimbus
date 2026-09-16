@@ -11,7 +11,8 @@ import {
 } from "react-native";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { SvaColorSet, Spacing } from "@/theme/types";
+import type { SvaColorSet, Spacing, TypographyTokens } from "@/theme/types";
+import { SVATypography } from "@/theme/typography";
 
 export type PillFilterOption<T extends string = string> = {
   label: string;
@@ -49,8 +50,8 @@ export const PillFilter = ({
   accessibilityLabel,
   testID,
 }: PillFilterProps) => {
-  const { svaColors } = useContext(ThemeContext);
-  const styles = styling(svaColors);
+  const { svaColors, svaTypography } = useContext(ThemeContext);
+  const styles = styling(svaColors, svaTypography ?? SVATypography);
 
   return (
     <Pressable
@@ -172,7 +173,7 @@ const rowStyling = (spacing: Spacing) =>
     },
   });
 
-const styling = (colors: SvaColorSet) =>
+const styling = (colors: SvaColorSet, svaTypography: TypographyTokens) =>
   StyleSheet.create({
     pill: {
       minHeight: 40,
@@ -202,7 +203,7 @@ const styling = (colors: SvaColorSet) =>
     },
     label: {
       color: colors.text.secondary,
-      fontFamily: "Inter_600SemiBold",
+      ...svaTypography.textStyle.authLabel,
       fontSize: 12,
       letterSpacing: 0.8,
       textAlign: "center",

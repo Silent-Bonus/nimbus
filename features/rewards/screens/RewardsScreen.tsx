@@ -168,7 +168,7 @@ function BadgeTile({ badge, colors, styles }: BadgeTileProps) {
 }
 
 export const RewardsScreen = () => {
-  const { newTheme, svaColors, svaTypography, typography } =
+  const { newTheme, svaColors, svaTypography } =
     useContext(ThemeContext);
   const insets = useSafeAreaInsets();
 
@@ -176,21 +176,18 @@ export const RewardsScreen = () => {
     () => ({
       titleFamily:
         svaTypography?.textStyle.authTitle.fontFamily ??
-        typography.h2.fontFamily ??
+        svaTypography.textStyle.heading2.fontFamily ??
         "CormorantGaramond_500Medium",
       bodyFamily:
-        svaTypography?.textStyle.body.fontFamily ??
-        typography.body.fontFamily ??
+        svaTypography.fontFamily.body ??
         "Inter_400Regular",
       bodyStrongFamily:
-        svaTypography?.textStyle.bodyMedium.fontFamily ??
-        typography.bodyStrong.fontFamily ??
+        svaTypography.fontFamily.bodyMedium ??
         "Inter_600SemiBold",
       monoFamily:
-        svaTypography?.textStyle.authMonoLabel.fontFamily ??
-        "SpaceMono-Regular",
+        svaTypography.fontFamily.mono,
     }),
-    [svaTypography, typography]
+    [svaTypography]
   );
 
   const styles = useMemo(

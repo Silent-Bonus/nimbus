@@ -33,11 +33,9 @@ export default function SettingsRow({
   iconColor,
   style,
 }: Props) {
-  const { newTheme, svaTypography, typography } = useContext(ThemeContext);
+  const { newTheme, svaTypography } = useContext(ThemeContext);
   const bodyFamily =
-    svaTypography?.textStyle.bodyMedium.fontFamily ??
-    typography.bodyStrong.fontFamily ??
-    "Outfit_600SemiBold";
+    svaTypography.fontFamily.bodyMedium;
 
   const rowIconColor = iconColor ?? (danger ? newTheme.error : newTheme.textPrimary);
   const labelColor = danger ? newTheme.error : newTheme.textPrimary;

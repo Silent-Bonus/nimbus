@@ -28,8 +28,8 @@ const FullScreenVideoPlayer: React.FC<FullScreenVideoPlayerProps> = ({
   video,
   onClose,
 }) => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(newTheme, spacing, typography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = styling(newTheme, spacing, svaTypography);
 
   const player = useVideoPlayer(video ? video.source : "", () => {
     // we'll control play manually via the button
@@ -168,7 +168,7 @@ const FullScreenVideoPlayer: React.FC<FullScreenVideoPlayerProps> = ({
 
 export default FullScreenVideoPlayer;
 
-const styling = (newTheme: any, spacing: any, typography: any) =>
+const styling = (newTheme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -204,7 +204,7 @@ const styling = (newTheme: any, spacing: any, typography: any) =>
       marginRight: spacing.sm,
     },
     titleText: {
-      ...typography.bodySmall,
+      ...svaTypography.textStyle.caption,
       flex: 1,
       color: "rgba(255,255,255,0.9)",
       fontWeight: "600",

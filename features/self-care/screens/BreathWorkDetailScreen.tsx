@@ -39,7 +39,7 @@ import {
   type BreathWorkRouteParams,
 } from "@/features/self-care/utils/breathworkPlayback";
 import type { BreathWorkDetail } from "@/features/self-care/types/wellnessContentTypes";
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "@/theme/types";
 
 type BreathWorkDetailParams = BreathWorkRouteParams;
 
@@ -47,7 +47,7 @@ export default function BreathWorkDetailScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<BreathWorkDetailParams>();
-  const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme: theme, spacing, svaTypography } = useContext(ThemeContext);
   const { breathworkId, breathworkSlug } = parseBreathWorkRouteParams(params);
   const detailIdentifier = breathworkId || breathworkSlug;
   const [detail, setDetail] = useState<BreathWorkDetail | null>(() =>
@@ -66,8 +66,8 @@ export default function BreathWorkDetailScreen() {
   const hasLaunchedBreathWorkRef = useRef(false);
 
   const styles = useMemo(
-    () => styling(theme, spacing, typography),
-    [theme, spacing, typography]
+    () => styling(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
 
   useLayoutEffect(() => {
@@ -384,7 +384,7 @@ export default function BreathWorkDetailScreen() {
   );
 }
 
-const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
+const styling = (theme: ColorSet, spacing: Spacing, svaTypography: any) =>
   StyleSheet.create({
     screen: {
       paddingHorizontal: spacing.md,
@@ -449,18 +449,18 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       gap: 6,
     },
     heroKicker: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       letterSpacing: 2.2,
       color: "#D5DBC8",
       textTransform: "uppercase",
       opacity: 0.92,
     },
     heroTitle: {
-      ...typography.h1,
+      ...svaTypography.textStyle.heading1,
       color: "#F4F2E8",
     },
     heroSubtext: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: "#E6E8D7",
       maxWidth: 320,
       opacity: 0.88,
@@ -479,7 +479,7 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       borderColor: "rgba(255,255,255,0.08)",
     },
     loadingChipText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textPrimary,
       letterSpacing: 0.8,
     },
@@ -490,7 +490,7 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       gap: spacing.md,
     },
     loadingTitle: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textPrimary,
       textAlign: "center",
     },
@@ -526,7 +526,7 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       marginBottom: spacing.sm,
     },
     sectionLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 2,
       textTransform: "uppercase",
@@ -539,12 +539,12 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       paddingVertical: 5,
     },
     sectionPillText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       letterSpacing: 1.3,
       textTransform: "uppercase",
     },
     sectionBody: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textPrimary,
       lineHeight: 24,
     },
@@ -569,12 +569,12 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       marginTop: 1,
     },
     stepNumberText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       letterSpacing: 0.8,
     },
     stepText: {
       flex: 1,
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textPrimary,
       lineHeight: 24,
     },
@@ -588,7 +588,7 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       gap: 4,
     },
     benefitTitle: {
-      ...typography.bodyStrong,
+      ...svaTypography.textStyle.bodyMedium,
       color: theme.textPrimary,
     },
     bulletIcon: {
@@ -601,7 +601,7 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
     },
     listText: {
       flex: 1,
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textPrimary,
       lineHeight: 24,
     },
@@ -622,11 +622,11 @@ const styling = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
       gap: spacing.sm,
     },
     errorTitle: {
-      ...typography.button,
+      ...svaTypography.textStyle.button,
       color: "#F7C48B",
     },
     errorText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
       lineHeight: 22,
     },

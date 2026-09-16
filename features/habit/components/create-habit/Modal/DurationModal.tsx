@@ -66,9 +66,9 @@ export default function DurationModal({
   title = "Rhythm",
   subtitle = "Choose whether this habit runs all day or within a focused window.",
 }: DurationModalProps) {
-  const { newTheme, spacing, svaTypography, typography } =
+  const { newTheme, spacing, svaTypography } =
     useContext(ThemeContext);
-  const bodyTextStyle = svaTypography?.textStyle?.body ?? typography.body;
+  const bodyTextStyle = svaTypography?.textStyle?.body ?? svaTypography.textStyle.body;
   const styles = useMemo(
     () => styling(newTheme, spacing, bodyTextStyle, svaTypography),
     [newTheme, spacing, bodyTextStyle, svaTypography]

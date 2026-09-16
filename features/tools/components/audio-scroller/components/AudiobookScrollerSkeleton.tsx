@@ -6,7 +6,7 @@ import ThemeContext from "@/contexts/ThemeContext";
 const SKELETON_ITEMS = [1, 2, 3];
 
 const AudiobookScrollerSkeleton: React.FC = () => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = styling(newTheme, spacing);
   const shimmer = useRef(new Animated.Value(0)).current;
 

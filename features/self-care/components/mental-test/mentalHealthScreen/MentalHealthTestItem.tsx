@@ -26,8 +26,8 @@ type Props = {
 };
 
 const MentalHealthTestItem: React.FC<Props> = ({ item, onPress }) => {
-  const { newTheme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(newTheme, spacing, typography);
+  const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = styling(newTheme, spacing, svaTypography);
 
   const metaParts: string[] = [];
   if (item.estTimeMinutes) metaParts.push(`${item.estTimeMinutes} min`);
@@ -66,7 +66,7 @@ const MentalHealthTestItem: React.FC<Props> = ({ item, onPress }) => {
 
 export default MentalHealthTestItem;
 
-const styling = (theme: any, spacing: any, typography: any) =>
+const styling = (theme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     card: {
       flexDirection: "row",
@@ -92,19 +92,19 @@ const styling = (theme: any, spacing: any, typography: any) =>
       flex: 1,
     },
     title: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       fontSize: 16,
       fontWeight: "600",
       color: theme.textPrimary,
       marginBottom: 2,
     },
     description: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginBottom: 2,
     },
     meta: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       opacity: 0.9,
     },

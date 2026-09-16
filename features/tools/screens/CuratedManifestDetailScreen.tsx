@@ -1,22 +1,12 @@
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-} from "react";
-import {
-  ScrollView,
-  Share,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import React, { useCallback, useContext, useEffect, useMemo } from "react";
+import { ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useNavigation, router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import { ScreenView } from "@/components/ui/Themed";
 import ThemeContext from "@/contexts/ThemeContext";
+import { SVATypography } from "@/theme/typography";
 import ScreenHeader from "@/components/layout/ScreenHeader";
 import { NimbusButton } from "@/components/ui/theme-components/NimbusButton";
 import { ROUTES } from "@/constants/routes";
@@ -52,10 +42,7 @@ export const CuratedManifestDetailScreen: React.FC = () => {
   }, [navigation]);
 
   const manifest: CuratedManifest = useMemo(() => {
-    return (
-      getCuratedManifestById(idParam) ??
-      CURATED_MANIFESTS[0]
-    );
+    return getCuratedManifestById(idParam) ?? CURATED_MANIFESTS[0];
   }, [idParam]);
 
   const accessState = getAccessState("curated_manifest_detail");
@@ -80,9 +67,7 @@ export const CuratedManifestDetailScreen: React.FC = () => {
     });
   }, [hasPremium, manifest.id, openGate]);
 
-  const ctaLabel = hasPremium
-    ? "View Protocol Stack"
-    : "Unlock Protocol Stack";
+  const ctaLabel = hasPremium ? "View Protocol Stack" : "Unlock Protocol Stack";
   const ctaHint = hasPremium
     ? "Opens the protocol stack"
     : "Opens the upgrade modal";
@@ -131,7 +116,11 @@ export const CuratedManifestDetailScreen: React.FC = () => {
         <ManifestStatGrid
           items={[
             { label: "Level", value: manifest.level },
-            { label: "Rating", value: manifest.rating.toFixed(1), hint: `${manifest.reviews} reviews` },
+            {
+              label: "Rating",
+              value: manifest.rating.toFixed(1),
+              hint: `${manifest.reviews} reviews`,
+            },
             { label: "XP Reward", value: `${manifest.xp_reward}` },
           ]}
         />
@@ -169,7 +158,7 @@ export const CuratedManifestDetailScreen: React.FC = () => {
 const styling = (
   colors: any,
   spacing: any,
-  typography: any,
+  svaTypography: any,
   bottomInset: number
 ) =>
   StyleSheet.create({
@@ -201,7 +190,7 @@ const styling = (
       marginBottom: spacing.xl,
     },
     description: {
-      fontFamily: "CormorantGaramond_500Medium",
+      fontFamily: SVATypography.fontFamily.display,
       fontSize: 17,
       lineHeight: 27,
       color: colors.text.primary,
@@ -209,7 +198,7 @@ const styling = (
       letterSpacing: -0.2,
     },
     sectionText: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: colors.text.primary,
     },
     footerSpace: {

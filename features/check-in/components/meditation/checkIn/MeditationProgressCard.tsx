@@ -7,7 +7,6 @@ import ThemeContext from "@/contexts/ThemeContext";
 import type {
   ColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 import {
@@ -25,7 +24,7 @@ type MeditationProgressCardProps = {
   onAnchorHold: () => void;
 };
 
-const getDisplayFont = (svaTypography?: TypographyTokens) =>
+const getDisplayFont = (svaTypography: any) =>
   svaTypography?.textStyle.displayMedium?.fontFamily ??
   svaTypography?.textStyle.authTitle?.fontFamily ??
   undefined;
@@ -33,8 +32,7 @@ const getDisplayFont = (svaTypography?: TypographyTokens) =>
 const makeStyles = (
   theme: ColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography?: TypographyTokens
+  svaTypography: TypographyTokens
 ) => {
   const displayFont = getDisplayFont(svaTypography);
 
@@ -80,13 +78,13 @@ const makeStyles = (
       marginBottom: spacing.md,
     },
     sectionLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       opacity: 0.78,
       letterSpacing: 1.7,
     },
     cardSubTitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginTop: 6,
       lineHeight: 18,
@@ -103,12 +101,12 @@ const makeStyles = (
       minWidth: 70,
     },
     goalChipValue: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textPrimary,
       fontWeight: "800",
     },
     goalChipLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       marginTop: 1,
     },
@@ -134,32 +132,32 @@ const makeStyles = (
       color: theme.textPrimary,
     },
     ringValueMain: {
-      ...typography.h1,
+      ...svaTypography.textStyle.heading1,
       color: theme.textPrimary,
       fontFamily: displayFont,
       letterSpacing: -0.8,
     },
     ringValueGoal: {
-      ...typography.h4,
+      ...svaTypography.textStyle.authLabel,
       color: theme.textSecondary,
       fontWeight: "700",
     },
     ringLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 2,
       marginTop: 6,
       textAlign: "center",
     },
     anchorStamp: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textPrimary,
       fontWeight: "700",
       marginTop: 10,
       textAlign: "center",
     },
     anchorStampMuted: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       opacity: 0.86,
       marginTop: 10,
@@ -170,13 +168,13 @@ const makeStyles = (
       marginTop: spacing.lg,
     },
     quickAddLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       opacity: 0.78,
       letterSpacing: 1.5,
     },
     quickAddHint: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginTop: 4,
       lineHeight: 18,
@@ -207,7 +205,7 @@ const makeStyles = (
       transform: [{ scale: 0.98 }],
     },
     quickAddChipText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textPrimary,
       fontWeight: "800",
       letterSpacing: 0.6,
@@ -248,14 +246,14 @@ const makeStyles = (
       borderColor: theme.borderMuted ?? "rgba(255,255,255,0.06)",
     },
     anchorButtonLabel: {
-      ...typography.button,
+      ...svaTypography.textStyle.button,
       color: theme.textPrimary,
       textTransform: "uppercase",
       letterSpacing: 1.4,
       marginTop: 12,
     },
     anchorButtonSubLabel: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       textAlign: "center",
       marginTop: 6,
@@ -274,12 +272,11 @@ export const MeditationProgressCard = ({
   const {
     newTheme: theme,
     spacing,
-    typography,
     svaTypography,
   } = useContext(ThemeContext);
   const styles = useMemo(
-    () => makeStyles(theme, spacing, typography, svaTypography),
-    [theme, spacing, typography, svaTypography]
+    () => makeStyles(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
 
   const progress = clamp(completedMinutes / Math.max(goalMinutes, 1), 0, 1);

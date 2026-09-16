@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { BarChart } from "react-native-gifted-charts";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { ColorSet, Spacing, Typography } from "@/theme/types";
+import type { ColorSet, Spacing, TypographyTokens } from "@/theme/types";
 import {
   getSleepStatusColor,
   type SleepPoint,
@@ -13,7 +13,7 @@ type SleepPatternCardProps = {
   data: SleepPoint[];
 };
 
-const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =>
+const makeStyles = (theme: ColorSet, spacing: Spacing, svaTypography: any) =>
   StyleSheet.create({
     card: {
       borderRadius: 28,
@@ -36,14 +36,14 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       gap: spacing.sm,
     },
     sectionLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       fontWeight: "800",
       letterSpacing: 1.8,
       opacity: 0.88,
     },
     cardSubTitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       marginTop: 4,
       color: theme.textSecondary,
       lineHeight: 16,
@@ -58,7 +58,7 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       borderColor: "rgba(255,255,255,0.06)",
     },
     patternBadgeValue: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textPrimary,
       fontWeight: "800",
       letterSpacing: 0.1,
@@ -83,17 +83,17 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, typography: Typography) =
       borderRadius: 4,
     },
     legendText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       letterSpacing: 1,
     },
   });
 
 export const SleepPatternCard = ({ data }: SleepPatternCardProps) => {
-  const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
+  const { newTheme: theme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
-    () => makeStyles(theme, spacing, typography),
-    [theme, spacing, typography]
+    () => makeStyles(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
 
   const chartData = useMemo(
@@ -142,7 +142,7 @@ export const SleepPatternCard = ({ data }: SleepPatternCardProps) => {
         maxValue={12}
         isAnimated
         xAxisLabelTextStyle={{
-          ...typography.caption,
+          ...svaTypography.textStyle.caption,
           color: theme.textSecondary,
           marginTop: 8,
         }}

@@ -27,7 +27,6 @@ import type { AffirmationCard } from "@/features/self-care/types/affirmation";
 import type {
   ColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 
@@ -187,7 +186,7 @@ const AffirmationStoryModal = ({
   affirmation,
   isLoading = false,
 }: AffirmationStoryModalProps) => {
-  const { newTheme, spacing, typography, svaTypography } =
+  const { newTheme, spacing, svaTypography } =
     useContext(ThemeContext);
   const insets = useSafeAreaInsets();
   const { width, height } = Dimensions.get("window");
@@ -216,8 +215,8 @@ const AffirmationStoryModal = ({
   );
 
   const styles = useMemo(
-    () => styling(newTheme, spacing, typography, svaTypography),
-    [newTheme, spacing, typography, svaTypography]
+    () => styling(newTheme, spacing, svaTypography),
+    [newTheme, spacing, svaTypography]
   );
 
   const palette = useMemo(
@@ -482,8 +481,7 @@ const AffirmationStoryModal = ({
 const styling = (
   theme: ColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography: TypographyTokens | undefined
+  svaTypography: TypographyTokens
 ) =>
   StyleSheet.create({
     overlay: {
@@ -544,7 +542,7 @@ const styling = (
     eyebrow: {
       fontFamily:
         svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
+        svaTypography.textStyle.authTinyLabel.fontFamily,
       fontSize: 10,
       lineHeight: 14,
       letterSpacing: 2.5,
@@ -553,12 +551,12 @@ const styling = (
       marginBottom: 4,
     },
     title: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       marginBottom: 4,
     },
     subtitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
     },
     closeButton: {
@@ -586,7 +584,7 @@ const styling = (
       marginBottom: spacing.sm,
     },
     loadingText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
     },
     metaRow: {
@@ -603,7 +601,7 @@ const styling = (
       borderWidth: 1,
     },
     metaText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       fontWeight: "700",
     },
     dotRow: {
@@ -682,11 +680,11 @@ const styling = (
       borderWidth: 1,
     },
     slideToneText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       fontWeight: "700",
     },
     slideCounter: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       fontWeight: "700",
     },
     tagRow: {
@@ -701,7 +699,7 @@ const styling = (
       borderWidth: 1,
     },
     tagChipText: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       fontWeight: "600",
     },
     slideCopyBlock: {
@@ -710,15 +708,15 @@ const styling = (
       gap: spacing.sm,
     },
     slideTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
     },
     slideDetail: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
     },
     statementLabel: {
       fontFamily:
         svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        typography.smallCaption.fontFamily,
+        svaTypography.textStyle.authTinyLabel.fontFamily,
       fontSize: 10,
       lineHeight: 14,
       letterSpacing: 2.2,
@@ -726,7 +724,7 @@ const styling = (
       opacity: 0.78,
     },
     slideQuote: {
-      ...typography.h2,
+      ...svaTypography.textStyle.heading2,
       lineHeight: 36,
     },
     slideFooter: {
@@ -736,7 +734,7 @@ const styling = (
       gap: spacing.sm,
     },
     slideFooterText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       fontWeight: "600",
     },
     slideChevronBubble: {

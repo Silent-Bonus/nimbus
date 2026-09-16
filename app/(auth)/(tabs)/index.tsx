@@ -47,8 +47,6 @@ import ActionModal from "@/components/ui/modal/ActionModal";
 import { Ionicons } from "@expo/vector-icons";
 
 // ---------- Nimbus visual helpers ----------
-const HABIT_ICONS = ["🍰", "🌱", "🏃‍♂️", "🧘", "📚", "💧"];
-const HABIT_COLORS = ["#FF6B6B", "#4ECDC4", "#FFD93D", "#1A535C", "#6A4C93"];
 const PROFILE_UPDATE_ROUTE = ROUTES.AUTH.ADVANCED_SETTINGS;
 // Replace this with the dedicated profile-update route once that screen exists.
 
@@ -62,8 +60,8 @@ function formatMissingFieldLabel(field: string) {
 
 // ---------- Screen ----------
 export default function TabOneScreen() {
-  const { newTheme: theme, spacing, typography } = useContext(ThemeContext);
-  const styles = styling(theme, spacing, typography);
+  const { newTheme: theme, spacing, svaTypography } = useContext(ThemeContext);
+  const styles = styling(theme, spacing, svaTypography);
 
   const [selectedDate, setSelectedDate] = useState(startOfDay(new Date()));
   const [habitList, setHabitList] = useState<HabitItem[]>([]);
@@ -92,11 +90,11 @@ export default function TabOneScreen() {
   const sectionTitle = useMemo(() => dateLabel, [dateLabel]);
   // decorate habits with Nimbus icon + color
   const decorateHabits = useCallback((data: any[]): HabitItem[] => {
-    return data.map((item: any, idx: number) => ({
+    return data.map((item: any) => ({
       ...item,
       done: item.completed,
-      color: item.color ? item.color : HABIT_COLORS[idx % HABIT_COLORS.length],
-      icon: item.icon ? item.icon : HABIT_ICONS[idx % HABIT_ICONS.length],
+      color: item.color,
+      icon: item.icon,
     }));
   }, []);
 
@@ -390,7 +388,7 @@ function getTimeOfDayGreeting() {
   return "evening";
 }
 
-const styling = (theme: any, spacing: any, typography: any) =>
+const styling = (theme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     gestureContainer: {
       backgroundColor: theme.background,
@@ -410,7 +408,7 @@ const styling = (theme: any, spacing: any, typography: any) =>
     loadingText: {
       marginTop: 12,
       color: theme.textSecondary,
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
     },
 
     // Greeting
@@ -461,7 +459,7 @@ const styling = (theme: any, spacing: any, typography: any) =>
       marginRight: spacing.md,
     },
     dashboardBannerTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       flex: 1,
       minWidth: 0,
       fontSize: 17,
@@ -485,7 +483,7 @@ const styling = (theme: any, spacing: any, typography: any) =>
       opacity: 0.86,
     },
     greetingTitle: {
-      ...typography.h2,
+      ...svaTypography.textStyle.heading2,
       color: theme.textPrimary,
     },
 
@@ -504,7 +502,7 @@ const styling = (theme: any, spacing: any, typography: any) =>
       marginTop: spacing.xs,
     },
     sectionTitle: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       fontSize: 11,
       fontWeight: "700",
       letterSpacing: 1.6,
@@ -513,7 +511,7 @@ const styling = (theme: any, spacing: any, typography: any) =>
       opacity: 0.9,
     },
     sectionSubtitle: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       fontSize: 10,
       fontWeight: "600",
       letterSpacing: 0.8,
@@ -529,7 +527,7 @@ const styling = (theme: any, spacing: any, typography: any) =>
       borderRadius: 999,
     },
     pillText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
     },
 
@@ -543,14 +541,14 @@ const styling = (theme: any, spacing: any, typography: any) =>
       alignItems: "center",
     },
     emptyTitle: {
-      ...typography.h3,
+      ...svaTypography.textStyle.title,
       color: theme.textPrimary,
       marginBottom: spacing.xs,
     },
     emptyText: {
       textAlign: "center",
       color: theme.textSecondary,
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       paddingHorizontal: spacing.lg,
     },
 

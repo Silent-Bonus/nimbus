@@ -33,11 +33,10 @@ import {
 import type {
   ColorSet,
   Spacing,
-  Typography,
   TypographyTokens,
 } from "@/theme/types";
 
-const getDisplayFont = (svaTypography?: TypographyTokens) =>
+const getDisplayFont = (svaTypography: any) =>
   svaTypography?.textStyle.authTitle?.fontFamily ??
   svaTypography?.textStyle.displayMedium?.fontFamily ??
   undefined;
@@ -45,10 +44,9 @@ const getDisplayFont = (svaTypography?: TypographyTokens) =>
 const makeStyles = (
   theme: ColorSet,
   spacing: Spacing,
-  typography: Typography,
-  svaTypography?: TypographyTokens
+  svaTypography: TypographyTokens
 ) => {
-  const displayFont = getDisplayFont(svaTypography) ?? typography.h2.fontFamily;
+  const displayFont = getDisplayFont(svaTypography) ?? svaTypography.textStyle.heading2.fontFamily;
 
   return StyleSheet.create({
     scrollContent: {
@@ -59,13 +57,13 @@ const makeStyles = (
       marginTop: spacing.lg,
     },
     sectionTitle: {
-      ...typography.h2,
+      ...svaTypography.textStyle.heading2,
       color: theme.textPrimary,
       fontFamily: displayFont,
       letterSpacing: -0.35,
     },
     sectionBody: {
-      ...typography.body,
+      ...svaTypography.textStyle.body,
       color: theme.textSecondary,
       lineHeight: 22,
       marginTop: 8,
@@ -86,14 +84,14 @@ const makeStyles = (
       flex: 1,
     },
     leaveLabel: {
-      ...typography.button,
+      ...svaTypography.textStyle.button,
       color: theme.textPrimary,
       fontSize: 14,
       fontWeight: "800",
       letterSpacing: 0.5,
     },
     leaveBody: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginTop: 4,
       lineHeight: 18,
@@ -115,7 +113,7 @@ const makeStyles = (
       transform: [{ scale: 0.99 }],
     },
     leaveButtonText: {
-      ...typography.button,
+      ...svaTypography.textStyle.button,
       color: theme.textPrimary,
       fontSize: 13,
       fontWeight: "800",
@@ -126,14 +124,14 @@ const makeStyles = (
       marginBottom: spacing.md,
     },
     sectionLabel: {
-      ...typography.smallCaption,
+      ...svaTypography.textStyle.authTinyLabel,
       color: theme.textSecondary,
       opacity: 0.78,
       letterSpacing: 1.7,
       textTransform: "uppercase",
     },
     sectionBodySmall: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textSecondary,
       marginTop: 6,
       lineHeight: 18,
@@ -151,7 +149,7 @@ const makeStyles = (
       borderColor: "rgba(255,255,255,0.06)",
     },
     anchorNoteText: {
-      ...typography.caption,
+      ...svaTypography.textStyle.caption,
       color: theme.textPrimary,
       flex: 1,
       lineHeight: 18,
@@ -166,11 +164,11 @@ export const MeditationAnchorScreen = () => {
     anchorAt?: string | string[];
   }>();
 
-  const { newTheme: theme, spacing, typography, svaTypography } =
+  const { newTheme: theme, spacing, svaTypography } =
     useContext(ThemeContext);
   const styles = useMemo(
-    () => makeStyles(theme, spacing, typography, svaTypography),
-    [theme, spacing, typography, svaTypography]
+    () => makeStyles(theme, spacing, svaTypography),
+    [theme, spacing, svaTypography]
   );
 
   const scrollRef = useRef<ScrollView>(null);
