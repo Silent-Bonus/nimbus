@@ -1,3 +1,8 @@
+/**
+ * Meditation daily check-in screen.
+ * Reads normalized habit progress, lets the user add minutes, and persists
+ * sanitized minute increments through the habit progress endpoint.
+ */
 import React, {
   useCallback,
   useContext,
@@ -12,28 +17,34 @@ import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import ThemeContext from "@/contexts/ThemeContext";
 import ScreenHeader from "@/components/layout/ScreenHeader";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
-import TimePickerSheet from "@/components/ui/picker/TimePickerSheet";
+import { useNimbusToast } from "@/components/ui/toast/useNimbusToast";
 import { ROUTES } from "@/constants/routes";
-import { getHabitDetailsByDate } from "@/features/check-in/services/dailyCheckinService";
-import { DailyCheckInDetailResponse } from "@/features/check-in/types/dailyCheckin";
-import { toMinutes } from "@/features/check-in/utils/dailyCheckin";
+import RitualReminderSettingsModal from "@/features/check-in/components/common/RitualReminderSettingsModal";
+import {
+  getHabitDetailsByDate,
+  incrementHabitProgress,
+  updateHabitReminderFrequency,
+} from "@/features/check-in/services/dailyCheckinService";
+import { toApiDate } from "@/utils/date-time";
+import { NormalizedHabitDetailResponse } from "@/features/check-in/types/dailyCheckin";
+import {
+  sanitizeHabitIncrement,
+  toMinutes,
+} from "@/features/check-in/utils/dailyCheckin";
 import {
   DEFAULT_COMPLETED_MINUTES,
   DEFAULT_GOAL_MINUTES,
-  DEFAULT_START_TIME_MINUTES,
   MOCK_WEEKLY_MEDITATION,
+  REMINDER_OPTIONS,
   buildWeeklyMeditationSeries,
   formatMinutes,
-  hasMeaningfulWeeklyData,
   parseReminderIndex,
-  parseTimeToDate,
   type WeeklyPoint,
 } from "@/features/check-in/utils/meditationCheckin";
 import {
   MeditationErrorState,
   MeditationLoadingState,
   MeditationProgressCard,
-  MeditationScheduleCard,
   MeditationTipCard,
   MeditationTrendCard,
 } from "@/features/check-in/components/meditation/checkIn";
@@ -49,7 +60,7 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, svaTypography: any) =>
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      gap: 10,
+      gap: spacing.sm,
       marginTop: spacing.md,
     },
     refreshingText: {
@@ -61,6 +72,7 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, svaTypography: any) =>
 
 export const MeditationCheckInScreen = () => {
   const navigation = useNavigation();
+  const toast = useNimbusToast();
   const { id, date } = useLocalSearchParams<{ id?: string; date?: string }>();
   const templateId = useMemo(() => Number(id), [id]);
 
@@ -75,14 +87,11 @@ export const MeditationCheckInScreen = () => {
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [detail, setDetail] = useState<DailyCheckInDetailResponse | null>(null);
+  const [detail, setDetail] = useState<NormalizedHabitDetailResponse | null>(null);
   const [completedMinutes, setCompletedMinutes] = useState(
     DEFAULT_COMPLETED_MINUTES
   );
   const [goalMinutes, setGoalMinutes] = useState(DEFAULT_GOAL_MINUTES);
-  const [startTime, setStartTime] = useState(() =>
-    parseTimeToDate(null, DEFAULT_START_TIME_MINUTES)
-  );
   const [reminderIndex, setReminderIndex] = useState(1);
   const [weeklySeries, setWeeklySeries] = useState<WeeklyPoint[]>(
     MOCK_WEEKLY_MEDITATION
@@ -90,8 +99,9 @@ export const MeditationCheckInScreen = () => {
   const [currentStreak, setCurrentStreak] = useState(0);
   const [longestStreak, setLongestStreak] = useState(0);
   const [anchoredAt, setAnchoredAt] = useState<Date | null>(null);
-  const [showStartTimeSheet, setShowStartTimeSheet] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
+  // Fetch the selected meditation habit and its current daily progress.
   useEffect(() => {
     navigation.setOptions({
       headerShown: false,
@@ -109,7 +119,7 @@ export const MeditationCheckInScreen = () => {
     setError(null);
 
     try {
-      const res: DailyCheckInDetailResponse = await getHabitDetailsByDate(
+      const res = await getHabitDetailsByDate(
         templateId,
         date
       );
@@ -129,34 +139,37 @@ export const MeditationCheckInScreen = () => {
     }
   }, [date, templateId]);
 
+  // Reconcile local progress when the normalized detail response changes.
   useEffect(() => {
     loadMeditation();
   }, [loadMeditation]);
 
+  // Keep the displayed weekly trend derived from API progress.
   useEffect(() => {
     const data = detail?.data;
     if (!data) return;
 
     const nextGoal = toMinutes(
-      data.target_unit ?? data.metric_count ?? DEFAULT_GOAL_MINUTES,
-      data.metric_unit ?? "min"
+      data.goal_details.metric_details.target ?? DEFAULT_GOAL_MINUTES,
+      data.goal_details.metric_details.unit ?? "min"
     );
     const nextCompleted = toMinutes(
-      data.completed_unit ?? 0,
-      data.metric_unit ?? "min"
+      data.goal_details.metric_details.completed ?? 0,
+      data.goal_details.metric_details.unit ?? "min"
     );
 
-    const weekly = buildWeeklyMeditationSeries(data.last_7_days_completion);
+    const weekly = buildWeeklyMeditationSeries(
+      data.progress.last_7_days_completion
+    );
 
     setGoalMinutes(Math.max(5, nextGoal || DEFAULT_GOAL_MINUTES));
     setCompletedMinutes(Math.max(0, nextCompleted));
-    setStartTime(parseTimeToDate(data.start_time, DEFAULT_START_TIME_MINUTES));
-    setReminderIndex(parseReminderIndex(data.reminder_time));
-    setWeeklySeries(
-      hasMeaningfulWeeklyData(weekly) ? weekly : MOCK_WEEKLY_MEDITATION
-    );
-    setCurrentStreak(Number(data.current_streak ?? 0));
-    setLongestStreak(Number(data.longest_streak ?? 0));
+    setReminderIndex(parseReminderIndex(detail?.data.protocol_details.reminder_time));
+    // Keep real zero values from the API visible; they are meaningful data,
+    // not a reason to replace the chart with mock progress.
+    setWeeklySeries(weekly.length ? weekly : MOCK_WEEKLY_MEDITATION);
+    setCurrentStreak(Number(detail?.data.streak.current_streak ?? 0));
+    setLongestStreak(Number(detail?.data.streak.longest_streak ?? 0));
     setAnchoredAt(null);
   }, [detail]);
 
@@ -166,13 +179,115 @@ export const MeditationCheckInScreen = () => {
     loadMeditation();
   }, [loadMeditation]);
 
-  const scrollToTips = useCallback(() => {
-    scrollRef.current?.scrollToEnd({ animated: true });
-  }, []);
+  const handleReminderChange = useCallback(
+    async (nextIndex: number) => {
+      const reminderFrequency = REMINDER_OPTIONS[nextIndex];
+      if (!templateId || reminderFrequency === undefined) return;
 
-  const handleAddMinutes = useCallback((step: number) => {
-    setCompletedMinutes((prev) => prev + step);
-  }, []);
+      try {
+        console.log("[Meditation Sync] reminder frequency update", {
+          habitId: templateId,
+          reminder_frequency: reminderFrequency,
+        });
+        await updateHabitReminderFrequency(templateId, reminderFrequency);
+        setReminderIndex(nextIndex);
+        toast.show({
+          variant: "success",
+          title: "Reminder updated",
+          message: `Meditation reminders set to every ${reminderFrequency} minutes.`,
+        });
+      } catch (error) {
+        console.warn(
+          "[Meditation Sync] reminder frequency update failed",
+          error
+        );
+        toast.show({
+          variant: "error",
+          title: "Reminder update failed",
+          message: "Please try again.",
+        });
+      }
+    },
+    [templateId, toast]
+  );
+
+  const handleAddMinutes = useCallback(
+    async (step: number) => {
+      const nextCompletedMinutes = completedMinutes + step;
+
+      if (nextCompletedMinutes > goalMinutes) {
+        toast.show({
+          variant: "warning",
+          title: "Meditation goal exceeded",
+          message: `Add ${formatMinutes(
+            Math.max(0, goalMinutes - completedMinutes)
+          )} or less to stay within today's goal.`,
+        });
+        return;
+      }
+
+      if (!templateId) {
+        toast.show({
+          variant: "error",
+          title: "Meditation not saved",
+          message: "This meditation habit is missing an id.",
+        });
+        return;
+      }
+
+      const entry = {
+        date: toApiDate(new Date()),
+        // Meditation increments are sent as whole minutes and capped at 15.
+        increment_by: sanitizeHabitIncrement(step, "minutes", 15),
+      };
+
+      try {
+        console.log("[Meditation Sync] increment entry", {
+          habitId: templateId,
+          ...entry,
+        });
+        const response = await incrementHabitProgress(
+          templateId,
+          entry.date,
+          entry.increment_by
+        );
+        setCompletedMinutes(nextCompletedMinutes);
+        console.log("[Meditation Sync] increment success", {
+          habitId: templateId,
+          entry,
+          response,
+        });
+        toast.show({
+          variant: "success",
+          title: "Meditation updated",
+          message: `${formatMinutes(entry.increment_by)} added to today's session.`,
+        });
+      } catch (error) {
+        console.warn("[Meditation Sync] increment failed", {
+          habitId: templateId,
+          entry,
+          error,
+        });
+        toast.show({
+          variant: "error",
+          title: "Meditation update failed",
+          message:
+            error instanceof Error ? error.message : "Please try again.",
+        });
+      }
+    },
+    [completedMinutes, goalMinutes, templateId, toast]
+  );
+
+  const handleResetMinutes = useCallback(() => {
+    setCompletedMinutes(0);
+    setAnchoredAt(null);
+    toast.show({
+      variant: "info",
+      title: "Meditation reset",
+      message: "Today's meditation progress was reset on this screen.",
+    });
+  }, [toast]);
 
   const handleAnchorHold = useCallback(() => {
     const now = new Date();
@@ -182,10 +297,15 @@ export const MeditationCheckInScreen = () => {
       params: {
         goal: String(goalMinutes),
         anchorAt: now.toISOString(),
+        source: "daily-checkin",
+        checkInId: String(templateId),
+        date,
+        autoStart: "true",
       },
     });
-  }, [goalMinutes]);
+  }, [date, goalMinutes, templateId]);
 
+  // Render the meditation progress flow inside the shared SVA screen shell.
   return (
     <ScreenView bgColor={theme.background} padding={0}>
       <ScrollView
@@ -199,14 +319,9 @@ export const MeditationCheckInScreen = () => {
           onBack={() => navigation.goBack()}
           rightActions={[
             {
-              icon: "refresh-outline",
-              accessibilityLabel: "Refresh meditation data",
-              onPress: handleRefresh,
-            },
-            {
-              icon: "information-circle-outline",
-              accessibilityLabel: "Jump to tips",
-              onPress: scrollToTips,
+              icon: "settings-outline",
+              accessibilityLabel: "Open settings",
+              onPress: () => setShowSettingsModal(true),
             },
           ]}
         />
@@ -222,27 +337,17 @@ export const MeditationCheckInScreen = () => {
               goalMinutes={goalMinutes}
               anchoredAt={anchoredAt}
               onAddMinutes={handleAddMinutes}
+              onResetMinutes={handleResetMinutes}
               onAnchorHold={handleAnchorHold}
             />
 
-            <View style={{ height: 18 }} />
-
-            <MeditationScheduleCard
-              startTime={startTime}
-              reminderIndex={reminderIndex}
-              onOpenTimePicker={() => setShowStartTimeSheet(true)}
-              onReminderChange={setReminderIndex}
-            />
-
-            <View style={{ height: 18 }} />
+            <View style={{ height: spacing.sm }} />
 
             <MeditationTrendCard
               data={weeklySeries}
               currentStreak={currentStreak}
               longestStreak={longestStreak}
             />
-
-            <View style={{ height: 18 }} />
 
             <MeditationTipCard />
           </>
@@ -257,16 +362,16 @@ export const MeditationCheckInScreen = () => {
           </View>
         ) : null}
 
-        <View style={{ height: 24 }} />
+        <View style={{ height: spacing.lg }} />
       </ScrollView>
 
-      <TimePickerSheet
-        visible={showStartTimeSheet}
-        value={startTime}
-        title="Meditation start"
-        onClose={() => setShowStartTimeSheet(false)}
-        onChange={setStartTime}
-        is24Hour={false}
+      <RitualReminderSettingsModal
+        visible={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        title="Meditation reminders"
+        reminderOptions={REMINDER_OPTIONS}
+        selectedIndex={reminderIndex}
+        onSelectIndex={handleReminderChange}
       />
     </ScreenView>
   );

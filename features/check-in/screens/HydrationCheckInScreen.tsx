@@ -1,3 +1,8 @@
+/**
+ * Hydration daily check-in screen.
+ * Loads the selected habit date, displays normalized progress, and submits
+ * water increments in the backend's expected milliliter format.
+ */
 import React, {
   useCallback,
   useContext,
@@ -6,21 +11,35 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useLocalSearchParams, useNavigation } from "expo-router";
 
-import ThemeContext from "../../../contexts/ThemeContext";
-import ScreenHeader from "../../../components/layout/ScreenHeader";
-import { ScreenView } from "../../../components/ui/theme-components/ScreenView";
+import ThemeContext from "@/contexts/ThemeContext";
+import ScreenHeader from "@/components/layout/ScreenHeader";
+import { ScreenView } from "@/components/ui/theme-components/ScreenView";
+import { useNimbusToast } from "@/components/ui/toast/useNimbusToast";
+import { toApiDate } from "@/utils/date-time";
+import { getErrorMessage } from "@/utils/helper";
 import {
   HydrationErrorState,
   HydrationHeroCard,
   HydrationLoadingState,
-  HydrationReminderFrequencyCard,
   HydrationTipCard,
   HydrationTrendCard,
 } from "../components/hydration";
-import { getHabitDetailsByDate } from "../services/dailyCheckinService";
+import RitualReminderSettingsModal from "../components/common/RitualReminderSettingsModal";
+import {
+  getHabitDetailsByDate,
+  incrementHabitProgress,
+  updateHabitReminderFrequency,
+} from "../services/dailyCheckinService";
 import {
   DEFAULT_WEEKLY_SERIES,
   MOCK_WEEKLY_SERIES,
@@ -28,54 +47,52 @@ import {
   buildWeeklySeries,
   clamp,
   hasMeaningfulWeeklyData,
+  REMINDER_OPTIONS,
+  toHydrationIncrement,
   toHydrationMl,
   type WeeklyPoint,
 } from "../utils/hydration";
 import type { ColorSet, Spacing, TypographyTokens } from "../../../theme/types";
 
-const getErrorMessage = (error: unknown) => {
-  if (typeof error === "string") {
-    return error;
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  if (error && typeof error === "object" && "message" in error) {
-    const message = (error as { message?: unknown }).message;
-    if (typeof message === "string" && message.trim()) {
-      return message;
-    }
-  }
-
-  return "Failed to load water data";
-};
-
 export const HydrationCheckInScreen = () => {
   const navigation = useNavigation();
+  const toast = useNimbusToast();
   const { newTheme: theme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
     () => makeStyles(theme, spacing, svaTypography),
     [theme, spacing, svaTypography]
   );
 
+  // Expo Router can return a route param as either a string or an array.
+  // Normalize it once so the data request always receives a stable value.
   const { id, date } = useLocalSearchParams<{ id?: string; date?: string }>();
   const templateId = useMemo(() => {
     const rawId = Array.isArray(id) ? id[0] : id;
     return Number(rawId);
   }, [id]);
-  const selectedDate = useMemo(() => (Array.isArray(date) ? date[0] : date), [date]);
+  const selectedDate = useMemo(
+    () => (Array.isArray(date) ? date[0] : date),
+    [date]
+  );
   const scrollRef = useRef<ScrollView | null>(null);
 
+  // The UI uses ml for consistent progress calculations, while the API unit
+  // is preserved so increments can be sent as ml or liters when required.
   const [hydrationMl, setHydrationMl] = useState(0);
-  const [weeklySeries, setWeeklySeries] =
-    useState<WeeklyPoint[]>(DEFAULT_WEEKLY_SERIES);
+  const [metricUnit, setMetricUnit] = useState<string | null>(null);
+  const [weeklySeries, setWeeklySeries] = useState<WeeklyPoint[]>(
+    DEFAULT_WEEKLY_SERIES
+  );
   const [reminderIndex, setReminderIndex] = useState(1);
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  // The increment endpoint accepts deltas, so keep the last committed amount
+  // separate from the slider's temporary value.
+  const committedHydrationMlRef = useRef(0);
 
+  // Load the habit detail whenever the selected habit/date changes.
   useEffect(() => {
     navigation.setOptions({
       headerShown: false,
@@ -93,18 +110,25 @@ export const HydrationCheckInScreen = () => {
     setError(null);
 
     try {
-      const response = await getHabitDetailsByDate(templateId, selectedDate);
-      const detail = response.data;
-
-      setHydrationMl(
-        clamp(
-          toHydrationMl(detail.completed_unit ?? 0, detail.metric_unit),
-          0,
-          WATER_GOAL_ML
-        )
+      const normalizedResponse = await getHabitDetailsByDate(
+        templateId,
+        selectedDate
+      );
+      const { metric_details: metricDetails } =
+        normalizedResponse.data.goal_details;
+      const { progress } = normalizedResponse.data;
+      // Normalize backend completion into ml for the visual balance and jar.
+      const nextHydrationMl = clamp(
+        toHydrationMl(metricDetails.completed, metricDetails.unit),
+        0,
+        WATER_GOAL_ML
       );
 
-      const series = buildWeeklySeries(detail.last_7_days_completion);
+      setHydrationMl(nextHydrationMl);
+      committedHydrationMlRef.current = nextHydrationMl;
+      setMetricUnit(metricDetails.unit);
+
+      const series = buildWeeklySeries(progress.last_7_days_completion);
       setWeeklySeries(
         hasMeaningfulWeeklyData(series) ? series : MOCK_WEEKLY_SERIES
       );
@@ -117,6 +141,7 @@ export const HydrationCheckInScreen = () => {
     }
   }, [selectedDate, templateId]);
 
+  // Keep the chart and hero card synchronized with the latest API progress.
   useEffect(() => {
     loadHydration();
   }, [loadHydration]);
@@ -127,10 +152,99 @@ export const HydrationCheckInScreen = () => {
     loadHydration();
   }, [loadHydration]);
 
-  const scrollToTip = useCallback(() => {
-    scrollRef.current?.scrollToEnd({ animated: true });
+  const handleReminderChange = useCallback(
+    async (nextIndex: number) => {
+      const reminderFrequency = REMINDER_OPTIONS[nextIndex];
+      if (!templateId || reminderFrequency === undefined) return;
+
+      try {
+        console.log("[Hydration] reminder frequency update", {
+          habitId: templateId,
+          reminder_frequency: reminderFrequency,
+        });
+        await updateHabitReminderFrequency(templateId, reminderFrequency);
+        setReminderIndex(nextIndex);
+        toast.show({
+          variant: "success",
+          title: "Reminder updated",
+          message: `Hydration reminders set to every ${reminderFrequency} minutes.`,
+        });
+      } catch (error) {
+        console.warn("[Hydration] reminder frequency update failed", error);
+        toast.show({
+          variant: "error",
+          title: "Reminder update failed",
+          message: getErrorMessage(error),
+        });
+      }
+    },
+    [templateId, toast]
+  );
+
+  const handleHydrationChange = useCallback((value: number) => {
+    setHydrationMl(clamp(value, 0, WATER_GOAL_ML));
   }, []);
 
+  const handleHydrationCommit = useCallback(
+    async (value: number) => {
+      const nextHydrationMl = clamp(value, 0, WATER_GOAL_ML);
+      const previousHydrationMl = committedHydrationMlRef.current;
+      const deltaMl = nextHydrationMl - previousHydrationMl;
+
+      if (deltaMl <= 0 || !templateId) {
+        setHydrationMl(previousHydrationMl);
+        return;
+      }
+
+      // The backend expects 300 for ml habits and 0.3 for liter habits.
+      const incrementBy = toHydrationIncrement(deltaMl, metricUnit);
+      const entry = {
+        date: toApiDate(new Date()),
+        increment_by: incrementBy,
+      };
+      committedHydrationMlRef.current = nextHydrationMl;
+
+      try {
+        // Progress is recorded for today, using Nimbus's shared API date
+        // formatter rather than constructing a date string locally.
+        console.log("[Hydration] increment entry", {
+          habitId: templateId,
+          ...entry,
+        });
+        const response = await incrementHabitProgress(
+          templateId,
+          entry.date,
+          entry.increment_by
+        );
+        console.log("[Hydration] increment success", {
+          habitId: templateId,
+          entry,
+          response,
+        });
+        toast.show({
+          variant: "success",
+          title: "Hydration updated",
+          message: "Your hydration entry was recorded.",
+        });
+      } catch (error) {
+        committedHydrationMlRef.current = previousHydrationMl;
+        setHydrationMl(previousHydrationMl);
+        console.warn("[Hydration] increment failed", {
+          habitId: templateId,
+          entry,
+          error,
+        });
+        toast.show({
+          variant: "error",
+          title: "Hydration update failed",
+          message: getErrorMessage(error),
+        });
+      }
+    },
+    [metricUnit, templateId, toast]
+  );
+
+  // Render loading, error, and hydrated states through the same themed shell.
   return (
     <ScreenView bgColor={theme.background} padding={0}>
       <ScrollView
@@ -144,18 +258,14 @@ export const HydrationCheckInScreen = () => {
           onBack={() => navigation.goBack()}
           rightActions={[
             {
-              icon: "refresh-outline",
-              accessibilityLabel: "Refresh hydration data",
-              onPress: handleRefresh,
-            },
-            {
-              icon: "information-circle-outline",
-              accessibilityLabel: "Jump to tip",
-              onPress: scrollToTip,
+              icon: "settings-outline",
+              accessibilityLabel: "Open settings",
+              onPress: () => setShowSettingsModal(true),
             },
           ]}
         />
 
+        {/* Keep loading, error, and loaded states mutually exclusive. */}
         {loading && !loaded ? (
           <HydrationLoadingState />
         ) : error ? (
@@ -165,12 +275,8 @@ export const HydrationCheckInScreen = () => {
             <HydrationHeroCard
               currentMl={hydrationMl}
               goalMl={WATER_GOAL_ML}
-              onChange={setHydrationMl}
-            />
-
-            <HydrationReminderFrequencyCard
-              reminderIndex={reminderIndex}
-              onChange={setReminderIndex}
+              onChange={handleHydrationChange}
+              onCommit={handleHydrationCommit}
             />
 
             <HydrationTrendCard data={weeklySeries} />
@@ -185,17 +291,32 @@ export const HydrationCheckInScreen = () => {
               size="small"
               color={theme.chart2 ?? theme.accent}
             />
-            <Text style={styles.refreshingText}>Refreshing hydration data…</Text>
+            <Text style={styles.refreshingText}>
+              Refreshing hydration data…
+            </Text>
           </View>
         ) : null}
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
+
+      <RitualReminderSettingsModal
+        visible={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        title="Hydration reminders"
+        reminderOptions={REMINDER_OPTIONS}
+        selectedIndex={reminderIndex}
+        onSelectIndex={handleReminderChange}
+      />
     </ScreenView>
   );
 };
 
-const makeStyles = (theme: ColorSet, spacing: Spacing, svaTypography: any) =>
+const makeStyles = (
+  theme: ColorSet,
+  spacing: Spacing,
+  svaTypography: TypographyTokens
+) =>
   StyleSheet.create({
     scrollContent: {
       paddingHorizontal: spacing.md,

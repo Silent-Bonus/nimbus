@@ -188,6 +188,7 @@ export default function ActionModal({
                       secondaryAction.label
                     }
                     testID={secondaryAction.testID}
+                    style={styles.footerButton}
                   />
                 ) : null}
 
@@ -201,6 +202,7 @@ export default function ActionModal({
                     primaryAction.accessibilityLabel ?? primaryAction.label
                   }
                   testID={primaryAction.testID}
+                  style={styles.footerButton}
                 />
               </View>
             </View>
@@ -243,12 +245,15 @@ function createStyles(
     card: {
       borderRadius: 31,
       maxHeight: "86%",
+      overflow: "hidden",
       backgroundColor: colors.bg.base,
       borderWidth: 1,
       borderColor: colors.border.subtle,
     },
     contentScroll: {
       flexGrow: 0,
+      flexShrink: 1,
+      maxHeight: "100%",
     },
     contentScrollContent: {
       paddingTop: spacing.xs,
@@ -335,6 +340,12 @@ function createStyles(
       paddingHorizontal: spacing.lg,
       paddingBottom: spacing.lg,
       gap: spacing.sm,
+      alignItems: "stretch",
+      flexShrink: 0,
+    },
+    footerButton: {
+      width: "100%",
+      flexShrink: 0,
     },
   });
 }

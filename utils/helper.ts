@@ -64,6 +64,28 @@ export async function getDeviceDetails() {
 export const arraysEqual = (a: any[] = [], b: any[] = []) =>
   a.length === b.length && a.every((v, i) => v === b[i]);
 
+export const getErrorMessage = (
+  error: unknown,
+  fallbackMessage = "Failed to load water data"
+) => {
+  if (typeof error === "string") {
+    return error;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) {
+      return message;
+    }
+  }
+
+  return fallbackMessage;
+};
+
 /** Build HH:mm:ss from notif.time or notif.timeISO */
 export const deriveHHmmss = (n: any): string => {
   if (n?.time) return n.time;

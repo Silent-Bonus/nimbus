@@ -130,6 +130,13 @@ function RegistrationFlowInner() {
     [password]
   );
 
+  const passwordStrengthColor =
+    passwordStrength.label === "STRONG"
+      ? svaColors.state.success
+      : passwordStrength.label === "STABLE"
+        ? svaColors.state.warning
+        : svaColors.state.error;
+
   const otpRecipient = useMemo(() => email.trim(), [email]);
 
   const next = useCallback(() => {
@@ -202,7 +209,7 @@ function RegistrationFlowInner() {
       const res = await getOtp({
         recipient,
         channel: "email",
-        name: derivedUsername || undefined,
+        name: fullName.trim() || undefined,
       });
 
       if (res?.success === false) {
@@ -229,7 +236,7 @@ function RegistrationFlowInner() {
     } finally {
       setOtpSending(false);
     }
-  }, [derivedUsername, email, toast]);
+  }, [email, fullName, toast]);
 
   const verifyCode = useCallback(async () => {
     if (DISABLE_OTP_FLOW) {
@@ -874,8 +881,8 @@ function RegistrationFlowInner() {
                   </Text>
                   <Text
                     style={[
-                      styles.strengthValue,
-                      { color: svaColors.brand.primary },
+                    styles.strengthValue,
+                      { color: passwordStrengthColor },
                     ]}
                   >
                     {passwordStrength.label}
@@ -894,7 +901,10 @@ function RegistrationFlowInner() {
                   <View
                     style={[
                       styles.strengthFill,
-                      { width: `${passwordStrength.percent}%` },
+                      {
+                        width: `${passwordStrength.percent}%`,
+                        backgroundColor: passwordStrengthColor,
+                      },
                     ]}
                   />
                 </View>

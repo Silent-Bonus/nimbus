@@ -1,3 +1,8 @@
+/**
+ * Legacy water check-in screen.
+ * Reads the normalized hydration detail response and keeps the reminder and
+ * weekly summary UI available for the older water-tracking entry point.
+ */
 import React, { useState, useEffect, useContext, useMemo, useRef } from "react";
 import {
   View,
@@ -23,6 +28,7 @@ import { DailyCheckInDetailResponse } from "@/features/check-in/types/dailyCheck
 import { ErrorCard } from "@/features/check-in/components/waterIntake/ErrorCard";
 import { SkeletonCard } from "@/features/check-in/components/waterIntake/SkeletonCard";
 import { SkeletonRow } from "@/features/check-in/components/waterIntake/SkeletonRow";
+import type { ColorSet } from "@/theme/types";
 
 const remindOptions = [
   { key: "15m", label: "Every 15 minutes" },
@@ -38,7 +44,7 @@ export const WaterCheckInScreen = () => {
   // route params: id + date (both strings)
   const { id, date } = useLocalSearchParams<{ id?: string; date?: string }>();
 
-  // UI states
+  // UI state for reminder controls and the animated water tracker.
   const [enabled, setEnabled] = useState(true);
   const [valueKey, setValueKey] = useState<string | null>("45m");
 
@@ -51,6 +57,7 @@ export const WaterCheckInScreen = () => {
 
   // skeleton pulse
   const pulse = useRef(new Animated.Value(0.3)).current;
+  // Load the selected day's hydration detail when route parameters change.
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
@@ -86,17 +93,17 @@ export const WaterCheckInScreen = () => {
         setLoading(true);
         setErr(null);
         const habitId = Number(id);
-        const res: DailyCheckInDetailResponse = await getHabitDetailsByDate(
+        const res = await getHabitDetailsByDate(
           habitId,
           date
         );
 
         const h = res?.data;
-        setTotal(Number(h?.target_unit ?? 0));
-        setCompleted(Number(h?.completed_unit ?? 0));
+        setTotal(Number(h?.goal_details.metric_details.target ?? 0));
+        setCompleted(Number(h?.goal_details.metric_details.completed ?? 0));
         setWeekly(
-          Array.isArray(h?.last_7_days_completion)
-            ? h!.last_7_days_completion
+          Array.isArray(h?.progress.last_7_days_completion)
+            ? h.progress.last_7_days_completion
             : []
         );
       } catch (e: any) {
@@ -128,6 +135,7 @@ export const WaterCheckInScreen = () => {
     setCompleted(newValue);
   };
 
+  // Render the legacy water flow using the shared themed screen container.
   return (
     <ScreenView style={{ paddingTop: Platform.OS === "ios" ? 40 : 20 }}>
       <View style={styles.container}>
@@ -176,11 +184,11 @@ export const WaterCheckInScreen = () => {
                     String(date)
                   );
                   const h = res?.data;
-                  setTotal(Number(h?.target_unit ?? 0));
-                  setCompleted(Number(h?.completed_unit ?? 0));
+                  setTotal(Number(h?.goal_details.metric_details.target ?? 0));
+                  setCompleted(Number(h?.goal_details.metric_details.completed ?? 0));
                   setWeekly(
-                    Array.isArray(h?.last_7_days_completion)
-                      ? h!.last_7_days_completion
+                    Array.isArray(h?.progress.last_7_days_completion)
+                      ? h.progress.last_7_days_completion
                       : []
                   );
                 } catch (e: any) {
@@ -240,7 +248,7 @@ export const WaterCheckInScreen = () => {
   );
 };
 
-const styling = (theme: any) =>
+const styling = (theme: ColorSet) =>
   StyleSheet.create({
     container: {
       flex: 1,

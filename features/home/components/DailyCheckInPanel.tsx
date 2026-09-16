@@ -1,5 +1,11 @@
 // components/homeScreen/DailyCheckInPanel.tsx
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   View,
   StyleSheet,
@@ -14,7 +20,7 @@ import {
   ActivityIndicator,
   Pressable,
 } from "react-native";
-import DailyCheckInCard from "@/features/home/components/component/DailyCheckInCard";
+import DailyCheckInCard from "@/features/home/components/DailyCheckInCard";
 import ThemeContext from "@/contexts/ThemeContext";
 import { useRouter } from "expo-router";
 import { getCheckinList } from "@/features/check-in/services/dailyCheckinService";
@@ -27,10 +33,10 @@ import {
   routeFor,
   stepFor,
 } from "@/features/check-in/utils/dailyCheckin";
-import { DailyCheckinSkeletonCard } from "./component/DailyCheckinSkeletonCard";
+import { DailyCheckinSkeletonCard } from "./DailyCheckinSkeletonCard";
 import axios from "axios";
 import { Unit } from "@/features/check-in/types/dailyCheckin";
-import ProgressPill from "./component/ProgressPill";
+import ProgressPill from "./ProgressPill";
 
 type CardItem = {
   name: string;
@@ -41,12 +47,6 @@ type CardItem = {
   color: string;
   route: string;
   id?: number;
-};
-
-const formatLocalISODate = (d = new Date()) => {
-  const tz = d.getTimezoneOffset();
-  const local = new Date(d.getTime() - tz * 60000);
-  return local.toISOString().slice(0, 10);
 };
 
 type Props = { date: string }; // YYYY-MM-DD
@@ -86,48 +86,49 @@ const DailyCheckInPanel = ({ date }: Props) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
   }, [expanded, rotateAnim]);
 
+  const loadData = useCallback(async (targetDate: string) => {
+    setLoading(true);
+    setErr(null);
+    try {
+      const res = await getCheckinList(targetDate, true); // single source of truth
+
+      // Some backends return { success, data }, some return array directly
+      const habits = Array.isArray((res as any)?.data)
+        ? (res as any).data
+        : Array.isArray(res)
+        ? res
+        : [];
+
+      const mapped: CardItem[] = habits.map((h: any) => ({
+        id: h.id,
+        name: h.name ?? "Habit",
+        goalQuantity: Number(h.target_unit ?? 0),
+        completedQuantity: Number(h.completed_unit ?? 0),
+        unit: resolveUnit(h),
+        icon: pickIcon(h.name),
+        color: h.color || pickColor(h.name, newTheme),
+        route: routeFor(h.name),
+      }));
+
+      setItems(mapped);
+    } catch (e: any) {
+      // robust string extraction for axios or generic errors
+      const msg = axios.isAxiosError(e)
+        ? e.response?.data?.message ??
+          e.response?.data?.detail ??
+          e.message ??
+          "Failed to load"
+        : (typeof e === "string" ? e : e?.message) || "Failed to load";
+      setErr(msg);
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [newTheme]);
+
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setErr(null);
-      try {
-        const res = await getCheckinList(date, true); // <— single source of truth
-
-        // Some backends return { success, data }, some return array directly
-        const habits = Array.isArray((res as any)?.data)
-          ? (res as any).data
-          : Array.isArray(res)
-          ? res
-          : [];
-
-        const mapped: CardItem[] = habits.map((h: any) => ({
-          id: h.id,
-          name: h.name ?? "Habit",
-          goalQuantity: Number(h.target_unit ?? 0),
-          completedQuantity: Number(h.completed_unit ?? 0),
-          unit: resolveUnit(h),
-          icon: pickIcon(h.name),
-          color: h.color || pickColor(h.name, newTheme),
-          route: routeFor(h.name),
-        }));
-
-        setItems(mapped);
-      } catch (e: any) {
-        // robust string extraction for axios or generic errors
-        const msg = axios.isAxiosError(e)
-          ? e.response?.data?.message ??
-            e.response?.data?.detail ??
-            e.message ??
-            "Failed to load"
-          : (typeof e === "string" ? e : e?.message) || "Failed to load";
-        setErr(msg);
-        setItems([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [date]);
+    loadData(date);
+  }, [date, loadData]);
 
   // caret rotation interpolation
   const rotate = rotateAnim.interpolate({
@@ -207,50 +208,13 @@ const DailyCheckInPanel = ({ date }: Props) => {
             ) : err ? (
               // error card only
               <View style={styles.errorCard}>
-                <Text style={styles.errorText}>{err}</Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    // trigger refetch
-                    setErr(null);
-                    setLoading(true);
-                    // simple: flip expanded twice to trigger useEffect? better to call same fetch function.
-                    // For brevity, rely on the effect by updating theme dep or just re-run code inline.
-                    (async () => {
-                      try {
-                        const date = formatLocalISODate();
-                        const res = await getCheckinList(date, true);
-                        const habits = Array.isArray((res as any)?.data)
-                          ? (res as any).data
-                          : Array.isArray(res)
-                          ? res
-                          : [];
-                        const mapped: CardItem[] = habits.map((h: any) => ({
-                          id: h.id,
-                          name: h.name ?? "Habit",
-                          goalQuantity: Number(h.target_unit ?? 0),
-                          completedQuantity: Number(h.completed_unit ?? 0),
-                          unit: resolveUnit(h),
-                          icon: pickIcon(h.name),
-                          color: h.color || pickColor(h.name, newTheme),
-                          route: routeFor(h.name),
-                        }));
-                        setItems(mapped);
-                      } catch (e: any) {
-                        const msg = axios.isAxiosError(e)
-                          ? e.response?.data?.message ??
-                            e.response?.data?.detail ??
-                            e.message ??
-                            "Failed to load"
-                          : (typeof e === "string" ? e : e?.message) ||
-                            "Failed to load";
-                        setErr(msg);
-                      } finally {
-                        setLoading(false);
-                      }
-                    })();
-                  }}
-                  style={styles.retryBtn}
-                >
+                  <Text style={styles.errorText}>{err}</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      loadData(date);
+                    }}
+                    style={styles.retryBtn}
+                  >
                   <Text style={styles.retryText}>Retry</Text>
                 </TouchableOpacity>
               </View>

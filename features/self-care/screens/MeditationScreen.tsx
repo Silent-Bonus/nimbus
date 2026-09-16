@@ -7,7 +7,7 @@ import React, {
   useState,
 } from "react";
 import { FlatList, Platform, StyleSheet, Text, View } from "react-native";
-import { router, useNavigation } from "expo-router";
+import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import AppHeader from "@/components/layout/AppHeader";
@@ -43,6 +43,11 @@ import type {
 export const MeditationScreen: React.FC = () => {
   // Theme and navigation context used by the screen shell and cards.
   const navigation = useNavigation();
+  const routeParams = useLocalSearchParams<{
+    source?: string | string[];
+    checkInId?: string | string[];
+    date?: string | string[];
+  }>();
   const {
     newTheme: theme,
     svaTypography,
@@ -183,14 +188,27 @@ export const MeditationScreen: React.FC = () => {
 
   // Detail fetches from the API on mount, so this route only passes identifiers.
   const openMeditationDetail = useCallback((template: MeditationListItem) => {
+    const source = Array.isArray(routeParams.source)
+      ? routeParams.source[0]
+      : routeParams.source;
+    const checkInId = Array.isArray(routeParams.checkInId)
+      ? routeParams.checkInId[0]
+      : routeParams.checkInId;
+    const date = Array.isArray(routeParams.date)
+      ? routeParams.date[0]
+      : routeParams.date;
+
     router.push({
       pathname: ROUTES.AUTH.SELF_CARE_MEDITATION_DETAIL,
       params: {
         meditationId: template.id,
         meditationSlug: template.slug,
+        source,
+        checkInId,
+        date,
       },
     });
-  }, []);
+  }, [routeParams.checkInId, routeParams.date, routeParams.source]);
 
   if (isLoading) {
     return (

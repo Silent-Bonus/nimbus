@@ -135,7 +135,8 @@ export const API_ENDPOINTS = {
   getMealDashboard: (days: number = 30) =>
     `${BASE_URL}/api/v1/meals/dashboard/?days=${days}`,
   addMealItem: `${BASE_URL}/api/v1/meals/items/`,
-  updateMealItem: (id: number | string) => `${BASE_URL}/api/v1/meals/items/${id}/`,
+  updateMealItem: (id: number | string) =>
+    `${BASE_URL}/api/v1/meals/items/${id}/`,
   bulkUpdateMealPlan: `${BASE_URL}/api/v1/meals/plans/bulk_update/`,
   scribbles: `${BASE_URL}/api/v1/scribbles/`,
   recentScribbleTags: `${BASE_URL}/api/v1/scribbles/recent_tags/`,
@@ -149,12 +150,20 @@ export const API_ENDPOINTS = {
   reportBug: `${BASE_URL}/api/v1/bug-reports/`,
   logFeedback: `${BASE_URL}/api/v1/feedback/`,
 
-  personaQuestion: `${BASE_URL}/api/v1/profile/persona-questions/`,
-  submitPersonaAnswers: `${BASE_URL}/api/v1/profile/persona-answers/`,
+  personaQuestion: `${BASE_URL}/api/v1/profile/onboarding-questions/`,
+  submitPersonaAnswers: `${BASE_URL}/api/v1/profile/onboarding-answers/`,
+  doshaQuestions: `${BASE_URL}/api/v1/dosha/questions/`,
+  submitDoshaAssessment: `${BASE_URL}/api/v1/dosha/assessments/`,
+  currentJourneyPlan: `${BASE_URL}/api/v1/journeys/plans/current/`,
+  activateJourneyPlan: (id: number | string) =>
+    `${BASE_URL}/api/v1/journeys/plans/${id}/activate/`,
+  todayResonance: `${BASE_URL}/api/v1/resonance/today/`,
   contactUs: `${BASE_URL}/support/tickets/`,
 
   markHabitDone: (habitId: number) =>
     `${BASE_URL}/api/v1/habits/${habitId}/mark_complete/`,
+  incrementHabitProgress: (habitId: number | string) =>
+    `${BASE_URL}/api/v1/habits/${habitId}/increment_progress/`,
 
   // ✅ NEW: Function for fetching habits with date & filter
   getDailyCheckInByDate: (date: string, isDailyCheckIn = true) =>

@@ -1,4 +1,11 @@
-import { findIdBName, addObjectAtEnd, arraysEqual, deriveHHmmss, getDeviceDetails } from './helper';
+import {
+  findIdBName,
+  addObjectAtEnd,
+  arraysEqual,
+  deriveHHmmss,
+  getDeviceDetails,
+  getErrorMessage,
+} from './helper';
 
 describe('utils/helper', () => {
   
@@ -63,6 +70,31 @@ describe('utils/helper', () => {
       const result = deriveHHmmss({ timeISO: iso });
       // We expect the format HH:mm:00
       expect(result).toMatch(/^\d{2}:\d{2}:00$/);
+    });
+  });
+
+  describe('getErrorMessage', () => {
+    it('should return string errors as-is', () => {
+      expect(getErrorMessage('Network failed')).toBe('Network failed');
+    });
+
+    it('should return Error messages', () => {
+      expect(getErrorMessage(new Error('Request failed'))).toBe('Request failed');
+    });
+
+    it('should return non-empty object message values', () => {
+      expect(getErrorMessage({ message: 'Backend unavailable' })).toBe(
+        'Backend unavailable'
+      );
+    });
+
+    it('should return the fallback for unknown error shapes', () => {
+      expect(getErrorMessage({ message: '   ' })).toBe(
+        'Failed to load water data'
+      );
+      expect(getErrorMessage(null, 'Something went wrong')).toBe(
+        'Something went wrong'
+      );
     });
   });
 

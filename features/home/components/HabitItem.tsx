@@ -26,6 +26,7 @@ interface HabitItemProps {
   frequency: string;
   color?: string;
   actual_count: any;
+  habit_type_tracking?: "boolean" | "incremental" | string;
   // onHabitDelete:() => {};
   onToggle: (id: string, actual_count: any) => void;
 }
@@ -150,6 +151,7 @@ const HabitItemCard: React.FC<HabitItemProps> = ({
   frequency,
   description,
   actual_count,
+  habit_type_tracking,
   color,
   onToggle,
 }) => {
@@ -161,6 +163,7 @@ const HabitItemCard: React.FC<HabitItemProps> = ({
 
   const handleToggle = (e: GestureResponderEvent) => {
     e.stopPropagation();
+    if (isDoneForSelectedDate) return;
     onToggle(id, actual_count);
   };
 
@@ -174,8 +177,18 @@ const HabitItemCard: React.FC<HabitItemProps> = ({
   const accentColor = color || newTheme.accent;
   const metric = formatMetric(actual_count);
   const metricText = [metric.count, metric.unit].filter(Boolean).join(" ");
+  const isBooleanHabit = habit_type_tracking?.toLowerCase() === "boolean";
+  const isDoneForSelectedDate =
+    Boolean(done) ||
+    (isBooleanHabit &&
+      typeof lastCompleted === "string" &&
+      lastCompleted.slice(0, 10) === selectedDate.slice(0, 10));
   const hasProgress = (currentStreak ?? 0) > 0 || !!lastCompleted;
-  const actionState = done ? "completed" : hasProgress ? "resume" : "start";
+  const actionState = isDoneForSelectedDate
+    ? "completed"
+    : hasProgress
+    ? "resume"
+    : "start";
   const actionLabel =
     actionState === "completed"
       ? "COMPLETED"
@@ -292,6 +305,7 @@ const HabitItemCard: React.FC<HabitItemProps> = ({
 
           <TouchableOpacity
             onPress={handleToggle}
+            disabled={isDoneForSelectedDate}
             style={styles.actionButtonWrap}
             activeOpacity={0.85}
           >

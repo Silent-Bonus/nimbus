@@ -3,8 +3,8 @@ import React, { useContext, useMemo } from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 
 interface Props {
-  habitName: string;
-  frequency: string;
+  habitName?: string;
+  frequency?: string;
   icon?: string; // emoji for now
   data: { day: string; done: boolean; date: string }[];
   onToggle?: (day: string) => void;

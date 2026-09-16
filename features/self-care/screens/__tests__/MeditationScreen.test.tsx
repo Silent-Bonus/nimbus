@@ -20,6 +20,7 @@ jest.mock("expo-router", () => ({
   useNavigation: () => ({
     setOptions: mockSetOptions,
   }),
+  useLocalSearchParams: () => ({}),
 }));
 
 jest.mock("react-native-safe-area-context", () => ({

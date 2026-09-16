@@ -17,17 +17,17 @@ import type {
   RadarAxisPoint,
   TrendPoint,
 } from "@/features/habit/components/habit-overview/overviewTypes";
-import type { Spacing } from "@/theme/types";
+import type { Spacing, TypographyTokens } from "@/theme/types";
 
 type HabitOverviewStyles = ReturnType<typeof createStyles>;
 
 export const HabitOverviewScreen: React.FC = () => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const { svaColors, spacing } = useContext(ThemeContext);
+  const { svaColors, spacing, svaTypography } = useContext(ThemeContext);
   const styles: HabitOverviewStyles = useMemo(
-    () => createStyles(spacing, insets.bottom),
-    [spacing, insets.bottom]
+    () => createStyles(spacing, insets.bottom, svaTypography),
+    [spacing, insets.bottom, svaTypography]
   );
 
   useEffect(() => {
@@ -176,34 +176,35 @@ export const HabitOverviewScreen: React.FC = () => {
   );
 };
 
-function createStyles(spacing: Spacing, bottomInset: number) {
+function createStyles(
+  spacing: Spacing,
+  bottomInset: number,
+  svaTypography: TypographyTokens
+) {
   return StyleSheet.create({
     screen: {
       flex: 1,
     },
     content: {
       paddingHorizontal: spacing.md,
-      paddingTop: spacing.xs,
+      paddingTop: spacing.md,
       paddingBottom: bottomInset + spacing.xl * 2,
     },
     header: {
       marginBottom: spacing.sm,
     },
     headerTitle: {
-      fontSize: 24,
-      lineHeight: 28,
-      letterSpacing: -0.35,
+      ...svaTypography.textStyle.authTitle,
       textAlign: "center",
     },
     headerSubtitle: {
+      ...svaTypography.textStyle.authSubtitle,
       textAlign: "center",
-      fontSize: 10.5,
-      lineHeight: 14,
-      letterSpacing: 1.8,
+      marginTop: spacing.xs,
     },
     sectionBlock: {
-      marginTop: spacing.sm,
-      marginBottom: spacing.md,
+      marginTop: spacing.md,
+      marginBottom: spacing.lg,
     },
   });
 }

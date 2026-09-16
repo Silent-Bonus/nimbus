@@ -16,6 +16,7 @@ type HydrationHeroCardProps = {
   currentMl: number;
   goalMl: number;
   onChange: (value: number) => void;
+  onCommit?: (value: number) => void;
 };
 
 const makeStyles = (theme: ColorSet, spacing: Spacing, svaTypography: any) =>
@@ -164,6 +165,7 @@ export const HydrationHeroCard = ({
   currentMl,
   goalMl,
   onChange,
+  onCommit,
 }: HydrationHeroCardProps) => {
   const { newTheme: theme, spacing, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(
@@ -246,6 +248,7 @@ export const HydrationHeroCard = ({
           maximumTrackTintColor={theme.borderMuted ?? "rgba(255,255,255,0.12)"}
           thumbTintColor={accent}
           onValueChange={onChange}
+          onSlidingComplete={onCommit}
         />
       </View>
 

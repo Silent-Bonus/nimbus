@@ -21,6 +21,7 @@ type MeditationProgressCardProps = {
   goalMinutes: number;
   anchoredAt: Date | null;
   onAddMinutes: (step: number) => void;
+  onResetMinutes?: () => void;
   onAnchorHold: () => void;
 };
 

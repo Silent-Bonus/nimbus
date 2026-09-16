@@ -25,6 +25,7 @@ jest.mock("expo-router", () => ({
     addListener: mockAddListener,
     goBack: mockGoBack,
   }),
+  useLocalSearchParams: () => ({}),
 }));
 
 jest.mock("@react-native-async-storage/async-storage", () => ({

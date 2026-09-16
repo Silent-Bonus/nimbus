@@ -76,12 +76,14 @@ export const parseReminderIndex = (value?: string | null) => {
 export const buildWeeklyMeditationSeries = (raw: unknown): WeeklyPoint[] => {
   const source = Array.isArray(raw) ? raw : [];
 
-  return WEEK_DAYS.map((day, index) => {
-    const entry = source[index];
+  // Preserve the API's chronological order and explicit weekday labels. The
+  // endpoint returns a rolling seven-day window, which may start on any day.
+  const series = source.slice(0, WEEK_DAYS.length).map((entry, index) => {
+    const fallbackDay = WEEK_DAYS[index];
 
     if (typeof entry === "number") {
       return {
-        day,
+        day: fallbackDay,
         percent: clamp(entry, 0, 100),
       };
     }
@@ -89,7 +91,7 @@ export const buildWeeklyMeditationSeries = (raw: unknown): WeeklyPoint[] => {
     if (entry && typeof entry === "object") {
       const candidate = entry as Record<string, unknown>;
       return {
-        day: String(candidate.day ?? day),
+        day: String(candidate.day ?? fallbackDay),
         percent: clamp(
           Number(candidate.percent ?? candidate.value ?? candidate.progress ?? 0),
           0,
@@ -98,8 +100,13 @@ export const buildWeeklyMeditationSeries = (raw: unknown): WeeklyPoint[] => {
       };
     }
 
-    return { day, percent: 0 };
+    return { day: fallbackDay, percent: 0 };
   });
+
+  return [
+    ...series,
+    ...WEEK_DAYS.slice(series.length).map((day) => ({ day, percent: 0 })),
+  ];
 };
 
 export const hasMeaningfulWeeklyData = (data: WeeklyPoint[]) =>

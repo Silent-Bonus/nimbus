@@ -192,6 +192,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       // Keep going: state must still be cleared locally.
     } finally {
       delete axios.defaults.headers.common["Authorization"];
+      await SecureStore.deleteItemAsync(StoreKey.TUTORIAL_PENDING_KEY);
       setAuthState({ token: null, authenticated: false });
       clearUserProfileSync();
       setOnboardingDone(null);

@@ -23,6 +23,7 @@ import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ThemeContext from "@/contexts/ThemeContext";
+import { useMeditationSession } from "@/contexts/MeditationSessionContext";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import { ROUTES } from "@/constants/routes";
 import MeditationPlayerActionButton from "@/features/self-care/components/meditation/MeditationPlayerActionButton";
@@ -80,6 +81,7 @@ export default function MeditationPlayerScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<MeditationPlayerParams>();
+  const meditationSession = useMeditationSession();
   const {
     newTheme: theme,
     svaTypography,
@@ -111,6 +113,7 @@ export default function MeditationPlayerScreen() {
   const playbackPositionRef = useRef(0);
   const playbackIntentRef = useRef<"play" | "pause" | null>(null);
   const hasCompletedSessionRef = useRef(false);
+  const hasAutoStartedRef = useRef(false);
   const sessionStatusRef = useRef<
     "idle" | "creating" | "active" | "paused" | "completed"
   >("idle");
@@ -132,6 +135,16 @@ export default function MeditationPlayerScreen() {
     "idle" | "creating" | "active" | "paused" | "completed"
   >("idle");
   const [sessionRef, setSessionRef] = useState<string | null>(null);
+  const routeSource = Array.isArray(params.source)
+    ? params.source[0]
+    : params.source;
+  const routeCheckInId = Array.isArray(params.checkInId)
+    ? params.checkInId[0]
+    : params.checkInId;
+  const routeDate = Array.isArray(params.date) ? params.date[0] : params.date;
+  const routeAutoStart = Array.isArray(params.autoStart)
+    ? params.autoStart[0]
+    : params.autoStart;
 
   // The player shows optimistic play/pause state immediately on tap, then
   // falls back to the native audio status once Expo confirms the transition.
@@ -182,6 +195,7 @@ export default function MeditationPlayerScreen() {
     leavingScreenRef.current = false;
     hasCompletedSessionRef.current = false;
     playbackPositionRef.current = 0;
+    hasAutoStartedRef.current = false;
   }, [meditationId]);
 
   useEffect(() => {
@@ -315,11 +329,28 @@ export default function MeditationPlayerScreen() {
       // button responds immediately instead of waiting for the API round trip.
       ensureSessionStarted();
       await sound.playAsync();
+      meditationSession.startSession({
+        mode: "meditation",
+        source: routeSource === "daily-checkin" ? "daily-checkin" : "meditation",
+        title: meditationTitle,
+        contentId: meditationId,
+        checkInId: routeCheckInId,
+        date: routeDate,
+      });
       setSessionStatus((current) =>
         current === "completed" ? current : "active"
       );
     },
-    [ensureSessionStarted, resumeSession]
+    [
+      ensureSessionStarted,
+      meditationId,
+      meditationSession,
+      meditationTitle,
+      resumeSession,
+      routeCheckInId,
+      routeDate,
+      routeSource,
+    ]
   );
 
   const completeSession = useCallback(async () => {
@@ -434,7 +465,7 @@ export default function MeditationPlayerScreen() {
       soundRef.current?.unloadAsync();
       soundRef.current = null;
     };
-  }, [playbackSource]);
+  }, [handlePlaybackStatusUpdate, playbackSource]);
 
   useEffect(() => {
     if (isLoading || !pendingPlayOnReadyRef.current) {
@@ -476,10 +507,7 @@ export default function MeditationPlayerScreen() {
     // Pause uses the current sound immediately, then updates the backend
     // session in the background.
     if (isPlaying) {
-      setPlaybackIntent("pause");
-      if (!sound) return;
-      await sound.pauseAsync();
-      void pauseSession();
+      await meditationSession.pauseSession();
       return;
     }
 
@@ -491,15 +519,71 @@ export default function MeditationPlayerScreen() {
       return;
     }
 
-    setPlaybackIntent("play");
+    if (
+      meditationSession.activeSession?.mode === "meditation" &&
+      meditationSession.status === "paused"
+    ) {
+      await meditationSession.resumeSession();
+      return;
+    }
 
+    setPlaybackIntent("play");
     try {
       await startPlayback(sound);
     } catch (error) {
       setPlaybackIntent(null);
       throw error;
     }
-  }, [isLoading, isPlaying, pauseSession, sessionStatus, startPlayback]);
+  }, [
+    isLoading,
+    isPlaying,
+    meditationSession,
+    sessionStatus,
+    startPlayback,
+  ]);
+
+  useEffect(
+    () =>
+      meditationSession.registerControls({
+        onPause: async () => {
+          const sound = soundRef.current;
+          setPlaybackIntent("pause");
+          if (sound) {
+            await sound.pauseAsync();
+          }
+          await pauseSession();
+        },
+        onResume: async () => {
+          const sound = soundRef.current;
+          if (!sound || sessionStatus === "completed") return;
+
+          setPlaybackIntent("play");
+          await startPlayback(sound);
+        },
+        onStop: async () => {
+          const sound = soundRef.current;
+          if (sound) {
+            await sound.pauseAsync().catch(() => {});
+          }
+          await completeSession();
+        },
+      }),
+    [completeSession, meditationSession, pauseSession, sessionStatus, startPlayback]
+  );
+
+  useEffect(() => {
+    if (
+      routeAutoStart !== "true" ||
+      hasAutoStartedRef.current ||
+      isLoading ||
+      sessionStatus === "completed"
+    ) {
+      return;
+    }
+
+    hasAutoStartedRef.current = true;
+    void handleTogglePlayPause();
+  }, [handleTogglePlayPause, isLoading, routeAutoStart, sessionStatus]);
 
   const handleBack = useCallback(async () => {
     leavingScreenRef.current = true;

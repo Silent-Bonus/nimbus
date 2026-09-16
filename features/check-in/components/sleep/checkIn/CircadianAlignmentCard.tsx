@@ -32,7 +32,7 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, svaTypography: any) =>
     card: {
       borderRadius: 28,
       overflow: "hidden",
-      padding: 18,
+      padding: spacing.lg,
       backgroundColor: theme.cardRaised ?? theme.surface,
       borderWidth: 1,
       borderColor: theme.borderMuted ?? "rgba(255,255,255,0.06)",
@@ -46,7 +46,7 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, svaTypography: any) =>
       flexDirection: "row",
       alignItems: "flex-start",
       justifyContent: "space-between",
-      marginBottom: 12,
+      marginBottom: spacing.md,
       gap: spacing.sm,
     },
     sectionLabel: {
@@ -96,6 +96,18 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, svaTypography: any) =>
       textTransform: "uppercase",
       marginTop: 2,
     },
+    clockMarker: {
+      position: "absolute",
+      width: 48,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    clockMarkerText: {
+      ...svaTypography.textStyle.authTinyLabel,
+      color: theme.textSecondary,
+      fontWeight: "700",
+      textAlign: "center",
+    },
     clockHandle: {
       position: "absolute",
       width: 44,
@@ -114,7 +126,7 @@ const makeStyles = (theme: ColorSet, spacing: Spacing, svaTypography: any) =>
     },
     clockRangeWrap: {
       alignItems: "center",
-      marginTop: 8,
+    marginTop: spacing.sm,
     },
     clockRangeText: {
       ...svaTypography.textStyle.body,
@@ -151,6 +163,8 @@ export const CircadianAlignmentCard = ({
   const radius = (clockSize - strokeWidth) / 2;
   const handleOrbitRadius = radius;
 
+  // The ring represents a 24-hour clock. The filled arc is the sleep window,
+  // while the moon and sun handles remain directly draggable by the user.
   const sleepWindowMinutes = durationBetween(bedMinutes, wakeMinutes);
   const sleepWindowHours = sleepWindowMinutes / 60;
 
@@ -166,6 +180,7 @@ export const CircadianAlignmentCard = ({
     handleOrbitRadius,
     minutesToAngle(wakeMinutes)
   );
+  const clockMarkerLabels = ["12 AM", "6 AM", "12 PM", "6 PM"];
   const sleepArcPath = describeClockArc(
     center,
     center,
@@ -185,6 +200,8 @@ export const CircadianAlignmentCard = ({
 
   const setClockMinutesFromTouch = useCallback(
     (x: number, y: number, type: "bed" | "wake") => {
+      // Convert the touch coordinate back to clock minutes using the measured
+      // on-screen bounds so the interaction remains accurate in the modal.
       const next = touchToMinutes(x, y, clockBoundsRef.current);
       if (type === "bed") {
         onChangeBed(next);
@@ -296,6 +313,34 @@ export const CircadianAlignmentCard = ({
             fill="none"
           />
         </Svg>
+
+        {/* Fixed time markers make the clock orientation clear at a glance. */}
+        {CLOCK_TICK_MINUTES.map((tickMinute, index) => {
+          const markerPoint = polarToCartesian(
+            center,
+            center,
+            radius - 28,
+            minutesToAngle(tickMinute)
+          );
+
+          return (
+            <View
+              key={tickMinute}
+              pointerEvents="none"
+              style={[
+                styles.clockMarker,
+                {
+                  left: markerPoint.x - 24,
+                  top: markerPoint.y - 9,
+                },
+              ]}
+            >
+              <Text style={styles.clockMarkerText}>
+                {clockMarkerLabels[index]}
+              </Text>
+            </View>
+          );
+        })}
 
         <View pointerEvents="none" style={styles.clockInner}>
           <Text style={styles.clockPrimary}>{sleepWindowHours.toFixed(1)}h</Text>

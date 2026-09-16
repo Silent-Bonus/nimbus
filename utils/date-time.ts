@@ -67,7 +67,7 @@ export const toApiTime = (date: Date): string => {
   return format(date, DATE_FORMATS.API_TIME);
 };
 
-export const toISODate = (d: Date) => d.toISOString().slice(0, 10);
+export const toISODate = (d: Date) => toApiDate(d);
 
 /** Convert Date object to HH:mm:ss for backend */
 export function toBackendTime(value?: Date | null): string | undefined {

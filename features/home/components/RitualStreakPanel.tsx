@@ -26,8 +26,8 @@ import { useRouter } from "expo-router";
 // } from "@/utils/dailyCheckin";
 import axios from "axios";
 // import { Unit } from "@/types/dailyCheckin";
-import RitualStreakCard from "./component/RitualStreakCard";
-import { RitualSkeletonCard } from "./component/RitualSkeletonCard";
+import RitualStreakCard from "./RitualStreakCard";
+import { RitualSkeletonCard } from "./RitualSkeletonCard";
 import { getCheckinList } from "@/features/check-in/services/dailyCheckinService";
 import { Unit } from "@/features/check-in/types/dailyCheckin";
 import {
@@ -49,12 +49,6 @@ type CardItem = {
   color: string;
   route: string;
   id?: number;
-};
-
-const formatLocalISODate = (d = new Date()) => {
-  const tz = d.getTimezoneOffset();
-  const local = new Date(d.getTime() - tz * 60000);
-  return local.toISOString().slice(0, 10);
 };
 
 type Props = { date: string };

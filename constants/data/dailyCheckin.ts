@@ -44,26 +44,6 @@ export const sleepData = {
   ],
 };
 
-// reading checking
-// Post API For
-
-// 1. For reminder Time or preset
-// 2. For sleep hours logged : 2,3 hours
-
-// Get Response
-export const readingData = {
-  goalMinutes: 30,
-  completedMinutes: 10,
-  weeklyData: [
-    { day: "mon", progress: 40 },
-    { day: "tue", progress: 10 },
-    { day: "wed", progress: 70 },
-    { day: "thu", progress: 80 },
-    { day: "fri", progress: 50 },
-    { day: "sat", progress: 95 },
-  ],
-};
-
 // meditation checking
 // Post API For
 

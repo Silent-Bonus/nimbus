@@ -18,17 +18,26 @@ type Props = {
   asleepMinutes: number;
   goalMinutes: number;
   ratingLabel?: string;
+  onSleepSessionStart?: (startedAt: Date) => void;
+  onSleepSessionInvalid?: () => void;
+  onSleepSessionComplete?: (durationHours: number) => Promise<void> | void;
+  onPastSleepComplete?: (durationHours: number, sleepDate: Date) => Promise<void> | void;
 };
 
 export default function SleepPerformanceCard({
   asleepMinutes,
   goalMinutes,
   ratingLabel,
+  onSleepSessionStart,
+  onSleepSessionInvalid,
+  onSleepSessionComplete,
+  onPastSleepComplete,
 }: Props) {
   const { newTheme: theme, svaTypography } = useContext(ThemeContext);
   const styles = useMemo(() => styling(theme, svaTypography), [theme, svaTypography]);
   const [open, setOpen] = useState(false);
   const [sleepNowProcessing, setSleepNowProcessing] = useState(false);
+  const [sleepStartedAt, setSleepStartedAt] = useState<Date | null>(null);
 
   const progress = useMemo(() => {
     if (!goalMinutes) return 0;
@@ -56,22 +65,33 @@ export default function SleepPerformanceCard({
   const handleSleepNow = async () => {
     if (sleepNowProcessing) return;
 
+    if (!sleepStartedAt) {
+      const startedAt = new Date();
+      setSleepStartedAt(startedAt);
+      onSleepSessionStart?.(startedAt);
+      return;
+    }
+
     setSleepNowProcessing(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1200));
       const now = new Date();
-      console.log("Mock sleep now API call:", now.toISOString());
+      const durationHours = Math.min(
+        8,
+        Math.round(Math.max(0, now.getTime() - sleepStartedAt.getTime()) / 36000) / 100
+      );
+      if (durationHours <= 0) {
+        onSleepSessionInvalid?.();
+        return;
+      }
+      await onSleepSessionComplete?.(durationHours);
+      setSleepStartedAt(null);
     } finally {
       setSleepNowProcessing(false);
     }
   };
 
   const handleSaveManual = (payload: LogPayload) => {
-    console.log("Sleep log saved:", {
-      bed: payload.bedTime.toISOString(),
-      wake: payload.wakeTime.toISOString(),
-      minutes: payload.durationMin,
-    });
+    return onPastSleepComplete?.(payload.durationMin / 60, payload.bedTime);
   };
 
   return (
@@ -160,7 +180,7 @@ export default function SleepPerformanceCard({
             color={sleepNowProcessing ? (theme.textSecondary ?? theme.textPrimary) : theme.textPrimary}
           />
           <Text style={styles.primaryActionText}>
-            {sleepNowProcessing ? "Processing..." : "Sleep now"}
+            {sleepNowProcessing ? "Saving sleep..." : sleepStartedAt ? "Wake up" : "Sleep now"}
           </Text>
         </Pressable>
 

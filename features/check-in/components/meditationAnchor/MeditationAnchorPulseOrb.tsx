@@ -14,6 +14,7 @@ import {
   formatMinutes,
   formatTime,
 } from "@/features/check-in/utils/meditationAnchor";
+import { capSessionSeconds, formatSessionSeconds } from "@/utils/sessionTime";
 
 type MeditationAnchorPulseOrbProps = {
   goalMinutes: number;
@@ -226,8 +227,10 @@ export const MeditationAnchorPulseOrb = ({
     };
   }, [pulses]);
 
-  const fillProgress = clamp(elapsedSeconds / Math.max(goalMinutes * 60, 1), 0, 1);
-  const filledMinutes = elapsedSeconds / 60;
+  const goalSeconds = goalMinutes * 60;
+  const displayedElapsedSeconds = capSessionSeconds(elapsedSeconds, goalSeconds);
+  const fillProgress = clamp(displayedElapsedSeconds / Math.max(goalSeconds, 1), 0, 1);
+  const filledMinutes = displayedElapsedSeconds / 60;
   const remainingMinutes = Math.max(goalMinutes - filledMinutes, 0);
 
   const orbSize = 280;
@@ -331,8 +334,10 @@ export const MeditationAnchorPulseOrb = ({
           />
           <View style={styles.orbCoreSheen} />
 
-          <Text style={styles.orbMinutes}>{formatMinutes(filledMinutes)}</Text>
-          <Text style={styles.orbGoal}>/ {formatMinutes(goalMinutes)}</Text>
+          <Text style={styles.orbMinutes}>
+            {formatSessionSeconds(displayedElapsedSeconds)}
+          </Text>
+          <Text style={styles.orbGoal}>/ {formatSessionSeconds(goalSeconds)}</Text>
           <Text style={styles.orbLabel}>{orbLabel}</Text>
           <Text style={styles.orbRemaining}>
             {formatMinutes(remainingMinutes)} remaining

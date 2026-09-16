@@ -3,7 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Platform, StyleSheet, View, ViewStyle, StyleProp } from "react-native";
 
 import ThemeContext from "@/contexts/ThemeContext";
-import type { SvaColorSet } from "@/theme/types";
+import type { SvaColorSet, Spacing } from "@/theme/types";
 
 type OverviewSurfaceCardProps = {
   children: React.ReactNode;
@@ -16,10 +16,10 @@ export default function OverviewSurfaceCard({
   children,
   style,
 }: OverviewSurfaceCardProps) {
-  const { svaColors } = useContext(ThemeContext);
+  const { svaColors, spacing } = useContext(ThemeContext);
   const styles: OverviewSurfaceCardStyles = useMemo(
-    () => createStyles(svaColors),
-    [svaColors]
+    () => createStyles(svaColors, spacing),
+    [svaColors, spacing]
   );
 
   return (
@@ -38,7 +38,7 @@ export default function OverviewSurfaceCard({
   );
 }
 
-function createStyles(colors: SvaColorSet) {
+function createStyles(colors: SvaColorSet, spacing: Spacing) {
   return StyleSheet.create({
     shell: {
       borderRadius: 28,
@@ -54,7 +54,7 @@ function createStyles(colors: SvaColorSet) {
       borderRadius: 28,
       borderWidth: 1,
       borderColor: colors.border.subtle,
-      padding: 16,
+      padding: spacing.md,
       backgroundColor: colors.surface.base,
       ...Platform.select({
         ios: {
