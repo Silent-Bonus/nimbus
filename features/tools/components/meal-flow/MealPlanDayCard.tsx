@@ -35,6 +35,7 @@ export type MealPlanDayCardProps = {
   isExpanded: boolean;
   onToggle: () => void;
   onOpenRecipe?: (meal: MealPlanMealRow) => void;
+  onAddMeal?: (mealType: MealPlanMealRow["mealType"]) => void;
   onSharePlan?: () => void;
   style?: StyleProp<ViewStyle>;
   titleStyle?: StyleProp<TextStyle>;
@@ -49,6 +50,7 @@ export function MealPlanDayCard({
   isExpanded,
   onToggle,
   onOpenRecipe,
+  onAddMeal,
   onSharePlan,
   style,
   titleStyle,
@@ -103,17 +105,34 @@ export function MealPlanDayCard({
           <View style={styles.mealsList}>
             {mealRows.length > 0 ? (
               mealRows.map((meal) => (
-                <View key={meal.mealType} style={styles.mealRow}>
+                <Pressable
+                  key={meal.mealType}
+                  accessibilityRole={!meal.isPlanned ? "button" : undefined}
+                  accessibilityLabel={
+                    !meal.isPlanned
+                      ? `Add ${apiMealTypeToLabel(meal.mealType).toLowerCase()} meal`
+                      : undefined
+                  }
+                  onPress={
+                    !meal.isPlanned && onAddMeal
+                      ? () => onAddMeal(meal.mealType)
+                      : undefined
+                  }
+                  style={[styles.mealRow, !meal.isPlanned && styles.unplannedMealRow]}
+                >
                   <View style={styles.mealCopy}>
                     <Text style={styles.mealType} numberOfLines={1}>
                       {apiMealTypeToLabel(meal.mealType)}
                     </Text>
-                    <Text style={styles.mealName} numberOfLines={2}>
+                    <Text
+                      style={[styles.mealName, !meal.isPlanned && styles.unplannedMealName]}
+                      numberOfLines={2}
+                    >
                       {meal.recipeName}
                     </Text>
                   </View>
 
-                  {onOpenRecipe && (meal.recipeId || meal.recipeSlug) && (
+                  {meal.isPlanned && onOpenRecipe && (meal.recipeId || meal.recipeSlug) && (
                     <TouchableOpacity
                       accessibilityRole="button"
                       accessibilityLabel={`Open ${apiMealTypeToLabel(
@@ -130,7 +149,14 @@ export function MealPlanDayCard({
                       />
                     </TouchableOpacity>
                   )}
-                </View>
+                  {!meal.isPlanned && onAddMeal && (
+                    <Ionicons
+                      name="chevron-forward"
+                      size={18}
+                      color={svaColors.text.secondary}
+                    />
+                  )}
+                </Pressable>
               ))
             ) : (
               <View style={styles.emptyState}>
@@ -283,6 +309,13 @@ const styling = (
     mealName: {
       ...(svaTypography?.textStyle.bodyMedium ?? svaTypography.textStyle.bodyMedium),
       color: theme.text.primary,
+    },
+    unplannedMealRow: {
+      borderStyle: "dashed",
+      backgroundColor: theme.surface.base,
+    },
+    unplannedMealName: {
+      color: theme.text.secondary,
     },
     actionButton: {
       width: 40,

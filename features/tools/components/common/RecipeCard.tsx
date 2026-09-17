@@ -20,6 +20,9 @@ interface RecipeCardProps {
   time?: string;
   calories?: string;
   height?: number;
+  imageHeightRatio?: number;
+  imageHeight?: number;
+  titleNumberOfLines?: number;
   favorite?: boolean;
   onPress: () => void;
   onFavoritePress?: (isFav: boolean) => Promise<void>;
@@ -32,6 +35,9 @@ const RecipeCard: React.FC<RecipeCardProps> = ({
   time = "15 min",
   calories,
   height = 320,
+  imageHeightRatio = 0.75,
+  imageHeight,
+  titleNumberOfLines = 1,
   favorite: initialFavorite = false,
   onPress,
   onFavoritePress,
@@ -98,7 +104,14 @@ const RecipeCard: React.FC<RecipeCardProps> = ({
     }
   };
 
-  const styles = styling(newTheme, spacing, svaTypography, height);
+  const styles = styling(
+    newTheme,
+    spacing,
+    svaTypography,
+    height,
+    imageHeightRatio,
+    imageHeight
+  );
 
   return (
     <Animated.View style={[styles.card, { transform: [{ scale: scaleAnim }] }]}>
@@ -146,7 +159,7 @@ const RecipeCard: React.FC<RecipeCardProps> = ({
             <Text style={styles.tagText}>{tag}</Text>
           </View>
 
-          <Text style={styles.title} numberOfLines={1}>
+          <Text style={styles.title} numberOfLines={titleNumberOfLines}>
             {title}
           </Text>
 
@@ -164,7 +177,14 @@ const RecipeCard: React.FC<RecipeCardProps> = ({
   );
 };
 
-const styling = (theme: any, spacing: any, svaTypography: any, height: number) =>
+const styling = (
+  theme: any,
+  spacing: any,
+  svaTypography: any,
+  height: number,
+  imageHeightRatio: number,
+  imageHeight?: number
+) =>
   StyleSheet.create({
     card: {
       flex: 1,
@@ -191,7 +211,7 @@ const styling = (theme: any, spacing: any, svaTypography: any, height: number) =
       flex: 1,
     },
     image: {
-      height: "75%", // Adjusted for a better balance between image and text
+      height: imageHeight ?? `${imageHeightRatio * 100}%`,
       width: "100%",
     },
     imageRadius: {
@@ -222,9 +242,10 @@ const styling = (theme: any, spacing: any, svaTypography: any, height: number) =
     },
     bottomContent: {
       paddingHorizontal: spacing.sm + 2,
-      paddingVertical: spacing.xs + 2,
-      flex: 1,
-      justifyContent: "space-between",
+      paddingTop: spacing.xs + 2,
+      paddingBottom: spacing.md,
+      flex: 0,
+      justifyContent: "flex-start",
       // marginBottom: 30,
     },
     tagContainer: {
@@ -244,6 +265,7 @@ const styling = (theme: any, spacing: any, svaTypography: any, height: number) =
       flexDirection: "row",
       alignItems: "center",
       gap: 4,
+      marginTop: spacing.xs,
     },
     timeLabel: {
       ...svaTypography.textStyle.authTinyLabel,
@@ -252,7 +274,8 @@ const styling = (theme: any, spacing: any, svaTypography: any, height: number) =
     title: {
       ...svaTypography.textStyle.authLabel,
       color: theme.textPrimary,
-      marginVertical: 1,
+      marginTop: spacing.sm,
+      marginBottom: spacing.xs,
     },
     // metaRow: {
     //   flexDirection: "row",

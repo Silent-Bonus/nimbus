@@ -109,6 +109,7 @@ export type MealPlanMealType = MealPlannerApiMealType;
 export interface MealPlanMealRow {
   mealType: MealPlanMealType;
   recipeName: string;
+  isPlanned: boolean;
   recipeId?: string;
   recipeSlug?: string;
   recipeData?: string;

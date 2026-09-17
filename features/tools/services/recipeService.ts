@@ -13,10 +13,11 @@ import type {
 type RecipeListQuery = {
   category?: string;
   search?: string;
+  meal_slot?: string;
 };
 
 const buildRecipeListEndpoint = (params?: RecipeListQuery) => {
-  if (!params?.category && !params?.search) {
+  if (!params?.category && !params?.search && !params?.meal_slot) {
     return API_ENDPOINTS.getRecipeList;
   }
 
@@ -25,6 +26,9 @@ const buildRecipeListEndpoint = (params?: RecipeListQuery) => {
       ? `category=${encodeURIComponent(params.category)}`
       : null,
     params.search ? `search=${encodeURIComponent(params.search)}` : null,
+    params.meal_slot
+      ? `meal_slot=${encodeURIComponent(params.meal_slot)}`
+      : null,
   ].filter(Boolean);
 
   return `${API_ENDPOINTS.getRecipeList}?${queryParams.join("&")}`;

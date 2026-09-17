@@ -1,5 +1,6 @@
 import React, { useContext, useState, useMemo, useEffect } from "react";
 import {
+  ActivityIndicator,
   View,
   Text,
   StyleSheet,
@@ -21,9 +22,11 @@ import { FilterPill } from "@/features/self-care/components/workout/FilterPill";
 import { searchRecipes } from "@/features/tools/services/recipeService";
 import {
   bulkUpdateMealPlan,
+  getDailyMealPlan,
 } from "@/features/tools/services/mealPlannerService";
 import type {
   BulkMealUpdatePayload,
+  DayPlan,
   MealPlannerApiMealType,
   MealPlannerDayDraft,
   MealPlannerDraftEntry,
@@ -31,9 +34,12 @@ import type {
   MealPlannerWeeklyPlanStore,
 } from "@/features/tools/types/mealPlannerTypes";
 import {
+  apiMealTypeToLabel,
   DAY_MEAL_TYPES,
+  getMealName,
   mealTypeToApiKey,
   normalizeMealTypeParam,
+  WEEKLY_MEAL_TYPES,
 } from "@/features/tools/utils/mealPlannerUtils";
 import {
   formatDay,
@@ -46,13 +52,13 @@ import { addDays } from "date-fns";
 import AppHeader from "@/components/layout/AppHeader";
 import {
   MealCardSurface,
-  MealPlannerDayPreviewCard,
   MealPlannerModeTabs,
   MealPlannerReviewList,
   MealPlannerStageActionCard,
   MealFlowSection,
   MealPlannerSearchDropdown,
 } from "@/features/tools/components/meal-flow";
+import { MealTypeRecipeRail } from "@/features/tools/components/recipe";
 import type {
   Spacing,
   TypographyTokens,
@@ -68,9 +74,23 @@ export const MealCreationScreen = () => {
   );
   const params = useLocalSearchParams();
   const toast = useNimbusToast();
+  const parentDate = Array.isArray(params.date) ? params.date[0] : params.date;
+  const hasParentDate = typeof parentDate === "string" && parentDate.length > 0;
+  const modeParam = Array.isArray(params.mode) ? params.mode[0] : params.mode;
+  const isDayOnlyFlow = modeParam === "day" && hasParentDate;
   const initialMealType = normalizeMealTypeParam(params.type);
   const initialFoodName =
-    typeof params.foodName === "string" ? params.foodName : "";
+    typeof params.foodName === "string"
+      ? params.foodName
+      : typeof params.recipeTitle === "string"
+      ? params.recipeTitle
+      : "";
+  const initialRecipeIdValue =
+    typeof params.recipeId === "string" ? Number(params.recipeId) : NaN;
+  const initialRecipeId = Number.isFinite(initialRecipeIdValue)
+    ? initialRecipeIdValue
+    : undefined;
+  const isRecipePresetFlow = Boolean(initialFoodName.trim() && initialRecipeId);
 
   /* --- UI State --- */
   const [activeTab, setActiveTab] = useState<"day" | "week">(
@@ -93,24 +113,29 @@ export const MealCreationScreen = () => {
   }, [todayAtMidnight]);
 
   const [dayDate, setDayDate] = useState(
-    params.date ? new Date(params.date as string) : todayAtMidnight
+    hasParentDate ? new Date(parentDate) : todayAtMidnight
   );
   const [mealType, setMealType] = useState<MealPlannerUiMealType>(initialMealType);
   const [foodSearch, setFoodSearch] = useState(initialFoodName);
-  const [selectedRecipe, setSelectedRecipe] = useState<any>(null);
+  const [selectedRecipe, setSelectedRecipe] = useState<any>(() =>
+    initialFoodName.trim() && initialRecipeId
+      ? { id: initialRecipeId, title: initialFoodName.trim() }
+      : null
+  );
   const [dayDraftStore, setDayDraftStore] = useState<MealPlannerWeeklyPlanStore>(() => {
     if (!initialFoodName.trim()) {
       return {};
     }
 
     const initialDateKey = toApiDate(
-      params.date ? new Date(params.date as string) : todayAtMidnight
+      hasParentDate ? new Date(parentDate) : todayAtMidnight
     );
 
     return {
       [initialDateKey]: {
         [mealTypeToApiKey(initialMealType)]: {
           foodName: initialFoodName.trim(),
+          recipeId: initialRecipeId,
           calories: 0,
         },
       },
@@ -136,6 +161,9 @@ export const MealCreationScreen = () => {
   /* --- Search State --- */
   const [recipeResults, setRecipeResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [datePlan, setDatePlan] = useState<DayPlan | null>(null);
+  const [datePlanLoading, setDatePlanLoading] = useState(false);
+  const [datePlanError, setDatePlanError] = useState(false);
 
   const { weekDates, rangeString } = useMemo(() => {
     const dates = [];
@@ -175,13 +203,14 @@ export const MealCreationScreen = () => {
       } satisfies MealPlannerDraftEntry;
     }
 
-    return {
-      foodName: trimmedName,
-      calories: 0,
-    } satisfies MealPlannerDraftEntry;
+    return null;
   };
 
   useEffect(() => {
+    if (isRecipePresetFlow) {
+      return;
+    }
+
     const entry = dayPlanDraft[mealTypeToApiKey(mealType)];
 
     if (entry?.foodName) {
@@ -199,7 +228,7 @@ export const MealCreationScreen = () => {
 
     setFoodSearch("");
     setSelectedRecipe(null);
-  }, [dayPlanDraft, mealType]);
+  }, [dayPlanDraft, isRecipePresetFlow, mealType]);
 
   // Actions
   const handleAddDaySlot = () => {
@@ -225,37 +254,18 @@ export const MealCreationScreen = () => {
     });
   };
 
-  const handleRemoveDaySlot = (slotKey: MealPlannerApiMealType) => {
-    setDayDraftStore((prev) => {
-      const currentDraft = { ...(prev[dayDraftKey] ?? {}) };
-      delete currentDraft[slotKey];
-
-      if (Object.keys(currentDraft).length === 0) {
-        const nextStore = { ...prev };
-        delete nextStore[dayDraftKey];
-        return nextStore;
-      }
-
-      return {
-        ...prev,
-        [dayDraftKey]: currentDraft,
-      };
-    });
-
-    if (mealTypeToApiKey(mealType) === slotKey) {
-      setFoodSearch("");
-      setSelectedRecipe(null);
-    }
-  };
-
   const handleSaveDayPlan = async () => {
     try {
       const slotKey = mealTypeToApiKey(mealType);
       const currentEntry = getDraftEntryFromInput();
-      const dayEntries: MealPlannerDayDraft = {
-        ...dayPlanDraft,
-        ...(currentEntry ? { [slotKey]: currentEntry } : {}),
-      };
+      const dayEntries: MealPlannerDayDraft = isRecipePresetFlow
+        ? currentEntry
+          ? { [slotKey]: currentEntry }
+          : {}
+        : {
+            ...dayPlanDraft,
+            ...(currentEntry ? { [slotKey]: currentEntry } : {}),
+          };
       const plannedEntries = Object.entries(dayEntries).filter(
         ([, entry]) => entry?.foodName?.trim()
       ) as [MealPlannerApiMealType, MealPlannerDraftEntry][];
@@ -356,7 +366,15 @@ export const MealCreationScreen = () => {
   };
 
   const handleAddToPlan = () => {
-    if (selectedWeekdays.length === 0 || !bulkFoodSearch) return;
+    if (
+      selectedWeekdays.length === 0 ||
+      !bulkFoodSearch ||
+      !bulkSelectedRecipe ||
+      bulkSelectedRecipe.id === 0 ||
+      bulkSelectedRecipe.title !== bulkFoodSearch
+    ) {
+      return;
+    }
 
     const newPlan = { ...weeklyPlan };
     selectedWeekdays.forEach((date) => {
@@ -424,6 +442,45 @@ export const MealCreationScreen = () => {
     return () => clearTimeout(delayDebounceFn);
   }, [foodSearch, bulkFoodSearch, activeTab]);
 
+  useEffect(() => {
+    if (!isRecipePresetFlow) {
+      return;
+    }
+
+    let active = true;
+    setDatePlanLoading(true);
+    setDatePlanError(false);
+
+    const loadDatePlan = async () => {
+      try {
+        const response = await getDailyMealPlan(dayDate);
+        const plan = Array.isArray(response.data)
+          ? response.data[0] ?? null
+          : response.data ?? null;
+
+        if (active) {
+          setDatePlan(response.success ? plan : null);
+        }
+      } catch (error) {
+        console.error("Unable to load meal plan for selected date:", error);
+        if (active) {
+          setDatePlan(null);
+          setDatePlanError(true);
+        }
+      } finally {
+        if (active) {
+          setDatePlanLoading(false);
+        }
+      }
+    };
+
+    void loadDatePlan();
+
+    return () => {
+      active = false;
+    };
+  }, [dayDate, isRecipePresetFlow]);
+
   /* --- Renders --- */
 
   const searchQuery = activeTab === "day" ? foodSearch : bulkFoodSearch;
@@ -440,60 +497,170 @@ export const MealCreationScreen = () => {
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.formPadding}
     >
-      <MealFlowSection title="Plan the day">
-        <MealCardSurface tone="accent" radius={16} style={styles.infoBanner}>
-          <Ionicons
-            name="layers-outline"
-            size={18}
-            color={svaColors.brand.primary}
-          />
-          <Text style={styles.infoBannerText}>
-            For {toFriendlyDate(dayDate)}, you can save one meal slot or stage
-            breakfast, lunch, dinner, and snack together in one sync.
-          </Text>
-        </MealCardSurface>
-      </MealFlowSection>
-
-      <MealFlowSection title="When?">
-        <DateInput
-          value={dayDate}
-          onChange={(nextDate) => {
-            setDayDate(nextDate);
-          }}
-          label="Select Date"
-          title="Meal Date"
-          minimumDate={todayAtMidnight}
-          maximumDate={tenDaysLater}
-        />
-      </MealFlowSection>
-
-      <MealFlowSection title="Meal Type">
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.chipRow}
-        >
-          {DAY_MEAL_TYPES.map((type) => (
-            <FilterPill
-              key={type}
-              label={type}
-              isActive={mealType === type}
-              onPress={() => setMealType(type)}
-              style={styles.chip}
+      {isDayOnlyFlow ? (
+        <MealFlowSection title="Plan details">
+          <MealCardSurface tone="raised" radius={24} style={styles.planDetailsCard}>
+            <View style={styles.planDetailBlock}>
+              <Text style={styles.planDetailLabel}>DATE</Text>
+              <Text style={styles.planDetailValue}>{toFriendlyDate(dayDate)}</Text>
+            </View>
+            <View style={styles.planDetailDivider} />
+            <View style={styles.planDetailBlock}>
+              <Text style={styles.planDetailLabel}>MEAL TYPE</Text>
+              <Text style={styles.planDetailValue}>{mealType}</Text>
+            </View>
+          </MealCardSurface>
+        </MealFlowSection>
+      ) : (
+        <>
+          <MealFlowSection title="When?">
+            <DateInput
+              value={dayDate}
+              onChange={(nextDate) => {
+                setDayDate(nextDate);
+              }}
+              label="Select Date"
+              title="Meal Date"
+              minimumDate={todayAtMidnight}
+              maximumDate={tenDaysLater}
             />
-          ))}
-        </ScrollView>
-      </MealFlowSection>
+          </MealFlowSection>
 
-      <MealFlowSection title="What are you eating?">
-        <View
-          style={[
-            styles.searchBar,
-            selectedRecipe &&
-              selectedRecipe.title === foodSearch &&
-              styles.searchBarSelected,
-          ]}
+          <MealFlowSection title="Meal Type">
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.chipRow}
+            >
+              {DAY_MEAL_TYPES.map((type) => (
+                <FilterPill
+                  key={type}
+                  label={type}
+                  isActive={mealType === type}
+                  onPress={() => setMealType(type)}
+                  style={styles.chip}
+                />
+              ))}
+            </ScrollView>
+          </MealFlowSection>
+        </>
+      )}
+
+      {isRecipePresetFlow ? (
+        <MealFlowSection
+          title="Your plan for this date"
+          description="Review what is already planned before saving this recipe."
         >
+          <MealCardSurface tone="surface" radius={24} style={styles.datePlanCard}>
+            {datePlanLoading ? (
+              <View style={styles.datePlanLoading}>
+                <ActivityIndicator color={svaColors.brand.primary} />
+                <Text style={styles.datePlanLoadingText}>
+                  Checking your plan...
+                </Text>
+              </View>
+            ) : datePlanError ? (
+              <Text style={styles.datePlanMuted}>
+                We could not check this date right now. You can still continue.
+              </Text>
+            ) : (
+              <>
+                {WEEKLY_MEAL_TYPES.map((slot) => {
+                  const meal = datePlan?.meals?.[slot] ?? null;
+                  const isPlanned = Boolean(meal);
+
+                  return (
+                    <View key={slot} style={styles.datePlanRow}>
+                      <View style={styles.datePlanSlotIcon}>
+                        <Ionicons
+                          name={isPlanned ? "checkmark" : "add-outline"}
+                          size={16}
+                          color={
+                            isPlanned
+                              ? svaColors.brand.primary
+                              : svaColors.text.secondary
+                          }
+                        />
+                      </View>
+                      <View style={styles.datePlanRowCopy}>
+                        <Text style={styles.datePlanSlot}>
+                          {apiMealTypeToLabel(slot)}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.datePlanMeal,
+                            !isPlanned && styles.datePlanMuted,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {isPlanned ? getMealName(meal) : "Not planned"}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })}
+
+                {datePlan?.meals?.[mealTypeToApiKey(mealType)] ? (
+                  <View style={styles.overwriteNotice}>
+                    <Ionicons
+                      name="information-circle-outline"
+                      size={18}
+                      color={svaColors.state.warning}
+                    />
+                    <Text style={styles.overwriteText}>
+                      {mealType} is already planned for this date. Saving this
+                      recipe will replace the existing meal in this slot.
+                    </Text>
+                  </View>
+                ) : null}
+              </>
+            )}
+          </MealCardSurface>
+        </MealFlowSection>
+      ) : null}
+
+      <MealFlowSection
+        title={
+          isDayOnlyFlow || isRecipePresetFlow
+            ? "Selected recipe"
+            : "What are you eating?"
+        }
+        description={
+          isDayOnlyFlow
+            ? `Select a ${mealType.toLowerCase()} recipe or search the library.`
+            : isRecipePresetFlow
+            ? "This recipe is ready to add. Choose a date and meal type below."
+            : undefined
+        }
+      >
+        {(isDayOnlyFlow || isRecipePresetFlow) && isRecipeSelectionLocked ? (
+          <MealCardSurface
+            tone="accent"
+            radius={20}
+            style={styles.selectedRecipeCard}
+          >
+            <View style={styles.selectedRecipeIcon}>
+              <Ionicons name="checkmark" size={18} color={svaColors.bg.base} />
+            </View>
+            <View style={styles.selectedRecipeCopy}>
+              <Text style={styles.selectedRecipeLabel}>SELECTED RECIPE</Text>
+              <Text style={styles.selectedRecipeTitle} numberOfLines={2}>
+                {selectedRecipe.title}
+              </Text>
+            </View>
+          </MealCardSurface>
+        ) : null}
+
+        {!isRecipePresetFlow && (
+          <>
+            <View
+              style={[
+                styles.searchBar,
+                selectedRecipe &&
+                  selectedRecipe.title === foodSearch &&
+                  styles.searchBarSelected,
+              ]}
+            >
           <Ionicons
             name={
               selectedRecipe && selectedRecipe.title === foodSearch
@@ -507,29 +674,35 @@ export const MealCreationScreen = () => {
                 : svaColors.text.secondary
             }
           />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search or enter recipe name..."
-            placeholderTextColor={svaColors.text.secondary}
-            value={foodSearch}
-            onChangeText={(t) => {
-              setFoodSearch(t);
-              if (selectedRecipe && t !== selectedRecipe.title) {
-                setSelectedRecipe(null);
-              }
-            }}
-          />
-        </View>
-        <MealPlannerSearchDropdown
-          query={searchQuery}
-          results={recipeResults}
-          isSearching={isSearching}
-          isSelectionLocked={isRecipeSelectionLocked}
-          onSelectOption={handleSelectRecipe}
-          onSelectCustom={(query) => handleSelectRecipe({ id: 0, title: query })}
-        />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search recipes..."
+                placeholderTextColor={svaColors.text.secondary}
+                value={foodSearch}
+                onChangeText={(t) => {
+                  setFoodSearch(t);
+                  if (selectedRecipe && t !== selectedRecipe.title) {
+                    setSelectedRecipe(null);
+                  }
+                }}
+              />
+            </View>
+            <MealTypeRecipeRail
+              mealType={mealType}
+              searchQuery={foodSearch}
+              onSelectRecipe={handleSelectRecipe}
+            />
+            <MealPlannerSearchDropdown
+              query={searchQuery}
+              results={recipeResults}
+              isSearching={isSearching}
+              isSelectionLocked={isRecipeSelectionLocked}
+              onSelectOption={handleSelectRecipe}
+            />
+          </>
+        )}
 
-        {foodSearch.trim() ? (
+        {!isDayOnlyFlow && !isRecipePresetFlow && foodSearch.trim() && isRecipeSelectionLocked ? (
           <MealPlannerStageActionCard
             title="Add or Update This Slot"
             message={`Stage ${foodSearch.trim()} for ${mealType.toLowerCase()} on ${toFriendlyDate(dayDate)}.`}
@@ -538,15 +711,6 @@ export const MealCreationScreen = () => {
         ) : null}
       </MealFlowSection>
 
-      <MealFlowSection title="Day plan preview">
-        <MealPlannerDayPreviewCard
-          date={dayDate}
-          draft={dayPlanDraft}
-          activeMealType={mealType}
-          onSelectMealType={setMealType}
-          onRemoveSlot={handleRemoveDaySlot}
-        />
-      </MealFlowSection>
     </ScrollView>
   );
 
@@ -724,11 +888,13 @@ export const MealCreationScreen = () => {
           isSearching={isSearching}
           isSelectionLocked={isRecipeSelectionLocked}
           onSelectOption={handleSelectRecipe}
-          onSelectCustom={(query) => handleSelectRecipe({ id: 0, title: query })}
         />
       </MealFlowSection>
 
-      {selectedWeekdays.length > 0 && bulkFoodSearch !== "" && (
+      {selectedWeekdays.length > 0 &&
+        bulkFoodSearch !== "" &&
+        bulkSelectedRecipe?.id !== 0 &&
+        bulkSelectedRecipe?.title === bulkFoodSearch && (
         <MealPlannerStageActionCard
           title="Ready to Add"
           message={`${bulkFoodSearch} for ${bulkMealType} on ${selectedWeekdays.length} days.`}
@@ -750,12 +916,16 @@ export const MealCreationScreen = () => {
             subtitle={
               showReview
                 ? "Check your weekly balance."
+                : isDayOnlyFlow
+                ? "Choose a recipe for your plan."
+                : isRecipePresetFlow
+                ? "Choose when to add this recipe."
                 : "Design your nourishment journey."
             }
             onBack={() => (showReview ? setShowReview(false) : router.back())}
           />
 
-          {!showReview && (
+          {!showReview && !isDayOnlyFlow && (
             <MealPlannerModeTabs
               activeTab={activeTab}
               onChange={setActiveTab}
@@ -765,13 +935,13 @@ export const MealCreationScreen = () => {
           <View style={{ flex: 1 }}>
             {showReview
               ? <MealPlannerReviewList weekDates={weekDates} weeklyPlan={weeklyPlan} />
-              : activeTab === "day"
+              : isDayOnlyFlow || activeTab === "day"
               ? renderDayForm()
               : renderWeekForm()}
           </View>
 
           <View style={styles.footer}>
-            {!showReview && activeTab === "week" && (
+            {!showReview && !isDayOnlyFlow && activeTab === "week" && (
               <StyledButton
                 label="Proceed to Review"
                 variant={
@@ -787,7 +957,7 @@ export const MealCreationScreen = () => {
               label={
                 showReview
                   ? "Confirm & Sync"
-                  : activeTab === "day"
+                  : isDayOnlyFlow || activeTab === "day"
                   ? "Save Day Plan"
                   : "Add to Plan"
               }
@@ -804,12 +974,16 @@ export const MealCreationScreen = () => {
               fullWidth
               disabled={
                 !showReview &&
-                (activeTab === "day"
-                  ? !foodSearch.trim() &&
+                  (isDayOnlyFlow || activeTab === "day"
+                  ? !isRecipeSelectionLocked &&
                     Object.values(dayPlanDraft).every(
-                      (entry) => !entry?.foodName?.trim()
+                      (entry) => !entry?.recipeId || !entry?.foodName?.trim()
                     )
-                  : selectedWeekdays.length === 0 || !bulkFoodSearch)
+                  : selectedWeekdays.length === 0 ||
+                    !bulkFoodSearch ||
+                    !bulkSelectedRecipe ||
+                    bulkSelectedRecipe.id === 0 ||
+                    bulkSelectedRecipe.title !== bulkFoodSearch)
               }
             />
           </View>
@@ -849,6 +1023,132 @@ const styling = (
       ...svaTypography?.textStyle.caption,
       color: theme.text.primary,
       flex: 1,
+    },
+    readOnlyDate: {
+      ...(svaTypography?.textStyle.bodyMedium ?? svaTypography.textStyle.bodyMedium),
+      color: theme.text.primary,
+      paddingVertical: spacing.sm,
+    },
+    planDetailsCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      padding: spacing.lg,
+      gap: spacing.md,
+      borderWidth: tokens.border.hairline,
+      borderColor: theme.border.default,
+    },
+    planDetailBlock: {
+      flex: 1,
+      gap: spacing.xs,
+    },
+    planDetailLabel: {
+      ...(svaTypography?.textStyle.authTinyLabel ?? svaTypography.textStyle.caption),
+      color: theme.text.secondary,
+      letterSpacing: 1.2,
+    },
+    planDetailValue: {
+      ...(svaTypography?.textStyle.bodyMedium ?? svaTypography.textStyle.bodyMedium),
+      color: theme.text.primary,
+    },
+    planDetailDivider: {
+      width: tokens.border.hairline,
+      height: 42,
+      backgroundColor: theme.divider,
+    },
+    selectedRecipeCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+      padding: spacing.md,
+      marginBottom: spacing.md,
+      borderWidth: tokens.border.hairline,
+      borderColor: theme.brand.primary,
+    },
+    selectedRecipeIcon: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.brand.primary,
+    },
+    selectedRecipeCopy: {
+      flex: 1,
+      gap: spacing.xs,
+    },
+    selectedRecipeLabel: {
+      ...(svaTypography?.textStyle.authTinyLabel ?? svaTypography.textStyle.caption),
+      color: theme.brand.primary,
+      letterSpacing: 1.2,
+    },
+    selectedRecipeTitle: {
+      ...(svaTypography?.textStyle.bodyMedium ?? svaTypography.textStyle.bodyMedium),
+      color: theme.text.primary,
+    },
+    datePlanCard: {
+      padding: spacing.md,
+      borderWidth: tokens.border.hairline,
+      borderColor: theme.border.default,
+      gap: spacing.sm,
+    },
+    datePlanLoading: {
+      minHeight: 104,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: spacing.sm,
+    },
+    datePlanLoadingText: {
+      ...(svaTypography?.textStyle.caption ?? svaTypography.textStyle.caption),
+      color: theme.text.secondary,
+    },
+    datePlanRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+      paddingVertical: spacing.xs,
+    },
+    datePlanSlotIcon: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.bg.subtle,
+    },
+    datePlanRowCopy: {
+      flex: 1,
+      gap: 2,
+    },
+    datePlanSlot: {
+      ...(svaTypography?.textStyle.authTinyLabel ?? svaTypography.textStyle.caption),
+      color: theme.text.secondary,
+      textTransform: "uppercase",
+      letterSpacing: 1,
+    },
+    datePlanMeal: {
+      ...(svaTypography?.textStyle.bodyMedium ?? svaTypography.textStyle.bodyMedium),
+      color: theme.text.primary,
+    },
+    datePlanMuted: {
+      ...(svaTypography?.textStyle.caption ?? svaTypography.textStyle.caption),
+      color: theme.text.secondary,
+    },
+    overwriteNotice: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: spacing.sm,
+      marginTop: spacing.sm,
+      padding: spacing.sm,
+      borderRadius: 14,
+      backgroundColor: theme.bg.subtle,
+      borderWidth: tokens.border.hairline,
+      borderColor: theme.state.warning,
+    },
+    overwriteText: {
+      ...(svaTypography?.textStyle.caption ?? svaTypography.textStyle.caption),
+      color: theme.text.secondary,
+      flex: 1,
+      lineHeight: 18,
     },
     chipRow: {
       flexDirection: "row",

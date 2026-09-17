@@ -52,7 +52,8 @@ export const MealWeeklyViewScreen = () => {
   );
   const toast = useNimbusToast();
 
-  const [selectedWeek, setSelectedWeek] = useState<MealPlannerWeekRangeId>("current");
+  const [selectedWeek, setSelectedWeek] =
+    useState<MealPlannerWeekRangeId>("current");
   const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
   const [weeklyPlanData, setWeeklyPlanData] = useState<DayPlan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,7 +66,11 @@ export const MealWeeklyViewScreen = () => {
   // The range endpoint only returns dates that exist on the backend, so the
   // screen expands that sparse payload into a fixed seven-day week view.
   const displayDays = useMemo(
-    () => buildMealPlannerWeekDisplayDays(activeWeekRange.startDate, weeklyPlanData),
+    () =>
+      buildMealPlannerWeekDisplayDays(
+        activeWeekRange.startDate,
+        weeklyPlanData
+      ),
     [activeWeekRange.startDate, weeklyPlanData]
   );
 
@@ -77,7 +82,8 @@ export const MealWeeklyViewScreen = () => {
         try {
           setLoading(true);
           const range =
-            weekRanges.find((item) => item.value === selectedWeek) ?? weekRanges[1];
+            weekRanges.find((item) => item.value === selectedWeek) ??
+            weekRanges[1];
           const res = await getMealPlanRange(range.startDate, range.endDate);
 
           let data: DayPlan[] = [];
@@ -257,19 +263,21 @@ export const MealWeeklyViewScreen = () => {
             contentContainerStyle={styles.scrollContent}
           >
             {displayDays.map((day, index) => {
-              const emptySlots = Math.max(WEEKLY_MEAL_TYPES.length - day.mealRows.length, 0);
+              const emptySlots = Math.max(
+                WEEKLY_MEAL_TYPES.length - day.mealRows.length,
+                0
+              );
               const normalizedStatus = day.statusLabel.toLowerCase();
               const statusLabel =
                 day.statusLabel ||
                 (emptySlots === 0
                   ? "Fully planned"
                   : `${emptySlots} empty slot${emptySlots === 1 ? "" : "s"}`);
-              const statusColor =
-                normalizedStatus.includes("fully planned")
-                  ? svaColors.state.success
-                  : normalizedStatus.includes("not planned")
-                    ? svaColors.text.secondary
-                    : svaColors.state.warning;
+              const statusColor = normalizedStatus.includes("fully planned")
+                ? svaColors.state.success
+                : normalizedStatus.includes("not planned")
+                ? svaColors.text.secondary
+                : svaColors.state.warning;
               const isExpanded = expandedIndex === index;
               const shareablePlan = day.sourcePlan;
 
@@ -283,7 +291,19 @@ export const MealWeeklyViewScreen = () => {
                   isExpanded={isExpanded}
                   onToggle={() => toggleAccordion(index)}
                   onOpenRecipe={handleOpenRecipe}
-                  onSharePlan={shareablePlan ? () => onSharePlan(shareablePlan) : undefined}
+                  onAddMeal={(mealType) => {
+                    router.push({
+                      pathname: ROUTES.AUTH.TOOLS_MEAL_CREATION,
+                      params: {
+                        date: toApiDate(day.date),
+                        type: mealType,
+                        mode: "day",
+                      },
+                    });
+                  }}
+                  onSharePlan={
+                    shareablePlan ? () => onSharePlan(shareablePlan) : undefined
+                  }
                 />
               );
             })}
@@ -315,7 +335,8 @@ const styling = (
       gap: spacing.md,
     },
     filterLabel: {
-      ...(svaTypography?.textStyle.authTinyLabel ?? svaTypography.textStyle.authTinyLabel),
+      ...(svaTypography?.textStyle.authTinyLabel ??
+        svaTypography.textStyle.authTinyLabel),
       color: theme.text.secondary,
       letterSpacing: 0.8,
       textTransform: "uppercase",
@@ -354,7 +375,8 @@ const styling = (
       gap: 2,
     },
     weekShareLabel: {
-      ...(svaTypography?.textStyle.bodyMedium ?? svaTypography.textStyle.bodyMedium),
+      ...(svaTypography?.textStyle.bodyMedium ??
+        svaTypography.textStyle.bodyMedium),
       color: theme.text.primary,
     },
     weekShareMeta: {

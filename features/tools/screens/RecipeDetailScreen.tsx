@@ -308,8 +308,10 @@ const RecipeDetailScreen: React.FC = () => {
     router.push({
       pathname: ROUTES.AUTH.TOOLS_MEAL_CREATION,
       params: {
-        recipeId: detail.id,
+        recipeId: String(detail.id),
         recipeTitle: detail.title,
+        foodName: detail.title,
+        type: detail.mealSlot ?? undefined,
       },
     });
   };
@@ -401,7 +403,7 @@ const RecipeDetailScreen: React.FC = () => {
               {detail.id && !showPreviewSkeletons ? (
                 <View style={styles.ctaWrap}>
                   <RecipeMealPlanButton
-                    label={detail.ctaLabel}
+                    label="Add to Meal Plan"
                     onPress={onAddToMealPlan}
                   />
                 </View>

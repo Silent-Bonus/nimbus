@@ -456,9 +456,15 @@ export const getMealRecipeRouteData = (
 const normalizeWeeklyMealRow = (
   mealType: MealPlanMealType,
   meal: Meal | Meal[] | null | undefined
-): MealPlanMealRow | null => {
+): MealPlanMealRow => {
+  const emptyRow = (): MealPlanMealRow => ({
+    mealType,
+    recipeName: "No meal planned",
+    isPlanned: false,
+  });
+
   if (!meal) {
-    return null;
+    return emptyRow();
   }
 
   if (mealType === "snack") {
@@ -466,24 +472,26 @@ const normalizeWeeklyMealRow = (
     const validSnacks = snackMeals.filter(Boolean);
 
     if (validSnacks.length === 0) {
-      return null;
+      return emptyRow();
     }
 
     return {
       mealType,
       recipeName: getMealName(validSnacks),
+      isPlanned: true,
       ...getMealRecipeRouteData(validSnacks),
     };
   }
 
   const mealEntry = Array.isArray(meal) ? meal[0] : meal;
   if (!mealEntry) {
-    return null;
+    return emptyRow();
   }
 
   return {
     mealType,
     recipeName: getMealName(mealEntry),
+    isPlanned: true,
     ...getMealRecipeRouteData(mealEntry),
   };
 };
@@ -493,8 +501,13 @@ const normalizeWeeklyMealRow = (
  */
 export const buildWeeklyMealRows = (plan: DayPlan): MealPlanMealRow[] =>
   WEEKLY_MEAL_TYPES.map((mealType) =>
-    normalizeWeeklyMealRow(mealType, plan.meals?.[mealType] ?? null)
-  ).filter((row): row is MealPlanMealRow => Boolean(row));
+    normalizeWeeklyMealRow(
+      mealType,
+      mealType === "snack"
+        ? plan.meals?.snack ?? null
+        : plan.meals?.[mealType] ?? null
+    )
+  );
 
 /**
  * Build the fixed seven-day UI model for Nourish Horizon from a sparse API response.
@@ -516,7 +529,11 @@ export const buildMealPlannerWeekDisplayDays = (
       id: key,
       title: format(date, "EEEE, MMM d"),
       date,
-      mealRows: livePlan ? buildWeeklyMealRows(livePlan) : [],
+      mealRows: livePlan
+        ? buildWeeklyMealRows(livePlan)
+        : WEEKLY_MEAL_TYPES.map((mealType) =>
+            normalizeWeeklyMealRow(mealType, null)
+          ),
       sourcePlan: livePlan,
       statusLabel: livePlan?.status || "Not Planned",
     };
