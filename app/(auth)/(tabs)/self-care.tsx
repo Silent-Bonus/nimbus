@@ -1,5 +1,6 @@
-import React, { useContext, useMemo } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,111 +12,37 @@ import {
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ThemeContext from "@/contexts/ThemeContext";
 import { SVATypography } from "@/theme/typography";
-import { ROUTES } from "@/constants/routes";
 import AppHeader from "@/components/layout/AppHeader";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import type { ColorSet, Spacing } from "@/theme/types";
-
-type IconName = React.ComponentProps<typeof MaterialCommunityIcons>["name"];
-
-type ActionTile = {
-  label: string;
-  icon: IconName;
-  route: string;
-  navigationMode?: "push" | "navigate";
-};
-
-type SectionConfig = {
-  eyebrow: string;
-  title: string;
-  chipIcon: IconName;
-  actions: ActionTile[];
-};
-
-type SelfCareFonts = {
-  serif: string;
-  mono: string;
-  action: string;
-};
-
-const SECTION_DATA: SectionConfig[] = [
-  {
-    eyebrow: "Cognitive Core",
-    title: "Mind",
-    chipIcon: "brain",
-    actions: [
-      {
-        label: "Reflection",
-        icon: "book-edit-outline",
-        route: ROUTES.AUTH.SELF_CARE_REFLECTIONS,
-      },
-      {
-        label: "Meditation",
-        icon: "meditation",
-        route: ROUTES.AUTH.SELF_CARE_MEDITATION,
-        navigationMode: "navigate",
-      },
-      {
-        label: "Affirmation",
-        icon: "cards-heart-outline",
-        route: ROUTES.AUTH.SELF_CARE_AFFIRMATION,
-      },
-      {
-        label: "Breath Work",
-        icon: "weather-windy",
-        route: ROUTES.AUTH.SELF_CARE_BREATHWORK,
-      },
-    ],
-  },
-  {
-    eyebrow: "Physical Vitality",
-    title: "Body",
-    chipIcon: "dumbbell",
-    actions: [
-      {
-        label: "Vitals",
-        icon: "heart-pulse",
-        route: ROUTES.AUTH.SELF_CARE_VITALS,
-      },
-      {
-        label: "Workout Progress",
-        icon: "dumbbell",
-        route: ROUTES.AUTH.SELF_CARE_WORKOUT,
-      },
-    ],
-  },
-  {
-    eyebrow: "Inner Resonance",
-    title: "Soul",
-    chipIcon: "star-four-points-outline",
-    actions: [
-      {
-        label: "Scribble",
-        icon: "pencil-outline",
-        route: ROUTES.AUTH.TOOLS_SCRIBBLE_LIST,
-      },
-      {
-        label: "Soundscape",
-        icon: "music-circle-outline",
-        route: ROUTES.AUTH.SELF_CARE_SOUNDSCAPE,
-      },
-    ],
-  },
-];
+import { getTodayResonance } from "@/features/home/services/resonanceService";
+import { SELF_CARE_SECTIONS } from "@/features/self-care/data/selfCareSections";
+import type {
+  SelfCareActionTile,
+  SelfCareFonts,
+  SelfCareSectionConfig,
+} from "@/features/self-care/types/selfCare";
+import {
+  getSelfCareIconTint,
+  getSelfCareTileGradient,
+} from "@/features/self-care/utils/selfCarePresentation";
 
 const SelfCareActionTile = ({
   action,
   onPress,
   iconColor,
+  gradientColors,
   styles,
 }: {
-  action: ActionTile;
+  action: SelfCareActionTile;
   onPress: (route: string, mode?: "push" | "navigate") => void;
   iconColor: string;
+  gradientColors: [string, string];
   styles: ReturnType<typeof makeStyles>;
 }) => {
   return (
@@ -128,16 +55,34 @@ const SelfCareActionTile = ({
         pressed && styles.actionTilePressed,
       ]}
     >
-      <View style={styles.actionIconWrap}>
-        <MaterialCommunityIcons
-          name={action.icon}
-          size={18}
-          color={iconColor}
-        />
-      </View>
-      <Text style={styles.actionLabel} numberOfLines={2}>
-        {action.label}
-      </Text>
+      <LinearGradient
+        colors={gradientColors}
+        start={{ x: 0.1, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.actionTileGradient}
+      >
+      <View
+        style={[
+          styles.actionIconWrap,
+          {
+            backgroundColor: getSelfCareIconTint(iconColor),
+            borderColor: getSelfCareIconTint(iconColor),
+          },
+        ]}
+      >
+          <MaterialCommunityIcons
+            name={action.icon}
+            size={18}
+            color={iconColor}
+          />
+        </View>
+        <Text style={styles.actionLabel} numberOfLines={1}>
+          {action.label}
+        </Text>
+        <Text style={styles.actionDescription} numberOfLines={2}>
+          {action.description}
+        </Text>
+      </LinearGradient>
     </Pressable>
   );
 };
@@ -145,16 +90,26 @@ const SelfCareActionTile = ({
 const SelfCareSectionCard = ({
   section,
   onPress,
-  chipIconColor,
+  iconColors,
   styles,
 }: {
-  section: SectionConfig;
+  section: SelfCareSectionConfig;
   onPress: (route: string, mode?: "push" | "navigate") => void;
-  chipIconColor: string;
+  iconColors: string[];
   styles: ReturnType<typeof makeStyles>;
 }) => {
   return (
-    <View style={styles.sectionCard}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Open ${section.title} self-care hub`}
+      onPress={() =>
+        onPress(section.actions[0].route, section.actions[0].navigationMode)
+      }
+      style={({ pressed }) => [
+        styles.sectionCard,
+        pressed && styles.sectionCardPressed,
+      ]}
+    >
       <View style={styles.sectionInner}>
         <View style={styles.sectionTopRow}>
           <View style={styles.sectionCopy}>
@@ -166,28 +121,25 @@ const SelfCareSectionCard = ({
             </Text>
           </View>
 
-          <View style={styles.sectionChip}>
-            <MaterialCommunityIcons
-              name={section.chipIcon}
-              size={18}
-              color={chipIconColor}
-            />
-          </View>
         </View>
 
         <View style={styles.actionRow}>
-          {section.actions.map((action) => (
+          {section.actions.map((action, index) => (
             <SelfCareActionTile
               key={action.label}
               action={action}
               onPress={onPress}
-              iconColor={chipIconColor}
+              iconColor={iconColors[index % iconColors.length]}
+              gradientColors={getSelfCareTileGradient(
+                iconColors[index % iconColors.length]
+              )}
               styles={styles}
             />
           ))}
         </View>
+
       </View>
-    </View>
+    </Pressable>
   );
 };
 
@@ -196,6 +148,8 @@ export default function SelfCare() {
     useContext(ThemeContext);
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const [resonanceScore, setResonanceScore] = useState<number | null>(null);
+  const [resonanceLoading, setResonanceLoading] = useState(true);
 
   const ringSize = useMemo(() => {
     return Math.min(220, Math.max(176, Math.round(width * 0.58)));
@@ -220,6 +174,35 @@ export default function SelfCare() {
     () => makeStyles(theme, spacing, ringSize, fontFamilies),
     [theme, spacing, ringSize, fontFamilies]
   );
+
+  useEffect(() => {
+    let active = true;
+
+    const loadResonance = async () => {
+      setResonanceLoading(true);
+      try {
+        const score = await getTodayResonance();
+        if (active) {
+          setResonanceScore(score);
+        }
+      } catch (error) {
+        console.error("Unable to load today's resonance:", error);
+        if (active) {
+          setResonanceScore(null);
+        }
+      } finally {
+        if (active) {
+          setResonanceLoading(false);
+        }
+      }
+    };
+
+    void loadResonance();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const onRoutePress = (route: string, mode: "push" | "navigate" = "push") => {
     if (mode === "navigate") {
@@ -251,8 +234,14 @@ export default function SelfCare() {
           <View style={styles.heroBlock}>
             <View style={styles.ringStage}>
               <View style={styles.scoreRing}>
-                <View style={styles.scoreRingInner}>
-                  <Text style={styles.scoreNumber}>84</Text>
+              <View style={styles.scoreRingInner}>
+                  {resonanceLoading ? (
+                    <ActivityIndicator color={theme.accent} size="small" />
+                  ) : (
+                    <Text style={styles.scoreNumber}>
+                      {resonanceScore ?? "—"}
+                    </Text>
+                  )}
                 </View>
               </View>
             </View>
@@ -261,17 +250,23 @@ export default function SelfCare() {
               Sattva Level
             </Text>
             <Text style={styles.heroSubtitle} numberOfLines={1}>
-              OPTIMIZED STATE • HIGH COHERENCE
+              {resonanceScore === null
+                ? "RESONANCE • AWAITING SIGNAL"
+                : resonanceScore >= 80
+                ? "OPTIMIZED STATE • HIGH COHERENCE"
+                : resonanceScore >= 55
+                ? "BALANCED STATE • STEADY COHERENCE"
+                : "RESET STATE • ROOM TO RESTORE"}
             </Text>
           </View>
 
           <View style={styles.sectionStack}>
-            {SECTION_DATA.map((section) => (
+            {SELF_CARE_SECTIONS.map((section) => (
               <SelfCareSectionCard
                 key={section.title}
                 section={section}
                 onPress={onRoutePress}
-                chipIconColor={theme.accent}
+                iconColors={[theme.chart1, theme.chart2, theme.chart3, theme.chart4]}
                 styles={styles}
               />
             ))}
@@ -371,6 +366,11 @@ const makeStyles = (
       shadowOffset: { width: 0, height: 10 },
       elevation: 9,
     },
+    sectionCardPressed: {
+      borderColor: theme.accent,
+      backgroundColor: theme.surfaceMuted,
+      transform: [{ scale: 0.985 }],
+    },
     sectionInner: {
       paddingHorizontal: 18,
       paddingVertical: 18,
@@ -401,16 +401,6 @@ const makeStyles = (
       lineHeight: 34,
       color: theme.textPrimary,
     },
-    sectionChip: {
-      width: 46,
-      height: 46,
-      borderRadius: 15,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: theme.surfaceMuted,
-      borderWidth: 1,
-      borderColor: theme.borderMuted ?? "rgba(255,255,255,0.05)",
-    },
     actionRow: {
       flexDirection: "row",
       flexWrap: "wrap",
@@ -418,40 +408,47 @@ const makeStyles = (
     },
     actionTile: {
       width: "48%",
-      minHeight: 92,
+      minHeight: 124,
       borderRadius: 18,
-      alignItems: "center",
-      justifyContent: "center",
-      paddingHorizontal: 12,
-      paddingVertical: 14,
-      backgroundColor: theme.surfaceMuted,
-      borderWidth: 1,
-      borderColor: theme.borderMuted ?? "rgba(255,255,255,0.05)",
       marginBottom: spacing.sm,
+      overflow: "hidden",
+    },
+    actionTileGradient: {
+      flex: 1,
+      alignItems: "stretch",
+      justifyContent: "flex-start",
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
     },
     actionTilePressed: {
-      backgroundColor: theme.surface,
-      borderColor: theme.accent,
+      opacity: 0.9,
       transform: [{ scale: 0.98 }],
     },
     actionIconWrap: {
-      width: 28,
-      height: 28,
-      borderRadius: 10,
+      width: 38,
+      height: 38,
+      borderRadius: 19,
       alignItems: "center",
       justifyContent: "center",
-      marginBottom: 10,
-      backgroundColor: theme.background,
+      backgroundColor: theme.surfaceMuted,
       borderWidth: 1,
-      borderColor: theme.borderMuted ?? "rgba(255,255,255,0.05)",
+      borderColor: theme.borderMuted ?? "rgba(255,255,255,0.06)",
     },
     actionLabel: {
       fontFamily: fonts.action,
-      fontSize: 13,
-      lineHeight: 16,
+      fontSize: 16,
+      lineHeight: 20,
       letterSpacing: 0.2,
       color: theme.textPrimary,
-      textAlign: "center",
+      marginTop: spacing.sm,
       opacity: 0.94,
+    },
+    actionDescription: {
+      marginTop: 5,
+      fontFamily: fonts.mono,
+      fontSize: 11,
+      lineHeight: 16,
+      letterSpacing: 0.2,
+      color: theme.textSecondary,
     },
   });

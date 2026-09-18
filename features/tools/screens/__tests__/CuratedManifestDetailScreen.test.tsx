@@ -190,30 +190,28 @@ describe("CuratedManifestDetailScreen", () => {
     mockAccessState = "preview";
   });
 
-  it("opens the gate on entry for preview users and opens the locked modal from the CTA", () => {
+  it("does not open the premium modal for preview users", () => {
     const tree = renderScreen();
 
     expect(mockSetOptions).toHaveBeenCalledWith({
       headerShown: false,
     });
-    expect(mockOpenGate).toHaveBeenCalledWith(
-      "curated_manifest_detail",
-      "screen_entry"
-    );
-    expect(hasText(tree, "Unlock Protocol Stack")).toBe(true);
+    expect(mockOpenGate).not.toHaveBeenCalled();
+    expect(hasText(tree, "View Protocol Stack")).toBe(true);
 
     const ctaButton = tree.root.findByProps({
-      accessibilityLabel: "Unlock Protocol Stack",
+      accessibilityLabel: "View Protocol Stack",
     });
 
     act(() => {
       ctaButton.props.onPress();
     });
 
-    expect(mockOpenGate).toHaveBeenCalledWith(
-      "curated_manifest_protocols",
-      "cta_press"
-    );
+    expect(mockOpenGate).not.toHaveBeenCalled();
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: ROUTES.AUTH.TOOLS_CURATED_MANIFEST_PROTOCOLS,
+      params: { id: "agni-reset" },
+    });
   });
 
   it("routes directly to the protocol stack for premium users", () => {

@@ -29,7 +29,6 @@ export type MealPlannerSearchDropdownProps = {
   isSelectionLocked?: boolean;
   minQueryLength?: number;
   onSelectOption: (option: MealPlannerSearchOption) => void;
-  onSelectCustom: (query: string) => void;
 };
 
 /**
@@ -42,7 +41,6 @@ export function MealPlannerSearchDropdown({
   isSelectionLocked = false,
   minQueryLength = 3,
   onSelectOption,
-  onSelectCustom,
 }: MealPlannerSearchDropdownProps) {
   const { svaColors, spacing, svaTypography, tokens } =
     useContext(ThemeContext);
@@ -68,18 +66,14 @@ export function MealPlannerSearchDropdown({
   if (results.length === 0) {
     return (
       <MealCardSurface tone="surface" radius={16} style={styles.dropdown}>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={styles.resultItem}
-          onPress={() => onSelectCustom(trimmedQuery)}
-        >
+        <View style={styles.resultItem}>
           <MaterialCommunityIcons
-            name="pencil-plus"
+            name="information-outline"
             size={16}
             color={svaColors.text.secondary}
           />
-          <Text style={styles.resultText}>Use "{trimmedQuery}"</Text>
-        </TouchableOpacity>
+          <Text style={styles.resultText}>No matching recipes found.</Text>
+        </View>
       </MealCardSurface>
     );
   }

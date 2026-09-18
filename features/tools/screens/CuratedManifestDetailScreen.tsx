@@ -15,7 +15,6 @@ import {
   getCuratedManifestById,
   type CuratedManifest,
 } from "@/features/tools/data/curatedManifests";
-import { usePremiumGate } from "@/contexts/PremiumGateContext";
 import ManifestHero from "@/features/tools/components/curated-manifest-detail/ManifestHero";
 import ManifestStatGrid from "@/features/tools/components/curated-manifest-detail/ManifestStatGrid";
 import ManifestSection from "@/features/tools/components/curated-manifest-detail/ManifestSection";
@@ -32,7 +31,6 @@ export const CuratedManifestDetailScreen: React.FC = () => {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const insets = useSafeAreaInsets();
   const { svaColors, spacing, svaTypography } = useContext(ThemeContext);
-  const { openGate, getAccessState } = usePremiumGate();
   const styles = styling(svaColors, spacing, svaTypography, insets.bottom);
 
   const idParam = getStringParam(params.id);
@@ -45,32 +43,28 @@ export const CuratedManifestDetailScreen: React.FC = () => {
     return getCuratedManifestById(idParam) ?? CURATED_MANIFESTS[0];
   }, [idParam]);
 
-  const accessState = getAccessState("curated_manifest_detail");
-  const hasPremium = accessState === "allowed";
-
-  useEffect(() => {
-    // Show the shared gate once when a free user lands on the detail screen.
-    if (accessState === "preview") {
-      openGate("curated_manifest_detail", "screen_entry");
-    }
-  }, [accessState, idParam, openGate]);
-
   const handleProtocolStackPress = useCallback(() => {
-    if (!hasPremium) {
-      openGate("curated_manifest_protocols", "cta_press");
-      return;
-    }
-
+    // Premium gating is temporarily disabled on this detail screen so the
+    // protocol stack can be opened without displaying the upgrade modal.
+    // To restore the paywall, reinstate the access check and openGate call:
+    // if (!hasPremium) {
+    //   openGate("curated_manifest_protocols", "cta_press");
+    //   return;
+    // }
     router.push({
       pathname: ROUTES.AUTH.TOOLS_CURATED_MANIFEST_PROTOCOLS,
       params: { id: manifest.id },
     });
-  }, [hasPremium, manifest.id, openGate]);
+  }, [manifest.id]);
 
-  const ctaLabel = hasPremium ? "View Protocol Stack" : "Unlock Protocol Stack";
-  const ctaHint = hasPremium
-    ? "Opens the protocol stack"
-    : "Opens the upgrade modal";
+  // The shared premium modal is intentionally not opened when this screen is
+  // entered. Keep the previous screen-entry gate documented here so it can be
+  // restored when premium gating is re-enabled for curated manifests.
+  // useEffect(() => {
+  //   if (accessState === "preview") {
+  //     openGate("curated_manifest_detail", "screen_entry");
+  //   }
+  // }, [accessState, idParam, openGate]);
 
   const onShare = async () => {
     try {
@@ -138,12 +132,12 @@ export const CuratedManifestDetailScreen: React.FC = () => {
 
       <View style={styles.footerDock}>
         <NimbusButton
-          label={ctaLabel}
+          label="View Protocol Stack"
           onPress={handleProtocolStackPress}
-          accessibilityHint={ctaHint}
+          accessibilityHint="Opens the protocol stack"
           rightIcon={
             <Ionicons
-              name={hasPremium ? "arrow-forward" : "lock-closed"}
+              name="arrow-forward"
               size={18}
               color={svaColors.button.primary.text}
             />
