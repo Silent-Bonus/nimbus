@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 
 import ThemeContext from "@/contexts/ThemeContext";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
@@ -187,10 +186,6 @@ export const MealPlannerScreen = () => {
       pathname: ROUTES.AUTH.TOOLS_MEAL_CREATION,
       params: { type, date: toApiDate(new Date()) },
     });
-  };
-
-  const handlePlanAhead = () => {
-    router.push(ROUTES.AUTH.TOOLS_MEAL_CREATION);
   };
 
   const handleWeeklyView = () => {
@@ -579,20 +574,6 @@ export const MealPlannerScreen = () => {
             )}
           </View>
         </ScrollView>
-
-        {/* FAB */}
-        <TouchableOpacity
-          style={styles.fab}
-          activeOpacity={0.8}
-          onPress={handlePlanAhead}
-        >
-          <Ionicons
-            name="add"
-            size={32}
-            color={svaColors.button.primary.text}
-          />
-          <Text style={styles.fabLabel}>Plan Ahead</Text>
-        </TouchableOpacity>
       </View>
     </ScreenView>
   );
@@ -724,26 +705,5 @@ const styling = (
       width: 2,
       backgroundColor: theme.divider,
       opacity: 0.6,
-    },
-    fab: {
-      position: "absolute",
-      bottom: spacing.xl,
-      alignSelf: "center",
-      backgroundColor: theme.button.primary.bg,
-      paddingHorizontal: spacing.xl,
-      paddingVertical: spacing.md,
-      borderRadius: 32,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-      shadowColor: theme.button.primary.bg,
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.4,
-      shadowRadius: 12,
-      elevation: 8,
-    },
-    fabLabel: {
-      ...(svaTypography?.textStyle.authActionLabel ?? svaTypography.textStyle.bodyMedium),
-      color: theme.button.primary.text,
     },
   });

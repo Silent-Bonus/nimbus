@@ -88,18 +88,18 @@ export const CuratedManifestsScreen: React.FC = () => {
         title="Compendium Archive"
         subtitle="Scientifically curated biological blueprints"
         onBack={() => navigation.goBack()}
-        rightActions={[
-          {
-            icon: "search-outline",
-            accessibilityLabel: "Focus search",
-            onPress: () => searchInputRef.current?.focus(),
-          },
-          {
-            icon: "person-circle",
-            accessibilityLabel: "Profile",
-            onPress: () => console.log("[CuratedManifests] profile tapped"),
-          },
-        ]}
+        // rightActions={[
+        //   {
+        //     icon: "search-outline",
+        //     accessibilityLabel: "Focus search",
+        //     onPress: () => searchInputRef.current?.focus(),
+        //   },
+        //   {
+        //     icon: "person-circle",
+        //     accessibilityLabel: "Profile",
+        //     onPress: () => console.log("[CuratedManifests] profile tapped"),
+        //   },
+        // ]}
         containerStyle={styles.headerContainer}
       />
 
