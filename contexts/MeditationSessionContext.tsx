@@ -53,6 +53,7 @@ type MeditationSessionContextValue = {
   pauseSession: () => Promise<void>;
   resumeSession: () => Promise<void>;
   stopSession: () => Promise<void>;
+  dismissSession: () => void;
   registerControls: (controls: MeditationSessionControls | null) => () => void;
 };
 
@@ -138,6 +139,15 @@ export function MeditationSessionProvider({
     controlsRef.current = null;
   }, [activeSession?.elapsedSeconds]);
 
+  // Clears the local floating-player state without invoking onStop. This is
+  // used when a player screen is dismissed after pausing its server session;
+  // an explicit Stop action still uses stopSession and completes the session.
+  const dismissSession = useCallback(() => {
+    setActiveSession(null);
+    setStatus("idle");
+    controlsRef.current = null;
+  }, []);
+
   const registerControls = useCallback(
     (controls: MeditationSessionControls | null) => {
       controlsRef.current = controls;
@@ -160,6 +170,7 @@ export function MeditationSessionProvider({
       pauseSession,
       resumeSession,
       stopSession,
+      dismissSession,
       registerControls,
     }),
     [
@@ -170,6 +181,7 @@ export function MeditationSessionProvider({
       startSession,
       status,
       stopSession,
+      dismissSession,
     ]
   );
 

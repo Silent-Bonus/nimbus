@@ -46,7 +46,7 @@ import type {
 } from "@/theme/types";
 
 type SoundscapeDetailParams = {
-  soundscapeId?: string | string[];
+  soundscapeSlug?: string | string[];
   source?: string | string[];
   checkInId?: string | string[];
   date?: string | string[];
@@ -57,10 +57,6 @@ const parseParam = (value?: string | string[]) => {
   return value;
 };
 
-// Soundscape detail routes currently pass a numeric id from the library flow.
-// The detail fetch only runs when that identifier can be used by the backend.
-const isNumericId = (value: string) => /^\d+$/.test(value.trim());
-
 export default function SoundscapeDetailScreen() {
   // The screen tries to render immediately from the in-memory soundscape cache,
   // then refreshes from the wellness detail API when the route id is fetchable.
@@ -70,7 +66,7 @@ export default function SoundscapeDetailScreen() {
   const { svaColors, svaTypography, spacing } =
     useContext(ThemeContext);
 
-  const soundscapeId = parseParam(params.soundscapeId) ?? "";
+  const soundscapeSlug = parseParam(params.soundscapeSlug) ?? "";
   const routedSource = parseParam(params.source);
   const routedCheckInId = parseParam(params.checkInId);
   const routedDate = parseParam(params.date);
@@ -83,7 +79,7 @@ export default function SoundscapeDetailScreen() {
   // Cached soundscape data keeps the transition from library to detail fast,
   // while the later API refresh fills in the latest backend content.
   const [soundscape, setSoundscape] = useState<SoundscapeTrack | null>(
-    () => getSoundscapeById(soundscapeId) ?? null
+    () => getSoundscapeById(soundscapeSlug) ?? null
   );
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -139,10 +135,10 @@ export default function SoundscapeDetailScreen() {
 
     // Reset from cache first on every route change so the screen can show
     // previously visited content immediately while the network refresh runs.
-    setSoundscape(getSoundscapeById(soundscapeId) ?? null);
+    setSoundscape(getSoundscapeById(soundscapeSlug) ?? null);
     setLoadError(null);
 
-    if (!isNumericId(soundscapeId)) {
+    if (!soundscapeSlug.trim()) {
       setIsLoading(false);
       return () => {
         active = false;
@@ -151,11 +147,10 @@ export default function SoundscapeDetailScreen() {
 
     setIsLoading(true);
 
-    // Numeric ids fetch the latest detail payload, then map it back into the
-    // shared soundscape track shape used by detail and player flows.
+    // Soundscape details are addressed by their stable backend slug.
     const loadSoundscapeDetails = async () => {
       try {
-        const response = await getWellnessContentDetail(Number(soundscapeId));
+        const response = await getWellnessContentDetail(soundscapeSlug);
         if (!active) return;
 
         // Reuse the library mapper so detail and player screens read the same
@@ -180,7 +175,7 @@ export default function SoundscapeDetailScreen() {
     return () => {
       active = false;
     };
-  }, [soundscapeId]);
+  }, [soundscapeSlug]);
 
   // Favorite toggles update both local state and persisted storage so the next
   // library/detail visit reflects the same saved state.
@@ -212,10 +207,16 @@ export default function SoundscapeDetailScreen() {
   const handleStartSoundscape = useCallback(() => {
     if (!soundscape) return;
 
+    const detailSlug = soundscape.slug?.trim() || soundscapeSlug.trim();
+    if (!detailSlug) {
+      console.warn("Cannot open soundscape player: slug is missing.");
+      return;
+    }
+
     router.push({
       pathname: ROUTES.AUTH.SELF_CARE_SOUNDSCAPE_PLAYER,
       params: {
-        soundscapeId: soundscape.id,
+        soundscapeSlug: detailSlug,
         source: routedSource,
         checkInId: routedCheckInId,
         date: routedDate,
