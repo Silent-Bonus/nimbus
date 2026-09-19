@@ -57,7 +57,6 @@ export const ROUTES = {
     TOOLS_ARTICLE_DETAIL: "/(auth)/tools/articleDetail",
 
     // Self Care
-    SELF_CARE_THINGS_TO_DO: "/(auth)/self-care/thingsToDo",
     SELF_CARE_SLEEP: "/(auth)/self-care/sleep",
     SELF_CARE_REFLECTIONS: "/(auth)/self-care/reflections",
     SELF_CARE_REFLECTION_DETAIL:

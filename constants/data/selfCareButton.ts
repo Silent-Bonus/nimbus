@@ -42,11 +42,4 @@ export const buttons: NavigationButtonType[] = [
     screen: ROUTES.AUTH.SELF_CARE_REFLECTIONS,
     iconName: "book-open-variant",
   },
-  // {
-  //   id: 5,
-  //   label: "Action",
-  //   action: "modal",
-  //   screen: "thingsToDo",
-  //   iconName: "check-circle-outline",
-  // },
 ];
