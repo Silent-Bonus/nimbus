@@ -375,9 +375,9 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
           StoreKey.REFRESH_TOKEN,
           data.refresh ?? ""
         );
-        await applyAccessToken(data.access);
         await SecureStore.setItemAsync(StoreKey.ONBOARDING_DONE_KEY, "false");
         setOnboardingDone(false);
+        await applyAccessToken(data.access);
         return result;
       }
     } catch {
