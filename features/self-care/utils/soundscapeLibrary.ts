@@ -242,9 +242,13 @@ type CacheableSoundscapeTrack = {
 
 export const cacheSoundscapeTracks = (tracks: CacheableSoundscapeTrack[]) => {
   tracks.forEach((track) => {
-    const key = track.id.trim();
-    if (!key) return;
-    SOUNDSCAPE_CACHE.set(key, track as SoundscapeTrack);
+    const normalizedTrack = track as SoundscapeTrack;
+    const keys = [normalizedTrack.slug, normalizedTrack.id]
+      .filter((key): key is string => typeof key === "string")
+      .map((key) => key.trim())
+      .filter(Boolean);
+
+    keys.forEach((key) => SOUNDSCAPE_CACHE.set(key, normalizedTrack));
   });
 };
 

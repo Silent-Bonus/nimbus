@@ -241,7 +241,7 @@ export const SoundscapeScreen = () => {
     }
   };
 
-  const handleOpenSoundscapeDetail = useCallback((soundscapeId: string) => {
+  const handleOpenSoundscapeDetail = useCallback((soundscapeSlug: string) => {
     const source = Array.isArray(routeParams.source)
       ? routeParams.source[0]
       : routeParams.source;
@@ -254,7 +254,7 @@ export const SoundscapeScreen = () => {
 
     router.push({
       pathname: ROUTES.AUTH.SELF_CARE_SOUNDSCAPE_DETAIL,
-      params: { soundscapeId, source, checkInId, date },
+      params: { soundscapeSlug, source, checkInId, date },
     });
   }, [routeParams.checkInId, routeParams.date, routeParams.source]);
 
@@ -327,7 +327,7 @@ export const SoundscapeScreen = () => {
               <ProtocolTemplateCard
                 item={item}
                 style={styles.cardCell}
-                onPress={() => handleOpenSoundscapeDetail(item.id)}
+                onPress={() => handleOpenSoundscapeDetail(item.slug ?? item.id)}
               />
 
               <Pressable

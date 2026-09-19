@@ -1,5 +1,6 @@
 export interface TrackType {
   id: string;
+  slug?: string;
   title: string;
   name?: string; // Add optional name
   duration: string;

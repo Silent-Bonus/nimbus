@@ -16,7 +16,7 @@ const mockGetItem = jest.fn();
 const mockSetItem = jest.fn();
 
 let mockParams = {
-  soundscapeId: "1",
+  soundscapeSlug: "rain-over-cedar-528-hz",
 };
 
 jest.mock("expo-router", () => ({
@@ -132,7 +132,7 @@ describe("SoundscapeDetailScreen", () => {
     mockGetItem.mockResolvedValue("[]");
     mockSetItem.mockResolvedValue(undefined);
     mockParams = {
-      soundscapeId: "1",
+      soundscapeSlug: "rain-over-cedar-528-hz",
     };
     jest.spyOn(Share, "share").mockImplementation(mockShare);
     mockShare.mockResolvedValue({ action: "sharedAction" });
@@ -141,6 +141,7 @@ describe("SoundscapeDetailScreen", () => {
       message: "Wellness content retrieved successfully.",
       data: {
         id: 1,
+        slug: "rain-over-cedar-528-hz",
         title: "Rain Over Cedar 528 Hz",
         duration: "10 min",
         category: "Nature",
@@ -173,7 +174,9 @@ describe("SoundscapeDetailScreen", () => {
     expect(mockSetOptions).toHaveBeenCalledWith({
       headerShown: false,
     });
-    expect(mockGetWellnessContentDetail).toHaveBeenCalledWith(1);
+    expect(mockGetWellnessContentDetail).toHaveBeenCalledWith(
+      "rain-over-cedar-528-hz"
+    );
 
     expect(hasText(tree, "Soundscape Prelude")).toBe(true);
     expect(hasText(tree, "Rain Over Cedar 528 Hz")).toBe(true);
@@ -256,7 +259,7 @@ describe("SoundscapeDetailScreen", () => {
     expect(mockPush).toHaveBeenCalledWith({
       pathname: ROUTES.AUTH.SELF_CARE_SOUNDSCAPE_PLAYER,
       params: {
-        soundscapeId: "1",
+        soundscapeSlug: "rain-over-cedar-528-hz",
       },
     });
   });

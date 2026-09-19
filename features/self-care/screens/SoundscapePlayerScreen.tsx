@@ -42,7 +42,7 @@ import {
 import type { ColorSet, Spacing, TypographyTokens } from "@/theme/types";
 
 type SoundscapePlayerParams = {
-  soundscapeId?: string | string[];
+  soundscapeSlug?: string | string[];
   source?: string | string[];
   checkInId?: string | string[];
   date?: string | string[];
@@ -68,14 +68,14 @@ export default function SoundscapePlayerScreen() {
     useContext(ThemeContext);
   const isCompactLayout = windowHeight < 900;
 
-  const soundscapeId = parseParam(params.soundscapeId) ?? "";
+  const soundscapeSlug = parseParam(params.soundscapeSlug) ?? "";
   const routeSource = parseParam(params.source);
   const routeCheckInId = parseParam(params.checkInId);
   const routeDate = parseParam(params.date);
   const routeAutoStart = parseParam(params.autoStart);
   const soundscape = useMemo(
-    () => getSoundscapeById(soundscapeId) ?? null,
-    [soundscapeId]
+    () => getSoundscapeById(soundscapeSlug) ?? null,
+    [soundscapeSlug]
   );
   const styles = useMemo(
     () => styling(theme, svaTypography, spacing, isCompactLayout),
@@ -437,15 +437,21 @@ const styling = (
     },
     sideControlLabel: {
       ...svaTypography.textStyle.authTinyLabel,
+      width: "100%",
+      minHeight: 28,
+      lineHeight: 14,
       color: theme.textSecondary,
       letterSpacing: 1.1,
+      textAlign: "center",
     },
     sideControlValue: {
       ...svaTypography.textStyle.authTinyLabel,
       fontSize: 12,
       lineHeight: 16,
+      minHeight: 16,
       color: theme.textPrimary,
       letterSpacing: 0.8,
+      textAlign: "center",
     },
     sideControlLabelActive: {
       color: theme.textPrimary,
@@ -597,8 +603,8 @@ function SoundscapePlayerContent({
     [soundscape]
   );
   const source = useMemo(
-    () => resolveSoundscapePlaybackSource(soundscape.id),
-    [soundscape.id]
+    () => resolveSoundscapePlaybackSource(soundscape.slug ?? soundscape.id),
+    [soundscape.id, soundscape.slug]
   );
   const soundscapeContentObjectId = useMemo(() => {
     const numericId = Number(soundscape.id);
@@ -972,8 +978,19 @@ function SoundscapePlayerContent({
       await pauseSession();
     }
 
+    // The audio hook unloads its sound when this screen unmounts. Clear the
+    // global floating-player state as well, otherwise it remains visible with
+    // no registered audio controls behind it.
+    meditationSession.dismissSession();
     await onBack();
-  }, [isPlaying, onBack, pauseSession, sessionStatus, togglePlayPause]);
+  }, [
+    isPlaying,
+    meditationSession,
+    onBack,
+    pauseSession,
+    sessionStatus,
+    togglePlayPause,
+  ]);
 
   return (
     <ScreenView
@@ -1112,10 +1129,13 @@ function SoundscapePlayerContent({
                   styles.sideControlLabel,
                   timerIndex > 0 && styles.sideControlLabelActive,
                 ]}
+                numberOfLines={2}
               >
                 SLEEP TIMER
               </Text>
-              <Text style={styles.sideControlValue}>{timerLabel}</Text>
+              <Text style={styles.sideControlValue} numberOfLines={1}>
+                {timerLabel}
+              </Text>
             </Pressable>
 
             <Pressable

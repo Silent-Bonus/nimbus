@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, Text } from "react-native";
+import { Text } from "react-native";
 import renderer, { act } from "react-test-renderer";
 
 import ThemeContext from "../../../../../contexts/ThemeContext";
@@ -83,7 +83,9 @@ describe("ReflectionEntryCard", () => {
       />
     );
 
-    const card = tree.root.findByType(Pressable);
+    const card = tree.root.findByProps({
+      accessibilityLabel: "Open Midnight Reverie",
+    });
 
     act(() => {
       card.props.onPress();

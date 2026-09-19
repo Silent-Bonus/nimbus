@@ -65,4 +65,5 @@ export type UserProfile = {
   notification_preferences?: UserNotificationPreferences | null;
   vitals_context?: BodyVitalsContext | null;
   subscription?: UserSubscription | null;
+  onboarding_completed?: boolean;
 };

@@ -22,7 +22,7 @@ const mockResumeWellnessSession = jest.fn();
 const mockCompleteWellnessSession = jest.fn();
 
 let mockParams = {
-  soundscapeId: "5",
+  soundscapeSlug: "528hz-dna-integrity",
 };
 
 const mockSessionRef = "soundscape-session-123";
@@ -181,7 +181,7 @@ describe("SoundscapePlayerScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockParams = {
-      soundscapeId: "5",
+      soundscapeSlug: "528hz-dna-integrity",
     };
     playbackStatusCallback = null;
     cacheSoundscapeTracks([cachedSoundscape]);
