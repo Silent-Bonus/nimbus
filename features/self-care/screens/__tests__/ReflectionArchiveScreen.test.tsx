@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, Text } from "react-native";
+import { Text } from "react-native";
 import renderer, { act } from "react-test-renderer";
 
 import ThemeContext from "../../../../contexts/ThemeContext";
@@ -241,7 +241,9 @@ describe("ReflectionArchiveScreen", () => {
       tree = renderScreen();
     });
 
-    const cards = tree.root.findAllByType(Pressable);
+    const cards = tree.root.findAll(
+      (node) => node.props?.accessibilityRole === "button"
+    );
     const sessionCard = cards.find(
       (node) => node.props.accessibilityLabel === "Open When you feel Angry"
     );
@@ -268,7 +270,9 @@ describe("ReflectionArchiveScreen", () => {
       tree = renderScreen();
     });
 
-    const cards = tree.root.findAllByType(Pressable);
+    const cards = tree.root.findAll(
+      (node) => node.props?.accessibilityRole === "button"
+    );
     const sessionCard = cards.find(
       (node) =>
         node.props.accessibilityLabel ===

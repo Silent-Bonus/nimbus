@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, Text } from "react-native";
+import { Text } from "react-native";
 import renderer, { act } from "react-test-renderer";
 
 import ThemeContext from "@/contexts/ThemeContext";
@@ -119,9 +119,11 @@ function hasText(tree: renderer.ReactTestRenderer, value: string) {
 }
 
 function getBackButtons(tree: renderer.ReactTestRenderer) {
-  return tree.root.findAll(
-    (node) => node.type === Pressable && node.props?.testID === "onboarding-back-button"
-  );
+  try {
+    return [tree.root.findByProps({ testID: "onboarding-back-button" })];
+  } catch {
+    return [];
+  }
 }
 
 async function renderScreen() {
@@ -207,7 +209,7 @@ describe("OnboardingQuestionsScreen", () => {
 
     expect(mockSubmitDoshaAssessment).toHaveBeenCalledTimes(0);
 
-    const submitButton = tree.root.findAllByType(Pressable).find((node) =>
+    const submitButton = tree.root.findAll((node) => node.props?.accessibilityRole === "button").find((node) =>
       node.findAllByType(Text).some((textNode) => getTextContent(textNode) === "Submit")
     );
     expect(submitButton).toBeDefined();
@@ -241,7 +243,7 @@ describe("OnboardingQuestionsScreen", () => {
       await Promise.resolve();
     });
 
-    const profileSubmitButton = tree.root.findAllByType(Pressable).find((node) =>
+    const profileSubmitButton = tree.root.findAll((node) => node.props?.accessibilityRole === "button").find((node) =>
       node.findAllByType(Text).some((textNode) => getTextContent(textNode) === "Submit")
     );
     expect(profileSubmitButton).toBeDefined();

@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, Text } from "react-native";
+import { Text } from "react-native";
 import renderer, { act } from "react-test-renderer";
 
 import ThemeContext from "../../../../contexts/ThemeContext";
@@ -195,7 +195,9 @@ describe("ReflectionsScreen", () => {
       tree = renderScreen();
     });
 
-    const buttons = tree.root.findAllByType(Pressable);
+    const buttons = tree.root.findAll(
+      (node) => node.props?.accessibilityRole === "button"
+    );
     const continueButton = buttons.find(
       (node) =>
         node.props.accessibilityLabel ===
@@ -224,7 +226,9 @@ describe("ReflectionsScreen", () => {
       tree = renderScreen();
     });
 
-    const buttons = tree.root.findAllByType(Pressable);
+    const buttons = tree.root.findAll(
+      (node) => node.props?.accessibilityRole === "button"
+    );
     const openButton = buttons.find(
       (node) => node.props.accessibilityLabel === "Open Shadow Session"
     );

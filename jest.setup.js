@@ -1,6 +1,29 @@
 /* eslint-env jest */
 import 'react-native-gesture-handler/jestSetup';
 
+// Expo 54 reads the platform through expo-modules-core. Setting EXPO_OS lets
+// the Expo Jest preset resolve the platform without mocking React Native's
+// internal Platform module.
+process.env.EXPO_OS = 'ios';
+
+// React 19 requires test-renderer updates to be performed inside `act`.
+// Keep the existing renderer-based tests compatible while they are migrated
+// to a testing-library based API.
+jest.mock('react-test-renderer', () => {
+  const actual = jest.requireActual('react-test-renderer');
+
+  return {
+    ...actual,
+    create: (...args) => {
+      let tree;
+      actual.act(() => {
+        tree = actual.create(...args);
+      });
+      return tree;
+    },
+  };
+});
+
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
@@ -40,11 +63,4 @@ jest.mock('expo-device', () => ({
 jest.mock('expo-application', () => ({
   nativeApplicationVersion: '1.0.0',
   nativeBuildVersion: '1',
-}));
-
-// Mock React Native Platform
-jest.mock('react-native/Libraries/Utilities/Platform', () => ({
-  OS: 'ios',
-  select: jest.fn(dict => dict.ios),
-  Version: '17.0',
 }));

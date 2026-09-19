@@ -1,5 +1,5 @@
 import React from "react";
-import { Modal, Pressable, Text } from "react-native";
+import { Modal, Text } from "react-native";
 import renderer, { act } from "react-test-renderer";
 
 import ThemeContext from "../../../../contexts/ThemeContext";
@@ -76,7 +76,9 @@ describe("ActionModal", () => {
       hasText(tree, "Continue where you left off with your saved answers.")
     ).toBe(true);
 
-    const buttons = tree.root.findAllByType(Pressable);
+    const buttons = tree.root.findAll(
+      (node) => node.props?.accessibilityRole === "button"
+    );
     const continueButton = buttons.find(
       (node) => node.props.accessibilityLabel === "Continue Previous Session"
     );

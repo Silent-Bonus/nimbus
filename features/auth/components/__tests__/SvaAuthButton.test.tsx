@@ -1,5 +1,5 @@
 import React from "react";
-import { ActivityIndicator, Pressable, Text } from "react-native";
+import { ActivityIndicator, Text } from "react-native";
 import renderer, { act } from "react-test-renderer";
 
 import ThemeContext from "../../../../contexts/ThemeContext";
@@ -60,7 +60,7 @@ describe("SvaAuthButton", () => {
       />
     );
 
-    const button = tree.root.findByType(Pressable);
+    const button = tree.root.findByProps({ accessibilityRole: "button" });
 
     expect(button.props.disabled).toBe(true);
     expect(tree.root.findAllByType(ActivityIndicator)).toHaveLength(1);

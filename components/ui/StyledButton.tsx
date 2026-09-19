@@ -35,6 +35,7 @@ export const StyledButton: React.FC<ButtonProps> = ({
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
       style={({ pressed }) => [
         styles.button,
         {
