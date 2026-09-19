@@ -232,7 +232,7 @@ export const CURATED_MANIFESTS: CuratedManifest[] = [
       },
     ],
     tags: ["8 Rituals", "Neural Rec"],
-    image: require("@/assets/images/loginLatest.png"),
+    image: require("@/assets/images/bodyShape/3.png"),
     imageFit: "contain",
     level: "Intermediate",
     rating: 4.9,

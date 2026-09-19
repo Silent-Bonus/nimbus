@@ -13,8 +13,6 @@ import ThemeContext from "@/contexts/ThemeContext";
 import HorizontalListCardScroll from "@/components/layout/HorizontalListCardScroll";
 
 import { router } from "expo-router";
-import { banners } from "@/constants/data/banner";
-import HorizontalBanner from "@/components/layout/HorizontalBanner";
 import { getSoundscapeList } from "@/features/tools/services/toolService";
 import { useNimbusToast } from "@/components/ui/toast/useNimbusToast";
 import { ROUTES } from "@/constants/routes";
@@ -31,10 +29,6 @@ export const SleepScreen = ({ visible, onClose }: any) => {
   const { newTheme } = useContext(ThemeContext);
 
   const styles = styling(newTheme);
-
-  const handleBannerPress = (id: string) => {
-    console.log("Banner pressed:", id);
-  };
 
   const onClickOfAll = () => {
     router.push(ROUTES.AUTH.SELF_CARE_SOUNDSCAPE);
@@ -74,11 +68,7 @@ export const SleepScreen = ({ visible, onClose }: any) => {
     <View style={styles.modalContainer}>
       {/* Back Button */}
       <TouchableOpacity style={styles.backButton} onPress={onModalClose}>
-        <Ionicons
-          name="arrow-back"
-          size={24}
-          color={newTheme.textSecondary}
-        />
+        <Ionicons name="arrow-back" size={24} color={newTheme.textSecondary} />
       </TouchableOpacity>
 
       <View style={styles.modalContent}>
@@ -125,7 +115,6 @@ export const SleepScreen = ({ visible, onClose }: any) => {
             onClickOfAll={onClickOfAll}
           />
 
-          <HorizontalBanner data={banners} onPress={handleBannerPress} />
         </ScrollView>
       </View>
     </View>

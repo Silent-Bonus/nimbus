@@ -5,12 +5,20 @@ import { View, Text, StyleSheet, ScrollView } from "react-native";
 import { Image } from "expo-image";
 import StyledButton from "@/components/ui/theme-components/StyledButton";
 import ThemeContext from "@/contexts/ThemeContext";
-import { medicalTestData } from "@/constants/data/medicalTest";
-import { getImage } from "@/utils/getImage";
+import { getImage, type ImageKey } from "@/utils/getImage";
+
+type MedicalTestDetailsData = {
+  image?: ImageKey;
+  description: string;
+  content?: Array<{
+    title: string;
+    body: string;
+  }>;
+};
 
 type Props = {
   onStart: () => void;
-  medicalTestData?: medicalTestData;
+  medicalTestData?: MedicalTestDetailsData;
 };
 
 const MentalHealthTestDetails: React.FC<Props> = ({
