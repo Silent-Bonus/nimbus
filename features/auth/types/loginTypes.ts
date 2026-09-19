@@ -1,9 +1,10 @@
-interface UserData {
+export interface AuthUserData {
   username: string;
   email: string;
   id: number;
   refresh: string;
   access: string;
+  onboarding_completed?: boolean;
 }
 
 // TODO add types
@@ -19,7 +20,7 @@ export interface LoginRequest {
 export interface LoginResponse {
   success: boolean;
   message: string;
-  data: UserData;
+  data: AuthUserData;
   error_code?: string;
 }
 
@@ -122,6 +123,6 @@ export interface SignupResponse {
         username?: string;
       }
     | string;
-  data: any;
+  data: Partial<AuthUserData>;
   error_code?: string;
 }

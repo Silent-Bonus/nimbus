@@ -11,20 +11,31 @@ export const AUTH_SESSION_TEST_TIMEOUT_MS = 15 * 60 * 1000;
 
 const TEST_MODE_KEY = StoreKey.AUTH_SESSION_TEST_MODE_KEY;
 
-async function clearAuthStorage() {
+async function clearAuthStorage(clearOnboarding = false) {
   delete axios.defaults.headers.common["Authorization"];
-  await Promise.allSettled([
+  const storageTasks = [
     SecureStore.deleteItemAsync(StoreKey.TOKEN_KEY),
     SecureStore.deleteItemAsync(StoreKey.REFRESH_TOKEN),
-    SecureStore.deleteItemAsync(StoreKey.ONBOARDING_DONE_KEY),
     SecureStore.deleteItemAsync(StoreKey.LAST_ACTIVE_KEY),
     clearStoredBodyVitalsContext(),
     setStoredUser(null),
-  ]);
+  ];
+
+  if (clearOnboarding) {
+    storageTasks.push(
+      SecureStore.deleteItemAsync(StoreKey.ONBOARDING_DONE_KEY)
+    );
+  }
+
+  await Promise.allSettled(storageTasks);
 }
 
 export async function clearAuthSession() {
   await clearAuthStorage();
+}
+
+export async function clearAuthAndOnboarding() {
+  await clearAuthStorage(true);
 }
 
 export async function getAuthSessionTestModeEnabled(): Promise<boolean> {

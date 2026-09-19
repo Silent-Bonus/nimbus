@@ -31,6 +31,7 @@ import {
 import { User, getStoredUser } from "@/services/storageService";
 import {
   clearAuthSession,
+  clearAuthAndOnboarding as clearStoredAuthAndOnboarding,
   getAuthSessionTestModeEnabled,
   getFreshAuthTokenOrClearSession,
   setAuthSessionTestModeEnabled,
@@ -38,7 +39,7 @@ import {
 } from "@/services/authSessionService";
 
 export async function clearAuthAndOnboarding() {
-  await clearAuthSession();
+  await clearStoredAuthAndOnboarding();
 }
 
 // Cache Token Key
@@ -130,7 +131,14 @@ function useProtectedRoute(
       return; // ✅ allow any /(auth) route
     }
     if (isAuthed && onboardingDone === null) return;
-  }, [authState.authenticated, onboardingDone, hasSegments, root, child, segmentsKey]);
+  }, [
+    authState.authenticated,
+    onboardingDone,
+    hasSegments,
+    root,
+    child,
+    segmentsKey,
+  ]);
 }
 
 export default function AuthProvider({ children }: { children: ReactNode }) {
@@ -160,11 +168,12 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     (async () => {
       const key = await SecureStore.getItemAsync(StoreKey.ONBOARDING_DONE_KEY);
-
-      // If user is authenticated and key is missing, treat as existing user => skip onboarding
+      // A missing local value must never mean onboarding is complete. The
+      // backend value is written during registration/login; until then, keep
+      // the user in the incomplete state.
       if (authState.authenticated === true && key == null) {
-        await SecureStore.setItemAsync(StoreKey.ONBOARDING_DONE_KEY, "true");
-        setOnboardingDone(true);
+        await SecureStore.setItemAsync(StoreKey.ONBOARDING_DONE_KEY, "false");
+        setOnboardingDone(false);
         return;
       }
 
@@ -283,11 +292,14 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       void checkSessionFreshness();
     }, 60 * 1000);
 
-    const appStateSubscription = AppState.addEventListener("change", (nextState) => {
-      if (nextState === "active") {
-        void checkSessionFreshness();
+    const appStateSubscription = AppState.addEventListener(
+      "change",
+      (nextState) => {
+        if (nextState === "active") {
+          void checkSessionFreshness();
+        }
       }
-    });
+    );
 
     return () => {
       clearInterval(interval);
@@ -369,17 +381,28 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       };
       const result = await signup(request);
       const { success, data } = result || {};
-      // ✅ If backend returns tokens on signup, apply them immediately
-      if (success && data?.access) {
+      if (!success) return result;
+
+      if (typeof data?.onboarding_completed === "boolean") {
+        await SecureStore.setItemAsync(
+          StoreKey.ONBOARDING_DONE_KEY,
+          String(data.onboarding_completed)
+        );
+        setOnboardingDone(data.onboarding_completed);
+      }
+
+      // If backend returns tokens on signup, apply them immediately.
+      // If access is empty, the caller must authenticate separately before
+      // protected onboarding routes can be opened.
+      if (data?.access) {
         await SecureStore.setItemAsync(
           StoreKey.REFRESH_TOKEN,
           data.refresh ?? ""
         );
         await applyAccessToken(data.access);
-        await SecureStore.setItemAsync(StoreKey.ONBOARDING_DONE_KEY, "false");
-        setOnboardingDone(false);
-        return result;
       }
+
+      return result;
     } catch {
       return {
         success: false,
@@ -405,11 +428,17 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
         await SecureStore.setItemAsync(REFRESH_TOKEN, refresh);
 
-        const ob = await SecureStore.getItemAsync(StoreKey.ONBOARDING_DONE_KEY);
-        if (ob == null) {
-          await SecureStore.setItemAsync(StoreKey.ONBOARDING_DONE_KEY, "true");
-          setOnboardingDone(true);
-        }
+        // Registration is the only auth response that initializes the
+        // onboarding flag. Login preserves the locally stored value.
+        const ob = await SecureStore.getItemAsync(
+          StoreKey.ONBOARDING_DONE_KEY
+        );
+        const completed = ob === "true";
+        await SecureStore.setItemAsync(
+          StoreKey.ONBOARDING_DONE_KEY,
+          String(completed)
+        );
+        setOnboardingDone(completed);
 
         await _fetchUserProfile();
       } else {
@@ -454,25 +483,22 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateProfile = useCallback(
-    async (payload: any): Promise<any> => {
-      try {
-        const res = await saveUpdateUser(payload); // your API
-        // if your API shape is { success, data: { user }, message }
-        if (res?.success && res?.data) {
-          await syncAndPublishUserProfile(res.data); // keep app + storage in sync
-        }
-        return res; // caller decides what to do
-      } catch (err: any) {
-        // keep errors visible to caller
-        return {
-          success: false,
-          message: err?.response?.data?.message ?? "Update failed",
-        };
+  const updateProfile = useCallback(async (payload: any): Promise<any> => {
+    try {
+      const res = await saveUpdateUser(payload); // your API
+      // if your API shape is { success, data: { user }, message }
+      if (res?.success && res?.data) {
+        await syncAndPublishUserProfile(res.data); // keep app + storage in sync
       }
-    },
-    []
-  );
+      return res; // caller decides what to do
+    } catch (err: any) {
+      // keep errors visible to caller
+      return {
+        success: false,
+        message: err?.response?.data?.message ?? "Update failed",
+      };
+    }
+  }, []);
 
   const value = {
     onRegister: _register,
