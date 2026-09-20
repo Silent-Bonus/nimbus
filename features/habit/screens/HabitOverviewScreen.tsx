@@ -4,7 +4,7 @@ import { useNavigation } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ScreenView } from "@/components/ui/Themed";
-import ScreenHeader from "@/components/layout/ScreenHeader";
+import AppHeader from "@/components/layout/AppHeader";
 import ThemeContext from "@/contexts/ThemeContext";
 import OverviewSectionHeader from "@/features/habit/components/habit-overview/OverviewSectionHeader";
 import RitualConsistencyCard from "@/features/habit/components/habit-overview/RitualConsistencyCard";
@@ -127,7 +127,7 @@ export const HabitOverviewScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
-        <ScreenHeader
+        <AppHeader
           title="Holistic Overview"
           subtitle="Quantifying your inner growth"
           onBack={() => navigation.goBack()}
@@ -139,8 +139,6 @@ export const HabitOverviewScreen: React.FC = () => {
             },
           ]}
           containerStyle={styles.header}
-          titleStyle={styles.headerTitle}
-          subtitleStyle={styles.headerSubtitle}
         />
 
         <View style={styles.sectionBlock}>
@@ -192,15 +190,6 @@ function createStyles(
     },
     header: {
       marginBottom: spacing.sm,
-    },
-    headerTitle: {
-      ...svaTypography.textStyle.authTitle,
-      textAlign: "center",
-    },
-    headerSubtitle: {
-      ...svaTypography.textStyle.authSubtitle,
-      textAlign: "center",
-      marginTop: spacing.xs,
     },
     sectionBlock: {
       marginTop: spacing.md,
