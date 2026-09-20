@@ -32,8 +32,6 @@ export type BlueprintTemplate = {
   accent: string;
   gradientEnd: string;
   tint: string;
-  previewMetric: string;
-  previewProgress: number;
   searchTerms: string[];
   layout: BlueprintLayout;
 };
