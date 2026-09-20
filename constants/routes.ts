@@ -94,10 +94,9 @@ export const ROUTES = {
     BILLING_CHOOSE_METHOD: "/(auth)/billing/choosePaymentMethod",
     BILLING_REVIEW_SUMMARY: "/(auth)/billing/reviewPaymentSummary",
 
-    // Onboarding & New User
+    // Onboarding
     ONBOARDING_WELCOME: "/(auth)/onboarding/welcome",
     ONBOARDING_QUESTIONS: "/(auth)/onboarding/questions",
-    NEW_USER: "/(auth)/new-user",
 
     // Others
     COACH: "/(auth)/coach",
