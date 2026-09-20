@@ -40,6 +40,7 @@ interface AppHeaderProps {
   rightAction?: RightAction;
   rightActions?: HeaderRightAction[];
   titleStyle?: StyleProp<TextStyle>;
+  titleNumberOfLines?: number;
   subtitleStyle?: StyleProp<TextStyle>;
   containerStyle?: StyleProp<ViewStyle>;
 }
@@ -51,6 +52,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   rightAction,
   rightActions = [],
   titleStyle,
+  titleNumberOfLines = 1,
   subtitleStyle,
   containerStyle,
 }) => {
@@ -112,7 +114,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({
       </View>
 
       <View style={styles.textBlock}>
-        <Text style={[styles.title, titleStyle]} numberOfLines={1}>
+        <Text style={[styles.title, titleStyle]} numberOfLines={titleNumberOfLines}>
           {title}
         </Text>
         {!!subtitle && (

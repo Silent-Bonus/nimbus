@@ -36,14 +36,11 @@ export const ROUTES = {
     HABIT_DETAIL: "/(auth)/habit/habitDetail",
 
     // Tools
-    TOOLS_PRODUCT_LIST: "/(auth)/tools/productList",
     TOOLS_MEAL_WEEKLY: "/(auth)/tools/mealWeeklyView",
     TOOLS_MEAL_CREATION: "/(auth)/tools/mealCreation",
-    TOOLS_AI_THERAPY: "/(auth)/tools/aiTherapy",
-    TOOLS_ROUTINE_LIST: "/(auth)/tools/templateRoutineList",
-    TOOLS_CURATED_MANIFESTS: "/(auth)/tools/curatedManifests",
-    TOOLS_CURATED_MANIFEST_DETAIL: "/(auth)/tools/curatedManifestDetail",
-    TOOLS_CURATED_MANIFEST_PROTOCOLS: "/(auth)/tools/curatedManifestProtocols",
+    TOOLS_PROTOCOL_TEMPLATES: "/(auth)/tools/protocolTemplates",
+    TOOLS_PROTOCOL_TEMPLATE_DETAIL: "/(auth)/tools/protocolTemplateDetail",
+    TOOLS_PROTOCOL_TEMPLATE_PROTOCOLS: "/(auth)/tools/protocolTemplateProtocols",
     CREATE_PROTOCOL: "/(auth)/habit/createProtocol",
     TOOLS_ARTICLE_LIST: "/(auth)/tools/articleList",
     TOOLS_SCRIBBLE_DETAIL: "/(auth)/tools/scribbleDetail",

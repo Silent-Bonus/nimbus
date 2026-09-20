@@ -10,6 +10,7 @@ type ScreenHeaderProps = {
   rightActions?: HeaderRightAction[];
   containerStyle?: ViewStyle;
   titleStyle?: TextStyle;
+  titleNumberOfLines?: number;
   subtitleStyle?: TextStyle;
 };
 
@@ -20,6 +21,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   rightActions,
   containerStyle,
   titleStyle,
+  titleNumberOfLines,
   subtitleStyle,
 }) => {
   // Keep the legacy ScreenHeader API as a thin wrapper while screens converge on AppHeader.
@@ -30,6 +32,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
       onBack={onBack}
       rightActions={rightActions}
       titleStyle={titleStyle}
+      titleNumberOfLines={titleNumberOfLines}
       subtitleStyle={subtitleStyle}
       containerStyle={containerStyle}
     />

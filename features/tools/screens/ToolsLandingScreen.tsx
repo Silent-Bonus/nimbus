@@ -48,7 +48,7 @@ const TOOL_SECTION: ToolSection = {
     {
       label: "Protocol Template",
       icon: "clipboard-text-outline",
-      route: ROUTES.AUTH.TOOLS_CURATED_MANIFESTS,
+      route: ROUTES.AUTH.TOOLS_PROTOCOL_TEMPLATES,
     },
     {
       label: "Articles",

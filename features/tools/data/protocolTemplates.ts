@@ -11,7 +11,7 @@ export type ManifestProtocolStep = {
   reminder_time: string;
 };
 
-export type CuratedManifest = {
+export type ProtocolTemplate = {
   id: string;
   title: string;
   description: string;
@@ -42,7 +42,7 @@ export const MANIFEST_FILTERS: ManifestFilter[] = [
   { label: "Neural Rec", value: "neural-rec" },
 ];
 
-export const CURATED_MANIFESTS: CuratedManifest[] = [
+export const PROTOCOL_TEMPLATES: ProtocolTemplate[] = [
   {
     id: "agni-reset",
     title: "The Agni Reset (Foundational)",
@@ -436,6 +436,3 @@ export const CURATED_MANIFESTS: CuratedManifest[] = [
     xp_reward: 150,
   },
 ];
-
-export const getCuratedManifestById = (id?: string | null) =>
-  CURATED_MANIFESTS.find((item) => item.id === id) ?? null;
