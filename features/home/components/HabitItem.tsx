@@ -183,32 +183,6 @@ const HabitItemCard: React.FC<HabitItemProps> = ({
     (isBooleanHabit &&
       typeof lastCompleted === "string" &&
       lastCompleted.slice(0, 10) === selectedDate.slice(0, 10));
-  const hasProgress = (currentStreak ?? 0) > 0 || !!lastCompleted;
-  const actionState = isDoneForSelectedDate
-    ? "completed"
-    : hasProgress
-    ? "resume"
-    : "start";
-  const actionLabel =
-    actionState === "completed"
-      ? "COMPLETED"
-      : actionState === "resume"
-      ? "RESUME"
-      : "START";
-
-  const actionButtonStyle =
-    actionState === "completed"
-      ? styles.actionButtonCompleted
-      : actionState === "resume"
-      ? styles.actionButtonResume
-      : styles.actionButtonStart;
-
-  const actionTextStyle =
-    actionState === "completed"
-      ? styles.actionButtonTextCompleted
-      : actionState === "resume"
-      ? styles.actionButtonTextResume
-      : styles.actionButtonTextStart;
 
   const renderIcon = () => {
     if (typeof icon === "string") {
@@ -306,30 +280,26 @@ const HabitItemCard: React.FC<HabitItemProps> = ({
           <TouchableOpacity
             onPress={handleToggle}
             disabled={isDoneForSelectedDate}
-            style={styles.actionButtonWrap}
+            style={styles.statusIconButton}
             activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={
+              isDoneForSelectedDate
+                ? `${name} completed`
+                : `Mark ${name} as complete`
+            }
           >
-            <View style={[styles.actionButton, actionButtonStyle]}>
-              <Ionicons
-                name={
-                  isDoneForSelectedDate
-                    ? "checkmark-circle"
-                    : "checkmark-circle-outline"
-                }
-                size={15}
-                color={
-                  isDoneForSelectedDate
-                    ? styles.actionButtonTextCompleted.color
-                    : actionState === "resume"
-                    ? styles.actionButtonTextResume.color
-                    : styles.actionButtonTextStart.color
-                }
-                style={styles.actionButtonIcon}
-              />
-              <Text style={[styles.actionButtonText, actionTextStyle]}>
-                {actionLabel}
-              </Text>
-            </View>
+            <Ionicons
+              name={
+                isDoneForSelectedDate
+                  ? "checkmark-circle"
+                  : "checkmark-circle-outline"
+              }
+              size={26}
+              color={
+                isDoneForSelectedDate ? newTheme.textSecondary : accentColor
+              }
+            />
           </TouchableOpacity>
         </View>
 
@@ -417,53 +387,8 @@ const protocolStyling = (theme: ColorSet, spacing: Spacing, svaTypography: Typog
       opacity: 0.82,
       fontWeight: "600",
     },
-    actionButtonWrap: {
+    statusIconButton: {
       marginLeft: spacing.md,
-      borderRadius: 18,
-      overflow: "hidden",
-    },
-    actionButton: {
-      minWidth: 88,
-      paddingHorizontal: 18,
-      paddingVertical: 9,
-      borderRadius: 18,
-      justifyContent: "center",
-      alignItems: "center",
-      flexDirection: "row",
-      borderWidth: 1,
-    },
-    actionButtonIcon: {
-      marginRight: 5,
-    },
-    actionButtonText: {
-      ...svaTypography.textStyle.button,
-      fontSize: 10,
-      lineHeight: 12,
-      fontWeight: "800",
-      letterSpacing: 0.9,
-    },
-    actionButtonStart: {
-      backgroundColor: "rgba(182, 208, 155, 0.10)",
-      borderColor: "rgba(182, 208, 155, 0.14)",
-    },
-    actionButtonResume: {
-      backgroundColor: theme.surfaceMuted ?? "rgba(255,255,255,0.05)",
-      borderColor: "rgba(255,255,255,0.10)",
-    },
-    actionButtonCompleted: {
-      backgroundColor: "rgba(255,255,255,0.035)",
-      borderColor: "rgba(255,255,255,0.08)",
-    },
-    actionButtonTextStart: {
-      color: theme.accent,
-      opacity: 0.9,
-    },
-    actionButtonTextResume: {
-      color: theme.textPrimary,
-    },
-    actionButtonTextCompleted: {
-      color: theme.textSecondary,
-      opacity: 0.88,
     },
   });
 
