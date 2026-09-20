@@ -43,7 +43,6 @@ export type ParsedMeditationRouteParams = {
   meditationSource?: string;
 };
 
-const DEFAULT_MEDITATION_AUDIO = require("../../../assets/audio/deep_sleep_guided_meditation_3_min_af_bella.mp3");
 const DEFAULT_MEDITATION_COVER = require("../../../assets/images/mt.jpg");
 const DEFAULT_MEDITATION_DESCRIPTION =
   "A gentle meditation to help you slow down, reset, and return to a calmer state.";
@@ -134,7 +133,7 @@ export const resolveMeditationPlaybackSource = (
 
   switch (meditationId) {
     default:
-      return DEFAULT_MEDITATION_AUDIO;
+      return null;
   }
 };
 

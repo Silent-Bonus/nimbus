@@ -4,7 +4,7 @@ import { Audio, type AVPlaybackStatus } from "expo-av";
 import { seekMillis } from "@/features/self-care/utils/meditationPlayback";
 
 type UseAudioPlaybackOptions = {
-  source: Parameters<typeof Audio.Sound.createAsync>[0];
+  source: Parameters<typeof Audio.Sound.createAsync>[0] | null;
   autoPlay?: boolean;
   progressUpdateIntervalMillis?: number;
 };
@@ -32,6 +32,12 @@ export function useAudioPlayback({
 
     const loadSound = async () => {
       setIsLoading(true);
+
+      if (!source) {
+        setPlaybackStatus(null);
+        setIsLoading(false);
+        return;
+      }
 
       try {
         await Audio.setAudioModeAsync(DEFAULT_AUDIO_MODE);
@@ -128,4 +134,3 @@ export function useAudioPlayback({
     stop,
   };
 }
-

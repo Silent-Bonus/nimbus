@@ -12,7 +12,7 @@ import { Audio } from "expo-av";
 
 import ThemeContext from "@/contexts/ThemeContext";
 
-import { TrackType } from "@/constants/data/soundtrack";
+import { TrackType } from "@/features/self-care/types/trackTypes";
 
 interface PropType {
   backgroundColor: string; // now treated as optional tint / fallback
