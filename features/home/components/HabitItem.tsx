@@ -310,6 +310,22 @@ const HabitItemCard: React.FC<HabitItemProps> = ({
             activeOpacity={0.85}
           >
             <View style={[styles.actionButton, actionButtonStyle]}>
+              <Ionicons
+                name={
+                  isDoneForSelectedDate
+                    ? "checkmark-circle"
+                    : "checkmark-circle-outline"
+                }
+                size={15}
+                color={
+                  isDoneForSelectedDate
+                    ? styles.actionButtonTextCompleted.color
+                    : actionState === "resume"
+                    ? styles.actionButtonTextResume.color
+                    : styles.actionButtonTextStart.color
+                }
+                style={styles.actionButtonIcon}
+              />
               <Text style={[styles.actionButtonText, actionTextStyle]}>
                 {actionLabel}
               </Text>
@@ -413,7 +429,11 @@ const protocolStyling = (theme: ColorSet, spacing: Spacing, svaTypography: Typog
       borderRadius: 18,
       justifyContent: "center",
       alignItems: "center",
+      flexDirection: "row",
       borderWidth: 1,
+    },
+    actionButtonIcon: {
+      marginRight: 5,
     },
     actionButtonText: {
       ...svaTypography.textStyle.button,
