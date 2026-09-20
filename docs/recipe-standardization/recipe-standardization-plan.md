@@ -84,7 +84,7 @@ Not started:
 
 ### Phase 5: Broader Tools Alignment
 
-- [ ] Compare article, curated manifest, and recipe list shells
+- [ ] Compare article, protocol template, and recipe list shells
 - [ ] Create one standard tools list-screen shell if the patterns are identical
 - [ ] Remove one-off header/search/filter styling where shared styling is enough
 

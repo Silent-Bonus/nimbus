@@ -16,10 +16,10 @@
       "developmentClient": true
     },
     "production": {
+      "autoIncrement": true,
       "ios": {},
       "android": {
-        "buildType": "app-bundle",
-        "autoIncrement": true
+        "buildType": "app-bundle"
       },
       "distribution": "store",
       "credentialsSource": "remote"

@@ -1,9 +1,4 @@
-import React, {
-  forwardRef,
-  useContext,
-  useState,
-  type ReactNode,
-} from "react";
+import React, { forwardRef, useContext, useState, type ReactNode } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -116,13 +111,7 @@ export const SvaAuthInput = forwardRef<TextInput, SvaAuthInputProps>(
           </Text>
         )}
 
-        <View
-          style={[
-            s.field,
-            { borderBottomColor: borderColor },
-            fieldStyle,
-          ]}
-        >
+        <View style={[s.field, { borderBottomColor: borderColor }, fieldStyle]}>
           {leadingAccessory ? (
             <View style={s.leadingAccessory}>{leadingAccessory}</View>
           ) : null}
@@ -154,13 +143,15 @@ export const SvaAuthInput = forwardRef<TextInput, SvaAuthInputProps>(
               onPress={() => setShowSecret((value) => !value)}
               hitSlop={10}
               accessibilityRole="button"
-              accessibilityLabel={showSecret ? "Hide access code" : "Show access code"}
+              accessibilityLabel={
+                showSecret ? "Hide access code" : "Show access code"
+              }
               style={s.trailingAccessory}
             >
               <Ionicons
                 name={showSecret ? "eye-off-outline" : "eye-outline"}
                 size={18}
-              color={svaColors.text.secondary}
+                color={svaColors.text.secondary}
               />
             </Pressable>
           ) : null}
@@ -208,8 +199,10 @@ const s = StyleSheet.create({
   },
   input: {
     flex: 1,
-    minHeight: 22,
-    paddingVertical: 0,
+    minHeight: 36,
+    // paddingVertical: 6,
+    textAlignVertical: "center",
+    includeFontPadding: true,
     ...SVATypography.textStyle.body,
     fontFamily: SVATypography.fontFamily.body,
     fontSize: 16,

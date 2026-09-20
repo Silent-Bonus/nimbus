@@ -3,8 +3,8 @@ import type { UserProfile } from "@/features/auth/types/userProfile";
 import { hasPremiumAccess } from "@/features/auth/utils/userEntitlements";
 
 export type PremiumGateFeatureKey =
-  | "curated_manifest_detail"
-  | "curated_manifest_protocols";
+  | "protocol_template_detail"
+  | "protocol_template_protocols";
 
 export type PremiumGateMode = "preview" | "locked";
 export type PremiumGateState = "allowed" | PremiumGateMode;
@@ -27,8 +27,8 @@ export type PremiumGateConfig = {
 
 export const PREMIUM_GATE_CONFIG: Record<PremiumGateFeatureKey, PremiumGateConfig> =
   {
-    curated_manifest_detail: {
-      featureKey: "curated_manifest_detail",
+    protocol_template_detail: {
+      featureKey: "protocol_template_detail",
       mode: "preview",
       title: "Nimbus Plus required",
       subtitle:
@@ -42,8 +42,8 @@ export const PREMIUM_GATE_CONFIG: Record<PremiumGateFeatureKey, PremiumGateConfi
       secondaryLabel: "Keep previewing",
       upgradeRoute: ROUTES.AUTH.BILLING_UPGRADE,
     },
-    curated_manifest_protocols: {
-      featureKey: "curated_manifest_protocols",
+    protocol_template_protocols: {
+      featureKey: "protocol_template_protocols",
       mode: "locked",
       title: "Protocol stack locked",
       subtitle:
