@@ -128,9 +128,6 @@ export default function ContactUsModal({ visible, onClose }: Props) {
     }
   }, [visible]);
 
-  const activeCategory =
-    CATEGORIES.find((item) => item.key === category) ?? CATEGORIES[0];
-
   const fonts = useMemo(
     () => ({
       titleFamily:
@@ -281,23 +278,12 @@ export default function ContactUsModal({ visible, onClose }: Props) {
                 <View style={styles.headerCopy}>
                   <Text style={styles.eyebrow}>Support</Text>
                   <Text style={styles.title}>
-                    {submitted ? "Message sent" : "Contact us"}
+                    {submitted ? "Message sent" : "Contact support"}
                   </Text>
                   <Text style={styles.subtitle}>
                     {submitted
                       ? "We have received your message and will follow up soon."
-                      : "Send a note to Nimbus support. We usually reply within 24 to 48 hours."}
-                  </Text>
-                </View>
-
-                <View style={styles.headerBadge}>
-                  <Ionicons
-                    name={activeCategory.icon}
-                    size={14}
-                    color={svaColors.brand.primary}
-                  />
-                  <Text style={styles.headerBadgeText} numberOfLines={1}>
-                    {activeCategory.label}
+                      : "Tell us what you need and we will get back to you within 24 to 48 hours."}
                   </Text>
                 </View>
 
@@ -329,27 +315,14 @@ export default function ContactUsModal({ visible, onClose }: Props) {
                       <Ionicons
                         name="checkmark"
                         size={22}
-                        color={svaColors.bg.base}
+                        color={svaColors.brand.primary}
                       />
                     </View>
 
-                    <Text style={styles.successTitle}>Message sent</Text>
                     <Text style={styles.successText}>
-                      Thanks. We have your request and will review it as soon
-                      as possible.
+                      Your note is in the right hands. We’ll review it and get
+                      back to you as soon as possible.
                     </Text>
-
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Done"
-                      onPress={resetAndClose}
-                      style={({ pressed }) => [
-                        styles.primaryButton,
-                        pressed && styles.primaryButtonPressed,
-                      ]}
-                    >
-                      <Text style={styles.primaryButtonText}>Done</Text>
-                    </Pressable>
                   </View>
                 ) : (
                   <>
@@ -650,7 +623,7 @@ const createStyles = (
     },
     sheetShell: {
       marginHorizontal: 12,
-      marginBottom: bottomInset + 10,
+      marginBottom: 0,
       borderRadius: 28,
       backgroundColor: colors.surface.base,
       ...Platform.select({
@@ -667,7 +640,7 @@ const createStyles = (
     },
     sheet: {
       borderRadius: 28,
-      maxHeight: "88%",
+      maxHeight: "90%",
       overflow: "hidden",
       backgroundColor: colors.surface.base,
       borderWidth: 1,
@@ -694,10 +667,9 @@ const createStyles = (
       flexDirection: "row",
       alignItems: "flex-start",
       justifyContent: "space-between",
-      paddingHorizontal: 18,
-      paddingTop: 8,
-      paddingBottom: 14,
-      gap: 10,
+      paddingHorizontal: 20,
+      paddingTop: 6,
+      paddingBottom: 12,
     },
     headerCopy: {
       flex: 1,
@@ -726,27 +698,6 @@ const createStyles = (
       lineHeight: 19,
       color: colors.text.secondary,
     },
-    headerBadge: {
-      alignSelf: "flex-start",
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      borderRadius: 999,
-      paddingHorizontal: 10,
-      paddingVertical: 7,
-      backgroundColor: colors.brand.subtle,
-      borderWidth: 1,
-      borderColor: colors.brand.primary,
-      marginTop: 2,
-    },
-    headerBadgeText: {
-      fontFamily: fonts.monoFamily,
-      fontSize: 9.5,
-      lineHeight: 12,
-      letterSpacing: 1.8,
-      textTransform: "uppercase",
-      color: colors.brand.primary,
-    },
     closeButton: {
       width: 36,
       height: 36,
@@ -763,7 +714,7 @@ const createStyles = (
     },
     scrollContent: {
       paddingHorizontal: 14,
-      paddingBottom: 18,
+      paddingBottom: Math.max(bottomInset, 12),
     },
     section: {
       marginTop: 2,
@@ -799,7 +750,7 @@ const createStyles = (
       flexDirection: "row",
       flexWrap: "wrap",
       justifyContent: "space-between",
-      rowGap: 10,
+      rowGap: 9,
     },
     categoryCard: {
       width: "48.5%",
@@ -807,8 +758,8 @@ const createStyles = (
       backgroundColor: colors.surface.raised,
       borderWidth: 1,
       borderColor: colors.border.muted,
-      padding: 14,
-      minHeight: 124,
+      padding: 13,
+      minHeight: 118,
     },
     categoryCardActive: {
       backgroundColor: colors.bg.subtle,
@@ -1008,8 +959,8 @@ const createStyles = (
       paddingBottom: 2,
     },
     secondaryButton: {
-      minHeight: 48,
-      borderRadius: 16,
+      minHeight: 44,
+      borderRadius: 14,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: colors.button.ghost.bg,
@@ -1027,8 +978,8 @@ const createStyles = (
       color: colors.button.ghost.text,
     },
     primaryButton: {
-      minHeight: 50,
-      borderRadius: 16,
+      minHeight: 46,
+      borderRadius: 14,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: colors.button.primary.bg,
@@ -1057,19 +1008,13 @@ const createStyles = (
     successIconWrap: {
       width: 58,
       height: 58,
-      borderRadius: 20,
+      borderRadius: 999,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: colors.brand.primary,
-      borderWidth: 1,
+      backgroundColor: "transparent",
+      borderWidth: 1.5,
       borderColor: colors.brand.primary,
       marginBottom: 14,
-    },
-    successTitle: {
-      fontFamily: fonts.titleFamily,
-      fontSize: 24,
-      lineHeight: 28,
-      color: colors.text.primary,
     },
     successText: {
       marginTop: 8,

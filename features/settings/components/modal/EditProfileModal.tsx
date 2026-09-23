@@ -26,7 +26,6 @@ import ThemeContext from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNimbusToast } from "@/components/ui/toast/useNimbusToast";
 import ScreenHeader from "@/components/layout/ScreenHeader";
-import { svgIndexToFileUri } from "../../constants/builtinAvatars";
 import AvatarBusy from "@/assets/images/avatar/busyguy.svg";
 import AvatarCoolFemale from "@/assets/images/avatar/coolfemale.svg";
 import AvatarCoolGuy from "@/assets/images/avatar/coolguy.svg";
@@ -37,6 +36,8 @@ import AvatarFinanceGuy from "@/assets/images/avatar/financeguy.svg";
 import AvatarDeveloperGuy from "@/assets/images/avatar/developerguy.svg";
 import AvatarFemale from "@/assets/images/avatar/female.svg";
 import type { SvaColorSet, Spacing } from "@/theme/types";
+import { useCachedAvatarUri } from "../../services/avatarCacheService";
+import { svgIndexToFileUri } from "../../constants/builtinAvatars";
 
 type AvatarKey = string | null;
 
@@ -47,11 +48,6 @@ type EditProfileProfileData = {
   phone_number?: string | null;
 };
 
-type EditProfileSettingsData = {
-  height_unit?: string | null;
-  weight_unit?: string | null;
-};
-
 type EditProfileUser = {
   id?: string | number;
   username?: string | null;
@@ -59,15 +55,18 @@ type EditProfileUser = {
   first_name?: string | null;
   last_name?: string | null;
   avatar?: AvatarKey;
+  age?: number | null;
+  height_cm?: number | null;
+  weight_kg?: number | null;
   profile?: EditProfileProfileData | null;
-  settings?: EditProfileSettingsData | null;
 };
 
 type EditProfilePayload = {
   first_name?: string;
   last_name?: string;
-  profile?: EditProfileProfileData;
-  settings?: EditProfileSettingsData;
+  age?: number | null;
+  height_cm?: number | null;
+  weight_kg?: number | null;
 };
 
 type EditProfileTypography = {
@@ -79,7 +78,13 @@ type EditProfileTypography = {
 
 type EditProfileStyles = ReturnType<typeof createStyles>;
 
-type FocusField = "firstName" | "lastName" | "age" | "height" | "weight" | null;
+type FocusField =
+  | "firstName"
+  | "lastName"
+  | "age"
+  | "height"
+  | "weight"
+  | null;
 
 type Props = {
   visible: boolean;
@@ -107,17 +112,6 @@ type ProfileFieldProps = {
 type ReadOnlyRowProps = {
   label: string;
   value: string;
-  styles: EditProfileStyles;
-};
-
-type UnitChipGroupProps = {
-  label: string;
-  value: string;
-  options: string[];
-  icon: React.ComponentProps<typeof Ionicons>["name"];
-  onChange: (value: string) => void;
-  colors: SvaColorSet;
-  fonts: EditProfileTypography;
   styles: EditProfileStyles;
 };
 
@@ -180,46 +174,6 @@ function getInitials(firstName: string, lastName: string, fallback: string) {
   return fallbackParts || "SV";
 }
 
-async function buildProfileFormData(
-  payload: EditProfilePayload,
-  avatarKey: AvatarKey
-) {
-  const fd = new FormData();
-
-  Object.entries(payload || {}).forEach(([key, value]) => {
-    if (value === undefined || value === null) return;
-    fd.append(key, typeof value === "object" ? JSON.stringify(value) : String(value));
-  });
-
-  if (avatarKey?.startsWith("svg:")) {
-    const idx = Number(avatarKey.split(":")[1]);
-    const uri = await svgIndexToFileUri(idx);
-
-    fd.append(
-      "avatar",
-      {
-        uri,
-        name: `avatar-${idx}.svg`,
-        type: "image/svg+xml",
-      } as any
-    );
-  } else if (avatarKey?.startsWith("uri:")) {
-    const uri = avatarKey.slice(4);
-    const isSvg = isSvgUrl(uri);
-
-    fd.append(
-      "avatar",
-      {
-        uri,
-        name: isSvg ? "avatar.svg" : "avatar.jpg",
-        type: isSvg ? "image/svg+xml" : "image/jpeg",
-      } as any
-    );
-  }
-
-  return fd;
-}
-
 function AvatarPreview({ avatarKey, initials, styles }: AvatarPreviewProps) {
   if (!avatarKey) {
     return <Text style={styles.avatarInitials}>{initials}</Text>;
@@ -249,6 +203,51 @@ function AvatarPreview({ avatarKey, initials, styles }: AvatarPreviewProps) {
   }
 
   return <Image source={{ uri: maybeUri }} style={styles.avatarImage} />;
+}
+
+async function buildAvatarFormData(
+  payload: EditProfilePayload,
+  avatarKey: AvatarKey
+) {
+  const formData = new FormData();
+
+  Object.entries(payload).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      formData.append(key, String(value));
+    }
+  });
+
+  if (!avatarKey) return formData;
+
+  let uri: string | null = null;
+  let name = "avatar.jpg";
+  let type = "image/jpeg";
+
+  if (avatarKey.startsWith("svg:")) {
+    const index = Number(avatarKey.split(":")[1]);
+    uri = await svgIndexToFileUri(index);
+    name = `avatar-${index}.svg`;
+    type = "image/svg+xml";
+  } else {
+    uri = avatarKey.startsWith("uri:") ? avatarKey.slice(4) : avatarKey;
+    if (isSvgUrl(uri)) {
+      name = "avatar.svg";
+      type = "image/svg+xml";
+    }
+  }
+
+  if (uri) {
+    formData.append(
+      "avatar",
+      {
+        uri,
+        name,
+        type,
+      } as any
+    );
+  }
+
+  return formData;
 }
 
 function ProfileField({
@@ -313,63 +312,6 @@ function ReadOnlyRow({ label, value, styles }: ReadOnlyRowProps) {
   );
 }
 
-function UnitChipGroup({
-  label,
-  value,
-  options,
-  icon,
-  onChange,
-  colors,
-  fonts,
-  styles,
-}: UnitChipGroupProps) {
-  return (
-    <View style={styles.unitGroup}>
-      <View style={styles.unitHeaderRow}>
-        <View style={styles.unitHeaderLabelWrap}>
-          <Ionicons name={icon} size={12} color={colors.text.secondary} />
-          <Text style={styles.unitLabel}>{label}</Text>
-        </View>
-        <Text style={styles.unitValue} numberOfLines={1}>
-          {value}
-        </Text>
-      </View>
-
-      <View style={styles.unitChoices}>
-        {options.map((option) => {
-          const active = value === option;
-          return (
-            <Pressable
-              key={option}
-              accessibilityRole="button"
-              accessibilityLabel={`${label} ${option}`}
-              onPress={() => onChange(option)}
-              style={({ pressed }) => [
-                styles.unitChip,
-                active && styles.unitChipActive,
-                pressed && styles.unitChipPressed,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.unitChipText,
-                  {
-                    fontFamily:
-                      fonts.monoFamily || "SpaceMono-Regular",
-                  },
-                  active && styles.unitChipTextActive,
-                ]}
-              >
-                {option}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
 function SectionCard({
   title,
   icon,
@@ -410,12 +352,20 @@ export default function EditProfileModal({ visible, onClose, onSaved }: Props) {
   const [age, setAge] = useState<number | null>(null);
   const [height, setHeight] = useState<number | null>(null);
   const [weight, setWeight] = useState<number | null>(null);
-  const [heightUnit, setHeightUnit] = useState<string>("cm");
-  const [weightUnit, setWeightUnit] = useState<string>("kg");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [hydrating, setHydrating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [focusedField, setFocusedField] = useState<FocusField>(null);
+  const remoteAvatarUri =
+    avatarKey && !avatarKey.startsWith("svg:")
+      ? avatarKey.startsWith("uri:")
+        ? avatarKey.slice(4)
+        : avatarKey
+      : null;
+  const cachedAvatarUri = useCachedAvatarUri(remoteAvatarUri);
+  const previewAvatarKey = remoteAvatarUri
+    ? cachedAvatarUri
+    : avatarKey;
 
   const fonts = useMemo<EditProfileTypography>(
     () => ({
@@ -456,8 +406,6 @@ export default function EditProfileModal({ visible, onClose, onSaved }: Props) {
     setAge(null);
     setHeight(null);
     setWeight(null);
-    setHeightUnit("cm");
-    setWeightUnit("kg");
     setFocusedField(null);
     setHydrating(true);
 
@@ -477,20 +425,22 @@ export default function EditProfileModal({ visible, onClose, onSaved }: Props) {
           first_name: cached?.first_name ?? "",
           last_name: cached?.last_name ?? "",
           avatar: cached?.avatar ?? null,
+          age: cached?.age ?? null,
+          height_cm: cached?.height_cm ?? null,
+          weight_kg: cached?.weight_kg ?? null,
           profile: cached?.profile ?? {},
-          settings: cached?.settings ?? {},
         };
 
         setProfile(nextProfile);
         setFirstName(nextProfile.first_name ?? "");
         setLastName(nextProfile.last_name ?? "");
         setAvatarKey(nextProfile.avatar ?? null);
-        setHeightUnit(nextProfile.settings?.height_unit ?? "cm");
-        setWeightUnit(nextProfile.settings?.weight_unit ?? "kg");
 
-        const rawAge = nextProfile.profile?.age;
-        const rawHeight = nextProfile.profile?.height;
-        const rawWeight = nextProfile.profile?.weight;
+        const rawAge = nextProfile.profile?.age ?? nextProfile.age;
+        const rawHeight =
+          nextProfile.profile?.height ?? nextProfile.height_cm;
+        const rawWeight =
+          nextProfile.profile?.weight ?? nextProfile.weight_kg;
 
         setAge(
           typeof rawAge === "number" ? rawAge : rawAge ? Number(rawAge) : null
@@ -528,18 +478,15 @@ export default function EditProfileModal({ visible, onClose, onSaved }: Props) {
     const lastChanged = (profile.last_name ?? "") !== (lastName ?? "");
     const avatarChanged = (profile.avatar ?? null) !== (avatarKey ?? null);
 
-    const origAge = profile.profile?.age ?? null;
-    const origHeight = profile.profile?.height ?? null;
-    const origWeight = profile.profile?.weight ?? null;
+    const origAge = profile.profile?.age ?? profile.age ?? null;
+    const origHeight =
+      profile.profile?.height ?? profile.height_cm ?? null;
+    const origWeight =
+      profile.profile?.weight ?? profile.weight_kg ?? null;
 
     const ageChanged = (origAge ?? null) !== (age ?? null);
     const heightChanged = (origHeight ?? null) !== (height ?? null);
     const weightChanged = (origWeight ?? null) !== (weight ?? null);
-
-    const origHeightUnit = profile.settings?.height_unit ?? "cm";
-    const origWeightUnit = profile.settings?.weight_unit ?? "kg";
-    const heightUnitChanged = origHeightUnit !== heightUnit;
-    const weightUnitChanged = origWeightUnit !== weightUnit;
 
     return (
       firstChanged ||
@@ -547,11 +494,9 @@ export default function EditProfileModal({ visible, onClose, onSaved }: Props) {
       avatarChanged ||
       ageChanged ||
       heightChanged ||
-      weightChanged ||
-      heightUnitChanged ||
-      weightUnitChanged
+      weightChanged
     );
-  }, [profile, firstName, lastName, avatarKey, age, height, weight, heightUnit, weightUnit]);
+  }, [profile, firstName, lastName, avatarKey, age, height, weight]);
 
   const resolvedName =
     `${firstName} ${lastName}`.trim() ||
@@ -588,42 +533,27 @@ export default function EditProfileModal({ visible, onClose, onSaved }: Props) {
       payload.last_name = lastName;
     }
 
-    const nestedProfile: EditProfileProfileData = {};
     const originalProfile = profile.profile ?? {};
+    const originalAge = originalProfile.age ?? profile.age ?? null;
+    const originalHeight =
+      originalProfile.height ?? profile.height_cm ?? null;
+    const originalWeight =
+      originalProfile.weight ?? profile.weight_kg ?? null;
 
-    if ((originalProfile.age ?? null) !== (age ?? null)) {
-      nestedProfile.age = age ?? null;
+    if (originalAge !== (age ?? null)) {
+      payload.age = age ?? null;
     }
 
-    if ((originalProfile.height ?? null) !== (height ?? null)) {
-      nestedProfile.height = height ?? null;
+    if (originalHeight !== (height ?? null)) {
+      payload.height_cm = height ?? null;
     }
 
-    if ((originalProfile.weight ?? null) !== (weight ?? null)) {
-      nestedProfile.weight = weight ?? null;
-    }
-
-    if (Object.keys(nestedProfile).length > 0) {
-      payload.profile = { ...(profile.profile ?? {}), ...nestedProfile };
-    }
-
-    const nestedSettings: EditProfileSettingsData = {};
-    const originalSettings = profile.settings ?? {};
-
-    if ((originalSettings.height_unit ?? "cm") !== heightUnit) {
-      nestedSettings.height_unit = heightUnit;
-    }
-
-    if ((originalSettings.weight_unit ?? "kg") !== weightUnit) {
-      nestedSettings.weight_unit = weightUnit;
-    }
-
-    if (Object.keys(nestedSettings).length > 0) {
-      payload.settings = { ...(profile.settings ?? {}), ...nestedSettings };
+    if (originalWeight !== (weight ?? null)) {
+      payload.weight_kg = weight ?? null;
     }
 
     return payload;
-  }, [profile, firstName, lastName, age, height, weight, heightUnit, weightUnit]);
+  }, [profile, firstName, lastName, age, height, weight]);
 
   const handleCancel = useCallback(() => {
     if (saving) return;
@@ -649,14 +579,18 @@ export default function EditProfileModal({ visible, onClose, onSaved }: Props) {
     setSaving(true);
     try {
       const payload = buildPayload();
-      const fd = await buildProfileFormData(payload, avatarKey);
-      const saved = await updateProfile?.(fd);
+      const avatarChanged =
+        (profile.avatar ?? null) !== (avatarKey ?? null);
+      const requestBody = avatarChanged
+        ? await buildAvatarFormData(payload, avatarKey)
+        : payload;
+      const saved = await updateProfile?.(requestBody);
 
       if (saved?.success) {
         toast.show({
           variant: "success",
           title: "Profile updated",
-          message: "Your SVA profile was updated successfully.",
+          message: "Your profile was updated successfully.",
         });
         setPickerOpen(false);
         onClose();
@@ -729,15 +663,6 @@ export default function EditProfileModal({ visible, onClose, onSaved }: Props) {
               <View style={styles.heroGlowTwo} />
 
               <View style={styles.heroTopRow}>
-                <View style={styles.heroBadge}>
-                  <Ionicons
-                    name="shield-checkmark-outline"
-                    size={14}
-                    color={svaColors.brand.primary}
-                  />
-                  <Text style={styles.heroBadgeText}>SVA profile</Text>
-                </View>
-
                 <View
                   style={[
                     styles.heroStatusPill,
@@ -763,7 +688,7 @@ export default function EditProfileModal({ visible, onClose, onSaved }: Props) {
                   <View style={styles.avatarRing}>
                     <View style={styles.avatarInner}>
                       <AvatarPreview
-                        avatarKey={avatarKey}
+                        avatarKey={previewAvatarKey}
                         initials={initials}
                         styles={styles}
                       />
@@ -787,7 +712,7 @@ export default function EditProfileModal({ visible, onClose, onSaved }: Props) {
                   </Text>
                   <Text style={styles.heroFootnote}>
                     Tap the avatar to open the picker. Changes save back to the
-                    same SVA profile.
+                    same profile.
                   </Text>
                 </View>
               </View>
@@ -801,12 +726,7 @@ export default function EditProfileModal({ visible, onClose, onSaved }: Props) {
             >
               <ReadOnlyRow
                 label="Username"
-                value={profile?.username?.trim() || "Not set"}
-                styles={styles}
-              />
-              <ReadOnlyRow
-                label="Email"
-                value={profile?.email?.trim() || "Not set"}
+                value={profile?.username?.trim() || "—"}
                 styles={styles}
               />
               <ReadOnlyRow
@@ -823,68 +743,34 @@ export default function EditProfileModal({ visible, onClose, onSaved }: Props) {
               colors={svaColors}
             >
               <ProfileField
-                fieldKey="firstName"
-                label="First name"
-                value={firstName}
-                placeholder="First name"
-                icon="id-card-outline"
-                onChangeText={setFirstName}
+                fieldKey="age"
+                label="Age"
+                value={age !== null ? String(age) : ""}
+                placeholder="Age"
+                icon="calendar-outline"
+                keyboardType="numeric"
+                onChangeText={onChangeAge}
                 focusedField={focusedField}
                 setFocusedField={setFocusedField}
                 colors={svaColors}
                 styles={styles}
-                textContentType="givenName"
+                textContentType="none"
               />
 
               <ProfileField
-                fieldKey="lastName"
-                label="Last name"
-                value={lastName}
-                placeholder="Last name"
-                icon="id-card-outline"
-                onChangeText={setLastName}
+                fieldKey="height"
+                label="Height"
+                value={height !== null ? String(height) : ""}
+                placeholder="Height"
+                icon="resize-outline"
+                keyboardType="numeric"
+                onChangeText={onChangeHeight}
                 focusedField={focusedField}
                 setFocusedField={setFocusedField}
                 colors={svaColors}
                 styles={styles}
-                textContentType="familyName"
+                textContentType="none"
               />
-
-              <View style={styles.doubleRow}>
-                <View style={styles.doubleRowItem}>
-                  <ProfileField
-                    fieldKey="age"
-                    label="Age"
-                    value={age !== null ? String(age) : ""}
-                    placeholder="Age"
-                    icon="calendar-outline"
-                    keyboardType="numeric"
-                    onChangeText={onChangeAge}
-                    focusedField={focusedField}
-                    setFocusedField={setFocusedField}
-                    colors={svaColors}
-                    styles={styles}
-                    textContentType="none"
-                  />
-                </View>
-
-                <View style={styles.doubleRowItem}>
-                  <ProfileField
-                    fieldKey="height"
-                    label="Height"
-                    value={height !== null ? String(height) : ""}
-                    placeholder="Height"
-                    icon="resize-outline"
-                    keyboardType="numeric"
-                    onChangeText={onChangeHeight}
-                    focusedField={focusedField}
-                    setFocusedField={setFocusedField}
-                    colors={svaColors}
-                    styles={styles}
-                    textContentType="none"
-                  />
-                </View>
-              </View>
 
               <ProfileField
                 fieldKey="weight"
@@ -899,28 +785,6 @@ export default function EditProfileModal({ visible, onClose, onSaved }: Props) {
                 colors={svaColors}
                 styles={styles}
                 textContentType="none"
-              />
-
-              <UnitChipGroup
-                label="Height unit"
-                value={heightUnit}
-                options={["cm", "in"]}
-                icon="swap-horizontal-outline"
-                onChange={setHeightUnit}
-                colors={svaColors}
-                fonts={fonts}
-                styles={styles}
-              />
-
-              <UnitChipGroup
-                label="Weight unit"
-                value={weightUnit}
-                options={["kg", "lbs"]}
-                icon="swap-horizontal-outline"
-                onChange={setWeightUnit}
-                colors={svaColors}
-                fonts={fonts}
-                styles={styles}
               />
             </SectionCard>
           </ScrollView>
@@ -1058,7 +922,7 @@ function AvatarPickerModal({
         <View style={styles.summaryCopy}>
           <Text style={styles.summaryTitle}>Built-in avatars</Text>
           <Text style={styles.summaryText}>
-            Choose a clean identity marker for your SVA profile and tap save to
+            Choose a clean identity marker for your profile and tap save to
             apply it.
           </Text>
         </View>
@@ -1203,28 +1067,9 @@ function createStyles(
     heroTopRow: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
+      justifyContent: "flex-end",
       gap: spacing.sm,
       marginBottom: spacing.md,
-    },
-    heroBadge: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: 999,
-      backgroundColor: colors.surface.raised,
-      borderWidth: 1,
-      borderColor: colors.border.default,
-    },
-    heroBadgeText: {
-      fontFamily: fonts.monoFamily,
-      fontSize: 10,
-      lineHeight: 12,
-      letterSpacing: 1.8,
-      textTransform: "uppercase",
-      color: colors.text.secondary,
     },
     heroStatusPill: {
       paddingHorizontal: 12,
@@ -1251,9 +1096,8 @@ function createStyles(
       color: colors.text.secondary,
     },
     heroBodyRow: {
-      flexDirection: "row",
       alignItems: "center",
-      gap: spacing.md,
+      justifyContent: "center",
       marginTop: spacing.xs,
     },
     avatarPressable: {
@@ -1327,8 +1171,9 @@ function createStyles(
       borderColor: colors.bg.base,
     },
     heroCopy: {
-      flex: 1,
-      paddingRight: 4,
+      alignItems: "center",
+      width: "100%",
+      marginTop: spacing.md,
     },
     heroTitle: {
       fontFamily: fonts.titleFamily,
@@ -1343,6 +1188,7 @@ function createStyles(
       color: colors.text.secondary,
       fontSize: 13.5,
       lineHeight: 19,
+      textAlign: "center",
     },
     heroFootnote: {
       marginTop: 8,
@@ -1352,6 +1198,7 @@ function createStyles(
       lineHeight: 13,
       letterSpacing: 0.8,
       textTransform: "uppercase",
+      textAlign: "center",
     },
     sectionCard: {
       borderRadius: 24,
@@ -1464,76 +1311,6 @@ function createStyles(
       fontSize: 15,
       lineHeight: 20,
       paddingVertical: 0,
-    },
-    doubleRow: {
-      flexDirection: "row",
-      gap: spacing.md,
-    },
-    doubleRowItem: {
-      flex: 1,
-    },
-    unitGroup: {
-      gap: 8,
-    },
-    unitHeaderRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: spacing.md,
-    },
-    unitHeaderLabelWrap: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-    },
-    unitLabel: {
-      fontFamily: fonts.monoFamily,
-      color: colors.text.secondary,
-      fontSize: 10,
-      lineHeight: 12,
-      letterSpacing: 1.4,
-      textTransform: "uppercase",
-    },
-    unitValue: {
-      fontFamily: fonts.bodyStrongFamily,
-      color: colors.text.secondary,
-      fontSize: 12,
-      lineHeight: 16,
-      textTransform: "uppercase",
-      letterSpacing: 0.8,
-    },
-    unitChoices: {
-      flexDirection: "row",
-      gap: 10,
-      flexWrap: "wrap",
-    },
-    unitChip: {
-      minWidth: 62,
-      alignItems: "center",
-      justifyContent: "center",
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      borderRadius: 999,
-      backgroundColor: colors.surface.raised,
-      borderWidth: 1,
-      borderColor: colors.border.default,
-    },
-    unitChipActive: {
-      backgroundColor: colors.brand.subtle,
-      borderColor: colors.brand.primary,
-    },
-    unitChipPressed: {
-      opacity: 0.88,
-    },
-    unitChipText: {
-      fontSize: 11,
-      lineHeight: 14,
-      textTransform: "uppercase",
-      letterSpacing: 1.2,
-      color: colors.text.secondary,
-    },
-    unitChipTextActive: {
-      color: colors.brand.primary,
     },
     footer: {
       borderTopWidth: 1,

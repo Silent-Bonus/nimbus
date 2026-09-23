@@ -113,6 +113,8 @@ export const API_ENDPOINTS = {
   createMoodLog: `${BASE_URL}/api/v1/wellness/mood-logs/`,
   getMoodLogStats: `${BASE_URL}/api/v1/wellness/mood-logs/stats/`,
   getWellnessSummary: `${BASE_URL}/api/v1/wellness/summary/`,
+  getWellnessDashboard: (range = "7d") =>
+    `${BASE_URL}/api/v1/wellness/dashboard/?range=${encodeURIComponent(range)}`,
 
   getMentalTestList: `${BASE_URL}/assesment/assessments/`,
 
@@ -158,7 +160,9 @@ export const API_ENDPOINTS = {
   activateJourneyPlan: (id: number | string) =>
     `${BASE_URL}/api/v1/journeys/plans/${id}/activate/`,
   todayResonance: `${BASE_URL}/api/v1/resonance/today/`,
-  contactUs: `${BASE_URL}/support/tickets/`,
+  contactUs: `${BASE_URL}/api/v1/support/tickets/`,
+  privacyPolicy: `${BASE_URL}/api/v1/legal/privacy-policy/`,
+  termsOfService: `${BASE_URL}/api/v1/legal/terms-of-service/`,
 
   markHabitDone: (habitId: number) =>
     `${BASE_URL}/api/v1/habits/${habitId}/mark_complete/`,

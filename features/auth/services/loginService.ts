@@ -1,4 +1,4 @@
-import axios, { AxiosResponse, AxiosError } from "axios";
+import axios, { AxiosResponse } from "axios";
 import { API_ENDPOINTS } from "@/config/apiConfig";
 import {
   LoginRequest,
@@ -42,9 +42,6 @@ export const login = async (data: LoginRequest): Promise<LoginResponse> => {
   } catch (error: any) {
     // error.response.data - have backend response where as error.message has axios error
     // Extract error message properly
-    const errorMessage =
-      error.response?.data?.message ||
-      "Something went wrong. Please try again.";
     throw error.response ? error.response.data : error.message;
   }
 };
@@ -163,9 +160,18 @@ export const getUserDetails = async (): Promise<FetchUserResponse> => {
 
 export const saveUpdateUser = async (data: any): Promise<any> => {
   try {
+    const isMultipart =
+      typeof FormData !== "undefined" && data instanceof FormData;
     const response: AxiosResponse<any> = await axios.patch(
       API_ENDPOINTS.fetchUserDetails,
-      data
+      data,
+      isMultipart
+        ? undefined
+        : {
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
     );
     return response.data; // Return the list data
   } catch (error: any) {

@@ -422,7 +422,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       const result = await login(request);
       const { success, message, data } = result;
 
-      if (success && "email" in data) {
+      if (success && data && "email" in data) {
         const { access, refresh } = data;
         await applyAccessToken(access);
 
@@ -446,8 +446,17 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       return result;
-    } catch (e) {
-      return { error: true, msg: (e as any).response.data.msg };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: true,
+        message:
+          error?.response?.data?.message ??
+          error?.message ??
+          "Unable to sign in. Please try again.",
+        error_code: error?.response?.data?.error_code,
+        data: error?.response?.data?.data ?? {},
+      };
     }
   };
 
@@ -485,7 +494,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateProfile = useCallback(async (payload: any): Promise<any> => {
     try {
-      const res = await saveUpdateUser(payload); // your API
+      const res = await saveUpdateUser(payload); // flat JSON profile PATCH
       // if your API shape is { success, data: { user }, message }
       if (res?.success && res?.data) {
         await syncAndPublishUserProfile(res.data); // keep app + storage in sync

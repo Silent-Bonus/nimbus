@@ -11,7 +11,7 @@ import { getMembershipLabel } from "@/features/auth/utils/userEntitlements";
 import { ROUTES } from "@/constants/routes";
 import { SETTINGS_SECTIONS } from "@/constants/data/settingsList";
 import { SETTINGS_LAYOUT } from "@/features/settings/settingsLayout";
-import SettingsScreenHeader from "@/features/settings/components/SettingsScreenHeader";
+import AppHeader from "@/components/layout/AppHeader";
 import ProfileHeader from "@/features/settings/components/ProfileHeader";
 import SettingsSectionCard from "@/features/settings/components/SettingsSectionCard";
 import SettingsRow from "@/features/settings/components/SettingsRow";
@@ -51,42 +51,25 @@ export default function SettingsScreen() {
   } = useAuth();
   const insets = useSafeAreaInsets();
 
-  const [toggleState, setToggleState] = useState<ToggleState>(
-    INITIAL_TOGGLE_STATE
-  );
+  const [toggleState, setToggleState] =
+    useState<ToggleState>(INITIAL_TOGGLE_STATE);
   const [authResetting, setAuthResetting] = useState(false);
   const [authModeSaving, setAuthModeSaving] = useState(false);
   const [loc, setLoc] = useState<Location.LocationObject | null>(null);
 
   const [showReportBugModal, setShowReportBugModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-  const [showChangePasswordModal, setShowChangePasswordModal] =
-    useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showSocialModal, setShowSocialModal] = useState(false);
-  const [showPrivatePolicyModal, setShowPrivatePrivacyModal] =
-    useState(false);
+  const [showPrivatePolicyModal, setShowPrivatePrivacyModal] = useState(false);
   const [showTermsAndServiceModal, setShowTermsAndServiceModal] =
     useState(false);
   const [showFAQModal, setShowFAQModal] = useState(false);
   const [showEditProfile, setEditProfile] = useState(false);
 
-  const displayName = useMemo(() => {
-    const first = userProfile?.first_name?.trim() ?? "";
-    const last = userProfile?.last_name?.trim() ?? "";
-    const full = `${first} ${last}`.trim();
-    return (
-      userProfile?.full_name?.trim() ||
-      full ||
-      userProfile?.username ||
-      "Nimbus Member"
-    );
-  }, [userProfile]);
-
-  const statusLine = useMemo(() => {
-    const handle = userProfile?.username?.trim();
-    return `#${handle || "321be4"} glow active`;
-  }, [userProfile]);
+  // Use the same username shown on Home throughout the settings profile.
+  const username = userProfile?.username?.trim() || "321be4";
 
   const showAuthTestControls = __DEV__;
   const authTestTimeoutLabel = authSessionTestMode ? "15 min" : "15 days";
@@ -96,6 +79,7 @@ export default function SettingsScreen() {
     [userProfile]
   );
 
+  // Resolve the selected coordinates into a readable address for location-based navigation.
   useEffect(() => {
     if (!loc) return;
 
@@ -161,6 +145,7 @@ export default function SettingsScreen() {
     }
   };
 
+  // Perform any side effects required before committing a toggle change.
   const switchEnableHandler = async (id: ToggleKey) => {
     try {
       if (id === "navigation") {
@@ -187,12 +172,14 @@ export default function SettingsScreen() {
     }
   };
 
+  // Keep the local setting, related side effects, and app theme in sync.
   const onToggle = async (id: ToggleKey, value: boolean) => {
     await (value ? switchEnableHandler(id) : switchDisableHandler(id));
     setToggleState((prev) => ({ ...prev, [id]: value }));
     toggleTheme(value ? "dark" : "light");
   };
 
+  // Route row actions to screens, modals, or external-service handlers.
   const handleAction = (id: string) => {
     switch (id) {
       case "overview":
@@ -239,14 +226,18 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={[styles.screen, { backgroundColor: newTheme.background }]}>
+    <View
+      style={[
+        styles.screen,
+        {
+          backgroundColor: newTheme.background,
+          paddingTop: insets.top + 6,
+        },
+      ]}
+    >
       <StatusBar style="light" translucent backgroundColor="transparent" />
-
-      <SettingsScreenHeader
-        title="Nimbus You"
-        onBack={() => router.back()}
-      />
-
+      <AppHeader title="Settings" containerStyle={styles.header} />
+      {/* The section definitions drive the settings list so new rows stay data-driven. */}
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
@@ -255,12 +246,11 @@ export default function SettingsScreen() {
         ]}
       >
         <ProfileHeader
-          username={userProfile?.username || "321be4"}
-          displayName={displayName}
+          username={username}
+          displayName={username}
           avatarUrl={userProfile?.avatar || null}
           planLabel={membershipLabel}
           badgeLabel={membershipLabel}
-          statusLine={statusLine}
           onPressManagePlan={() => router.push(ROUTES.AUTH.BILLING_UPGRADE)}
         />
 
@@ -344,7 +334,9 @@ export default function SettingsScreen() {
 
               <SettingsRow
                 icon="refresh-circle-outline"
-                label={authResetting ? "Resetting app..." : "Reset auth session"}
+                label={
+                  authResetting ? "Resetting app..." : "Reset auth session"
+                }
                 danger
                 showChevron
                 onPress={() => void onResetAuthClick()}
@@ -355,38 +347,29 @@ export default function SettingsScreen() {
 
         <SettingsFooter />
       </ScrollView>
-
+      {/* Keep modal state local to this screen and render each modal at the root level. */}
       <EditProfileModal
         visible={showEditProfile}
         onClose={() => setEditProfile(false)}
         onSaved={() => setEditProfile(false)}
       />
-
       <ContactUsModal
         visible={showReportBugModal}
         onClose={() => setShowReportBugModal(false)}
       />
-
       <FeedbackModal
         visible={showFeedbackModal}
         onClose={() => setShowFeedbackModal(false)}
       />
-
       <PrivacyPolicyModal
         visible={showPrivatePolicyModal}
         onClose={() => setShowPrivatePrivacyModal(false)}
       />
-
       <TermsModal
         visible={showTermsAndServiceModal}
         onClose={() => setShowTermsAndServiceModal(false)}
       />
-
-      <FAQModal
-        visible={showFAQModal}
-        onClose={() => setShowFAQModal(false)}
-      />
-
+      <FAQModal visible={showFAQModal} onClose={() => setShowFAQModal(false)} />
       <SocialActionModal
         visible={showSocialModal}
         onClose={() => setShowSocialModal(false)}
@@ -394,12 +377,11 @@ export default function SettingsScreen() {
         appDeepLink={SVA_SOCIAL_DEEP_LINK}
         webUrl={SVA_SOCIAL_WEB_URL}
       />
-
       <ChangePasswordModal
         visible={showChangePasswordModal}
         onClose={() => setShowChangePasswordModal(false)}
+        onPasswordChanged={onLogoutClick}
       />
-
       <LogoutModal
         visible={showLogoutModal}
         onLogout={onLogoutClick}
@@ -412,6 +394,9 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+  },
+  header: {
+    marginHorizontal: SETTINGS_LAYOUT.screenHorizontal,
   },
   scrollContent: {
     paddingHorizontal: SETTINGS_LAYOUT.screenHorizontal,

@@ -11,7 +11,6 @@ import { Ionicons } from "@expo/vector-icons";
 import ThemeContext from "@/contexts/ThemeContext";
 import SettingsBottomSheet from "./SettingsBottomSheet";
 import {
-  formatAdvancedValue,
   isTimeSettingKey,
   type AdvancedSettingKey,
   type AdvancedSettingsPatch,
@@ -37,6 +36,7 @@ type Props = {
 };
 
 const RECOMMENDED = ["05:00", "06:00", "07:00", "08:00", "09:00"];
+const SLEEP_RECOMMENDED = ["20:00", "21:00", "22:00"];
 
 export default function PreferenceDetailModal({
   visible,
@@ -79,8 +79,10 @@ export default function PreferenceDetailModal({
   const recommendedOptions = useMemo(() => {
     if (!timeMode) return [];
     const normalized = new Set(options.map((option) => normalizeOption(option)));
-    return RECOMMENDED.filter((item) => normalized.has(normalizeOption(item)));
-  }, [options, timeMode]);
+    const recommended =
+      categoryKey === "sleep_time" ? SLEEP_RECOMMENDED : RECOMMENDED;
+    return recommended.filter((item) => normalized.has(normalizeOption(item)));
+  }, [categoryKey, options, timeMode]);
 
   const otherOptions = useMemo(() => {
     if (!timeMode) return options;
@@ -88,7 +90,6 @@ export default function PreferenceDetailModal({
     return options.filter((item) => !recommendedSet.has(normalizeOption(item)));
   }, [options, recommendedOptions, timeMode]);
 
-  const selectedValue = formatAdvancedValue(categoryKey, selected || selectedUnit);
   const hasChanges =
     normalizeOption(selected, categoryKey) !==
     normalizeOption(selectedUnit ?? "", categoryKey);
@@ -104,9 +105,7 @@ export default function PreferenceDetailModal({
     try {
       const payloadValue = normalizePayloadValue(categoryKey, selected);
       const result = await onSave({
-        settings: {
-          [categoryKey]: payloadValue,
-        },
+        [categoryKey]: payloadValue,
       });
 
       if (result !== false) {
@@ -119,9 +118,6 @@ export default function PreferenceDetailModal({
     }
   };
 
-  const headerBadgeLabel = timeMode ? "Schedule" : "Measurements";
-  const headerBadgeIcon = timeMode ? "time-outline" : "options-outline";
-
   return (
     <SettingsBottomSheet
       visible={visible}
@@ -129,9 +125,10 @@ export default function PreferenceDetailModal({
       eyebrow="Advanced settings"
       title={label}
       subtitle="Choose one value and save it back to your profile."
-      badgeLabel={headerBadgeLabel}
-      badgeIcon={headerBadgeIcon}
+      badgeLabel={undefined}
+      badgeIcon="options-outline"
       closeLabel={`Close ${label}`}
+      scrollable={false}
       footer={
         <View style={styles.footerRow}>
           <Pressable
@@ -168,26 +165,6 @@ export default function PreferenceDetailModal({
         </View>
       }
     >
-      <View style={styles.summaryCard}>
-        <View style={styles.summaryIconWrap}>
-          <Ionicons
-            name={timeMode ? "moon-outline" : "sparkles-outline"}
-            size={18}
-            color={svaColors.brand.primary}
-          />
-        </View>
-
-        <View style={styles.summaryCopy}>
-          <Text style={styles.summaryTitle}>Current selection</Text>
-          <Text style={styles.summaryValue}>{selectedValue}</Text>
-          <Text style={styles.summaryText}>
-            {timeMode
-              ? "Pick a rhythm that feels natural. The top row highlights recommended windows."
-              : "Choose the unit that best matches your profile and tracking habits."}
-          </Text>
-        </View>
-      </View>
-
       {timeMode ? (
         <>
           <View style={styles.sectionBlock}>
@@ -281,9 +258,9 @@ export default function PreferenceDetailModal({
                   )}
                 </View>
 
-                <Text style={styles.optionHint}>
-                  {active ? "Selected" : "Tap to switch"}
-                </Text>
+                {active ? (
+                  <Text style={styles.optionHint}>Selected</Text>
+                ) : null}
               </Pressable>
             );
           })}
@@ -477,9 +454,9 @@ function createStyles(
     },
     optionCard: {
       width: "48%",
-      minHeight: 94,
-      padding: 14,
-      borderRadius: 22,
+      height: 78,
+      padding: 12,
+      borderRadius: 18,
       borderWidth: 1,
       borderColor: colors.border.default,
       backgroundColor: colors.surface.raised,
@@ -497,7 +474,7 @@ function createStyles(
       alignItems: "center",
       justifyContent: "space-between",
       gap: 10,
-      marginBottom: 18,
+      marginBottom: 8,
     },
     optionText: {
       flex: 1,
@@ -523,6 +500,7 @@ function createStyles(
     },
     footerButton: {
       flex: 1,
+      width: 0,
       height: 48,
       borderRadius: 999,
       alignItems: "center",

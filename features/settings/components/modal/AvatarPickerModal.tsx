@@ -2,7 +2,6 @@
 import React, { useEffect, useState, useContext } from "react";
 import {
   Modal,
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -13,6 +12,7 @@ import {
   Image,
   Platform,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import ThemeContext from "@/contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";

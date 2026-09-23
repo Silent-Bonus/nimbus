@@ -6,7 +6,6 @@ import React, {
   useState,
 } from "react";
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -84,14 +83,6 @@ const ADVANCED_SECTIONS: AdvancedSettingSection[] = [
         description: "Temperature display in the app.",
         options: ["Celsius", "Fahrenheit"],
         icon: "partly-sunny-outline",
-        section: "measurement",
-      },
-      {
-        key: "length_unit",
-        label: "Length unit",
-        description: "Distances and movement metrics.",
-        options: ["feet", "km", "miles"],
-        icon: "map-outline",
         section: "measurement",
       },
     ],
@@ -228,7 +219,6 @@ export const AdvancedSettingsScreen = () => {
   const toast = useNimbusToast();
   const insets = useSafeAreaInsets();
 
-  const [loading, setLoading] = useState(false);
   const [detailVisible, setDetailVisible] = useState(false);
   const [selectedSetting, setSelectedSetting] =
     useState<AdvancedSettingDisplayItem | null>(null);
@@ -254,8 +244,6 @@ export const AdvancedSettingsScreen = () => {
   );
 
   const refreshSettings = useCallback(async () => {
-    setLoading(true);
-
     try {
       const cached = (await loadUserFromStorage?.()) as
         | { settings?: AdvancedSettingsState | null }
@@ -271,8 +259,6 @@ export const AdvancedSettingsScreen = () => {
       );
     } catch (error) {
       console.warn("load advanced settings failed", error);
-    } finally {
-      setLoading(false);
     }
   }, [loadUserFromStorage]);
 
@@ -303,7 +289,7 @@ export const AdvancedSettingsScreen = () => {
         if (saved?.success) {
           const nextSettings =
             (saved?.data?.settings as AdvancedSettingsState | undefined) ??
-            payload.settings;
+            payload;
 
           setMerged((current) =>
             current.map((item) => ({
@@ -372,27 +358,6 @@ export const AdvancedSettingsScreen = () => {
           { paddingBottom: insets.bottom + 126 },
         ]}
       >
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryIconWrap}>
-            {loading ? (
-              <ActivityIndicator size="small" color={svaColors.brand.primary} />
-            ) : (
-              <Ionicons
-                name="options-outline"
-                size={18}
-                color={svaColors.brand.primary}
-              />
-            )}
-          </View>
-
-          <View style={styles.summaryCopy}>
-            <Text style={styles.summaryTitle}>Focused unit editing</Text>
-            <Text style={styles.summaryText}>
-              Tap any item below to open a dedicated picker bottom sheet.
-            </Text>
-          </View>
-        </View>
-
         <View style={styles.kpiRow}>
           <View style={styles.kpiCard}>
             <Text style={styles.kpiLabel}>Configured</Text>

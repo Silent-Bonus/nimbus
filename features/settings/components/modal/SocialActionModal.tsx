@@ -114,7 +114,7 @@ export default function SocialActionModal({
     Alert.alert("SVA", msg);
   };
 
-  const openInApp = async () => {
+  const openProfile = async () => {
     try {
       if (appDeepLink) {
         const canOpen = await Linking.canOpenURL(appDeepLink);
@@ -128,17 +128,7 @@ export default function SocialActionModal({
       await Linking.openURL(webUrl);
       onClose();
     } catch (error) {
-      console.warn("openInApp error", error);
-      showToast("Unable to open link");
-    }
-  };
-
-  const openInBrowser = async () => {
-    try {
-      await Linking.openURL(webUrl);
-      onClose();
-    } catch (error) {
-      console.warn("openInBrowser error", error);
+      console.warn("openProfile error", error);
       showToast("Unable to open link");
     }
   };
@@ -175,17 +165,6 @@ export default function SocialActionModal({
 
             <View style={styles.header}>
               <View style={styles.headerTopRow}>
-                <View style={styles.headerBadge}>
-                  <Ionicons
-                    name="share-social-outline"
-                    size={14}
-                    color={svaColors.brand.primary}
-                  />
-                  <Text style={styles.headerBadgeText} numberOfLines={1}>
-                    SVA social
-                  </Text>
-                </View>
-
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Close social links"
@@ -218,39 +197,12 @@ export default function SocialActionModal({
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={styles.scrollContent}
             >
-              <View style={styles.summaryCard}>
-                <View style={styles.summaryIconWrap}>
-                  <Ionicons
-                    name="sparkles-outline"
-                    size={20}
-                    color={svaColors.brand.primary}
-                  />
-                </View>
-
-                <View style={styles.summaryCopy}>
-                  <Text style={styles.summaryTitle}>Connect with SVA</Text>
-                  <Text style={styles.summaryText}>
-                    Choose the fastest way to open the social profile or keep
-                    the link handy for sharing.
-                  </Text>
-                </View>
-              </View>
-
               <View style={styles.actionList}>
                 <ActionRow
                   icon="open-outline"
-                  title="Open in app"
-                  description="Jump straight into the native app if it is installed."
-                  onPress={openInApp}
-                  colors={svaColors}
-                  styles={styles}
-                />
-
-                <ActionRow
-                  icon="globe-outline"
-                  title="Open in browser"
-                  description="Use the web profile as a clean fallback."
-                  onPress={openInBrowser}
+                  title="Open profile"
+                  description="Open the social app when available, or use the browser."
+                  onPress={openProfile}
                   colors={svaColors}
                   styles={styles}
                 />
@@ -263,28 +215,6 @@ export default function SocialActionModal({
                   colors={svaColors}
                   styles={styles}
                 />
-              </View>
-
-              <View style={styles.footerCard}>
-                <View style={styles.footerCopy}>
-                  <Text style={styles.footerTitle}>Need another route?</Text>
-                  <Text style={styles.footerText}>
-                    You can copy the SVA link and share it anywhere without
-                    leaving the sheet.
-                  </Text>
-                </View>
-
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Close social links"
-                  onPress={onClose}
-                  style={({ pressed }) => [
-                    styles.footerButton,
-                    pressed && styles.footerButtonPressed,
-                  ]}
-                >
-                  <Text style={styles.footerButtonText}>Done</Text>
-                </Pressable>
               </View>
             </ScrollView>
           </View>
@@ -358,31 +288,11 @@ const createStyles = (
     headerTopRow: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
+      justifyContent: "flex-end",
       gap: 10,
     },
     headerCopy: {
-      marginTop: 14,
-    },
-    headerBadge: {
-      alignSelf: "flex-start",
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      borderRadius: 999,
-      paddingHorizontal: 10,
-      paddingVertical: 7,
-      backgroundColor: colors.brand.subtle,
-      borderWidth: 1,
-      borderColor: colors.brand.primary,
-    },
-    headerBadgeText: {
-      fontFamily: fonts.monoFamily,
-      fontSize: 9.5,
-      lineHeight: 12,
-      letterSpacing: 1.8,
-      textTransform: "uppercase",
-      color: colors.brand.primary,
+      marginTop: 8,
     },
     closeButton: {
       width: 36,
@@ -414,45 +324,6 @@ const createStyles = (
     scrollContent: {
       paddingHorizontal: 14,
       paddingBottom: 18,
-    },
-    summaryCard: {
-      flexDirection: "row",
-      alignItems: "flex-start",
-      gap: 12,
-      borderRadius: 20,
-      backgroundColor: colors.bg.subtle,
-      borderWidth: 1,
-      borderColor: colors.brand.primary,
-      padding: 16,
-      marginBottom: 14,
-    },
-    summaryIconWrap: {
-      width: 38,
-      height: 38,
-      borderRadius: 14,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: colors.bg.base,
-      borderWidth: 1,
-      borderColor: colors.border.subtle,
-      marginTop: 1,
-    },
-    summaryCopy: {
-      flex: 1,
-      paddingRight: 6,
-    },
-    summaryTitle: {
-      fontFamily: fonts.bodyStrongFamily,
-      fontSize: 16,
-      lineHeight: 22,
-      color: colors.text.primary,
-    },
-    summaryText: {
-      marginTop: 6,
-      fontFamily: fonts.bodyFamily,
-      fontSize: 13,
-      lineHeight: 19,
-      color: colors.text.secondary,
     },
     actionList: {
       gap: 10,
@@ -497,48 +368,5 @@ const createStyles = (
       fontSize: 13,
       lineHeight: 19,
       color: colors.text.secondary,
-    },
-    footerCard: {
-      marginTop: 14,
-      borderRadius: 20,
-      backgroundColor: colors.surface.raised,
-      borderWidth: 1,
-      borderColor: colors.border.muted,
-      padding: 16,
-      gap: 12,
-    },
-    footerCopy: {
-      gap: 4,
-    },
-    footerTitle: {
-      fontFamily: fonts.bodyStrongFamily,
-      fontSize: 16,
-      lineHeight: 22,
-      color: colors.text.primary,
-    },
-    footerText: {
-      fontFamily: fonts.bodyFamily,
-      fontSize: 13,
-      lineHeight: 19,
-      color: colors.text.secondary,
-    },
-    footerButton: {
-      minHeight: 46,
-      borderRadius: 16,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: colors.button.ghost.bg,
-      borderWidth: 1,
-      borderColor: colors.button.ghost.border,
-    },
-    footerButtonPressed: {
-      backgroundColor: colors.interaction.hover,
-    },
-    footerButtonText: {
-      fontFamily: fonts.bodyStrongFamily,
-      fontSize: 15,
-      lineHeight: 19,
-      letterSpacing: 0.2,
-      color: colors.button.ghost.text,
     },
   });

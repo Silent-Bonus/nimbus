@@ -1,5 +1,5 @@
 // src/constants/builtinAvatars.ts
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 
 /**
  * Paste each SVG string EXACTLY as-is (same as you posted).

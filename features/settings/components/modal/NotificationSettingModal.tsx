@@ -8,7 +8,6 @@ import React, {
 import {
   ActivityIndicator,
   Alert,
-  Platform,
   Pressable,
   StyleSheet,
   Switch,
@@ -16,20 +15,19 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { format } from "date-fns";
 
 import ThemeContext from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNimbusToast } from "@/components/ui/toast/useNimbusToast";
 import SettingsBottomSheet from "./SettingsBottomSheet";
+import TimePickerSheet from "@/components/ui/picker/TimePickerSheet";
 import {
   arraysEqual,
   deriveHHmmss,
 } from "@/utils/helper";
 import {
   daysShortToNums,
-  formatToAmPm,
   inferRepeatFromWeekdays,
   numsToDaysShort,
   repeatLabelFromDays,
@@ -60,23 +58,12 @@ type Props = {
   onClose?: () => void;
 };
 
-const RECOMMENDED_TIMES = ["05:00", "06:00", "07:00", "08:00", "09:00"];
-
-function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 function buildDraft(detail: NotificationReminderItem): ReminderDraft {
   const weekdays = daysShortToNums(detail.days_of_week ?? []);
   const repeat = detail.repeat || inferRepeatFromWeekdays(weekdays);
   const time = detail.time ?? null;
   const timeISO = timeStringToISO(time);
-  const displayTime = time
-    ? formatToAmPm(time, formatTime(timeISO))
-    : formatTime(timeISO);
+  const displayTime = format(new Date(timeISO), "hh:mm a");
 
   return {
     enabled: !!detail.enabled,
@@ -87,13 +74,6 @@ function buildDraft(detail: NotificationReminderItem): ReminderDraft {
     repeat,
     displayTime,
   };
-}
-
-function normalizeTime(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-  const [hh = "0", mm = "0"] = trimmed.split(":");
-  return `${String(Number(hh)).padStart(2, "0")}:${String(Number(mm)).padStart(2, "0")}`;
 }
 
 function normalizeWeekdaySet(value: number[]) {
@@ -266,13 +246,7 @@ export default function ReminderDetail({
 
   const saveDisabled = !draft || !original || saving || !dirty;
 
-  const onChangeTime = useCallback((event: any, picked?: Date) => {
-    if (Platform.OS === "android") {
-      if (event?.type !== "set") return;
-    }
-
-    if (!picked) return;
-
+  const onChangeTime = useCallback((picked: Date) => {
     const now = new Date();
     const next = new Date(
       now.getFullYear(),
@@ -294,7 +268,7 @@ export default function ReminderDetail({
             ...current,
             timeISO: next.toISOString(),
             time: nextTime,
-            displayTime: format(next, "h:mm a"),
+            displayTime: format(next, "hh:mm a"),
           }
         : current
     );
@@ -409,12 +383,10 @@ export default function ReminderDetail({
     }
   }, [categoryKey, draft, onClose, onSaved, original, toast, updateProfile]);
 
-  const timePickerTitle = draft?.displayTime ?? "Select time";
-
   return (
     <>
       <SettingsBottomSheet
-        visible={visible}
+        visible={visible && !showPicker}
         onClose={cancel}
         eyebrow="Notification detail"
         title={title}
@@ -424,6 +396,7 @@ export default function ReminderDetail({
         badgeLabel={draft?.enabled ? "Active" : "Off"}
         badgeIcon="alarm-outline"
         closeLabel={`Close ${title}`}
+        fullScreen
         footer={
           <View style={styles.footerRow}>
             <Pressable
@@ -578,99 +551,14 @@ export default function ReminderDetail({
         )}
       </SettingsBottomSheet>
 
-      <SettingsBottomSheet
+      <TimePickerSheet
         visible={showPicker}
+        value={new Date(draft?.timeISO ?? new Date().toISOString())}
+        title="Reminder time"
+        onChange={onChangeTime}
         onClose={() => setShowPicker(false)}
-        eyebrow="Reminder time"
-        title={timePickerTitle}
-        subtitle="Adjust the notification time with the picker below."
-        badgeLabel="Time picker"
-        badgeIcon="time-outline"
-        closeLabel={`Close time picker for ${title}`}
-        footer={
-          <View style={styles.footerRow}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Cancel time selection"
-              onPress={() => setShowPicker(false)}
-              style={({ pressed }) => [
-                styles.footerButton,
-                styles.footerButtonSecondary,
-                pressed && styles.footerButtonPressed,
-              ]}
-            >
-              <Text style={styles.footerSecondaryLabel}>Cancel</Text>
-            </Pressable>
-
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Done"
-              onPress={() => setShowPicker(false)}
-              style={({ pressed }) => [
-                styles.footerButton,
-                styles.footerButtonPrimary,
-                pressed && styles.footerButtonPressed,
-              ]}
-            >
-              <Text style={styles.footerPrimaryLabel}>Done</Text>
-            </Pressable>
-          </View>
-        }
-      >
-        <View style={styles.pickerCard}>
-          <View style={styles.quickPickRow}>
-            {RECOMMENDED_TIMES.map((option) => {
-              const active = normalizeTime(option) === normalizeTime(draft?.time ?? "");
-              return (
-                <Pressable
-                  key={option}
-                  accessibilityRole="button"
-                  accessibilityLabel={option}
-                  onPress={() =>
-                    setDraft((current) => {
-                      if (!current) return current;
-                      const nextTime = `${normalizeTime(option)}:00`;
-                      const [hh, mm] = normalizeTime(option).split(":");
-                      const nextDate = new Date();
-                      nextDate.setHours(Number(hh), Number(mm), 0, 0);
-                      return {
-                        ...current,
-                        timeISO: nextDate.toISOString(),
-                        time: nextTime,
-                        displayTime: format(nextDate, "h:mm a"),
-                      };
-                    })
-                  }
-                  style={({ pressed }) => [
-                    styles.quickPickChip,
-                    active && styles.quickPickChipActive,
-                    pressed && styles.quickPickChipPressed,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.quickPickText,
-                      active && styles.quickPickTextActive,
-                    ]}
-                  >
-                    {option}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <DateTimePicker
-            mode="time"
-            value={new Date(draft?.timeISO ?? new Date().toISOString())}
-            display={Platform.OS === "ios" ? "spinner" : "default"}
-            onChange={onChangeTime}
-          />
-          <Text style={styles.pickerHint}>
-            The selected time is shown using your local device timezone.
-          </Text>
-        </View>
-      </SettingsBottomSheet>
+        is24Hour={false}
+      />
     </>
   );
 }

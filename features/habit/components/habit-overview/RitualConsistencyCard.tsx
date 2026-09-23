@@ -11,6 +11,7 @@ import type { TrendPoint } from "./overviewTypes";
 type RitualConsistencyCardProps = {
   data: TrendPoint[];
   completionLabel?: string;
+  headlineValue?: number;
 };
 
 type RitualConsistencyTypography = {
@@ -23,6 +24,7 @@ type RitualConsistencyStyles = ReturnType<typeof createStyles>;
 export default function RitualConsistencyCard({
   data,
   completionLabel = "Average completion",
+  headlineValue,
 }: RitualConsistencyCardProps) {
   const { svaColors, svaTypography } = useContext(ThemeContext);
 
@@ -41,7 +43,7 @@ export default function RitualConsistencyCard({
     [svaColors, fonts]
   );
 
-  const latestValue = data[data.length - 1]?.value ?? 0;
+  const latestValue = headlineValue ?? data[data.length - 1]?.value ?? 0;
 
   const chartData = useMemo(
     () =>
