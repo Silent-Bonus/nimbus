@@ -8,11 +8,11 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   TouchableWithoutFeedback,
   Keyboard,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import ThemeContext from "@/contexts/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import StyledButton from "@/components/ui/theme-components/StyledButton";

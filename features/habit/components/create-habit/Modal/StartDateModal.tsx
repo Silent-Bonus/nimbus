@@ -8,11 +8,11 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   StyleSheet,
-  SafeAreaView,
   TextInput,
   Text,
   TouchableWithoutFeedback,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import ThemeContext from "@/contexts/ThemeContext";
 import ModalHeader from "@/components/ui/modal/ModalHeader";

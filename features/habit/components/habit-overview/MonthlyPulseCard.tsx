@@ -9,6 +9,8 @@ import type { SvaColorSet } from "@/theme/types";
 
 type MonthlyPulseCardProps = {
   data: MonthlyPulsePoint[];
+  valueSuffix?: string;
+  caption?: string;
 };
 
 type MonthlyPulseTypography = {
@@ -18,7 +20,11 @@ type MonthlyPulseTypography = {
 
 type MonthlyPulseStyles = ReturnType<typeof createStyles>;
 
-export default function MonthlyPulseCard({ data }: MonthlyPulseCardProps) {
+export default function MonthlyPulseCard({
+  data,
+  valueSuffix = "%",
+  caption = "W2 is carrying the strongest pulse while the middle of the month stays steady.",
+}: MonthlyPulseCardProps) {
   const { svaColors, svaTypography } = useContext(ThemeContext);
 
   const fonts = useMemo<MonthlyPulseTypography>(
@@ -54,7 +60,7 @@ export default function MonthlyPulseCard({ data }: MonthlyPulseCardProps) {
     <OverviewSurfaceCard>
       <View style={styles.headerRow}>
         <Text style={styles.badge}>ACTIVITY SPLIT</Text>
-        <Text style={styles.peakLabel}>{peak}% peak</Text>
+        <Text style={styles.peakLabel}>{peak}{valueSuffix} peak</Text>
       </View>
 
       <BarChart
@@ -66,7 +72,7 @@ export default function MonthlyPulseCard({ data }: MonthlyPulseCardProps) {
         endSpacing={10}
         barBorderRadius={10}
         noOfSections={4}
-        maxValue={100}
+        maxValue={Math.max(peak, 1)}
         hideRules
         yAxisThickness={0}
         xAxisThickness={0}
@@ -75,10 +81,7 @@ export default function MonthlyPulseCard({ data }: MonthlyPulseCardProps) {
         isAnimated
       />
 
-      <Text style={styles.caption}>
-        W2 is carrying the strongest pulse while the middle of the month stays
-        steady.
-      </Text>
+      <Text style={styles.caption}>{caption}</Text>
     </OverviewSurfaceCard>
   );
 }

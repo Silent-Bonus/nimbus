@@ -3,12 +3,12 @@ import {
   View,
   Modal,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   Platform,
   KeyboardAvoidingView,
   Text,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import ThemeContext from "@/contexts/ThemeContext";

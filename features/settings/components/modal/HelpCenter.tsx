@@ -282,7 +282,7 @@ const createStyles = (
     },
     sheetShell: {
       marginHorizontal: 12,
-      marginBottom: bottomInset + 10,
+      marginBottom: 0,
       borderRadius: 28,
       backgroundColor: colors.surface.base,
       ...Platform.select({
@@ -299,7 +299,7 @@ const createStyles = (
     },
     sheet: {
       borderRadius: 28,
-      maxHeight: "88%",
+      maxHeight: "90%",
       overflow: "hidden",
       backgroundColor: colors.surface.base,
       borderWidth: 1,
@@ -326,9 +326,9 @@ const createStyles = (
       flexDirection: "row",
       alignItems: "flex-start",
       justifyContent: "space-between",
-      paddingHorizontal: 18,
-      paddingTop: 8,
-      paddingBottom: 14,
+      paddingHorizontal: 20,
+      paddingTop: 6,
+      paddingBottom: 12,
     },
     headerCopy: {
       flex: 1,
@@ -372,10 +372,10 @@ const createStyles = (
     },
     scrollContent: {
       paddingHorizontal: 14,
-      paddingBottom: 18,
+      paddingBottom: Math.max(bottomInset, 12),
     },
     faqList: {
-      gap: 12,
+      gap: 10,
     },
     faqCard: {
       borderRadius: 20,
@@ -392,7 +392,7 @@ const createStyles = (
       flexDirection: "row",
       alignItems: "flex-start",
       paddingHorizontal: 14,
-      paddingVertical: 14,
+      paddingVertical: 13,
     },
     faqQuestionRowPressed: {
       backgroundColor: colors.interaction.hover,
@@ -466,13 +466,13 @@ const createStyles = (
       color: colors.text.secondary,
     },
     footerCard: {
-      marginTop: 14,
+      marginTop: 12,
       borderRadius: 20,
       backgroundColor: colors.surface.raised,
       borderWidth: 1,
       borderColor: colors.border.muted,
-      padding: 16,
-      gap: 12,
+      padding: 14,
+      gap: 10,
     },
     footerCopy: {
       gap: 4,
@@ -490,8 +490,8 @@ const createStyles = (
       color: colors.text.secondary,
     },
     footerButton: {
-      minHeight: 46,
-      borderRadius: 16,
+      minHeight: 44,
+      borderRadius: 14,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: colors.button.ghost.bg,

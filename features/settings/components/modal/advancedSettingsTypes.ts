@@ -6,7 +6,6 @@ export type AdvancedSettingKey =
   | "weight_unit"
   | "weather_unit"
   | "height_unit"
-  | "length_unit"
   | "start_of_day"
   | "start_of_week"
   | "sleep_time";
@@ -31,7 +30,7 @@ export type AdvancedSettingSection = {
 };
 
 export type AdvancedSettingsPatch = {
-  settings: Partial<Record<AdvancedSettingKey, string>>;
+  [key in AdvancedSettingKey]?: string;
 };
 
 export type AdvancedSettingsState = Partial<
@@ -51,10 +50,10 @@ export function formatAdvancedValue(
   key: AdvancedSettingKey,
   value?: string | null
 ) {
-  if (!value) return "Not set";
+  if (!value) return "—";
 
   const trimmed = value.trim();
-  if (!trimmed) return "Not set";
+  if (!trimmed) return "—";
 
   if (isTimeSettingKey(key)) {
     return trimmed.length >= 5 ? trimmed.slice(0, 5) : trimmed;
@@ -74,8 +73,7 @@ export function formatAdvancedValue(
   if (
     key === "liquid_unit" ||
     key === "weight_unit" ||
-    key === "height_unit" ||
-    key === "length_unit"
+    key === "height_unit"
   ) {
     return trimmed.toLowerCase();
   }

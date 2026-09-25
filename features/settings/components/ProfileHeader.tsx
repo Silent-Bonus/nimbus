@@ -12,6 +12,7 @@ import { SvgUri } from "react-native-svg";
 import ThemeContext from "@/contexts/ThemeContext";
 import { SVATypography } from "@/theme/typography";
 import type { ColorSet } from "@/theme/types";
+import { useCachedAvatarUri } from "../services/avatarCacheService";
 
 type Props = {
   username?: string;
@@ -57,9 +58,10 @@ const ProfileHeader: React.FC<Props> = ({
   );
 
   const resolvedName = displayName ?? username ?? "Nimbus Member";
-  const resolvedSubtitle =
-    emailOrTagline ?? statusLine ?? `#${username ?? "321be4"} glow active`;
+  const resolvedSubtitle = emailOrTagline ?? statusLine;
   const resolvedBadge = badgeLabel ?? planLabel ?? "PREMIUM MEMBER";
+  const cachedAvatarUrl = useCachedAvatarUri(avatarUrl);
+  const renderedAvatarUrl = cachedAvatarUrl ?? avatarUrl;
 
   const initials = useMemo(() => {
     return (
@@ -76,12 +78,11 @@ const ProfileHeader: React.FC<Props> = ({
   const [svgFailed, setSvgFailed] = useState(false);
   const [imgLoading, setImgLoading] = useState(false);
 
-  const shouldShowAvatar = !!avatarUrl && !imgFailed && !svgFailed;
+  const shouldShowAvatar =
+    !!renderedAvatarUrl && !imgFailed && !svgFailed;
 
   return (
     <View style={styles.wrapper}>
-      <View style={styles.glowOne} />
-      <View style={styles.glowTwo} />
       <View style={styles.avatarStage}>
         <Pressable
           onPress={onPressEditProfile}
@@ -91,13 +92,12 @@ const ProfileHeader: React.FC<Props> = ({
             pressed && styles.pressed,
           ]}
         >
-          <View style={styles.avatarHalo} />
           <View style={styles.avatarRing}>
             <View style={styles.avatarInner}>
               {shouldShowAvatar ? (
-                isSvgUrl(avatarUrl!) ? (
+                isSvgUrl(renderedAvatarUrl!) ? (
                   <SvgUri
-                    uri={avatarUrl!}
+                    uri={renderedAvatarUrl!}
                     width="100%"
                     height="100%"
                     // @ts-ignore
@@ -109,7 +109,7 @@ const ProfileHeader: React.FC<Props> = ({
                       <ActivityIndicator color={newTheme.textPrimary} />
                     ) : null}
                     <Image
-                      source={{ uri: avatarUrl! }}
+                      source={{ uri: renderedAvatarUrl! }}
                       style={styles.avatarImage}
                       resizeMode="cover"
                       onLoadStart={() => setImgLoading(true)}
@@ -150,9 +150,11 @@ const ProfileHeader: React.FC<Props> = ({
         <Text style={styles.badgeText}>{resolvedBadge}</Text>
       </Pressable>
 
-      <Text numberOfLines={1} style={styles.subtitle}>
-        {resolvedSubtitle}
-      </Text>
+      {resolvedSubtitle ? (
+        <Text numberOfLines={1} style={styles.subtitle}>
+          {resolvedSubtitle}
+        </Text>
+      ) : null}
     </View>
   );
 };
@@ -173,28 +175,6 @@ const styling = (
       justifyContent: "center",
       position: "relative",
     },
-    glowOne: {
-      position: "absolute",
-      top: 6,
-      left: "50%",
-      width: 182,
-      height: 182,
-      marginLeft: -91,
-      borderRadius: 91,
-      backgroundColor: theme.selected,
-      opacity: 0.72,
-    },
-    glowTwo: {
-      position: "absolute",
-      top: 34,
-      left: "50%",
-      width: 108,
-      height: 108,
-      marginLeft: -54,
-      borderRadius: 54,
-      backgroundColor: theme.hovered,
-      opacity: 0.9,
-    },
     avatarStage: {
       paddingTop: 6,
       paddingBottom: 14,
@@ -207,31 +187,16 @@ const styling = (
       transform: [{ scale: 0.99 }],
       opacity: 0.92,
     },
-    avatarHalo: {
-      position: "absolute",
-      width: 100,
-      height: 100,
-      borderRadius: 50,
-      backgroundColor: theme.selected,
-    },
     avatarRing: {
       width: 82,
       height: 82,
       borderRadius: 41,
-      backgroundColor: "rgba(255,255,255,0.03)",
-      padding: 2,
-      borderWidth: 1,
-      borderColor: theme.accent,
+      backgroundColor: theme.card,
       overflow: "hidden",
-      shadowColor: theme.shadow,
-      shadowOpacity: 0.28,
-      shadowRadius: 12,
-      shadowOffset: { width: 0, height: 8 },
-      elevation: 5,
     },
     avatarInner: {
       flex: 1,
-      borderRadius: 39,
+      borderRadius: 41,
       overflow: "hidden",
       alignItems: "center",
       justifyContent: "center",

@@ -1,4 +1,5 @@
-import React, { useContext, useMemo } from "react";
+import axios from "axios";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import {
   Modal,
   Platform,
@@ -11,19 +12,29 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { API_ENDPOINTS } from "@/config/apiConfig";
 import ThemeContext from "@/contexts/ThemeContext";
 import type { SvaColorSet } from "@/theme/types";
-
-type PolicyBullet = {
-  label: string;
-  text: string;
-};
 
 type PolicySection = {
   number: string;
   title: string;
   paragraphs?: string[];
   bullets?: PolicyBullet[];
+};
+
+type PolicyBullet =
+  | string
+  | {
+      label?: string;
+      text?: string;
+    };
+
+type PrivacyPolicyResponse = {
+  title?: string;
+  version?: string;
+  last_updated?: string;
+  sections?: PolicySection[];
 };
 
 type PrivacyPolicyTypography = {
@@ -40,28 +51,26 @@ type PolicySectionCardProps = {
   styles: PrivacyPolicyStyles;
 };
 
+function getBulletText(bullet: PolicyBullet) {
+  if (typeof bullet === "string") return bullet;
+
+  return [bullet.label, bullet.text].filter(Boolean).join(": ");
+}
+
 type Props = {
   visible: boolean;
   onClose: () => void;
 };
 
-const POLICY_SECTIONS: PolicySection[] = [
+// Temporary UI copy used only while the backend policy endpoint is unavailable.
+const WIP_POLICY_SECTIONS: PolicySection[] = [
   {
     number: "1",
     title: "Information We Collect",
     bullets: [
-      {
-        label: "Personal Information",
-        text: "Name, email, phone number, and profile data like age or preferences.",
-      },
-      {
-        label: "Usage Data",
-        text: "Tracked habits, reminders, and audio content usage.",
-      },
-      {
-        label: "Device Info",
-        text: "Device ID, OS version, and IP address.",
-      },
+      "Personal Information: Name, email, phone number, and profile data like age or preferences.",
+      "Usage Data: Tracked habits, reminders, and audio content usage.",
+      "Device Info: Device ID, OS version, and IP address.",
     ],
   },
   {
@@ -117,6 +126,22 @@ const POLICY_SECTIONS: PolicySection[] = [
   },
 ];
 
+const WIP_POLICY_TITLE = "Privacy Policy";
+const WIP_POLICY_SUBTITLE = "Last updated May 10, 2025";
+
+function formatPolicyDate(value?: string) {
+  if (!value) return "";
+
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return value;
+
+  return new Date(year, month - 1, day).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 function PolicySectionCard({ section, styles }: PolicySectionCardProps) {
   return (
     <View style={styles.sectionCard}>
@@ -141,13 +166,10 @@ function PolicySectionCard({ section, styles }: PolicySectionCardProps) {
 
       {section.bullets?.length ? (
         <View style={styles.bulletList}>
-          {section.bullets.map((bullet) => (
-            <View key={bullet.label} style={styles.bulletRow}>
+          {section.bullets.map((bullet, index) => (
+            <View key={`${section.number}-bullet-${index}`} style={styles.bulletRow}>
               <View style={styles.bulletDot} />
-              <Text style={styles.bulletText}>
-                <Text style={styles.bulletLabel}>{bullet.label}</Text>
-                {`: ${bullet.text}`}
-              </Text>
+              <Text style={styles.bulletText}>{getBulletText(bullet)}</Text>
             </View>
           ))}
         </View>
@@ -159,6 +181,47 @@ function PolicySectionCard({ section, styles }: PolicySectionCardProps) {
 export default function PrivacyPolicyModal({ visible, onClose }: Props) {
   const { svaColors, svaTypography } = useContext(ThemeContext);
   const insets = useSafeAreaInsets();
+  const [policyTitle, setPolicyTitle] = useState(WIP_POLICY_TITLE);
+  const [policySubtitle, setPolicySubtitle] = useState(WIP_POLICY_SUBTITLE);
+  const [policySections, setPolicySections] =
+    useState<PolicySection[]>(WIP_POLICY_SECTIONS);
+
+  useEffect(() => {
+    if (!visible) return;
+
+    let cancelled = false;
+
+    // Reset to WIP copy before each request so a later 404 cannot show stale API data.
+    setPolicyTitle(WIP_POLICY_TITLE);
+    setPolicySubtitle(WIP_POLICY_SUBTITLE);
+    setPolicySections(WIP_POLICY_SECTIONS);
+
+    axios
+      .get<PrivacyPolicyResponse>(API_ENDPOINTS.privacyPolicy)
+      .then(({ data }) => {
+        if (cancelled || !data.sections?.length) return;
+
+        const metadata = [
+          data.version ? `Version ${data.version}` : null,
+          data.last_updated
+            ? `Last updated ${formatPolicyDate(data.last_updated)}`
+            : null,
+        ].filter(Boolean);
+
+        setPolicyTitle(data.title?.trim() || WIP_POLICY_TITLE);
+        setPolicySubtitle(metadata.join(" · ") || WIP_POLICY_SUBTITLE);
+        setPolicySections(data.sections);
+      })
+      .catch((error) => {
+        if (error?.response?.status !== 404) {
+          console.warn("Privacy policy request failed", error);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [visible]);
 
   const fonts = useMemo(
     () => ({
@@ -232,9 +295,9 @@ export default function PrivacyPolicyModal({ visible, onClose }: Props) {
 
               <View style={styles.headerCopy}>
                 <Text style={styles.title} numberOfLines={1}>
-                  Privacy Policy
+                  {policyTitle}
                 </Text>
-                <Text style={styles.subtitle}>Last updated May 10, 2025</Text>
+                <Text style={styles.subtitle}>{policySubtitle}</Text>
               </View>
             </View>
 
@@ -264,7 +327,7 @@ export default function PrivacyPolicyModal({ visible, onClose }: Props) {
               </View>
 
               <View style={styles.sectionList}>
-                {POLICY_SECTIONS.map((section) => (
+                {policySections.map((section) => (
                   <PolicySectionCard
                     key={section.number}
                     section={section}
@@ -541,10 +604,6 @@ const createStyles = (
       fontSize: 14,
       lineHeight: 21,
       color: colors.text.secondary,
-    },
-    bulletLabel: {
-      fontFamily: fonts.bodyStrongFamily,
-      color: colors.text.primary,
     },
     footerCard: {
       marginTop: 14,

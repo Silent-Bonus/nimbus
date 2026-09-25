@@ -218,6 +218,7 @@ export const NotificationsScreen = () => {
   const activePercent = totalCount
     ? Math.round((activeCount / totalCount) * 100)
     : 0;
+  const isDetailScreen = Boolean(selectedReminder && detailVisible);
 
   const handleOpenReminder = useCallback((item: NotificationReminderItem) => {
     setSelectedReminder(item);
@@ -232,13 +233,26 @@ export const NotificationsScreen = () => {
     <ScreenView bgColor={newTheme.background} padding={0} style={styles.screen}>
       <StatusBar style="light" translucent backgroundColor="transparent" />
 
-      <ScreenHeader
-        title="Notifications"
-        subtitle="Tap a reminder to tune the time, cadence, and active days."
-        onBack={() => router.back()}
-        containerStyle={styles.headerContainer}
-      />
+      {!isDetailScreen ? (
+        <ScreenHeader
+          title="Notifications"
+          subtitle="Tap a reminder to tune the time, cadence, and active days."
+          onBack={() => router.back()}
+          containerStyle={styles.headerContainer}
+        />
+      ) : null}
 
+      {isDetailScreen ? (
+        <ReminderDetail
+          detail={selectedReminder!}
+          categoryKey={selectedReminder!.key}
+          title={selectedReminder!.label}
+          description={selectedReminder!.desc}
+          visible={detailVisible}
+          onSaved={refreshNotifications}
+          onClose={handleCloseReminder}
+        />
+      ) : (
       <ScrollView
         style={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -307,18 +321,7 @@ export const NotificationsScreen = () => {
           </View>
         </View>
       </ScrollView>
-
-      {selectedReminder ? (
-        <ReminderDetail
-          detail={selectedReminder}
-          categoryKey={selectedReminder.key}
-          title={selectedReminder.label}
-          description={selectedReminder.desc}
-          visible={detailVisible}
-          onSaved={refreshNotifications}
-          onClose={handleCloseReminder}
-        />
-      ) : null}
+      )}
     </ScreenView>
   );
 };

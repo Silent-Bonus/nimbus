@@ -3,14 +3,16 @@ import {
   View,
   StyleSheet,
   TextInput,
-  SafeAreaView,
   ScrollView,
   Pressable,
   Text,
   Platform,
 } from "react-native";
 import { router, useNavigation } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import ThemeContext from "@/contexts/ThemeContext";

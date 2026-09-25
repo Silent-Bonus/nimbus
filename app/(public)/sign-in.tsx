@@ -55,12 +55,6 @@ export default function SignIn() {
       const result = await onLogin?.(memberId.trim(), accessCode);
 
       if (result?.success) {
-        toast.show({
-          variant: "success",
-          title: "Welcome back",
-          message: "Access granted",
-          position: "top",
-        });
         router.replace("/(auth)/(tabs)");
         return;
       }
@@ -68,7 +62,7 @@ export default function SignIn() {
       toast.show({
         variant: "error",
         title: "Login failed",
-        message: "Unable to verify your access.",
+        message: result?.message ?? "Unable to verify your access.",
       });
     } catch (error: any) {
       toast.show({

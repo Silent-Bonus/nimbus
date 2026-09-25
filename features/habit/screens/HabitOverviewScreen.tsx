@@ -20,6 +20,10 @@ import type {
   TrendPoint,
 } from "@/features/habit/components/habit-overview/overviewTypes";
 import type { Spacing, SvaColorSet, TypographyTokens } from "@/theme/types";
+import {
+  getWellnessDashboard,
+  type WellnessDashboard,
+} from "@/features/habit/services/wellnessDashboardService";
 
 type HabitOverviewStyles = ReturnType<typeof createStyles>;
 type OverviewTab = "resonance" | "dosha";
@@ -51,6 +55,7 @@ export const HabitOverviewScreen: React.FC = () => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { svaColors, spacing, svaTypography } = useContext(ThemeContext);
+  const [dashboard, setDashboard] = useState<WellnessDashboard | null>(null);
   const [activeTab, setActiveTab] = useState<OverviewTab>("resonance");
   const [doshaScores, setDoshaScores] = useState<Partial<Record<DoshaKey, number>>>({});
   const styles: HabitOverviewStyles = useMemo(
@@ -64,6 +69,9 @@ export const HabitOverviewScreen: React.FC = () => {
 
   useEffect(() => {
     let active = true;
+    void getWellnessDashboard("7d").then((nextDashboard) => {
+      if (active) setDashboard(nextDashboard);
+    });
 
     void SecureStore.getItemAsync(StoreKey.DOSHA_ASSESSMENT_RESULT_KEY).then(
       (value) => {
@@ -94,66 +102,122 @@ export const HabitOverviewScreen: React.FC = () => {
   }, []);
 
   const trendData = useMemo<TrendPoint[]>(
-    () => [
-      { label: "Mon", value: 74 },
-      { label: "Tue", value: 69 },
-      { label: "Wed", value: 71 },
-      { label: "Thu", value: 77 },
-      { label: "Fri", value: 73 },
-      { label: "Sat", value: 86 },
-      { label: "Sun", value: 92 },
-    ],
-    []
+    () =>
+      dashboard
+        ? dashboard.ritual_consistency.timeline.map((point) => ({
+            label: new Date(`${point.date}T00:00:00`).toLocaleDateString([], {
+              weekday: "short",
+            }),
+            value: point.active ? 100 : 0,
+          }))
+        : [
+            { label: "Mon", value: 74 },
+            { label: "Tue", value: 69 },
+            { label: "Wed", value: 71 },
+            { label: "Thu", value: 77 },
+            { label: "Fri", value: 73 },
+            { label: "Sat", value: 86 },
+            { label: "Sun", value: 92 },
+          ],
+    [dashboard]
   );
 
   const coreVitals = useMemo<CoreVitalMetric[]>(
-    () => [
-      {
-        key: "zen",
-        label: "Zen Minutes",
-        value: "482",
-        detail: "Quiet focused time logged this week.",
-        icon: "leaf-outline",
-        tone: "blue",
-        emphasis: "primary",
-      },
-      {
-        key: "sleep",
-        label: "Sleep Quality",
-        value: "84%",
-        detail: "Stable recovery and cleaner evenings.",
-        icon: "moon-outline",
-        tone: "violet",
-      },
-      {
-        key: "intensity",
-        label: "Intensity",
-        value: "7.2",
-        detail: "Effort is up, but still sustainable.",
-        icon: "flash-outline",
-        tone: "amber",
-      },
-    ],
-    []
+    () =>
+      dashboard
+        ? [
+            {
+              key: "zen",
+              label: "Zen Minutes",
+              value: String(dashboard.core_vitals.zen_minutes),
+              detail: "Completed mindful minutes in this period.",
+              icon: "leaf-outline" as const,
+              tone: "blue" as const,
+              emphasis: "primary" as const,
+            },
+            {
+              key: "sleep",
+              label: "Sleep Consistency",
+              value: dashboard.core_vitals.sleep_consistency.available
+                ? `${dashboard.core_vitals.sleep_consistency.percentage}%`
+                : "—",
+              detail: dashboard.core_vitals.sleep_consistency.available
+                ? `${dashboard.core_vitals.sleep_consistency.tracked_days} tracked days.`
+                : "Sleep tracking is not available yet.",
+              icon: "moon-outline" as const,
+              tone: "violet" as const,
+            },
+            {
+              key: "workouts",
+              label: "Workout Sessions",
+              value: String(dashboard.core_vitals.workout_sessions),
+              detail: `${dashboard.core_vitals.daily_checkins_completed} daily check-ins completed.`,
+              icon: "flash-outline" as const,
+              tone: "amber" as const,
+            },
+          ]
+        : [
+            {
+              key: "zen",
+              label: "Zen Minutes",
+              value: "482",
+              detail: "Quiet focused time logged this week.",
+              icon: "leaf-outline" as const,
+              tone: "blue" as const,
+              emphasis: "primary" as const,
+            },
+            {
+              key: "sleep",
+              label: "Sleep Quality",
+              value: "84%",
+              detail: "Stable recovery and cleaner evenings.",
+              icon: "moon-outline" as const,
+              tone: "violet" as const,
+            },
+            {
+              key: "intensity",
+              label: "Intensity",
+              value: "7.2",
+              detail: "Effort is up, but still sustainable.",
+              icon: "flash-outline" as const,
+              tone: "amber" as const,
+            },
+          ],
+    [dashboard]
   );
 
   const monthlyPulse = useMemo<MonthlyPulsePoint[]>(
-    () => [
-      { label: "W1", value: 58, color: svaColors.chart.blue },
-      { label: "W2", value: 84, color: svaColors.chart.lavender },
-      { label: "W3", value: 62, color: svaColors.chart.amber },
-      { label: "W4", value: 76, color: svaColors.brand.primary },
-    ],
-    [svaColors.brand.primary, svaColors.chart.amber, svaColors.chart.blue, svaColors.chart.lavender]
+    () =>
+      dashboard
+        ? [
+            { label: "Active days", value: dashboard.monthly_pulse.active_days, color: svaColors.chart.blue },
+            { label: "Sessions", value: dashboard.monthly_pulse.session_count, color: svaColors.chart.lavender },
+            { label: "Mood", value: dashboard.monthly_pulse.mood_checkins_completed, color: svaColors.chart.amber },
+            { label: "Check-ins", value: dashboard.monthly_pulse.daily_checkins_completed, color: svaColors.brand.primary },
+          ]
+        : [
+            { label: "W1", value: 58, color: svaColors.chart.blue },
+            { label: "W2", value: 84, color: svaColors.chart.lavender },
+            { label: "W3", value: 62, color: svaColors.chart.amber },
+            { label: "W4", value: 76, color: svaColors.brand.primary },
+          ],
+    [dashboard, svaColors.brand.primary, svaColors.chart.amber, svaColors.chart.blue, svaColors.chart.lavender]
   );
 
   const radarData = useMemo<RadarAxisPoint[]>(
-    () => [
-      { label: "Move", value: 76, color: svaColors.chart.blue },
-      { label: "Mind", value: 91, color: svaColors.brand.primary },
-      { label: "Body", value: 84, color: svaColors.chart.lavender },
-    ],
-    [svaColors.brand.primary, svaColors.chart.blue, svaColors.chart.lavender]
+    () =>
+      dashboard
+        ? [
+            { label: "Mind", value: dashboard.ritual_balance.percentages.mind, color: svaColors.brand.primary },
+            { label: "Body", value: dashboard.ritual_balance.percentages.body, color: svaColors.chart.blue },
+            { label: "Soul", value: dashboard.ritual_balance.percentages.soul, color: svaColors.chart.lavender },
+          ]
+        : [
+            { label: "Move", value: 76, color: svaColors.chart.blue },
+            { label: "Mind", value: 91, color: svaColors.brand.primary },
+            { label: "Body", value: 84, color: svaColors.chart.lavender },
+          ],
+    [dashboard, svaColors.brand.primary, svaColors.chart.blue, svaColors.chart.lavender]
   );
 
   const shareSummary = useMemo(
@@ -161,12 +225,16 @@ export const HabitOverviewScreen: React.FC = () => {
       [
         "Holistic Overview",
         "",
-        "Ritual consistency: 92% current completion across the week.",
-        "Core vitals: Zen Minutes 482, Sleep Quality 84%, Intensity 7.2.",
-        "Monthly pulse: W2 is the strongest month segment.",
-        "Ritual balance: Mind is the most consistent category.",
+        `Ritual consistency: ${dashboard?.ritual_consistency.percentage ?? 92}% current completion across the week.`,
+        dashboard
+          ? `Core vitals: Zen Minutes ${dashboard.core_vitals.zen_minutes}, Workout Sessions ${dashboard.core_vitals.workout_sessions}.`
+          : "Core vitals: Zen Minutes 482, Sleep Quality 84%, Intensity 7.2.",
+        dashboard
+          ? `Monthly pulse: ${dashboard.monthly_pulse.active_days} active days and ${dashboard.monthly_pulse.session_count} sessions.`
+          : "Monthly pulse: W2 is the strongest month segment.",
+        "Ritual balance: Mind, Body, and Soul.",
       ].join("\n"),
-    []
+    [dashboard]
   );
 
   const onShare = useCallback(async () => {
@@ -227,10 +295,13 @@ export const HabitOverviewScreen: React.FC = () => {
           <>
             <View style={styles.sectionBlock}>
               <OverviewSectionHeader
-                title="Current Trends"
+                title="Ritual Consistency"
                 accessoryLabel="Past 7 days"
               />
-              <RitualConsistencyCard data={trendData} />
+              <RitualConsistencyCard
+                data={trendData}
+                headlineValue={dashboard?.ritual_consistency.percentage}
+              />
             </View>
 
             <View style={styles.sectionBlock}>
@@ -243,13 +314,21 @@ export const HabitOverviewScreen: React.FC = () => {
                 title="Monthly Pulse"
                 accessoryLabel="Activity split"
               />
-              <MonthlyPulseCard data={monthlyPulse} />
+              <MonthlyPulseCard
+                data={monthlyPulse}
+                valueSuffix={dashboard ? "" : "%"}
+                caption={
+                  dashboard
+                    ? "Monthly activity across sessions, mood, and daily check-ins."
+                    : undefined
+                }
+              />
             </View>
 
             <View style={styles.sectionBlock}>
               <OverviewSectionHeader
                 title="Ritual Balance"
-                accessoryLabel="Move • Mind • Body"
+                accessoryLabel={dashboard ? "Mind • Body • Soul" : "Move • Mind • Body"}
               />
               <RitualRadarCard data={radarData} />
             </View>

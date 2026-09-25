@@ -1,4 +1,5 @@
-import React, { useContext, useMemo } from "react";
+import axios from "axios";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import {
   Modal,
   Platform,
@@ -11,19 +12,29 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { API_ENDPOINTS } from "@/config/apiConfig";
 import ThemeContext from "@/contexts/ThemeContext";
 import type { SvaColorSet } from "@/theme/types";
 
-type TermsBullet = {
-  label: string;
-  text: string;
-};
+type TermsBullet =
+  | string
+  | {
+      label?: string;
+      text?: string;
+    };
 
 type TermsSection = {
   number: string;
   title: string;
   paragraphs?: string[];
   bullets?: TermsBullet[];
+};
+
+type TermsResponse = {
+  title?: string;
+  version?: string;
+  last_updated?: string;
+  sections?: TermsSection[];
 };
 
 type TermsTypography = {
@@ -40,12 +51,19 @@ type TermsSectionCardProps = {
   styles: TermsStyles;
 };
 
+function getBulletText(bullet: TermsBullet) {
+  if (typeof bullet === "string") return bullet;
+
+  return [bullet.label, bullet.text].filter(Boolean).join(": ");
+}
+
 type Props = {
   visible: boolean;
   onClose: () => void;
 };
 
-const TERMS_SECTIONS: TermsSection[] = [
+// Temporary UI copy used only while the backend terms endpoint is unavailable.
+const WIP_TERMS_SECTIONS: TermsSection[] = [
   {
     number: "1",
     title: "Acceptance of Terms",
@@ -125,6 +143,22 @@ const TERMS_SECTIONS: TermsSection[] = [
   },
 ];
 
+const WIP_TERMS_TITLE = "Terms of Service";
+const WIP_TERMS_SUBTITLE = "Last updated May 10, 2025";
+
+function formatTermsDate(value?: string) {
+  if (!value) return "";
+
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return value;
+
+  return new Date(year, month - 1, day).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 function TermsSectionCard({ section, styles }: TermsSectionCardProps) {
   return (
     <View style={styles.sectionCard}>
@@ -149,13 +183,10 @@ function TermsSectionCard({ section, styles }: TermsSectionCardProps) {
 
       {section.bullets?.length ? (
         <View style={styles.bulletList}>
-          {section.bullets.map((bullet) => (
-            <View key={bullet.label} style={styles.bulletRow}>
+          {section.bullets.map((bullet, index) => (
+            <View key={`${section.number}-bullet-${index}`} style={styles.bulletRow}>
               <View style={styles.bulletDot} />
-              <Text style={styles.bulletText}>
-                <Text style={styles.bulletLabel}>{bullet.label}</Text>
-                {`: ${bullet.text}`}
-              </Text>
+              <Text style={styles.bulletText}>{getBulletText(bullet)}</Text>
             </View>
           ))}
         </View>
@@ -167,6 +198,47 @@ function TermsSectionCard({ section, styles }: TermsSectionCardProps) {
 export default function TermsModal({ visible, onClose }: Props) {
   const { svaColors, svaTypography } = useContext(ThemeContext);
   const insets = useSafeAreaInsets();
+  const [termsTitle, setTermsTitle] = useState(WIP_TERMS_TITLE);
+  const [termsSubtitle, setTermsSubtitle] = useState(WIP_TERMS_SUBTITLE);
+  const [termsSections, setTermsSections] =
+    useState<TermsSection[]>(WIP_TERMS_SECTIONS);
+
+  useEffect(() => {
+    if (!visible) return;
+
+    let cancelled = false;
+
+    // Reset to WIP copy before each request so a later 404 cannot show stale API data.
+    setTermsTitle(WIP_TERMS_TITLE);
+    setTermsSubtitle(WIP_TERMS_SUBTITLE);
+    setTermsSections(WIP_TERMS_SECTIONS);
+
+    axios
+      .get<TermsResponse>(API_ENDPOINTS.termsOfService)
+      .then(({ data }) => {
+        if (cancelled || !data.sections?.length) return;
+
+        const metadata = [
+          data.version ? `Version ${data.version}` : null,
+          data.last_updated
+            ? `Last updated ${formatTermsDate(data.last_updated)}`
+            : null,
+        ].filter(Boolean);
+
+        setTermsTitle(data.title?.trim() || WIP_TERMS_TITLE);
+        setTermsSubtitle(metadata.join(" · ") || WIP_TERMS_SUBTITLE);
+        setTermsSections(data.sections);
+      })
+      .catch((error) => {
+        if (error?.response?.status !== 404) {
+          console.warn("Terms of service request failed", error);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [visible]);
 
   const fonts = useMemo(
     () => ({
@@ -240,10 +312,10 @@ export default function TermsModal({ visible, onClose }: Props) {
 
               <View style={styles.headerCopy}>
                 <Text style={styles.title} numberOfLines={1}>
-                  Terms of Service
+                  {termsTitle}
                 </Text>
                 <Text style={styles.subtitle} numberOfLines={1}>
-                  Last updated May 10, 2025
+                  {termsSubtitle}
                 </Text>
               </View>
             </View>
@@ -274,7 +346,7 @@ export default function TermsModal({ visible, onClose }: Props) {
               </View>
 
               <View style={styles.sectionList}>
-                {TERMS_SECTIONS.map((section) => (
+                {termsSections.map((section) => (
                   <TermsSectionCard
                     key={section.number}
                     section={section}
@@ -550,10 +622,6 @@ const createStyles = (
       fontSize: 14,
       lineHeight: 21,
       color: colors.text.secondary,
-    },
-    bulletLabel: {
-      fontFamily: fonts.bodyStrongFamily,
-      color: colors.text.primary,
     },
     footerCard: {
       marginTop: 14,

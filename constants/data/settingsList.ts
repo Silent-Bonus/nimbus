@@ -32,14 +32,14 @@ export const SETTINGS_SECTIONS: SettingsSectionConfig[] = [
         label: "Overview",
         showChevron: true,
       },
-      {
-        id: "badges",
-        icon: "medal-outline",
-        action: "screen",
-        label: "Badges",
-        showChevron: true,
-        showDot: true,
-      },
+      // {
+      //   id: "badges",
+      //   icon: "medal-outline",
+      //   action: "screen",
+      //   label: "Badges",
+      //   showChevron: true,
+      //   showDot: true,
+      // },
     ],
   },
   {

@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ThemeContext from "@/contexts/ThemeContext";
+import AppHeader from "@/components/layout/AppHeader";
 import type { SvaColorSet, Spacing } from "@/theme/types";
 
 type SheetTypography = {
@@ -35,6 +36,8 @@ type SettingsBottomSheetProps = {
   contentStyle?: StyleProp<ViewStyle>;
   sheetStyle?: StyleProp<ViewStyle>;
   closeLabel?: string;
+  fullScreen?: boolean;
+  scrollable?: boolean;
 };
 
 type SettingsBottomSheetStyles = ReturnType<typeof createStyles>;
@@ -52,6 +55,8 @@ export default function SettingsBottomSheet({
   contentStyle,
   sheetStyle,
   closeLabel,
+  fullScreen = false,
+  scrollable = true,
 }: SettingsBottomSheetProps) {
   const { svaColors, svaTypography, spacing } =
     useContext(ThemeContext);
@@ -77,6 +82,33 @@ export default function SettingsBottomSheet({
     () => createStyles(svaColors, fonts, spacing, insets.bottom),
     [svaColors, fonts, spacing, insets.bottom]
   );
+
+  if (fullScreen) {
+    return (
+      <View style={styles.fullScreen}>
+        <AppHeader
+          title={title}
+          subtitle={subtitle}
+          onBack={onClose}
+          containerStyle={styles.screenHeader}
+        />
+
+        {scrollable ? (
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={[styles.scrollContent, contentStyle]}
+          >
+            {children}
+          </ScrollView>
+        ) : (
+          <View style={[styles.staticContent, contentStyle]}>{children}</View>
+        )}
+
+        {footer ? <View style={styles.screenFooter}>{footer}</View> : null}
+      </View>
+    );
+  }
 
   return (
     <Modal
@@ -136,13 +168,17 @@ export default function SettingsBottomSheet({
               </View>
             </View>
 
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={[styles.scrollContent, contentStyle]}
-            >
-              {children}
-            </ScrollView>
+            {scrollable ? (
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={[styles.scrollContent, contentStyle]}
+              >
+                {children}
+              </ScrollView>
+            ) : (
+              <View style={[styles.staticContent, contentStyle]}>{children}</View>
+            )}
 
             {footer ? <View style={styles.footer}>{footer}</View> : null}
           </View>
@@ -159,6 +195,14 @@ function createStyles(
   bottomInset: number
 ) {
   return StyleSheet.create({
+    fullScreen: {
+      flex: 1,
+      backgroundColor: colors.bg.base,
+    },
+    screenHeader: {
+      marginBottom: spacing.sm,
+      paddingHorizontal: spacing.md,
+    },
     overlay: {
       flex: 1,
       justifyContent: "flex-end",
@@ -279,9 +323,19 @@ function createStyles(
       paddingHorizontal: spacing.md,
       paddingBottom: spacing.lg,
     },
+    staticContent: {
+      paddingHorizontal: spacing.md,
+      paddingBottom: spacing.lg,
+    },
     footer: {
       paddingHorizontal: spacing.md,
       paddingTop: spacing.sm,
+      paddingBottom: bottomInset + spacing.md,
+    },
+    screenFooter: {
+      paddingHorizontal: spacing.md,
+      paddingTop: spacing.sm,
+      paddingBottom: bottomInset + spacing.md,
     },
   });
 }

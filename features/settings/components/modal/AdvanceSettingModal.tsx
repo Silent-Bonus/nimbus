@@ -1,6 +1,5 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
@@ -73,14 +72,6 @@ const ADVANCED_SECTIONS: AdvancedSettingSection[] = [
         description: "Temperature display in the app.",
         options: ["Celsius", "Fahrenheit"],
         icon: "partly-sunny-outline",
-        section: "measurement",
-      },
-      {
-        key: "length_unit",
-        label: "Length unit",
-        description: "Distances and movement metrics.",
-        options: ["feet", "km", "miles"],
-        icon: "map-outline",
         section: "measurement",
       },
     ],
@@ -299,7 +290,7 @@ export default function AdvancedSettingsModal({
         if (saved?.success) {
           const nextSettings =
             (saved?.data?.settings as AdvancedSettingsState | undefined) ??
-            payload.settings;
+            payload;
 
           setMerged((current) =>
             current.map((item) => ({
@@ -352,28 +343,6 @@ export default function AdvancedSettingsModal({
         badgeLabel={loading ? "Syncing" : "Ready"}
         badgeIcon="shield-checkmark-outline"
       >
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryIconWrap}>
-            {loading ? (
-              <ActivityIndicator size="small" color={svaColors.brand.primary} />
-            ) : (
-              <Ionicons
-                name="options-outline"
-                size={18}
-                color={svaColors.brand.primary}
-              />
-            )}
-          </View>
-
-          <View style={styles.summaryCopy}>
-            <Text style={styles.summaryTitle}>Focused unit editing</Text>
-            <Text style={styles.summaryText}>
-              Tap any item below to open a bottom sheet dedicated to that
-              setting.
-            </Text>
-          </View>
-        </View>
-
         {ADVANCED_SECTIONS.map((section) => {
           const items = merged.filter((item) =>
             section.items.some((sectionItem) => sectionItem.key === item.key)

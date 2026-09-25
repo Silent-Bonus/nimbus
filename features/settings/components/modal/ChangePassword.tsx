@@ -46,6 +46,7 @@ type PasswordFieldProps = {
 type Props = {
   visible: boolean;
   onClose: () => void;
+  onPasswordChanged?: () => void | Promise<void>;
 };
 
 function PasswordField({
@@ -70,14 +71,6 @@ function PasswordField({
       </View>
 
       <View style={[styles.fieldShell, focused && styles.fieldShellFocused]}>
-        <View style={styles.fieldIconWrap}>
-          <Ionicons
-            name="lock-closed-outline"
-            size={16}
-            color={colors.text.secondary}
-          />
-        </View>
-
         <TextInput
           value={value}
           onChangeText={onChangeText}
@@ -115,7 +108,11 @@ function PasswordField({
   );
 }
 
-export default function ChangePasswordModal({ visible, onClose }: Props) {
+export default function ChangePasswordModal({
+  visible,
+  onClose,
+  onPasswordChanged,
+}: Props) {
   const { svaColors, svaTypography } = useContext(ThemeContext);
   const insets = useSafeAreaInsets();
 
@@ -172,7 +169,7 @@ export default function ChangePasswordModal({ visible, onClose }: Props) {
   const nextValue = newPassword.trim();
   const hasChanges = oldValue.length > 0 || nextValue.length > 0 || loading;
   const canSubmit =
-    oldValue.length > 0 && nextValue.length >= 6 && !loading && oldValue !== nextValue;
+    oldValue.length > 0 && nextValue.length > 0 && !loading;
 
   const validate = (): boolean => {
     setErrorMsg(null);
@@ -235,6 +232,7 @@ export default function ChangePasswordModal({ visible, onClose }: Props) {
       if (result?.success) {
         clearForm();
         onClose();
+        await onPasswordChanged?.();
         return;
       }
 
@@ -272,17 +270,6 @@ export default function ChangePasswordModal({ visible, onClose }: Props) {
 
               <View style={styles.header}>
                 <View style={styles.headerTopRow}>
-                  <View style={styles.headerBadge}>
-                    <Ionicons
-                      name="shield-checkmark-outline"
-                      size={14}
-                      color={svaColors.brand.primary}
-                    />
-                    <Text style={styles.headerBadgeText} numberOfLines={1}>
-                      Account security
-                    </Text>
-                  </View>
-
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Close change password"
@@ -516,31 +503,11 @@ const createStyles = (
     headerTopRow: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
+      justifyContent: "flex-end",
       gap: 10,
     },
     headerCopy: {
-      marginTop: 14,
-    },
-    headerBadge: {
-      alignSelf: "flex-start",
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      borderRadius: 999,
-      paddingHorizontal: 10,
-      paddingVertical: 7,
-      backgroundColor: colors.brand.subtle,
-      borderWidth: 1,
-      borderColor: colors.brand.primary,
-    },
-    headerBadgeText: {
-      fontFamily: fonts.monoFamily,
-      fontSize: 9.5,
-      lineHeight: 12,
-      letterSpacing: 1.8,
-      textTransform: "uppercase",
-      color: colors.brand.primary,
+      marginTop: 8,
     },
     closeButton: {
       width: 36,
@@ -653,16 +620,6 @@ const createStyles = (
     fieldShellFocused: {
       borderColor: colors.brand.primary,
       backgroundColor: colors.bg.subtle,
-    },
-    fieldIconWrap: {
-      width: 34,
-      height: 34,
-      borderRadius: 12,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: colors.bg.base,
-      borderWidth: 1,
-      borderColor: colors.border.subtle,
     },
     fieldInput: {
       flex: 1,

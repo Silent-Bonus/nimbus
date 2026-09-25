@@ -1,5 +1,5 @@
 // app/_layout.tsx
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { Stack } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as SplashScreen from "expo-splash-screen";
@@ -25,7 +25,9 @@ import { NimbusAlertProvider } from "@/components/ui/alert/NimbusAlertProvider";
 import { NimbusToastHost } from "@/components/ui/toast/NimbusToast";
 import { FloatingMeditationControl } from "@/components/ui/FloatingMeditationControl";
 
-SplashScreen.preventAutoHideAsync();
+// Register before the first render; Expo Go/fast refresh may already have
+// dismissed the native splash, so never let this promise become unhandled.
+void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 // ✅ Force cold start to (public)
 export const unstable_settings = {
@@ -33,6 +35,7 @@ export const unstable_settings = {
 };
 
 export default function RootLayout() {
+  const splashHidden = useRef(false);
   const [loaded, error] = useFonts({
     ...FontAwesome.font,
     Inter_400Regular,
@@ -49,7 +52,12 @@ export default function RootLayout() {
   }, [error]);
 
   useEffect(() => {
-    if (loaded) SplashScreen.hideAsync();
+    if (!loaded || splashHidden.current) return;
+
+    splashHidden.current = true;
+    // The native view controller can disappear during reload/navigation.
+    // Treat that case as already hidden instead of creating an unhandled error.
+    void SplashScreen.hideAsync().catch(() => undefined);
   }, [loaded]);
 
   if (!loaded) return null;
