@@ -172,10 +172,10 @@ export const buildMetric = (key: BlueprintKey, item?: LoadedCheckin) => {
   }
 
   if (key === "sleep") {
-    return `${formatNumber(effectiveGoal || completed)} HR`;
+    return `${formatNumber(completed)} HR`;
   }
 
-  return `${Math.round(effectiveGoal || completed)} min`;
+  return `${Math.round(completed)} min`;
 };
 
 /** Returns a clamped progress value so UI widths always stay within 0–100%. */
@@ -199,8 +199,6 @@ export const buildTemplates = (theme: ColorSet): BlueprintTemplate[] => [
     accent: theme.chart1 ?? theme.accent ?? "#CFE86C",
     gradientEnd: theme.gradLime ?? theme.accentPressed ?? "#D6F083",
     tint: theme.selected ?? "rgba(163,190,140,0.12)",
-    previewMetric: "68%",
-    previewProgress: 0.68,
     searchTerms: ["water"],
     layout: "compact",
   },
@@ -213,8 +211,6 @@ export const buildTemplates = (theme: ColorSet): BlueprintTemplate[] => [
     accent: theme.chart2 ?? theme.info ?? "#5E81AC",
     gradientEnd: theme.gradBlue ?? theme.chart2 ?? "#A9C7F7",
     tint: "rgba(94,129,172,0.12)",
-    previewMetric: "7 HR",
-    previewProgress: 0.58,
     searchTerms: ["sleep"],
     layout: "compact",
   },
@@ -227,14 +223,12 @@ export const buildTemplates = (theme: ColorSet): BlueprintTemplate[] => [
     accent: theme.accent ?? theme.chart1 ?? "#A3BE8C",
     gradientEnd: theme.gradAccent ?? theme.gradLime ?? "#B8D39B",
     tint: theme.selected ?? "rgba(163,190,140,0.12)",
-    previewMetric: "18 min",
-    previewProgress: 0.74,
     searchTerms: ["medit"],
     layout: "wide",
   },
 ];
 
-/** Combines live check-ins with templates, retaining previews when data is absent. */
+/** Combines live check-ins with templates using only live data for metrics. */
 export const buildBlueprintCards = (
   items: LoadedCheckin[],
   templates: BlueprintTemplate[],
@@ -243,18 +237,12 @@ export const buildBlueprintCards = (
     const item = items.find((entry) =>
       template.searchTerms.some((term) => normalize(entry.name).includes(term)),
     );
-    const actualProgress = getProgress(item);
-    const hasMeaningfulProgress = actualProgress > 0;
 
     return {
       ...template,
       item,
-      progress: hasMeaningfulProgress
-        ? actualProgress
-        : template.previewProgress,
-      metric: hasMeaningfulProgress
-        ? buildMetric(template.key, item)
-        : template.previewMetric,
+      progress: getProgress(item),
+      metric: buildMetric(template.key, item),
       disabled: !item?.id,
     };
   });

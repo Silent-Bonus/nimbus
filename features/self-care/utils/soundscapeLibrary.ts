@@ -8,7 +8,6 @@ import type {
 import type { WellnessContentBenefit } from "@/features/self-care/types/wellnessContentTypes";
 
 const FALLBACK_IMAGE = require("../../../assets/images/mt.jpg");
-const FALLBACK_SOURCE = require("../../../assets/dump/lightRain.mp3");
 const DEFAULT_SOUNDSCAPE_RATING = 4;
 const DEFAULT_SOUNDSCAPE_MOOD = "Test mood";
 
@@ -129,7 +128,7 @@ const resolveImageSource = (image: unknown): ImageSourcePropType => {
 };
 
 const resolveAudioSource = (source: unknown) => {
-  if (!source) return FALLBACK_SOURCE;
+  if (!source) return null;
   if (typeof source === "string") return { uri: source };
   return source;
 };
@@ -264,4 +263,4 @@ export const buildSoundscapeResonanceLabel = (soundscape: SoundscapeTrack) =>
     : `RESONATING IN ${soundscape.category.toUpperCase()}`;
 
 export const resolveSoundscapePlaybackSource = (soundscapeId?: string | null) =>
-  getSoundscapeById(soundscapeId)?.source ?? FALLBACK_SOURCE;
+  getSoundscapeById(soundscapeId)?.source ?? null;

@@ -19,66 +19,89 @@ import { SVATypography } from "@/theme/typography";
 import ScreenHeader from "@/components/layout/ScreenHeader";
 import EmptyState from "@/features/tools/components/common/EmptyState";
 import { ROUTES } from "@/constants/routes";
+import { getProtocolTemplates } from "@/features/tools/services/protocolTemplateService";
+import type { ProtocolTemplateApiItem } from "@/features/tools/types/protocolTemplateTypes";
 import {
-  CURATED_MANIFESTS,
-  MANIFEST_FILTERS,
-  type CuratedManifest,
-  type ManifestDosha,
-} from "@/features/tools/data/curatedManifests";
+  getProtocolTemplateCategories,
+  normalizeProtocolTemplateSearchValue,
+  toProtocolTemplateCardData,
+  type ProtocolTemplateCardData,
+} from "@/features/tools/utils/protocolTemplateUtils";
 
-const normalize = (value: string) =>
-  value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
+type TemplateFilter = "all" | string;
 
-export const CuratedManifestsScreen: React.FC = () => {
+export const ProtocolTemplatesScreen: React.FC = () => {
   const navigation = useNavigation();
   const { svaColors, spacing } = useContext(ThemeContext);
   const styles = styling(svaColors, spacing);
   const searchInputRef = useRef<TextInput>(null);
 
   const [query, setQuery] = useState("");
-  const [selectedFilter, setSelectedFilter] = useState<"all" | ManifestDosha>(
-    "all"
-  );
+  const [templates, setTemplates] = useState<ProtocolTemplateApiItem[]>([]);
+  const [selectedFilter, setSelectedFilter] = useState<TemplateFilter>("all");
 
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
-  const filteredManifests = useMemo(() => {
-    const normalizedQuery = normalize(query);
+  useEffect(() => {
+    let isMounted = true;
 
-    return CURATED_MANIFESTS.filter((item) => {
-      const matchesFilter =
-        selectedFilter === "all" || item.dosha === selectedFilter;
+    void getProtocolTemplates()
+      .then((response) => {
+        if (isMounted) setTemplates(response.data);
+      })
+      .catch((error) => {
+        console.warn("Unable to load habit templates:", error);
+      });
 
-      if (!matchesFilter) return false;
-      if (!normalizedQuery) return true;
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
-      const searchBlob = normalize(
-        [
-          item.title,
-          item.description,
-          item.context,
-          item.category,
-          item.level,
-          item.tags.join(" "),
-          item.benefits.join(" "),
-          item.protocols.map((protocol) => protocol.title).join(" "),
-        ].join(" ")
-      );
+  const filterOptions = useMemo(() => {
+    const categories = getProtocolTemplateCategories(templates);
 
-      return searchBlob.includes(normalizedQuery);
-    });
-  }, [query, selectedFilter]);
+    return [
+      { label: "All", value: "all" },
+      ...categories.map((category) => ({ label: category, value: category })),
+    ];
+  }, [templates]);
 
-  const handleCardPress = (item: CuratedManifest) => {
-    console.log("coming from here");
+  const filteredTemplates = useMemo<ProtocolTemplateCardData[]>(() => {
+    const normalizedQuery = normalizeProtocolTemplateSearchValue(query);
+
+    return templates
+      .filter((item) => {
+        const matchesFilter =
+          selectedFilter === "all" || item.category === selectedFilter;
+
+        if (!matchesFilter) return false;
+        if (!normalizedQuery) return true;
+
+        const searchBlob = normalizeProtocolTemplateSearchValue(
+          [
+            item.title,
+            item.description,
+            item.context,
+            item.category,
+            item.level,
+            item.tags.join(" "),
+            item.benefits.join(" "),
+            item.blueprints.map((blueprint) => blueprint.name).join(" "),
+          ].join(" ")
+        );
+
+        return searchBlob.includes(normalizedQuery);
+      })
+      .map(toProtocolTemplateCardData);
+  }, [query, selectedFilter, templates]);
+
+  const handleCardPress = (item: ProtocolTemplateCardData) => {
     router.push({
-      pathname: ROUTES.AUTH.TOOLS_CURATED_MANIFEST_DETAIL,
-      params: { id: item.id },
+      pathname: ROUTES.AUTH.TOOLS_PROTOCOL_TEMPLATE_DETAIL,
+      params: { id: String(item.id) },
     });
   };
 
@@ -97,7 +120,7 @@ export const CuratedManifestsScreen: React.FC = () => {
         //   {
         //     icon: "person-circle",
         //     accessibilityLabel: "Profile",
-        //     onPress: () => console.log("[CuratedManifests] profile tapped"),
+        //     onPress: () => console.log("[ProtocolTemplates] profile tapped"),
         //   },
         // ]}
         containerStyle={styles.headerContainer}
@@ -137,7 +160,7 @@ export const CuratedManifestsScreen: React.FC = () => {
       </View>
 
       <PillFilters
-        options={MANIFEST_FILTERS}
+        options={filterOptions}
         selectedValue={selectedFilter}
         onChange={setSelectedFilter}
         contentContainerStyle={styles.filtersRow}
@@ -148,8 +171,8 @@ export const CuratedManifestsScreen: React.FC = () => {
   return (
     <ScreenView bgColor={svaColors.bg.base} padding={0} style={styles.screen}>
       <FlatList
-        data={filteredManifests}
-        keyExtractor={(item) => item.id}
+        data={filteredTemplates}
+        keyExtractor={(item) => String(item.id)}
         numColumns={2}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
@@ -227,4 +250,4 @@ const styling = (colors: any, spacing: any) =>
     },
   });
 
-export default CuratedManifestsScreen;
+export default ProtocolTemplatesScreen;

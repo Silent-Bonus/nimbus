@@ -47,7 +47,7 @@ export const createBulkHabit = async (
 ): Promise<HabitCreateResponse[]> => {
   try {
     const response: AxiosResponse<HabitCreateResponse[]> = await axios.post(
-      API_ENDPOINTS.activateHabitTemplate(id),
+      API_ENDPOINTS.activateProtocolTemplate(id),
       data
     );
     return response.data;

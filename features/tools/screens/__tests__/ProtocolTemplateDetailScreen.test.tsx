@@ -5,7 +5,7 @@ import renderer, { act } from "react-test-renderer";
 import ThemeContext from "../../../../contexts/ThemeContext";
 import { ROUTES } from "../../../../constants/routes";
 import { getTheme } from "../../../../theme";
-import CuratedManifestDetailScreen from "../CuratedManifestDetailScreen";
+import ProtocolTemplateDetailScreen from "../ProtocolTemplateDetailScreen";
 
 const mockPush = jest.fn();
 const mockBack = jest.fn();
@@ -76,7 +76,7 @@ jest.mock("../../../../components/ui/theme-components/NimbusButton", () => {
 });
 
 jest.mock(
-  "../../../../features/tools/components/curated-manifest-detail/ManifestHero",
+  "../../../../features/tools/components/protocol-template-detail/ManifestHero",
   () => ({
     __esModule: true,
     default: ({ title }: any) => {
@@ -89,7 +89,7 @@ jest.mock(
 );
 
 jest.mock(
-  "../../../../features/tools/components/curated-manifest-detail/ManifestStatGrid",
+  "../../../../features/tools/components/protocol-template-detail/ManifestStatGrid",
   () => ({
     __esModule: true,
     default: ({ items }: any) => {
@@ -108,7 +108,7 @@ jest.mock(
 );
 
 jest.mock(
-  "../../../../features/tools/components/curated-manifest-detail/ManifestSection",
+  "../../../../features/tools/components/protocol-template-detail/ManifestSection",
   () => ({
     __esModule: true,
     default: ({ title, children }: any) => {
@@ -126,7 +126,7 @@ jest.mock(
 );
 
 jest.mock(
-  "../../../../features/tools/components/curated-manifest-detail/BenefitList",
+  "../../../../features/tools/components/protocol-template-detail/BenefitList",
   () => ({
     __esModule: true,
     default: ({ items }: any) => {
@@ -175,7 +175,7 @@ function renderScreen() {
   act(() => {
     tree = renderer.create(
       <ThemeContext.Provider value={themeValue as any}>
-        <CuratedManifestDetailScreen />
+        <ProtocolTemplateDetailScreen />
       </ThemeContext.Provider>
     );
   });
@@ -183,7 +183,7 @@ function renderScreen() {
   return tree;
 }
 
-describe("CuratedManifestDetailScreen", () => {
+describe("ProtocolTemplateDetailScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockParams = { id: "agni-reset" };
@@ -209,7 +209,7 @@ describe("CuratedManifestDetailScreen", () => {
 
     expect(mockOpenGate).not.toHaveBeenCalled();
     expect(mockPush).toHaveBeenCalledWith({
-      pathname: ROUTES.AUTH.TOOLS_CURATED_MANIFEST_PROTOCOLS,
+      pathname: ROUTES.AUTH.TOOLS_PROTOCOL_TEMPLATE_PROTOCOLS,
       params: { id: "agni-reset" },
     });
   });
@@ -220,7 +220,7 @@ describe("CuratedManifestDetailScreen", () => {
     const tree = renderScreen();
 
     expect(mockOpenGate).not.toHaveBeenCalledWith(
-      "curated_manifest_detail",
+      "protocol_template_detail",
       "screen_entry"
     );
     expect(hasText(tree, "View Protocol Stack")).toBe(true);
@@ -234,7 +234,7 @@ describe("CuratedManifestDetailScreen", () => {
     });
 
     expect(mockPush).toHaveBeenCalledWith({
-      pathname: ROUTES.AUTH.TOOLS_CURATED_MANIFEST_PROTOCOLS,
+      pathname: ROUTES.AUTH.TOOLS_PROTOCOL_TEMPLATE_PROTOCOLS,
       params: { id: "agni-reset" },
     });
   });

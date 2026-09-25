@@ -14,7 +14,7 @@ export const buttons: NavigationButtonType[] = [
     id: 1,
     label: "Protocol Template",
     action: "navigate",
-    screen: ROUTES.AUTH.TOOLS_CURATED_MANIFESTS,
+    screen: ROUTES.AUTH.TOOLS_PROTOCOL_TEMPLATES,
     iconName: "clipboard-text-outline",
   },
   {

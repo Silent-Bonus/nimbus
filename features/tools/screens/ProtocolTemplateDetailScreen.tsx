@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useEffect, useMemo } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useNavigation, router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -10,37 +10,55 @@ import { SVATypography } from "@/theme/typography";
 import ScreenHeader from "@/components/layout/ScreenHeader";
 import { NimbusButton } from "@/components/ui/theme-components/NimbusButton";
 import { ROUTES } from "@/constants/routes";
+import { getProtocolTemplate } from "@/features/tools/services/protocolTemplateService";
+import type { ProtocolTemplateApiItem } from "@/features/tools/types/protocolTemplateTypes";
 import {
-  CURATED_MANIFESTS,
-  getCuratedManifestById,
-  type CuratedManifest,
-} from "@/features/tools/data/curatedManifests";
-import ManifestHero from "@/features/tools/components/curated-manifest-detail/ManifestHero";
-import ManifestStatGrid from "@/features/tools/components/curated-manifest-detail/ManifestStatGrid";
-import ManifestSection from "@/features/tools/components/curated-manifest-detail/ManifestSection";
-import BenefitList from "@/features/tools/components/curated-manifest-detail/BenefitList";
+  getProtocolTemplateById,
+  getProtocolTemplateIdParam,
+} from "@/features/tools/utils/protocolTemplateUtils";
+import {
+  PROTOCOL_TEMPLATES,
+  type ProtocolTemplate,
+} from "@/features/tools/data/protocolTemplates";
+import ManifestHero from "@/features/tools/components/protocol-template-detail/ManifestHero";
+import ManifestStatGrid from "@/features/tools/components/protocol-template-detail/ManifestStatGrid";
+import ManifestSection from "@/features/tools/components/protocol-template-detail/ManifestSection";
+import BenefitList from "@/features/tools/components/protocol-template-detail/BenefitList";
 
-const getStringParam = (value: unknown): string | null => {
-  if (!value) return null;
-  if (Array.isArray(value)) return String(value[0]);
-  return String(value);
-};
-
-export const CuratedManifestDetailScreen: React.FC = () => {
+export const ProtocolTemplateDetailScreen: React.FC = () => {
   const navigation = useNavigation();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const insets = useSafeAreaInsets();
   const { svaColors, spacing, svaTypography } = useContext(ThemeContext);
   const styles = styling(svaColors, spacing, svaTypography, insets.bottom);
 
-  const idParam = getStringParam(params.id);
+  const idParam = getProtocolTemplateIdParam(params.id);
+  const [template, setTemplate] = useState<ProtocolTemplateApiItem | null>(null);
 
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
-  const manifest: CuratedManifest = useMemo(() => {
-    return getCuratedManifestById(idParam) ?? CURATED_MANIFESTS[0];
+  useEffect(() => {
+    if (!idParam) return;
+
+    let isMounted = true;
+
+    void getProtocolTemplate(idParam)
+      .then((response) => {
+        if (isMounted) setTemplate(response.data);
+      })
+      .catch((error) => {
+        console.warn("Unable to load habit template details:", error);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [idParam]);
+
+  const manifest: ProtocolTemplate = useMemo(() => {
+    return getProtocolTemplateById(idParam) ?? PROTOCOL_TEMPLATES[0];
   }, [idParam]);
 
   const handleProtocolStackPress = useCallback(() => {
@@ -48,29 +66,40 @@ export const CuratedManifestDetailScreen: React.FC = () => {
     // protocol stack can be opened without displaying the upgrade modal.
     // To restore the paywall, reinstate the access check and openGate call:
     // if (!hasPremium) {
-    //   openGate("curated_manifest_protocols", "cta_press");
+    //   openGate("protocol_template_protocols", "cta_press");
     //   return;
     // }
     router.push({
-      pathname: ROUTES.AUTH.TOOLS_CURATED_MANIFEST_PROTOCOLS,
-      params: { id: manifest.id },
+      pathname: ROUTES.AUTH.TOOLS_PROTOCOL_TEMPLATE_PROTOCOLS,
+      params: { id: idParam ?? manifest.id },
     });
-  }, [manifest.id]);
+  }, [idParam, manifest.id]);
+
+  const title = template?.title || template?.name || manifest.title;
+  const description = template?.description || manifest.description;
+  const category = template?.category || manifest.category;
+  const image = template?.image ? { uri: template.image } : manifest.image;
+  const context = template?.context || manifest.context;
+  const benefits = template?.benefits.length ? template.benefits : manifest.benefits;
+  const level = template?.level || "—";
+  const rating = template?.rating == null ? "—" : template.rating.toFixed(1);
+  const reviewCount = template?.review_count ?? 0;
+  const xpReward = template?.xp_reward ?? manifest.xp_reward;
 
   // The shared premium modal is intentionally not opened when this screen is
   // entered. Keep the previous screen-entry gate documented here so it can be
-  // restored when premium gating is re-enabled for curated manifests.
+  // restored when premium gating is re-enabled for protocol templates.
   // useEffect(() => {
   //   if (accessState === "preview") {
-  //     openGate("curated_manifest_detail", "screen_entry");
+  //     openGate("protocol_template_detail", "screen_entry");
   //   }
   // }, [accessState, idParam, openGate]);
 
   const onShare = async () => {
     try {
       await Share.share({
-        title: manifest.title,
-        message: `${manifest.title}\n\n${manifest.description}`,
+        title,
+        message: `${title}\n\n${description}`,
       });
     } catch (error) {
       console.warn("share failed", error);
@@ -78,13 +107,13 @@ export const CuratedManifestDetailScreen: React.FC = () => {
   };
 
   return (
-    <ScreenView bgColor={svaColors.bg.base} padding={0} style={styles.screen}>
+    <ScreenView bgColor={svaColors.bg.base} style={styles.screen}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
         <ScreenHeader
-          title="Biological Protocol"
+          title={title}
           onBack={() => navigation.goBack()}
           rightActions={[
             {
@@ -93,38 +122,34 @@ export const CuratedManifestDetailScreen: React.FC = () => {
               onPress: onShare,
             },
           ]}
-          titleStyle={styles.headerTitle}
+          titleNumberOfLines={2}
           containerStyle={styles.header}
         />
 
-        <ManifestHero
-          image={manifest.image}
-          kicker={manifest.category || "Blueprint"}
-          title={manifest.title}
-        />
+        <ManifestHero image={image} kicker={category || "Blueprint"} title={title} />
 
         <View style={styles.leadCard}>
-          <Text style={styles.description}>{manifest.description}</Text>
+          <Text style={styles.description}>{description}</Text>
         </View>
 
         <ManifestStatGrid
           items={[
-            { label: "Level", value: manifest.level },
+            { label: "Level", value: level },
             {
               label: "Rating",
-              value: manifest.rating.toFixed(1),
-              hint: `${manifest.reviews} reviews`,
+              value: rating,
+              hint: `${reviewCount} reviews`,
             },
-            { label: "XP Reward", value: `${manifest.xp_reward}` },
+            { label: "XP Reward", value: `${xpReward}` },
           ]}
         />
 
         <ManifestSection title="Context">
-          <Text style={styles.sectionText}>{manifest.context}</Text>
+          <Text style={styles.sectionText}>{context}</Text>
         </ManifestSection>
 
         <ManifestSection title="Benefits">
-          <BenefitList items={manifest.benefits} />
+          <BenefitList items={benefits} />
         </ManifestSection>
 
         <View style={styles.footerSpace} />
@@ -161,18 +186,11 @@ const styling = (
       backgroundColor: colors.bg.base,
     },
     content: {
-      paddingHorizontal: spacing.lg,
       paddingTop: spacing.xs,
       paddingBottom: bottomInset + spacing.xl * 3,
     },
     header: {
       marginBottom: spacing.lg,
-    },
-    headerTitle: {
-      fontSize: 18,
-      lineHeight: 20,
-      letterSpacing: 0.2,
-      fontStyle: "italic",
     },
     leadCard: {
       backgroundColor: colors.surface.base,
@@ -200,8 +218,8 @@ const styling = (
     },
     footerDock: {
       position: "absolute",
-      left: spacing.lg,
-      right: spacing.lg,
+      left: spacing.layout?.screenPadding ?? 20,
+      right: spacing.layout?.screenPadding ?? 20,
       bottom: bottomInset + spacing.md,
       zIndex: 20,
       backgroundColor: "rgba(34, 37, 30, 0.96)",
@@ -220,4 +238,4 @@ const styling = (
     },
   });
 
-export default CuratedManifestDetailScreen;
+export default ProtocolTemplateDetailScreen;

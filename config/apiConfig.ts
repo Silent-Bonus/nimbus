@@ -31,8 +31,11 @@ export const API_ENDPOINTS = {
 
   createHabit: `${BASE_URL}/api/v1/habits/`,
   bulkCreateHabit: `${BASE_URL}/api/v1/habits/bulk_create/`,
-  activateHabitTemplate: (id: number | string) =>
-    `${BASE_URL}/api/habit-templates/${id}/activate/`,
+  protocolTemplates: `${BASE_URL}/api/v1/habit-templates/`,
+  protocolTemplateDetails: (id: number | string) =>
+    `${BASE_URL}/api/v1/habit-templates/${id}/`,
+  activateProtocolTemplate: (id: number | string) =>
+    `${BASE_URL}/api/v1/habit-templates/${id}/activate/`,
   habitTypeList: `${BASE_URL}/api/v1/habit-types/`,
   habitTagList: `${BASE_URL}/api/v1/tags/`,
   habitDetailsById: `${BASE_URL}/api/v1/habits/`,
@@ -41,8 +44,6 @@ export const API_ENDPOINTS = {
 
   habitPatch: `${BASE_URL}/api/v1/habits/`,
 
-  getArticleList: `${BASE_URL}/api/v1/media/media-assets/?type=article`,
-  getArticleDetails: `${BASE_URL}/api/v1/media/media-assets/`,
   getSoundscapeList: `${BASE_URL}/api/v1/media/media-assets/?type=soundscape`,
 
   getReflectionList: `${BASE_URL}/api/v1/reflect/templates/`,
@@ -85,9 +86,6 @@ export const API_ENDPOINTS = {
     `${BASE_URL}/api/v1/recipes/${id}/reviews/`,
   searchRecipes: (query: string) =>
     `${BASE_URL}/api/v1/recipes/?search=${encodeURIComponent(query)}`,
-  //TODO: category Data fix
-  getShortVideoList: `${BASE_URL}/api/v1/media/media-assets/?type=shortVideo`,
-  getAudioBookList: `${BASE_URL}/api/v1/media/media-assets/?type=meditation&category=audioBook`,
   getMeditationList: `${BASE_URL}/api/v1/media/media-assets/?type=meditation&category=breathwork`,
   getWellnessContent: `${BASE_URL}/api/v1/wellness-content/`,
 

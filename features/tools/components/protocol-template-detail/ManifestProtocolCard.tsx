@@ -1,26 +1,22 @@
 import React, { useContext } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
-import { router } from "expo-router";
 
-import { NimbusButton } from "@/components/ui/theme-components/NimbusButton";
 import ThemeContext from "@/contexts/ThemeContext";
 import { SVATypography } from "@/theme/typography";
-import { ROUTES } from "@/constants/routes";
-import { type ManifestProtocolStep } from "@/features/tools/data/curatedManifests";
+import type { ProtocolTemplateBlueprint } from "@/features/tools/types/protocolTemplateTypes";
+// import { type ManifestProtocolStep } from "@/features/tools/data/curatedManifests";
 
 type ManifestProtocolCardProps = {
-  step: ManifestProtocolStep;
+  step: ProtocolTemplateBlueprint;
   index: number;
   style?: ViewStyle;
-  onAdapt?: () => void;
 };
 
 const ManifestProtocolCard: React.FC<ManifestProtocolCardProps> = ({
   step,
   index,
   style,
-  onAdapt,
 }) => {
   const { svaColors, spacing, svaTypography } = useContext(ThemeContext);
   const styles = styling(svaColors, spacing, svaTypography);
@@ -36,59 +32,42 @@ const ManifestProtocolCard: React.FC<ManifestProtocolCardProps> = ({
       </View>
 
       <Text style={styles.title} numberOfLines={2}>
-        {step.title}
+        {step.name}
       </Text>
 
       <Text style={styles.description} numberOfLines={3}>
-        {step.desc}
+        {step.description}
       </Text>
 
       <View style={styles.metaRow}>
         <View style={styles.metaCard}>
           <View style={styles.metaLabelRow}>
             <Ionicons
-              name="hourglass-outline"
+              name="analytics-outline"
               size={14}
               color={svaColors.brand.primary}
             />
-            <Text style={styles.metaLabel}>Duration</Text>
+            <Text style={styles.metaLabel}>Metric</Text>
           </View>
-          <Text style={styles.metaValue}>{step.duration}</Text>
+          <Text style={styles.metaValue}>
+            {step.metric_details.count ?? "—"}{" "}
+            {step.metric_details.unit_name ?? ""}
+          </Text>
         </View>
 
         <View style={styles.metaCard}>
           <View style={styles.metaLabelRow}>
             <Ionicons
-              name="alarm-outline"
+              name="repeat-outline"
               size={14}
               color={svaColors.brand.primary}
             />
-            <Text style={styles.metaLabel}>Reminder</Text>
+            <Text style={styles.metaLabel}>Frequency</Text>
           </View>
-          <Text style={styles.metaValue}>{step.reminder_time}</Text>
+          <Text style={styles.metaValue}>
+            {step.frequency_details.frequency_type ?? "—"}
+          </Text>
         </View>
-      </View>
-
-      <View style={styles.actionWrap}>
-        <NimbusButton
-          label="Adapt Protocol"
-          onPress={() => {
-            if (onAdapt) {
-              onAdapt();
-              return;
-            }
-            router.push(ROUTES.AUTH.CREATE_PROTOCOL);
-          }}
-          rightIcon={
-            <Ionicons
-              name="sparkles"
-              size={16}
-              color={svaColors.button.primary.text}
-            />
-          }
-          style={styles.actionButton}
-          textStyle={styles.actionButtonText}
-        />
       </View>
     </View>
   );
@@ -145,10 +124,12 @@ const styling = (colors: any, spacing: any, svaTypography: any) =>
     },
     metaRow: {
       flexDirection: "row",
+      flexWrap: "wrap",
       gap: spacing.sm,
     },
     metaCard: {
-      flex: 1,
+      flexBasis: "48%",
+      flexGrow: 1,
       minHeight: 88,
       borderRadius: 18,
       padding: spacing.md,
@@ -175,17 +156,6 @@ const styling = (colors: any, spacing: any, svaTypography: any) =>
       lineHeight: 20,
       color: colors.text.primary,
       marginTop: 10,
-    },
-    actionWrap: {
-      marginTop: spacing.lg,
-    },
-    actionButton: {
-      width: "100%",
-      height: 52,
-      borderRadius: 18,
-    },
-    actionButtonText: {
-      letterSpacing: 1,
     },
   });
 

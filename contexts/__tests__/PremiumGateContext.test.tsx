@@ -68,13 +68,13 @@ function GateHarness() {
 
   return (
     <View>
-      <Text>{getAccessState("curated_manifest_detail")}</Text>
-      <Text>{String(canAccess("curated_manifest_detail"))}</Text>
+      <Text>{getAccessState("protocol_template_detail")}</Text>
+      <Text>{String(canAccess("protocol_template_detail"))}</Text>
       <Text>{activeGate?.featureKey ?? "none"}</Text>
 
       <Pressable
         accessibilityLabel="open-detail-gate"
-        onPress={() => openGate("curated_manifest_detail", "screen_entry")}
+        onPress={() => openGate("protocol_template_detail", "screen_entry")}
       >
         <Text>Open detail gate</Text>
       </Pressable>
@@ -115,7 +115,7 @@ describe("PremiumGateContext", () => {
       }).props.onPress();
     });
 
-    expect(hasText(tree, "curated_manifest_detail")).toBe(true);
+    expect(hasText(tree, "protocol_template_detail")).toBe(true);
     expect(hasText(tree, "Nimbus Plus required")).toBe(true);
     expect(hasText(tree, "Upgrade to Plus")).toBe(true);
 
@@ -126,7 +126,7 @@ describe("PremiumGateContext", () => {
     });
 
     expect(hasText(tree, "Nimbus Plus required")).toBe(false);
-    expect(hasText(tree, "curated_manifest_detail")).toBe(false);
+    expect(hasText(tree, "protocol_template_detail")).toBe(false);
   });
 
   it("routes to billing from the shared gate upgrade action", () => {

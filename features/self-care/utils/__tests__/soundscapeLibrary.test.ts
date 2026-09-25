@@ -53,7 +53,7 @@ describe("soundscapeLibrary", () => {
     expect(result[0].rating).toBe(4);
     expect(result[0].moodLabel).toBe("Test mood");
     expect(result[0].image).toBeTruthy();
-    expect(result[0].source).toBeTruthy();
+    expect(result[0].source).toBeNull();
   });
 
   it("prefers numeric ids over slug and falls back to generated descriptions", () => {

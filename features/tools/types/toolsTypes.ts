@@ -14,49 +14,7 @@ export interface SoundscapeTrackListItem {
 
 // TODO add types
 
-// TODO ADD PROPER TYPE
-export interface ArticleListItem {
-  id: number;
-  title: string;
-  image: string;
-}
-
-export type ArticleData = ArticleListItem;
-
-export interface ArticleListResponse {
-  data: ArticleListItem[];
-  success: boolean;
-  message: string;
-  error_code?: string;
-}
-
 export interface SoundscapeListResponse {
-  data: ArticleDetails[];
-  success: boolean;
-  message: string;
-  error_code?: string;
-}
-
-export interface ShortVideoItem {
-  id: number;
-  title: string;
-  image: string;
-}
-
-export interface ShortVideoListResponse {
-  data: ArticleDetails[];
-  success: boolean;
-  message: string;
-  error_code?: string;
-}
-
-export interface AudioBookItem {
-  id: number;
-  title: string;
-  image: string;
-}
-
-export interface AudioBookListResponse {
   data: ArticleDetails[];
   success: boolean;
   message: string;

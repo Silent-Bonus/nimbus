@@ -2,10 +2,12 @@ import React, { useContext, useEffect, useMemo } from "react";
 import { FlatList, Share, StyleSheet, View } from "react-native";
 import { useLocalSearchParams, useNavigation, router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 
 import { ScreenView } from "@/components/ui/Themed";
 import ThemeContext from "@/contexts/ThemeContext";
 import ScreenHeader from "@/components/layout/ScreenHeader";
+import { NimbusButton } from "@/components/ui/theme-components/NimbusButton";
 import EmptyState from "@/features/tools/components/common/EmptyState";
 import ManifestProtocolCard from "@/features/tools/components/curated-manifest-detail/ManifestProtocolCard";
 import {
@@ -57,6 +59,13 @@ export const CuratedManifestProtocolsScreen: React.FC = () => {
     }
   };
 
+  const onAdaptProtocol = () => {
+    router.push({
+      pathname: ROUTES.AUTH.CREATE_PROTOCOL,
+      params: { title: manifest.title },
+    });
+  };
+
   return (
     <ScreenView bgColor={svaColors.bg.base} padding={0} style={styles.screen}>
       <FlatList
@@ -88,21 +97,30 @@ export const CuratedManifestProtocolsScreen: React.FC = () => {
           />
         }
         renderItem={({ item, index }) => (
-          <ManifestProtocolCard
-            step={item}
-            index={index}
-            onAdapt={() =>
-              router.push({
-                pathname: ROUTES.AUTH.CREATE_PROTOCOL,
-                params: {
-                  title: item.title,
-                  reminder: item.reminder_time,
-                },
-              })
-            }
-          />
+          <ManifestProtocolCard step={item} index={index} />
         )}
       />
+
+      <View
+        style={[
+          styles.footerDock,
+          { paddingBottom: insets.bottom + spacing.md },
+        ]}
+      >
+        <NimbusButton
+          label="Adapt Protocol"
+          onPress={onAdaptProtocol}
+          rightIcon={
+            <Ionicons
+              name="sparkles"
+              size={16}
+              color={svaColors.button.primary.text}
+            />
+          }
+          style={styles.actionButton}
+          textStyle={styles.actionButtonText}
+        />
+      </View>
     </ScreenView>
   );
 };
@@ -131,6 +149,25 @@ const styling = (
       lineHeight: 20,
       letterSpacing: 0.2,
       fontStyle: "italic",
+    },
+    footerDock: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.md,
+      backgroundColor: colors.bg.base,
+      borderTopWidth: 1,
+      borderTopColor: colors.border.subtle,
+    },
+    actionButton: {
+      width: "100%",
+      height: 52,
+      borderRadius: 18,
+    },
+    actionButtonText: {
+      letterSpacing: 1,
     },
     separator: {
       height: spacing.lg,

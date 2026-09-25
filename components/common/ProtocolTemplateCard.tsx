@@ -20,7 +20,7 @@ import type { SvaColorSet, Spacing, TypographyTokens } from "@/theme/types";
 
 export type ProtocolTemplateCardItem = {
   title: string;
-  image: ImageSourcePropType;
+  image: ImageSourcePropType | null;
   imageFit?: "cover" | "contain";
   tags: readonly string[];
 };
@@ -63,7 +63,7 @@ const ProtocolTemplateCard: React.FC<ProtocolTemplateCardProps> = ({
   const styles = styling(svaColors, svaTypography, spacing);
   const [imageLoading, setImageLoading] = useState(true);
 
-  const imageSource: ImageSourcePropType = item.image;
+  const imageSource: ImageSourcePropType | undefined = item.image ?? undefined;
 
   useEffect(() => {
     setImageLoading(true);

@@ -121,9 +121,9 @@ const CreateActionModal: React.FC<CreateActionModalProps> = ({
             <ActionOption
               icon={<Ionicons name="book-outline" size={24} color={svaColors.text.secondary} />}
               iconBg="rgba(255, 255, 255, 0.05)"
-              title="Curated Manifests"
+              title="Protocol Templates"
               description="Adopt expertly designed biological rhythms."
-              onPress={() => handleAction(ROUTES.AUTH.TOOLS_CURATED_MANIFESTS)}
+              onPress={() => handleAction(ROUTES.AUTH.TOOLS_PROTOCOL_TEMPLATES)}
               svaTypography={svaTypography}
               styles={styles}
             />
