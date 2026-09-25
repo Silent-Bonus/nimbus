@@ -420,6 +420,12 @@ export default function MeditationPlayerScreen() {
     // The sound instance is created once per audio source. Keeping this effect
     // stable avoids reloading audio when play/pause state changes.
     const load = async () => {
+      if (!playbackSource) {
+        setPlaybackStatus(null);
+        setIsLoading(false);
+        return;
+      }
+
       try {
         await Audio.setAudioModeAsync({
           playsInSilentModeIOS: true,

@@ -312,6 +312,7 @@ const RecipeDetailScreen: React.FC = () => {
         recipeTitle: detail.title,
         foodName: detail.title,
         type: detail.mealSlot ?? undefined,
+        source: "recipe-details",
       },
     });
   };

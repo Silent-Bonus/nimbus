@@ -77,6 +77,10 @@ export const MealCreationScreen = () => {
   const parentDate = Array.isArray(params.date) ? params.date[0] : params.date;
   const hasParentDate = typeof parentDate === "string" && parentDate.length > 0;
   const modeParam = Array.isArray(params.mode) ? params.mode[0] : params.mode;
+  const sourceParam = Array.isArray(params.source)
+    ? params.source[0]
+    : params.source;
+  const isRecipeDetailsFlow = sourceParam === "recipe-details";
   const isDayOnlyFlow = modeParam === "day" && hasParentDate;
   const initialMealType = normalizeMealTypeParam(params.type);
   const initialFoodName =
@@ -925,7 +929,7 @@ export const MealCreationScreen = () => {
             onBack={() => (showReview ? setShowReview(false) : router.back())}
           />
 
-          {!showReview && !isDayOnlyFlow && (
+          {!showReview && !isDayOnlyFlow && !isRecipeDetailsFlow && (
             <MealPlannerModeTabs
               activeTab={activeTab}
               onChange={setActiveTab}
@@ -935,13 +939,16 @@ export const MealCreationScreen = () => {
           <View style={{ flex: 1 }}>
             {showReview
               ? <MealPlannerReviewList weekDates={weekDates} weeklyPlan={weeklyPlan} />
-              : isDayOnlyFlow || activeTab === "day"
+              : isDayOnlyFlow || isRecipeDetailsFlow || activeTab === "day"
               ? renderDayForm()
               : renderWeekForm()}
           </View>
 
           <View style={styles.footer}>
-            {!showReview && !isDayOnlyFlow && activeTab === "week" && (
+            {!showReview &&
+              !isDayOnlyFlow &&
+              !isRecipeDetailsFlow &&
+              activeTab === "week" && (
               <StyledButton
                 label="Proceed to Review"
                 variant={
@@ -957,7 +964,7 @@ export const MealCreationScreen = () => {
               label={
                 showReview
                   ? "Confirm & Sync"
-                  : isDayOnlyFlow || activeTab === "day"
+                  : isDayOnlyFlow || isRecipeDetailsFlow || activeTab === "day"
                   ? "Save Day Plan"
                   : "Add to Plan"
               }
@@ -974,7 +981,7 @@ export const MealCreationScreen = () => {
               fullWidth
               disabled={
                 !showReview &&
-                  (isDayOnlyFlow || activeTab === "day"
+                  (isDayOnlyFlow || isRecipeDetailsFlow || activeTab === "day"
                   ? !isRecipeSelectionLocked &&
                     Object.values(dayPlanDraft).every(
                       (entry) => !entry?.recipeId || !entry?.foodName?.trim()

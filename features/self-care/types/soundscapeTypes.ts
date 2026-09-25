@@ -1,4 +1,4 @@
-import type { TrackType } from "@/constants/data/soundtrack";
+import type { TrackType } from "@/features/self-care/types/trackTypes";
 import type {
   WellnessContentBenefit,
   WellnessContentDetailItem,

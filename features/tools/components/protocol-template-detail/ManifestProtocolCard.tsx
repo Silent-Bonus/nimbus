@@ -5,6 +5,7 @@ import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 import ThemeContext from "@/contexts/ThemeContext";
 import { SVATypography } from "@/theme/typography";
 import type { ProtocolTemplateBlueprint } from "@/features/tools/types/protocolTemplateTypes";
+// import { type ManifestProtocolStep } from "@/features/tools/data/curatedManifests";
 
 type ManifestProtocolCardProps = {
   step: ProtocolTemplateBlueprint;
@@ -49,7 +50,8 @@ const ManifestProtocolCard: React.FC<ManifestProtocolCardProps> = ({
             <Text style={styles.metaLabel}>Metric</Text>
           </View>
           <Text style={styles.metaValue}>
-            {step.metric_details.count ?? "—"} {step.metric_details.unit_name ?? ""}
+            {step.metric_details.count ?? "—"}{" "}
+            {step.metric_details.unit_name ?? ""}
           </Text>
         </View>
 
@@ -66,9 +68,7 @@ const ManifestProtocolCard: React.FC<ManifestProtocolCardProps> = ({
             {step.frequency_details.frequency_type ?? "—"}
           </Text>
         </View>
-
       </View>
-
     </View>
   );
 };
