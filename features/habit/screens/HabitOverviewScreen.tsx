@@ -1,12 +1,10 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { Pressable, Share, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as SecureStore from "expo-secure-store";
 
 import { ScreenView } from "@/components/ui/Themed";
 import AppHeader from "@/components/layout/AppHeader";
-import { StoreKey } from "@/constants/Constant";
 import ThemeContext from "@/contexts/ThemeContext";
 import OverviewSectionHeader from "@/features/habit/components/habit-overview/OverviewSectionHeader";
 import RitualConsistencyCard from "@/features/habit/components/habit-overview/RitualConsistencyCard";
@@ -24,6 +22,7 @@ import {
   getWellnessDashboard,
   type WellnessDashboard,
 } from "@/features/habit/services/wellnessDashboardService";
+import { getDoshaProfile, type DoshaProfile } from "@/features/habit/services/doshaProfileService";
 
 type HabitOverviewStyles = ReturnType<typeof createStyles>;
 type OverviewTab = "resonance" | "dosha";
@@ -57,7 +56,9 @@ export const HabitOverviewScreen: React.FC = () => {
   const { svaColors, spacing, svaTypography } = useContext(ThemeContext);
   const [dashboard, setDashboard] = useState<WellnessDashboard | null>(null);
   const [activeTab, setActiveTab] = useState<OverviewTab>("resonance");
-  const [doshaScores, setDoshaScores] = useState<Partial<Record<DoshaKey, number>>>({});
+  const [doshaProfile, setDoshaProfile] = useState<DoshaProfile | null>(null);
+  const [isLoadingDosha, setIsLoadingDosha] = useState(false);
+  const [doshaError, setDoshaError] = useState<string | null>(null);
   const styles: HabitOverviewStyles = useMemo(
     () => createStyles(spacing, insets.bottom, svaTypography, svaColors),
     [spacing, insets.bottom, svaTypography, svaColors]
@@ -73,33 +74,31 @@ export const HabitOverviewScreen: React.FC = () => {
       if (active) setDashboard(nextDashboard);
     });
 
-    void SecureStore.getItemAsync(StoreKey.DOSHA_ASSESSMENT_RESULT_KEY).then(
-      (value) => {
-        if (!active || !value) return;
-
-        try {
-          const parsed = JSON.parse(value) as any;
-          const scores = parsed?.scores ?? parsed?.dosha_scores ?? parsed;
-          const nextScores: Partial<Record<DoshaKey, number>> = {};
-
-          DOSHA_PROFILES.forEach(({ key }) => {
-            const score = Number(scores?.[key] ?? scores?.[`${key}_score`]);
-            if (Number.isFinite(score)) {
-              nextScores[key] = Math.max(0, Math.min(100, score));
-            }
-          });
-
-          setDoshaScores(nextScores);
-        } catch {
-          setDoshaScores({});
-        }
-      }
-    );
-
     return () => {
       active = false;
     };
   }, []);
+
+  const loadDoshaProfile = useCallback(async () => {
+    setIsLoadingDosha(true);
+    setDoshaError(null);
+    try {
+      const response = await getDoshaProfile();
+      if (!response.success) throw new Error(response.message || "Could not load your Dosha profile.");
+      setDoshaProfile(response.data ?? null);
+    } catch (error) {
+      setDoshaError(error instanceof Error ? error.message : "Could not load your Dosha profile. Please try again.");
+    } finally {
+      setIsLoadingDosha(false);
+    }
+  }, []);
+
+  const handleTabPress = useCallback((tab: OverviewTab) => {
+    setActiveTab(tab);
+    if (tab === "dosha") void loadDoshaProfile();
+  }, [loadDoshaProfile]);
+
+  const doshaResult = doshaProfile?.result?.result_payload;
 
   const trendData = useMemo<TrendPoint[]>(
     () =>
@@ -220,34 +219,6 @@ export const HabitOverviewScreen: React.FC = () => {
     [dashboard, svaColors.brand.primary, svaColors.chart.blue, svaColors.chart.lavender]
   );
 
-  const shareSummary = useMemo(
-    () =>
-      [
-        "Holistic Overview",
-        "",
-        `Ritual consistency: ${dashboard?.ritual_consistency.percentage ?? 92}% current completion across the week.`,
-        dashboard
-          ? `Core vitals: Zen Minutes ${dashboard.core_vitals.zen_minutes}, Workout Sessions ${dashboard.core_vitals.workout_sessions}.`
-          : "Core vitals: Zen Minutes 482, Sleep Quality 84%, Intensity 7.2.",
-        dashboard
-          ? `Monthly pulse: ${dashboard.monthly_pulse.active_days} active days and ${dashboard.monthly_pulse.session_count} sessions.`
-          : "Monthly pulse: W2 is the strongest month segment.",
-        "Ritual balance: Mind, Body, and Soul.",
-      ].join("\n"),
-    [dashboard]
-  );
-
-  const onShare = useCallback(async () => {
-    try {
-      await Share.share({
-        title: "Holistic Overview",
-        message: shareSummary,
-      });
-    } catch (error) {
-      console.warn("overview share failed", error);
-    }
-  }, [shareSummary]);
-
   return (
     <ScreenView bgColor={svaColors.bg.base} padding={0} style={styles.screen}>
       <ScrollView
@@ -258,13 +229,6 @@ export const HabitOverviewScreen: React.FC = () => {
           title="Holistic Overview"
           subtitle="Quantifying your inner growth"
           onBack={() => navigation.goBack()}
-          rightActions={[
-            {
-              icon: "share-outline",
-              accessibilityLabel: "Share overview",
-              onPress: onShare,
-            },
-          ]}
           containerStyle={styles.header}
         />
 
@@ -280,7 +244,7 @@ export const HabitOverviewScreen: React.FC = () => {
                 key={value}
                 accessibilityRole="tab"
                 accessibilityState={{ selected }}
-                onPress={() => setActiveTab(value)}
+                onPress={() => handleTabPress(value)}
                 style={[styles.tab, selected && styles.tabActive]}
               >
                 <Text style={[styles.tabText, selected && styles.tabTextActive]}>
@@ -339,8 +303,39 @@ export const HabitOverviewScreen: React.FC = () => {
               title="Dosha Profile"
               accessoryLabel="Your constitution"
             />
-            {DOSHA_PROFILES.map((profile) => {
-              const score = doshaScores[profile.key];
+            {isLoadingDosha ? (
+              <View style={styles.doshaState}>
+                <ActivityIndicator color={svaColors.brand.primary} />
+                <Text style={styles.doshaStateText}>Loading your Dosha profile…</Text>
+              </View>
+            ) : doshaError ? (
+              <View style={styles.doshaState}>
+                <Text style={styles.doshaStateText}>{doshaError}</Text>
+                <Pressable accessibilityRole="button" onPress={() => void loadDoshaProfile()} style={styles.doshaRetry}>
+                  <Text style={styles.doshaRetryText}>Try again</Text>
+                </Pressable>
+              </View>
+            ) : !doshaResult ? (
+              <View style={styles.doshaState}>
+                <Text style={styles.doshaEmptyTitle}>Your Dosha profile is not ready yet</Text>
+                <Text style={styles.doshaStateText}>Complete a Dosha assessment to see your constitution and scores here.</Text>
+              </View>
+            ) : (
+              <>
+                <View style={styles.doshaResultCard}>
+                  <Text style={styles.doshaResultEyebrow}>YOUR CONSTITUTION</Text>
+                  <Text style={styles.doshaCombination}>{formatDoshaName(doshaResult.dosha_combination)}</Text>
+                  <Text style={styles.doshaResultMeta}>
+                    Dominant · {formatDoshaName(doshaResult.dominant_dosha)}
+                    {doshaResult.secondary_dosha ? `   Secondary · ${formatDoshaName(doshaResult.secondary_dosha)}` : ""}
+                  </Text>
+                  {!!(doshaResult.result_summary || doshaProfile.result?.result_summary) && (
+                    <Text style={styles.doshaSummary}>{doshaResult.result_summary || doshaProfile.result?.result_summary}</Text>
+                  )}
+                </View>
+                {DOSHA_PROFILES.map((profile) => {
+              const rawScore = doshaResult.normalized_scores?.[profile.key];
+              const score = typeof rawScore === "number" && Number.isFinite(rawScore) ? Math.max(0, Math.min(100, rawScore)) : undefined;
 
               return (
                 <View key={profile.key} style={styles.doshaCard}>
@@ -357,7 +352,7 @@ export const HabitOverviewScreen: React.FC = () => {
                       </Text>
                     </View>
                     <Text style={styles.doshaScore}>
-                      {score === undefined ? "—" : `${Math.round(score)}%`}
+                      {score === undefined ? "—" : `${Number(score.toFixed(2))}%`}
                     </Text>
                   </View>
                   <View style={styles.doshaTrack}>
@@ -370,13 +365,20 @@ export const HabitOverviewScreen: React.FC = () => {
                   </View>
                 </View>
               );
-            })}
+                })}
+              </>
+            )}
           </View>
         )}
       </ScrollView>
     </ScreenView>
   );
 };
+
+function formatDoshaName(value?: string | null) {
+  if (!value) return "Not available";
+  return value.split(/[_\s-]+/).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" · ");
+}
 
 function createStyles(
   spacing: Spacing,
@@ -423,6 +425,69 @@ function createStyles(
     },
     doshaSection: {
       marginTop: spacing.md,
+    },
+    doshaState: {
+      alignItems: "center",
+      padding: spacing.lg,
+      gap: spacing.sm,
+      borderRadius: 20,
+      backgroundColor: svaColors.surface.base,
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.08)",
+    },
+    doshaStateText: {
+      ...svaTypography.textStyle.body,
+      color: svaColors.text.secondary,
+      textAlign: "center",
+    },
+    doshaEmptyTitle: {
+      ...svaTypography.textStyle.title,
+      color: svaColors.text.primary,
+      textAlign: "center",
+    },
+    doshaRetry: {
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.xs,
+      borderRadius: 999,
+      backgroundColor: svaColors.interaction.pressed,
+    },
+    doshaRetryText: {
+      ...svaTypography.textStyle.caption,
+      color: svaColors.text.primary,
+      fontWeight: "700",
+    },
+    doshaResultCard: {
+      padding: spacing.md,
+      marginBottom: spacing.md,
+      borderRadius: 22,
+      backgroundColor: svaColors.surface.base,
+      borderWidth: 1,
+      borderColor: "rgba(163,190,140,0.24)",
+    },
+    doshaResultEyebrow: {
+      ...svaTypography.textStyle.caption,
+      color: "#A3BE8C",
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 1.3,
+    },
+    doshaCombination: {
+      ...svaTypography.textStyle.title,
+      color: svaColors.text.primary,
+      textTransform: "capitalize",
+      marginTop: spacing.xs,
+    },
+    doshaResultMeta: {
+      ...svaTypography.textStyle.caption,
+      color: svaColors.text.secondary,
+      marginTop: spacing.xs,
+      textTransform: "capitalize",
+    },
+    doshaSummary: {
+      ...svaTypography.textStyle.body,
+      color: svaColors.text.primary,
+      marginTop: spacing.sm,
+      lineHeight: 23,
     },
     doshaCard: {
       padding: spacing.md,

@@ -290,6 +290,9 @@ export default function BodyVitalScreen() {
             icon="sparkles-outline"
             variant="info"
             layout="compact"
+            titleNumberOfLines={2}
+            titleFontSize={30}
+            messageFontSize={17}
             messageNumberOfLines={2}
             style={styles.bannerCard}
           />

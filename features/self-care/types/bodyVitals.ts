@@ -288,19 +288,48 @@ export type BodyVitalsTrendSummary = {
   weight_change_30d?: number | null;
   waist_change_30d?: number | null;
   snapshots_count?: number | null;
+  metrics?: Partial<Record<BodyVitalsTrendMetricKey, BodyVitalsTrendMetricSummary>>;
+};
+
+export type BodyVitalsTrendMetricKey =
+  | "weight" | "waist" | "bust" | "high_hip" | "low_hip"
+  | "bmr" | "calories" | "protein";
+
+export type BodyVitalsTrendMetricSummary = {
+  label: string;
+  unit: string;
+  start: number | null;
+  latest: number | null;
+  change: number | null;
+  direction: "up" | "down" | "steady" | string;
+  points: number;
 };
 
 export type BodyVitalsTrendTimelinePoint = {
+  snapshot_id?: number;
   date: string;
   weight_kg?: number | null;
   waist_cm?: number | null;
+  bust_cm?: number | null;
+  high_hip_cm?: number | null;
+  low_hip_cm?: number | null;
+  bmr?: number | null;
+  optimal_burn_calories?: number | null;
+  protein_target_g?: number | null;
 };
 
 export type BodyVitalsTrendResponse = {
   range: BodyVitalsTrendRange;
   metric: BodyVitalsTrendMetric;
+  available_metrics?: BodyVitalsTrendMetricKey[];
   summary: BodyVitalsTrendSummary;
   timeline: BodyVitalsTrendTimelinePoint[];
+};
+
+export type BodyVitalsTrendApiResponse = {
+  success: boolean;
+  message: string;
+  data: BodyVitalsTrendResponse;
 };
 
 export type BodyVitalsUpdatePayload = {

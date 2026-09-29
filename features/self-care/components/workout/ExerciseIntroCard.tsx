@@ -18,10 +18,11 @@ import type {
 
 interface ExerciseIntroCardProps {
   imageUri: string | ImageSourcePropType;
-  reps: number;
+  reps: number | string;
   description: string;
   title: string;
   subtitle?: string;
+  showTitle?: boolean;
   onPress?: () => void;
 }
 
@@ -31,6 +32,7 @@ const ExerciseIntroCard: React.FC<ExerciseIntroCardProps> = ({
   description,
   title,
   subtitle,
+  showTitle = true,
   onPress,
 }) => {
   const { newTheme: theme, svaTypography, spacing } =
@@ -57,19 +59,25 @@ const ExerciseIntroCard: React.FC<ExerciseIntroCardProps> = ({
       </View>
 
       <View style={styles.copy}>
-        <Text style={styles.eyebrow} numberOfLines={1}>
-          {subtitle ?? "EXERCISE GUIDE"}
-        </Text>
-        <Text style={styles.title} numberOfLines={2}>
-          {title}
-        </Text>
-
-        <View style={styles.repsRow}>
-          <Ionicons name="repeat" size={16} color={theme.buttonPrimary} />
-          <Text style={styles.repsText}>
-            {reps} {reps === 1 ? "repetition" : "repetitions"}
+        {!!subtitle && (
+          <Text style={styles.eyebrow} numberOfLines={1}>
+            {subtitle}
           </Text>
-        </View>
+        )}
+        {showTitle && (
+          <Text style={styles.title} numberOfLines={2}>
+            {title}
+          </Text>
+        )}
+
+        {String(reps).trim().length > 0 && Number(reps) !== 0 && (
+          <View style={styles.repsRow}>
+            <Ionicons name="repeat" size={16} color={theme.buttonPrimary} />
+            <Text style={styles.repsText}>
+              {typeof reps === "number" ? `${reps} ${reps === 1 ? "repetition" : "repetitions"}` : reps}
+            </Text>
+          </View>
+        )}
 
         <Text style={styles.description} numberOfLines={3}>
           {description}

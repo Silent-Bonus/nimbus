@@ -80,6 +80,9 @@ export const ROUTES = {
     SELF_CARE_VITALS_TRENDS: "/(auth)/self-care/vitals-trends",
     SELF_CARE_WORKOUT_SESSION: "/(auth)/self-care/workoutSession",
     SELF_CARE_WORKOUT: "/(auth)/self-care/workout",
+    SELF_CARE_CREATE_WORKOUT_PLAN: "/(auth)/self-care/createWorkoutPlan",
+    SELF_CARE_WORKOUT_ROUTINES: "/(auth)/self-care/workoutRoutines",
+    SELF_CARE_WORKOUT_PLAN_DETAIL: "/(auth)/self-care/workoutPlan/[planId]",
     SELF_CARE_VITALS: "/(auth)/self-care/vitals",
     SELF_CARE_PROTEIN: "/(auth)/self-care/protein",
 

@@ -30,6 +30,8 @@ type PremiumBannerProps = {
   style?: StyleProp<ViewStyle>;
   titleNumberOfLines?: number;
   messageNumberOfLines?: number;
+  titleFontSize?: number;
+  messageFontSize?: number;
 };
 
 type VariantPalette = {
@@ -240,6 +242,8 @@ export default function PremiumBanner({
   style,
   titleNumberOfLines,
   messageNumberOfLines,
+  titleFontSize,
+  messageFontSize,
 }: PremiumBannerProps) {
   const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
   const compact = layout === "compact";
@@ -297,14 +301,14 @@ export default function PremiumBanner({
 
             {title ? (
               <Text
-                style={styles.title}
+                style={[styles.title, titleFontSize ? { fontSize: titleFontSize, lineHeight: Math.round(titleFontSize * 1.18) } : null]}
                 numberOfLines={titleNumberOfLines ?? (compact ? 1 : 2)}
               >
                 {title}
               </Text>
             ) : null}
             <Text
-              style={styles.message}
+              style={[styles.message, messageFontSize ? { fontSize: messageFontSize, lineHeight: Math.round(messageFontSize * 1.35) } : null]}
               numberOfLines={messageNumberOfLines ?? (compact ? 2 : undefined)}
             >
               {message}
