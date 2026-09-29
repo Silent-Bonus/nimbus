@@ -16,9 +16,7 @@ import AppHeader from "@/components/layout/AppHeader";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import {
   BodyVitalsTrendChart,
-  BodyVitalsTrendFilterGroup,
   BodyVitalsTrendSummaryGrid,
-  BodyVitalsTrendTimelineCard,
   type BodyVitalsTrendSummaryItem,
 } from "@/features/self-care/components/body-vitals";
 import { getBodyVitalsTrends } from "@/features/self-care/services/body-vitals/trends";
@@ -27,23 +25,13 @@ import {
   type BodyVitalsTypography,
 } from "@/features/self-care/utils/bodyVitalsTheme";
 import {
-  BODY_VITALS_TREND_METRIC_OPTIONS,
-  BODY_VITALS_TREND_RANGE_OPTIONS,
   formatBodyVitalsTrendChange,
-  formatBodyVitalsTrendMetricLabel,
-  formatBodyVitalsTrendRangeLabel,
 } from "@/features/self-care/utils/bodyVitalsTrends";
-import type {
-  BodyVitalsTrendMetric,
-  BodyVitalsTrendRange,
-  BodyVitalsTrendResponse,
-} from "@/features/self-care/types/bodyVitals";
+import type { BodyVitalsTrendResponse } from "@/features/self-care/types/bodyVitals";
 import type { ColorSet, Spacing } from "@/theme/types";
 
 export default function BodyVitalsTrendsScreen() {
   const { newTheme, spacing, bodyVitalsTypography } = useBodyVitalsTheme();
-  const [range, setRange] = useState<BodyVitalsTrendRange>("30d");
-  const [metric, setMetric] = useState<BodyVitalsTrendMetric>("all");
   const [data, setData] = useState<BodyVitalsTrendResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,14 +46,14 @@ export default function BodyVitalsTrendsScreen() {
     setError(null);
 
     try {
-      const nextData = await getBodyVitalsTrends(range, metric);
+      const nextData = await getBodyVitalsTrends();
       setData(nextData);
     } catch (fetchError: any) {
       setError(fetchError?.message ?? "Unable to load trends.");
     } finally {
       setIsLoading(false);
     }
-  }, [metric, range]);
+  }, []);
 
   useEffect(() => {
     void loadTrends();
@@ -76,33 +64,27 @@ export default function BodyVitalsTrendsScreen() {
       {
         key: "weight",
         label: "Weight Shift",
-        value: formatBodyVitalsTrendChange(data?.summary.weight_change_30d, " kg"),
+        value: formatBodyVitalsTrendChange(data?.summary.weight_change_30d ?? data?.summary.metrics?.weight?.change, " kg"),
         accent: newTheme.chart3 ?? newTheme.warning,
         icon:
-          (data?.summary.weight_change_30d ?? 0) <= 0
+          (data?.summary.weight_change_30d ?? data?.summary.metrics?.weight?.change ?? 0) <= 0
             ? "trending-down-outline"
             : "trending-up-outline",
       },
       {
         key: "waist",
         label: "Waist Shift",
-        value: formatBodyVitalsTrendChange(data?.summary.waist_change_30d, " cm"),
+        value: formatBodyVitalsTrendChange(data?.summary.waist_change_30d ?? data?.summary.metrics?.waist?.change, " cm"),
         accent: newTheme.chart4 ?? newTheme.success,
         icon:
-          (data?.summary.waist_change_30d ?? 0) <= 0
+          (data?.summary.waist_change_30d ?? data?.summary.metrics?.waist?.change ?? 0) <= 0
             ? "remove-outline"
             : "add-outline",
       },
-      {
-        key: "runs",
-        label: "Snapshots",
-        value: data?.summary.snapshots_count?.toString() ?? "0",
-        accent: newTheme.chart2 ?? newTheme.info,
-        icon: "albums-outline",
-      },
     ],
     [
-      data?.summary.snapshots_count,
+      data?.summary.metrics?.weight?.change,
+      data?.summary.metrics?.waist?.change,
       data?.summary.waist_change_30d,
       data?.summary.weight_change_30d,
       newTheme.chart2,
@@ -126,17 +108,10 @@ export default function BodyVitalsTrendsScreen() {
       >
         <AppHeader
           title="Vitals Trends"
-          subtitle="Tracked from persisted snapshots through September 2, 2026."
+          subtitle="See how your body metrics change over time."
           onBack={() => router.back()}
           titleStyle={styles.headerTitle}
           subtitleStyle={styles.headerSubtitle}
-          rightAction={{
-            icon: "refresh-outline",
-            onPress: () => {
-              void loadTrends();
-            },
-            accessibilityLabel: "Refresh trends",
-          }}
           containerStyle={styles.header}
         />
 
@@ -148,31 +123,10 @@ export default function BodyVitalsTrendsScreen() {
             pointerEvents="none"
             style={StyleSheet.absoluteFillObject}
           />
-          <Text style={styles.heroEyebrow}>PERSISTED SNAPSHOTS</Text>
-          <Text style={styles.heroTitle}>
-            {formatBodyVitalsTrendRangeLabel(range)} •{" "}
-            {formatBodyVitalsTrendMetricLabel(metric)}
-          </Text>
+          <Text style={styles.heroTitle}>Your progress</Text>
           <Text style={styles.heroBody}>
             Review changes across saved body vitals only, without mixing in partial local edits.
           </Text>
-        </View>
-
-        <View style={styles.filterBlock}>
-          <BodyVitalsTrendFilterGroup
-            label="Range"
-            options={BODY_VITALS_TREND_RANGE_OPTIONS}
-            selectedValue={range}
-            onSelect={setRange}
-            getOptionLabel={(option) => option.toUpperCase()}
-          />
-          <BodyVitalsTrendFilterGroup
-            label="Metric"
-            options={BODY_VITALS_TREND_METRIC_OPTIONS}
-            selectedValue={metric}
-            onSelect={setMetric}
-            getOptionLabel={formatBodyVitalsTrendMetricLabel}
-          />
         </View>
 
         {isLoading ? (
@@ -197,28 +151,21 @@ export default function BodyVitalsTrendsScreen() {
             <BodyVitalsTrendSummaryGrid items={summaryCards} />
 
             <View style={styles.chartStack}>
-              {(metric === "all" || metric === "weight") && (
-                <BodyVitalsTrendChart
-                  title="Weight Timeline"
-                  metricKey="weight_kg"
-                  unit="kg"
-                  accent={newTheme.chart3 ?? newTheme.warning}
-                  timeline={timeline}
-                />
-              )}
-
-              {(metric === "all" || metric === "waist") && (
-                <BodyVitalsTrendChart
-                  title="Waist Timeline"
-                  metricKey="waist_cm"
-                  unit="cm"
-                  accent={newTheme.chart4 ?? newTheme.success}
-                  timeline={timeline}
-                />
-              )}
+              <BodyVitalsTrendChart
+                title="Weight Timeline"
+                metricKey="weight_kg"
+                unit="kg"
+                accent={newTheme.chart3 ?? newTheme.warning}
+                timeline={timeline}
+              />
+              <BodyVitalsTrendChart
+                title="Waist Timeline"
+                metricKey="waist_cm"
+                unit="cm"
+                accent={newTheme.chart4 ?? newTheme.success}
+                timeline={timeline}
+              />
             </View>
-
-            <BodyVitalsTrendTimelineCard timeline={timeline} />
           </>
         )}
       </ScrollView>

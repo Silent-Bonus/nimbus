@@ -44,7 +44,7 @@ export const SELF_CARE_SECTIONS: SelfCareSectionConfig[] = [
         route: ROUTES.AUTH.SELF_CARE_VITALS,
       },
       {
-        label: "Workout Progress",
+        label: "Workout",
         description: "Build your physical edge",
         icon: "dumbbell",
         route: ROUTES.AUTH.SELF_CARE_WORKOUT,

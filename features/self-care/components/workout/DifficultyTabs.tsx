@@ -4,7 +4,6 @@ import ThemeContext from "@/contexts/ThemeContext";
 import type {
   ColorSet,
   Spacing,
-  TypographyTokens,
 } from "@/theme/types";
 
 export type DifficultyOptionKey = "easy" | "medium" | "hard";
@@ -12,6 +11,7 @@ export type DifficultyOptionKey = "easy" | "medium" | "hard";
 interface DifficultyTabsProps {
   activeKey: DifficultyOptionKey;
   onChange: (key: DifficultyOptionKey) => void;
+  disabled?: boolean;
   style?: ViewStyle;
 }
 
@@ -24,6 +24,7 @@ const OPTIONS: { key: DifficultyOptionKey; label: string }[] = [
 const DifficultyTabs: React.FC<DifficultyTabsProps> = ({
   activeKey,
   onChange,
+  disabled = false,
   style,
 }) => {
   const { newTheme, svaTypography, spacing } =
@@ -43,6 +44,7 @@ const DifficultyTabs: React.FC<DifficultyTabsProps> = ({
             accessibilityRole="button"
             accessibilityLabel={opt.label}
             accessibilityState={{ selected: isActive }}
+            disabled={disabled}
             onPress={() => onChange(opt.key)}
             style={({ pressed }) => [
               styles.pill,

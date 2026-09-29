@@ -1,6 +1,7 @@
 import React, { FC, useContext, useMemo } from "react";
 import {
   Pressable,
+  ActivityIndicator,
   StyleSheet,
   Text,
   View,
@@ -13,7 +14,6 @@ import ThemeContext from "@/contexts/ThemeContext";
 import type {
   ColorSet,
   Spacing,
-  TypographyTokens,
 } from "@/theme/types";
 import type { WorkoutCardModel } from "@/features/self-care/utils/workoutLibrary";
 
@@ -21,9 +21,17 @@ interface WorkoutCardProps {
   item: WorkoutCardModel;
   onPress: () => void;
   testID?: string;
+  isLoading?: boolean;
+  disabled?: boolean;
 }
 
-const WorkoutCard: FC<WorkoutCardProps> = ({ item, onPress, testID }) => {
+const WorkoutCard: FC<WorkoutCardProps> = ({
+  item,
+  onPress,
+  testID,
+  isLoading = false,
+  disabled = false,
+}) => {
   const { newTheme: theme, svaTypography, spacing } =
     useContext(ThemeContext);
   const styles = useMemo(
@@ -37,6 +45,8 @@ const WorkoutCard: FC<WorkoutCardProps> = ({ item, onPress, testID }) => {
       accessibilityRole="button"
       accessibilityLabel={`Open session for ${item.title}`}
       accessibilityHint="Opens the workout session screen"
+      accessibilityState={{ disabled: disabled || isLoading, busy: isLoading }}
+      disabled={disabled || isLoading}
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
@@ -61,8 +71,14 @@ const WorkoutCard: FC<WorkoutCardProps> = ({ item, onPress, testID }) => {
         </View>
 
         <View style={styles.ctaRow}>
-          <Text style={styles.ctaText}>Start Session</Text>
-          <Ionicons name="chevron-forward" size={18} color={theme.textPrimary} />
+          {isLoading ? (
+            <ActivityIndicator size="small" color={theme.textPrimary} />
+          ) : (
+            <>
+              <Text style={styles.ctaText}>Start Session</Text>
+              <Ionicons name="chevron-forward" size={18} color={theme.textPrimary} />
+            </>
+          )}
         </View>
       </View>
     </Pressable>

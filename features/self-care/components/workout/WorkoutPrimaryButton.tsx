@@ -7,6 +7,8 @@ type WorkoutPrimaryButtonProps = {
   label: string;
   onPress: () => void;
   isDanger?: boolean;
+  isLoading?: boolean;
+  disabled?: boolean;
   style?: ViewStyle;
 };
 
@@ -14,6 +16,8 @@ const WorkoutPrimaryButton: React.FC<WorkoutPrimaryButtonProps> = ({
   label,
   onPress,
   isDanger = false,
+  isLoading = false,
+  disabled = false,
   style,
 }) => {
   return (
@@ -23,6 +27,8 @@ const WorkoutPrimaryButton: React.FC<WorkoutPrimaryButtonProps> = ({
       variant={isDanger ? "destructive" : "primary"}
       size="large"
       fullWidth
+      loading={isLoading}
+      disabled={disabled}
       style={style}
     />
   );

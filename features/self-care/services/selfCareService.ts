@@ -22,7 +22,20 @@ import type {
   WellnessContentModality,
   WellnessContentResponse,
 } from "@/features/self-care/types/wellnessContentTypes";
-import type { WorkoutVideoListResponse } from "@/features/self-care/types/workoutTypes";
+import type {
+  CreateMoveRoutineRequest,
+  CreateMoveRoutineResponse,
+  MoveExerciseListResponse,
+  MoveExerciseCategoriesResponse,
+  MovePlanListResponse,
+  MovePlanDetailResponse,
+  StartMovePlanResponse,
+  MoveExerciseDetailResponse,
+  MoveSessionActionResponse,
+  StartMoveExerciseRequest,
+  StartMoveExerciseResponse,
+  WorkoutVideoListResponse,
+} from "@/features/self-care/types/workoutTypes";
 
 // Reflection API
 
@@ -204,6 +217,147 @@ export const getWorkouts = async (params?: {
 }): Promise<any> => {
   try {
     const response = await axios.get(API_ENDPOINTS.getWorkouts, { params });
+    return response.data;
+  } catch (error: any) {
+    throw error.response ? error.response.data : error.message;
+  }
+};
+
+export const getMoveExercises = async (filters?: { category?: string; difficulty?: string }): Promise<MoveExerciseListResponse> => {
+  try {
+    const response: AxiosResponse<MoveExerciseListResponse> = await axios.get(
+      API_ENDPOINTS.getMoveExercises,
+      { params: filters }
+    );
+    return response.data;
+  } catch (error: any) {
+    throw error.response ? error.response.data : error.message;
+  }
+};
+
+export const getMoveExerciseCategories = async (): Promise<MoveExerciseCategoriesResponse> => {
+  try {
+    const response: AxiosResponse<MoveExerciseCategoriesResponse> = await axios.get(
+      API_ENDPOINTS.getMoveExerciseCategories
+    );
+    return response.data;
+  } catch (error: any) {
+    throw error.response ? error.response.data : error.message;
+  }
+};
+
+export const startMoveExercise = async (
+  exerciseId: number | string,
+  payload: StartMoveExerciseRequest
+): Promise<StartMoveExerciseResponse> => {
+  try {
+    const response: AxiosResponse<StartMoveExerciseResponse> = await axios.post(
+      API_ENDPOINTS.startMoveExercise(exerciseId),
+      payload
+    );
+    return response.data;
+  } catch (error: any) {
+    throw error.response ? error.response.data : error.message;
+  }
+};
+
+export const pauseMoveSession = async (
+  sessionRef: string
+): Promise<MoveSessionActionResponse> => {
+  try {
+    const response: AxiosResponse<MoveSessionActionResponse> = await axios.post(
+      API_ENDPOINTS.pauseMoveSession(sessionRef)
+    );
+    return response.data;
+  } catch (error: any) {
+    throw error.response ? error.response.data : error.message;
+  }
+};
+
+export const resumeMoveSession = async (
+  sessionRef: string
+): Promise<MoveSessionActionResponse> => {
+  try {
+    const response: AxiosResponse<MoveSessionActionResponse> = await axios.post(
+      API_ENDPOINTS.resumeMoveSession(sessionRef)
+    );
+    return response.data;
+  } catch (error: any) {
+    throw error.response ? error.response.data : error.message;
+  }
+};
+
+export const completeMoveSession = async (
+  sessionRef: string
+): Promise<MoveSessionActionResponse> => {
+  try {
+    const response: AxiosResponse<MoveSessionActionResponse> = await axios.post(
+      API_ENDPOINTS.completeMoveSession(sessionRef)
+    );
+    return response.data;
+  } catch (error: any) {
+    throw error.response ? error.response.data : error.message;
+  }
+};
+
+export const getMoveExerciseDetails = async (
+  id: number | string
+): Promise<MoveExerciseDetailResponse> => {
+  try {
+    const response: AxiosResponse<MoveExerciseDetailResponse> = await axios.get(
+      API_ENDPOINTS.getMoveExerciseDetails(id)
+    );
+    return response.data;
+  } catch (error: any) {
+    throw error.response ? error.response.data : error.message;
+  }
+};
+
+export const createMoveRoutine = async (
+  payload: CreateMoveRoutineRequest
+): Promise<CreateMoveRoutineResponse> => {
+  try {
+    const response: AxiosResponse<CreateMoveRoutineResponse> = await axios.post(
+      API_ENDPOINTS.createMovePlan,
+      payload
+    );
+    return response.data;
+  } catch (error: any) {
+    throw error.response ? error.response.data : error.message;
+  }
+};
+
+export const getMovePlans = async (): Promise<MovePlanListResponse> => {
+  try {
+    const response: AxiosResponse<MovePlanListResponse> = await axios.get(
+      API_ENDPOINTS.getMovePlans
+    );
+    return response.data;
+  } catch (error: any) {
+    throw error.response ? error.response.data : error.message;
+  }
+};
+
+export const getMovePlanDetails = async (
+  id: number | string
+): Promise<MovePlanDetailResponse> => {
+  try {
+    const response: AxiosResponse<MovePlanDetailResponse> = await axios.get(
+      API_ENDPOINTS.getMovePlanDetails(id)
+    );
+    return response.data;
+  } catch (error: any) {
+    throw error.response ? error.response.data : error.message;
+  }
+};
+
+export const startMovePlan = async (
+  id: number | string
+): Promise<StartMovePlanResponse> => {
+  try {
+    const response: AxiosResponse<StartMovePlanResponse> = await axios.post(
+      API_ENDPOINTS.startMovePlan(id)
+    );
     return response.data;
   } catch (error: any) {
     throw error.response ? error.response.data : error.message;

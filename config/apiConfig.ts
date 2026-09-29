@@ -118,6 +118,24 @@ export const API_ENDPOINTS = {
 
   getWorkouts: `${BASE_URL}/api/v1/workouts/`,
   getWorkoutDetails: (id: number | string) => `${BASE_URL}/workouts/${id}/`,
+  getMoveExercises: `${BASE_URL}/api/v1/move/exercises/`,
+  getMoveExerciseCategories: `${BASE_URL}/api/v1/move/categories/`,
+  startMoveExercise: (id: number | string) =>
+    `${BASE_URL}/api/v1/move/exercise/${id}/start/`,
+  pauseMoveSession: (sessionRef: string) =>
+    `${BASE_URL}/api/v1/move/sessions/${sessionRef}/pause/`,
+  resumeMoveSession: (sessionRef: string) =>
+    `${BASE_URL}/api/v1/move/sessions/${sessionRef}/resume/`,
+  completeMoveSession: (sessionRef: string) =>
+    `${BASE_URL}/api/v1/move/sessions/${sessionRef}/complete/`,
+  getMoveExerciseDetails: (id: number | string) =>
+    `${BASE_URL}/api/v1/move/exercise/${id}/`,
+  createMovePlan: `${BASE_URL}/api/v1/move/plans/`,
+  startMovePlan: (id: number | string) =>
+    `${BASE_URL}/api/v1/move/plans/${id}/start/`,
+  getMovePlans: `${BASE_URL}/api/v1/move/plans/`,
+  getMovePlanDetails: (id: number | string) =>
+    `${BASE_URL}/api/v1/move/plans/${id}/`,
 
   getWeeklyMealPlan: (startDate: string) =>
     `${BASE_URL}/api/v1/meals/plans/week/?start_date=${startDate}`,
@@ -153,6 +171,7 @@ export const API_ENDPOINTS = {
   personaQuestion: `${BASE_URL}/api/v1/profile/onboarding-questions/`,
   submitPersonaAnswers: `${BASE_URL}/api/v1/profile/onboarding-answers/`,
   doshaQuestions: `${BASE_URL}/api/v1/dosha/questions/`,
+  doshaProfile: `${BASE_URL}/api/v1/dosha/profile/`,
   submitDoshaAssessment: `${BASE_URL}/api/v1/dosha/assessments/`,
   currentJourneyPlan: `${BASE_URL}/api/v1/journeys/plans/current/`,
   activateJourneyPlan: (id: number | string) =>
