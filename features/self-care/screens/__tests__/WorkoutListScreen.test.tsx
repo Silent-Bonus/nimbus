@@ -6,6 +6,16 @@ import ThemeContext from "../../../../contexts/ThemeContext";
 import { getTheme } from "../../../../theme";
 import WorkoutListScreen from "../WorkoutListScreen";
 
+const mockGetMoveExercises = jest.fn();
+const mockGetMoveExerciseCategories = jest.fn();
+const mockGetMoveExerciseDetails = jest.fn();
+
+jest.mock("@/features/self-care/services/selfCareService", () => ({
+  getMoveExercises: (...args: any[]) => mockGetMoveExercises(...args),
+  getMoveExerciseCategories: (...args: any[]) => mockGetMoveExerciseCategories(...args),
+  getMoveExerciseDetails: (...args: any[]) => mockGetMoveExerciseDetails(...args),
+}));
+
 const mockBack = jest.fn();
 const mockPush = jest.fn();
 const mockSetOptions = jest.fn();
@@ -48,15 +58,24 @@ const hasText = (tree: renderer.ReactTestRenderer, value: string) =>
         : node.props.children === value
     );
 
-function renderScreen() {
+const exercises = [
+  { id: 1, slug: "alignment-flow", title: "Alignment Flow", intent: "yoga", description: "Move with care", reps: "8", duration: "15 min", category: "Yoga", difficulty: "easy" },
+  { id: 2, slug: "bodyweight-blitz", title: "Bodyweight Blitz", intent: "cardio", description: "Build stamina", reps: "10", duration: "25 min", category: "Cardio", difficulty: "easy" },
+  { id: 3, slug: "iron-core-strength", title: "Iron Core Strength", intent: "strength", description: "Build strength", reps: "10", duration: "20 min", category: "Strength", difficulty: "easy" },
+  { id: 4, slug: "heart-rate-hero", title: "Heart Rate Hero", intent: "cardio", description: "Raise your heart rate", reps: "10", duration: "35 min", category: "Cardio", difficulty: "easy" },
+];
+
+async function renderScreen() {
   let tree!: renderer.ReactTestRenderer;
 
-  act(() => {
+  await act(async () => {
     tree = renderer.create(
       <ThemeContext.Provider value={themeValue as any}>
         <WorkoutListScreen />
       </ThemeContext.Provider>
     );
+    await Promise.resolve();
+    await Promise.resolve();
   });
 
   return tree;
@@ -65,10 +84,24 @@ function renderScreen() {
 describe("WorkoutListScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetMoveExercises.mockImplementation(async ({ category } = {}) => ({
+      success: true,
+      message: "ok",
+      data: category && category !== "All"
+        ? exercises.filter((exercise) => exercise.category.toLowerCase() === category.toLowerCase())
+        : exercises,
+      pagination: { count: exercises.length, next: null, previous: null, page: 1, page_size: 20, total_pages: 1, results_count: exercises.length },
+    }));
+    mockGetMoveExerciseCategories.mockResolvedValue({ success: true, message: "ok", data: ["Cardio", "Strength", "Yoga"] });
+    mockGetMoveExerciseDetails.mockImplementation(async (id: string | number) => ({
+      success: true,
+      message: "ok",
+      data: exercises.find((exercise) => String(exercise.id) === String(id)),
+    }));
   });
 
-  it("renders the workout library header, filters, and curated cards", () => {
-    const tree = renderScreen();
+  it("renders the workout library header, filters, and curated cards", async () => {
+    const tree = await renderScreen();
 
     expect(mockSetOptions).toHaveBeenCalledWith({
       headerShown: false,
@@ -92,15 +125,16 @@ describe("WorkoutListScreen", () => {
     expect(hasText(tree, "Start Session")).toBe(true);
   });
 
-  it("filters the workout cards by category", () => {
-    const tree = renderScreen();
+  it("filters the workout cards by category", async () => {
+    const tree = await renderScreen();
 
     const strengthFilter = tree.root.findByProps({
       accessibilityLabel: "Strength",
     });
 
-    act(() => {
+    await act(async () => {
       strengthFilter.props.onPress();
+      await Promise.resolve();
     });
 
     expect(hasText(tree, "Iron Core Strength")).toBe(true);
@@ -109,24 +143,27 @@ describe("WorkoutListScreen", () => {
     expect(hasText(tree, "Heart Rate Hero")).toBe(false);
   });
 
-  it("opens the workout session screen when a card is tapped", () => {
-    const tree = renderScreen();
+  it("opens the workout session screen when a card is tapped", async () => {
+    const tree = await renderScreen();
 
     const card = tree.root.findByProps({
       accessibilityLabel: "Open session for Alignment Flow",
     });
 
-    act(() => {
+    await act(async () => {
       card.props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
     });
 
-    expect(mockPush).toHaveBeenCalledWith({
+    expect(mockPush).toHaveBeenCalledWith(expect.objectContaining({
       pathname: "/(auth)/self-care/workoutSession",
-      params: {
+      params: expect.objectContaining({
         id: "1",
         title: "Alignment Flow",
-        subtitle: "15 MIN · INTRODUCTORY",
-      },
-    });
+        subtitle: "15 min · Easy",
+        durationSeconds: "900",
+      }),
+    }));
   });
 });

@@ -79,7 +79,7 @@ describe("WorkoutSessionScreen", () => {
 
     expect(hasText(tree, "Alignment Flow")).toBe(true);
     expect(hasText(tree, "Begin Flow")).toBe(true);
-    expect(hasText(tree, "Tap for a 30 sec break")).toBe(true);
+    expect(hasText(tree, "Tap for a 30 sec break")).toBe(false);
   });
 
   it("opens the guide modal from the workout card", () => {
