@@ -34,16 +34,6 @@ interface HabitItemProps {
 const isEmojiIcon = (value: string) =>
   value.length <= 2 || /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(value);
 
-const formatMetric = (metric: any) => {
-  const count = metric?.count ?? "--";
-  const unit = metric?.unit ? String(metric.unit).trim() : "";
-
-  return {
-    count: String(count),
-    unit,
-  };
-};
-
 /**
  * Legacy HabitItemCard - kept as per user request "do not remove the old one"
  */
@@ -74,7 +64,7 @@ export const HabitItemCardLegacy: React.FC<HabitItemProps> = ({
   const handleHabitClick = () => {
     router.push({
       pathname: "/(auth)/habit/habitDetail",
-      params: { id, date: selectedDate },
+      params: { id, date: selectedDate, description },
     });
   };
 
@@ -155,7 +145,8 @@ const HabitItemCard: React.FC<HabitItemProps> = ({
   color,
   onToggle,
 }) => {
-  const { newTheme, spacing, svaTypography } = React.useContext(ThemeContext);
+  const { newTheme, spacing, svaTypography, svaColors } =
+    React.useContext(ThemeContext);
   const styles = useMemo(
     () => protocolStyling(newTheme, spacing, svaTypography),
     [newTheme, spacing, svaTypography]
@@ -170,13 +161,11 @@ const HabitItemCard: React.FC<HabitItemProps> = ({
   const handleHabitClick = () => {
     router.push({
       pathname: "/(auth)/habit/habitDetail",
-      params: { id, date: selectedDate },
+      params: { id, date: selectedDate, description },
     });
   };
 
   const accentColor = color || newTheme.accent;
-  const metric = formatMetric(actual_count);
-  const metricText = [metric.count, metric.unit].filter(Boolean).join(" ");
   const isBooleanHabit = habit_type_tracking?.toLowerCase() === "boolean";
   const isDoneForSelectedDate =
     Boolean(done) ||
@@ -268,11 +257,14 @@ const HabitItemCard: React.FC<HabitItemProps> = ({
             <Text style={styles.title} numberOfLines={1}>
               {name}
             </Text>
+            {!!description?.trim() && (
+              <Text style={styles.description} numberOfLines={2}>
+                {description.trim()}
+              </Text>
+            )}
             {!!frequency && (
               <Text style={styles.subtitle} numberOfLines={1}>
-                <Text style={styles.subtitleMetric}>{metricText}</Text>
-                <Text style={styles.subtitleDivider}> | </Text>
-                <Text style={styles.subtitleFrequency}>{frequency}</Text>
+                {frequency}
               </Text>
             )}
           </View>
@@ -296,9 +288,7 @@ const HabitItemCard: React.FC<HabitItemProps> = ({
                   : "checkmark-circle-outline"
               }
               size={26}
-              color={
-                isDoneForSelectedDate ? newTheme.textSecondary : accentColor
-              }
+              color={svaColors.brand.primary}
             />
           </TouchableOpacity>
         </View>
@@ -366,26 +356,18 @@ const protocolStyling = (theme: ColorSet, spacing: Spacing, svaTypography: Typog
       color: theme.textPrimary,
       letterSpacing: 0.1,
     },
+    description: {
+      ...svaTypography.textStyle.caption,
+      color: theme.textSecondary,
+      fontSize: 12,
+      lineHeight: 16,
+    },
     subtitle: {
       ...svaTypography.textStyle.caption,
+      color: theme.textSecondary,
+      opacity: 0.78,
       fontSize: 11,
-      lineHeight: 15,
-      color: theme.textSecondary,
-      letterSpacing: 0.2,
-    },
-    subtitleMetric: {
-      color: theme.textPrimary,
-      fontWeight: "800",
-    },
-    subtitleDivider: {
-      color: theme.textSecondary,
-      opacity: 0.42,
-      fontWeight: "600",
-    },
-    subtitleFrequency: {
-      color: theme.textSecondary,
-      opacity: 0.82,
-      fontWeight: "600",
+      lineHeight: 14,
     },
     statusIconButton: {
       marginLeft: spacing.md,

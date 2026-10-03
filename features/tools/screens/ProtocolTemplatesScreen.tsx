@@ -87,9 +87,11 @@ export const ProtocolTemplatesScreen: React.FC = () => {
             item.context,
             item.category,
             item.level,
-            item.tags.join(" "),
-            item.benefits.join(" "),
-            item.blueprints.map((blueprint) => blueprint.name).join(" "),
+            (item.tags ?? [])
+              .map((tag) => (typeof tag === "string" ? tag : tag?.name ?? ""))
+              .join(" "),
+            (item.benefits ?? []).join(" "),
+            (item.blueprints ?? []).map((blueprint) => blueprint.name).join(" "),
           ].join(" ")
         );
 

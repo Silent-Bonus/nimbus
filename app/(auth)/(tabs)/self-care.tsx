@@ -20,7 +20,10 @@ import { SVATypography } from "@/theme/typography";
 import AppHeader from "@/components/layout/AppHeader";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import type { ColorSet, Spacing } from "@/theme/types";
-import { getTodayResonance } from "@/features/home/services/resonanceService";
+import {
+  getTodayResonance,
+  type TodayResonance,
+} from "@/features/home/services/resonanceService";
 import { SELF_CARE_SECTIONS } from "@/features/self-care/data/selfCareSections";
 import type {
   SelfCareActionTile,
@@ -148,7 +151,7 @@ export default function SelfCare() {
     useContext(ThemeContext);
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const [resonanceScore, setResonanceScore] = useState<number | null>(null);
+  const [resonance, setResonance] = useState<TodayResonance | null>(null);
   const [resonanceLoading, setResonanceLoading] = useState(true);
 
   const ringSize = useMemo(() => {
@@ -181,14 +184,14 @@ export default function SelfCare() {
     const loadResonance = async () => {
       setResonanceLoading(true);
       try {
-        const score = await getTodayResonance();
+        const today = await getTodayResonance();
         if (active) {
-          setResonanceScore(score);
+          setResonance(today);
         }
       } catch (error) {
         console.error("Unable to load today's resonance:", error);
         if (active) {
-          setResonanceScore(null);
+          setResonance(null);
         }
       } finally {
         if (active) {
@@ -203,6 +206,8 @@ export default function SelfCare() {
       active = false;
     };
   }, []);
+
+  const resonanceScore = resonance?.score ?? null;
 
   const onRoutePress = (route: string, mode: "push" | "navigate" = "push") => {
     if (mode === "navigate") {
@@ -251,13 +256,25 @@ export default function SelfCare() {
             </Text>
             <Text style={styles.heroSubtitle} numberOfLines={1}>
               {resonanceScore === null
-                ? "RESONANCE • AWAITING SIGNAL"
+                ? "RESONANCE • SCORE NOT READY"
                 : resonanceScore >= 80
                 ? "OPTIMIZED STATE • HIGH COHERENCE"
                 : resonanceScore >= 55
                 ? "BALANCED STATE • STEADY COHERENCE"
                 : "RESET STATE • ROOM TO RESTORE"}
             </Text>
+            {!resonanceLoading &&
+              resonanceScore === null &&
+              !!resonance?.summary && (
+                <View style={styles.resonancePending}>
+                  <Text style={styles.resonancePendingSummary}>
+                    {resonance.summary}
+                  </Text>
+                  <Text style={styles.resonancePendingProgress}>
+                    {resonance.active_days_count ?? 0} of {resonance.required_active_days ?? 0} active days
+                  </Text>
+                </View>
+              )}
           </View>
 
           <View style={styles.sectionStack}>
@@ -349,6 +366,30 @@ const makeStyles = (
       textAlign: "center",
       textTransform: "uppercase",
       opacity: 0.92,
+    },
+    resonancePending: {
+      width: "100%",
+      maxWidth: 420,
+      marginTop: spacing.md,
+      paddingHorizontal: spacing.md,
+      alignItems: "center",
+      gap: spacing.xs,
+    },
+    resonancePendingSummary: {
+      fontFamily: fonts.action,
+      fontSize: 13,
+      lineHeight: 19,
+      color: theme.textSecondary,
+      textAlign: "center",
+    },
+    resonancePendingProgress: {
+      fontFamily: fonts.mono,
+      fontSize: 10,
+      lineHeight: 14,
+      letterSpacing: 1.2,
+      color: theme.accent,
+      textAlign: "center",
+      textTransform: "uppercase",
     },
     sectionStack: {
       gap: spacing.md,

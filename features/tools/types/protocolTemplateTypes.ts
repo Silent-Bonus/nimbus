@@ -32,23 +32,23 @@ export type ProtocolTemplateSection = {
 
 export type ProtocolTemplateApiItem = {
   id: number;
-  title: string;
-  name: string;
-  description: string;
-  context: string | null;
-  benefits: string[];
-  category: string | null;
-  template_type: string | null;
+  title?: string;
+  name?: string;
+  description?: string;
+  context?: string | null;
+  benefits?: string[];
+  category?: string | null;
+  template_type?: string | null;
   level: string | null;
-  xp_reward: number;
-  tags: string[];
-  protocols: unknown[];
-  blueprints: ProtocolTemplateBlueprint[];
-  image: string | null;
-  sections: ProtocolTemplateSection[];
-  rating: number | null;
-  review_count: number;
-  reviews: unknown[];
+  xp_reward?: number;
+  tags?: (string | { id?: number; name?: string | null })[];
+  protocols?: unknown[];
+  blueprints?: ProtocolTemplateBlueprint[];
+  image?: string | null;
+  sections?: ProtocolTemplateSection[];
+  rating?: number | null;
+  review_count?: number;
+  reviews?: unknown[];
 };
 
 export type ProtocolTemplatePagination = {

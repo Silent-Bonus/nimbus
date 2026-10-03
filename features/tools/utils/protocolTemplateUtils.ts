@@ -12,10 +12,11 @@ export type ProtocolTemplateCardData = ProtocolTemplateCardItem & {
   description: string;
   context: string | null;
   category: string | null;
+  level: string | null;
   benefits: string[];
   tags: string[];
   image: ImageSourcePropType | null;
-  blueprints: ProtocolTemplateApiItem["blueprints"];
+  blueprints: NonNullable<ProtocolTemplateApiItem["blueprints"]>;
 };
 
 export const normalizeProtocolTemplateSearchValue = (value: string) =>
@@ -35,18 +36,17 @@ export const toProtocolTemplateCardData = (
   template: ProtocolTemplateApiItem
 ): ProtocolTemplateCardData => ({
   id: template.id,
-  title: template.title || template.name,
-  description: template.description,
-  context: template.context,
-  category: template.category,
-  benefits: template.benefits,
-  tags:
-    template.tags.length > 0
-      ? template.tags
-      : template.category
-        ? [template.category]
-        : [],
-  blueprints: template.blueprints,
+  title: template.title || template.name || "Untitled Template",
+  description: template.description || "",
+  context: template.context ?? null,
+  category: template.category ?? null,
+  level: template.level,
+  benefits: template.benefits ?? [],
+  tags: (template.tags ?? [])
+    .map((tag) => (typeof tag === "string" ? tag : tag?.name ?? ""))
+    .map((tag) => tag.trim())
+    .filter(Boolean),
+  blueprints: template.blueprints ?? [],
   image: template.image ? { uri: template.image } : null,
 });
 

@@ -6,12 +6,18 @@ import type { ColorSet, Spacing, TypographyTokens } from "@/theme/types";
 
 interface SyncProgressCardProps {
   percentage: number; // 0 to 100
+  pendingSummary?: string | null;
+  activeDaysCount?: number | null;
+  requiredActiveDays?: number | null;
   currentPhase?: string;
   nextPhase?: string;
 }
 
 const SyncProgressCard: React.FC<SyncProgressCardProps> = ({
   percentage,
+  pendingSummary,
+  activeDaysCount = 0,
+  requiredActiveDays = 0,
   currentPhase = "Flow State",
   nextPhase = "Master Healer",
 }) => {
@@ -19,14 +25,20 @@ const SyncProgressCard: React.FC<SyncProgressCardProps> = ({
 
   // Animation for the progress bar
   const widthAnim = useRef(new Animated.Value(0)).current;
+  const isPending = Boolean(pendingSummary);
+  const progressPercentage = isPending
+    ? requiredActiveDays
+      ? Math.max(0, Math.min(100, (activeDaysCount / requiredActiveDays) * 100))
+      : 0
+    : percentage;
 
   useEffect(() => {
     Animated.timing(widthAnim, {
-      toValue: percentage,
+      toValue: progressPercentage,
       duration: 1000,
       useNativeDriver: false, // width is not supported by native driver
     }).start();
-  }, [percentage, widthAnim]);
+  }, [progressPercentage, widthAnim]);
 
   const widthInterpolated = widthAnim.interpolate({
     inputRange: [0, 100],
@@ -47,8 +59,14 @@ const SyncProgressCard: React.FC<SyncProgressCardProps> = ({
           </View>
 
           <View style={styles.percentWrapper}>
-            <Text style={styles.percentValue}>{percentage}%</Text>
-            <Text style={styles.percentLabel}> Sync</Text>
+            {isPending ? (
+              <Text style={styles.pendingLabel}>SCORE PENDING</Text>
+            ) : (
+              <>
+                <Text style={styles.percentValue}>{percentage}%</Text>
+                <Text style={styles.percentLabel}> Sync</Text>
+              </>
+            )}
           </View>
         </View>
 
@@ -68,21 +86,32 @@ const SyncProgressCard: React.FC<SyncProgressCardProps> = ({
           </Animated.View>
         </View>
 
-        {/* Footer Info Row */}
-        <View style={styles.footerRow}>
-          <View style={styles.footerItem}>
-            <Text style={styles.footerLabel}>CURRENT</Text>
-            <Text style={styles.footerValue}>{currentPhase.toUpperCase()}</Text>
+        {isPending ? (
+          <>
+            <Text style={styles.pendingSummary}>{pendingSummary}</Text>
+            <View style={styles.pendingProgressRow}>
+              <Text style={styles.footerLabel}>ACTIVE DAYS</Text>
+              <Text style={styles.footerValue}>
+                {activeDaysCount ?? 0} / {requiredActiveDays ?? 0}
+              </Text>
+            </View>
+          </>
+        ) : (
+          <View style={styles.footerRow}>
+            <View style={styles.footerItem}>
+              <Text style={styles.footerLabel}>CURRENT</Text>
+              <Text style={styles.footerValue}>{currentPhase.toUpperCase()}</Text>
+            </View>
+            <View style={styles.footerItemRight}>
+              <Text style={[styles.footerLabel, styles.footerLabelRight]}>
+                NEXT
+              </Text>
+              <Text style={[styles.footerValue, styles.footerValueRight]}>
+                {nextPhase.toUpperCase()}
+              </Text>
+            </View>
           </View>
-          <View style={styles.footerItemRight}>
-            <Text style={[styles.footerLabel, styles.footerLabelRight]}>
-              NEXT
-            </Text>
-            <Text style={[styles.footerValue, styles.footerValueRight]}>
-              {nextPhase.toUpperCase()}
-            </Text>
-          </View>
-        </View>
+        )}
       </View>
     </View>
   );
@@ -161,6 +190,13 @@ const styling = (theme: ColorSet, spacing: Spacing, svaTypography: TypographyTok
       color: theme.textSecondary,
       opacity: 0.86,
     },
+    pendingLabel: {
+      ...svaTypography.textStyle.authTinyLabel,
+      color: theme.accent,
+      fontSize: 10,
+      fontWeight: "700",
+      letterSpacing: 1,
+    },
     progressTrack: {
       height: 8,
       backgroundColor: theme.surfaceMuted ?? "rgba(255,255,255,0.1)",
@@ -219,6 +255,18 @@ const styling = (theme: ColorSet, spacing: Spacing, svaTypography: TypographyTok
     },
     footerValueRight: {
       textAlign: "right",
+    },
+    pendingSummary: {
+      ...svaTypography.textStyle.caption,
+      color: theme.textPrimary,
+      fontSize: 13,
+      lineHeight: 19,
+      marginBottom: spacing.md,
+    },
+    pendingProgressRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
     },
   });
 
