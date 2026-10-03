@@ -9,7 +9,8 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ThemeContext from "@/contexts/ThemeContext";
@@ -18,139 +19,14 @@ import { ROUTES } from "@/constants/routes";
 import AppHeader from "@/components/layout/AppHeader";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
 import type { ColorSet, Spacing } from "@/theme/types";
-
-type IconName = React.ComponentProps<typeof MaterialCommunityIcons>["name"];
-
-type ToolAction = {
-  label: string;
-  icon: IconName;
-  route: string;
-};
-
-type ToolSection = {
-  eyebrow: string;
-  title: string;
-  chipIcon: IconName;
-  actions: ToolAction[];
-};
+import RecipeHighlightsRail from "@/features/tools/components/RecipeHighlightsRail";
+import ProtocolHighlightsRail from "@/features/tools/components/ProtocolHighlightsRail";
+import ArticleHighlightsRail from "@/features/tools/components/ArticleHighlightsRail";
 
 type ToolFonts = {
   serif: string;
   mono: string;
   action: string;
-};
-
-const TOOL_SECTION: ToolSection = {
-  eyebrow: "Blueprint Library",
-  title: "Workbench",
-  chipIcon: "toolbox-outline",
-  actions: [
-    {
-      label: "Protocol Template",
-      icon: "clipboard-text-outline",
-      route: ROUTES.AUTH.TOOLS_PROTOCOL_TEMPLATES,
-    },
-    {
-      label: "Articles",
-      icon: "newspaper-variant-outline",
-      route: ROUTES.AUTH.TOOLS_ARTICLE_LIST,
-    },
-    {
-      label: "Recipe",
-      icon: "silverware-fork-knife",
-      route: ROUTES.AUTH.TOOLS_RECIPE,
-    },
-    {
-      label: "Meal Planner",
-      icon: "calendar-heart",
-      route: ROUTES.AUTH.TOOLS_MEAL_PLANNER,
-    },
-  ],
-};
-
-const ToolActionTile = ({
-  action,
-  onPress,
-  iconColor,
-  styles,
-}: {
-  action: ToolAction;
-  onPress: (route: string) => void;
-  iconColor: string;
-  styles: ReturnType<typeof makeStyles>;
-}) => {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={action.label}
-      onPress={() => onPress(action.route)}
-      style={({ pressed }) => [
-        styles.actionTile,
-        pressed && styles.actionTilePressed,
-      ]}
-    >
-      <View style={styles.actionIconWrap}>
-        <MaterialCommunityIcons
-          name={action.icon}
-          size={18}
-          color={iconColor}
-        />
-      </View>
-
-      <Text style={styles.actionLabel} numberOfLines={2}>
-        {action.label}
-      </Text>
-    </Pressable>
-  );
-};
-
-const ToolSectionCard = ({
-  section,
-  onPress,
-  chipIconColor,
-  styles,
-}: {
-  section: ToolSection;
-  onPress: (route: string) => void;
-  chipIconColor: string;
-  styles: ReturnType<typeof makeStyles>;
-}) => {
-  return (
-    <View style={styles.sectionCard}>
-      <View style={styles.sectionInner}>
-        <View style={styles.sectionTopRow}>
-          <View style={styles.sectionCopy}>
-            <Text style={styles.sectionEyebrow} numberOfLines={1}>
-              {section.eyebrow}
-            </Text>
-            <Text style={styles.sectionTitle} numberOfLines={1}>
-              {section.title}
-            </Text>
-          </View>
-
-          <View style={styles.sectionChip}>
-            <MaterialCommunityIcons
-              name={section.chipIcon}
-              size={18}
-              color={chipIconColor}
-            />
-          </View>
-        </View>
-
-        <View style={styles.actionRow}>
-          {section.actions.map((action) => (
-            <ToolActionTile
-              key={action.label}
-              action={action}
-              onPress={onPress}
-              iconColor={chipIconColor}
-              styles={styles}
-            />
-          ))}
-        </View>
-      </View>
-    </View>
-  );
 };
 
 export default function ToolsLandingScreen() {
@@ -177,10 +53,6 @@ export default function ToolsLandingScreen() {
   );
   const contentBottomPadding = insets.bottom + spacing.xl * 2.5;
 
-  const onRoutePress = (route: string) => {
-    router.push(route as never);
-  };
-
   return (
     <ScreenView bgColor={theme.background} padding={0} style={styles.screen}>
       <StatusBar style="light" translucent backgroundColor="transparent" />
@@ -188,6 +60,7 @@ export default function ToolsLandingScreen() {
       <View style={styles.root}>
         <AppHeader
           title="Tools"
+          subtitle="A quiet orbit for mind, body, soul."
           containerStyle={styles.header}
         />
 
@@ -199,12 +72,42 @@ export default function ToolsLandingScreen() {
           ]}
         >
           <View style={styles.sectionStack}>
-            <ToolSectionCard
-              section={TOOL_SECTION}
-              onPress={onRoutePress}
-              chipIconColor={theme.accent}
-              styles={styles}
-            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open Meal Planner"
+              onPress={() => router.push(ROUTES.AUTH.TOOLS_MEAL_PLANNER as never)}
+              style={({ pressed }) => [
+                styles.mealPlannerCard,
+                pressed && styles.mealPlannerPressed,
+              ]}
+            >
+              <LinearGradient
+                colors={["#303A28", "#22271F"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={styles.mealPlannerIcon}>
+                <MaterialCommunityIcons
+                  name="calendar-heart"
+                  size={23}
+                  color={theme.accent}
+                />
+              </View>
+              <View style={styles.mealPlannerCopy}>
+                <Text style={styles.mealPlannerEyebrow}>YOUR WEEK, WELL FED</Text>
+                <Text style={styles.mealPlannerTitle}>Meal planner</Text>
+                <Text style={styles.mealPlannerDescription} numberOfLines={2}>
+                  Bring your recipes together and make a plan that works for you.
+                </Text>
+              </View>
+              <View style={styles.mealPlannerArrow}>
+                <Ionicons name="arrow-forward" size={17} color={theme.background} />
+              </View>
+            </Pressable>
+            <RecipeHighlightsRail />
+            <ProtocolHighlightsRail />
+            <ArticleHighlightsRail />
           </View>
         </ScrollView>
       </View>
@@ -237,99 +140,70 @@ const makeStyles = (
     sectionStack: {
       gap: spacing.md,
     },
-    sectionCard: {
-      borderRadius: 30,
+    mealPlannerCard: {
+      position: "relative",
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.md,
+      minHeight: 138,
+      padding: spacing.md,
+      borderRadius: 25,
       backgroundColor: theme.surface,
       borderWidth: 1,
       borderColor: theme.borderMuted ?? "rgba(255,255,255,0.05)",
       overflow: "hidden",
       shadowColor: theme.shadow,
-      shadowOpacity: 0.32,
-      shadowRadius: 22,
-      shadowOffset: { width: 0, height: 10 },
-      elevation: 9,
+      shadowOpacity: 0.24,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 7 },
+      elevation: 6,
     },
-    sectionInner: {
-      paddingHorizontal: 18,
-      paddingVertical: 18,
+    mealPlannerPressed: {
+      transform: [{ scale: 0.985 }],
+      borderColor: theme.accent,
     },
-    sectionTopRow: {
-      flexDirection: "row",
-      alignItems: "flex-start",
-      justifyContent: "space-between",
-      marginBottom: 18,
+    mealPlannerIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 16,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "rgba(163,190,140,0.12)",
+      borderWidth: 1,
+      borderColor: "rgba(163,190,140,0.2)",
     },
-    sectionCopy: {
+    mealPlannerCopy: {
       flex: 1,
-      paddingRight: 12,
+      minWidth: 0,
     },
-    sectionEyebrow: {
+    mealPlannerEyebrow: {
       fontFamily: fonts.mono,
-      fontSize: 9.5,
+      fontSize: 9,
       lineHeight: 12,
-      letterSpacing: 2.8,
+      letterSpacing: 1.8,
       textTransform: "uppercase",
-      color: theme.textSecondary,
-      opacity: 0.9,
+      color: theme.accent,
     },
-    sectionTitle: {
-      marginTop: 6,
+    mealPlannerTitle: {
+      marginTop: 3,
       fontFamily: fonts.serif,
-      fontSize: 32,
-      lineHeight: 34,
+      fontSize: 24,
+      lineHeight: 28,
       color: theme.textPrimary,
     },
-    sectionChip: {
-      width: 46,
-      height: 46,
+    mealPlannerDescription: {
+      marginTop: 4,
+      fontFamily: fonts.action,
+      fontSize: 11,
+      lineHeight: 16,
+      color: theme.textSecondary,
+    },
+    mealPlannerArrow: {
+      width: 30,
+      height: 30,
       borderRadius: 15,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: theme.surfaceMuted,
-      borderWidth: 1,
-      borderColor: theme.borderMuted ?? "rgba(255,255,255,0.05)",
-    },
-    actionRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      justifyContent: "space-between",
-    },
-    actionTile: {
-      width: "48%",
-      minHeight: 98,
-      borderRadius: 18,
-      alignItems: "center",
-      justifyContent: "center",
-      paddingHorizontal: 12,
-      paddingVertical: 14,
-      backgroundColor: theme.surfaceMuted,
-      borderWidth: 1,
-      borderColor: theme.borderMuted ?? "rgba(255,255,255,0.05)",
-      marginBottom: spacing.sm,
-    },
-    actionTilePressed: {
-      backgroundColor: theme.surface,
-      borderColor: theme.accent,
-      transform: [{ scale: 0.98 }],
-    },
-    actionIconWrap: {
-      width: 30,
-      height: 30,
-      borderRadius: 10,
-      alignItems: "center",
-      justifyContent: "center",
-      marginBottom: 10,
-      backgroundColor: theme.background,
-      borderWidth: 1,
-      borderColor: theme.borderMuted ?? "rgba(255,255,255,0.05)",
-    },
-    actionLabel: {
-      fontFamily: fonts.action,
-      fontSize: 13,
-      lineHeight: 16,
-      letterSpacing: 0.2,
-      color: theme.textPrimary,
-      textAlign: "center",
-      opacity: 0.94,
+      backgroundColor: theme.accent,
     },
   });

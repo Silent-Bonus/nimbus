@@ -42,6 +42,7 @@ import ProgressPill from "@/features/home/components/ProgressPill";
 import { useNimbusToast } from "@/components/ui/toast/useNimbusToast";
 import SyncProgressCard from "@/features/home/components/SyncProgressCard";
 import DailySutraCard from "@/features/home/components/DailySutraCard";
+import HomeWalkthroughOverlay from "@/features/home/components/HomeWalkthroughOverlay";
 import BioMetricBlueprintPanel from "@/features/home/components/BioMetricBlueprintPanel";
 import ActionModal from "@/components/ui/modal/ActionModal";
 import { Ionicons } from "@expo/vector-icons";
@@ -49,26 +50,12 @@ import * as SecureStore from "expo-secure-store";
 import { toApiDate } from "@/utils/date-time";
 import { pickColor, pickIcon } from "@/features/check-in/utils/dailyCheckin";
 import { StoreKey } from "@/constants/Constant";
-import { getTodayResonance } from "@/features/home/services/resonanceService";
+import {
+  getTodayResonance,
+  type TodayResonance,
+} from "@/features/home/services/resonanceService";
 
 const PROFILE_UPDATE_ROUTE = ROUTES.AUTH.ADVANCED_SETTINGS;
-const APP_TUTORIAL_STEPS = [
-  {
-    title: "Your daily home",
-    body: "See your daily rhythm, progress, and active habits in one place.",
-    iconName: "home-outline" as const,
-  },
-  {
-    title: "Build your rhythm",
-    body: "Complete habits and daily check-ins to keep your wellness protocol moving.",
-    iconName: "checkmark-circle-outline" as const,
-  },
-  {
-    title: "Explore your tools",
-    body: "Use the tabs to discover meditation, insights, routines, and your profile settings.",
-    iconName: "sparkles-outline" as const,
-  },
-];
 // Replace this with the dedicated profile-update route once that screen exists.
 
 function formatMissingFieldLabel(field: string) {
@@ -90,23 +77,79 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [userInfo, setUserInfo] = useState<any>(null);
   const [showVitalsBannerModal, setShowVitalsBannerModal] = useState(false);
-  const [resonanceScore, setResonanceScore] = useState<number | null>(null);
+  const [resonance, setResonance] = useState<TodayResonance | null>(null);
   const [showTutorial, setShowTutorial] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
+  const didShowDevTutorialRef = React.useRef(false);
+  const homeListRef = React.useRef<FlatList<NormalizedHabitListItem>>(null);
+  const homeScrollOffsetRef = React.useRef(0);
+  const dateTargetRef = React.useRef<View>(null);
+  const progressTargetRef = React.useRef<View>(null);
+  const dailySutraTargetRef = React.useRef<View>(null);
+  const bioMetricBlueprintTargetRef = React.useRef<View>(null);
+  const dailyTrackerTargetRef = React.useRef<View>(null);
+  const walkthroughSteps = useMemo(
+    () => [
+      {
+        title: "Your rhythm, day by day",
+        body: "See today’s rhythm at a glance, or choose another day to explore your routine.",
+        targetRef: dateTargetRef,
+      },
+      {
+        title: "Your resonance score",
+        body: "Track how your daily check-ins and practices are adding up over time. Your score appears as you build active days.",
+        targetRef: progressTargetRef,
+      },
+      {
+        title: "Your Daily Sutra",
+        body: "Get a personalized Ayurvedic tip each day, shaped around your wellness journey.",
+        targetRef: dailySutraTargetRef,
+      },
+      {
+        title: "Your BioMetric Blueprint",
+        body: "Explore personalized wellness insights based on your daily signals, and use them to guide your routine.",
+        targetRef: bioMetricBlueprintTargetRef,
+      },
+      {
+        title: "Build your daily rhythm",
+        body: "Your daily tracker helps you stay consistent. Check in on your practices each day and see your progress grow over time.",
+        targetRef: dailyTrackerTargetRef,
+      },
+    ],
+    []
+  );
 
   const { userProfile } = useAuth();
 
-  useEffect(() => {
-    let active = true;
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
 
-    void SecureStore.getItemAsync(StoreKey.TUTORIAL_PENDING_KEY).then((value) => {
-      if (active && value === "true") setShowTutorial(true);
-    });
+      if (__DEV__) {
+        if (!didShowDevTutorialRef.current) {
+          didShowDevTutorialRef.current = true;
+          setTutorialStep(0);
+          setShowTutorial(true);
+        }
+        return () => {
+          active = false;
+        };
+      }
 
-    return () => {
-      active = false;
-    };
-  }, []);
+      void SecureStore.getItemAsync(StoreKey.TUTORIAL_PENDING_KEY).then(
+        (value) => {
+          if (active && value === "true") {
+            setTutorialStep(0);
+            setShowTutorial(true);
+          }
+        }
+      );
+
+      return () => {
+        active = false;
+      };
+    }, [])
+  );
 
   const dismissTutorial = useCallback(async () => {
     setShowTutorial(false);
@@ -115,13 +158,24 @@ export default function HomeScreen() {
   }, []);
 
   const advanceTutorial = useCallback(async () => {
-    if (tutorialStep >= APP_TUTORIAL_STEPS.length - 1) {
+    if (tutorialStep >= walkthroughSteps.length - 1) {
       await dismissTutorial();
       return;
     }
 
-    setTutorialStep((value) => value + 1);
-  }, [dismissTutorial, tutorialStep]);
+    const nextStep = tutorialStep + 1;
+    if (nextStep >= 3) {
+      const target = walkthroughSteps[nextStep]?.targetRef.current;
+      target?.measureInWindow((_x, y) => {
+        const nextOffset = Math.max(0, homeScrollOffsetRef.current + y - 170);
+        homeListRef.current?.scrollToOffset({ offset: nextOffset, animated: true });
+        setTimeout(() => setTutorialStep(nextStep), 350);
+      });
+      return;
+    }
+
+    setTutorialStep(nextStep);
+  }, [dismissTutorial, tutorialStep, walkthroughSteps.length]);
 
   const toast = useNimbusToast();
 
@@ -180,10 +234,10 @@ export default function HomeScreen() {
 
   const loadResonance = useCallback(async () => {
     try {
-      const score = await getTodayResonance();
-      setResonanceScore(score);
+      const today = await getTodayResonance();
+      setResonance(today);
     } catch {
-      setResonanceScore(null);
+      setResonance(null);
     }
   }, []);
 
@@ -270,8 +324,10 @@ export default function HomeScreen() {
     userInfo?.vitals_context?.banner?.message
       ? userInfo.vitals_context.banner.message
       : null;
+  const isProfileCompletion =
+    userInfo?.vitals_context?.banner?.type === "profile_completion";
   const dashboardVitalsTitle =
-    userInfo?.vitals_context?.banner?.type === "profile_completion"
+    isProfileCompletion
       ? "Complete Your Vitals Profile"
       : "Body Vitals Need Attention";
   const dashboardMissingFieldsRaw =
@@ -295,9 +351,14 @@ export default function HomeScreen() {
     <ScreenView bgColor={theme.background} style={styles.screen}>
       <View style={styles.gestureContainer}>
         <FlatList
+          ref={homeListRef}
           data={isFirstTimeUser ? [] : habitList}
           keyExtractor={(item) => item.id.toString()}
           showsVerticalScrollIndicator={false}
+          onScroll={(event) => {
+            homeScrollOffsetRef.current = event.nativeEvent.contentOffset.y;
+          }}
+          scrollEventThrottle={16}
           contentContainerStyle={styles.listContent}
           ListHeaderComponent={
             <>
@@ -319,78 +380,104 @@ export default function HomeScreen() {
               )}
 
               {/* Date scroller */}
-              <DateScroller
-                value={selectedDate}
-                onChange={(d) => setSelectedDate(startOfDay(d))}
-                isLoading={loading}
-                // centerSelected
-              />
+              <View ref={dateTargetRef} collapsable={false}>
+                <DateScroller
+                  value={selectedDate}
+                  onChange={(d) => setSelectedDate(startOfDay(d))}
+                  isLoading={loading}
+                  // centerSelected
+                />
+              </View>
 
               {dashboardVitalsBanner ? (
-                <View style={styles.dashboardBanner}>
-                  <View style={styles.dashboardBannerGlow} />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open ${dashboardVitalsTitle}`}
+                  onPress={() => setShowVitalsBannerModal(true)}
+                  style={({ pressed }) => [
+                    styles.dashboardBanner,
+                    pressed && styles.dashboardBannerPressed,
+                  ]}
+                >
                   <View style={styles.dashboardBannerInner}>
                     <View style={styles.dashboardBannerIconWrap}>
                       <Ionicons
                         name="warning-outline"
-                        size={20}
+                        size={19}
                         color={theme.warning}
                       />
                     </View>
 
-                    <Text style={styles.dashboardBannerTitle}>
-                      {dashboardVitalsTitle}
-                    </Text>
+                    <View style={styles.dashboardBannerCopy}>
+                      <Text style={styles.dashboardBannerEyebrow}>
+                        {isProfileCompletion ? "PROFILE SETUP" : "PROFILE ADVISORY"}
+                      </Text>
+                      <Text style={styles.dashboardBannerTitle}>
+                        {dashboardVitalsTitle}
+                      </Text>
+                      <Text
+                        style={styles.dashboardBannerSubtitle}
+                        numberOfLines={2}
+                      >
+                        {isProfileCompletion
+                          ? "Add a few details for more personal insights."
+                          : "Review your vitals profile to keep insights current."}
+                      </Text>
+                    </View>
 
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Open vitals profile notice"
-                      onPress={() => setShowVitalsBannerModal(true)}
-                      hitSlop={10}
-                      style={({ pressed }) => [
-                        styles.dashboardBannerClose,
-                        pressed && styles.dashboardBannerClosePressed,
-                      ]}
-                    >
+                    <View style={styles.dashboardBannerArrow}>
                       <Ionicons
-                        name="close"
-                        size={16}
+                        name="chevron-forward"
+                        size={17}
                         color={theme.textSecondary}
                       />
-                    </Pressable>
+                    </View>
                   </View>
-                </View>
+                </Pressable>
               ) : null}
 
-              <SyncProgressCard
-                percentage={resonanceScore ?? 0}
-                currentPhase="Flow State"
-                nextPhase="Master Healer"
-              />
+              <View ref={progressTargetRef} collapsable={false}>
+                <SyncProgressCard
+                  percentage={resonance?.score ?? 0}
+                  pendingSummary={resonance?.score == null ? resonance?.summary : null}
+                  activeDaysCount={resonance?.active_days_count}
+                  requiredActiveDays={resonance?.required_active_days}
+                  currentPhase="Flow State"
+                  nextPhase="Master Healer"
+                />
+              </View>
 
-              <DailySutraCard />
+              <View ref={dailySutraTargetRef} collapsable={false}>
+                <DailySutraCard />
+              </View>
 
-              <>
-                {/* Bio-Metric Blueprint */}
+              <View
+                ref={bioMetricBlueprintTargetRef}
+                collapsable={false}
+              >
                 <BioMetricBlueprintPanel date={isoDate} />
+              </View>
 
-                {/* Habits section header */}
-                {habitList.length > 0 && (
-                  <View style={styles.sectionHeader}>
-                    <View>
-                      <Text
-                        style={styles.sectionTitle}
-                      >{`${sectionTitle}'S PROTOCOLS`}</Text>
-                      {/* {sectionSubtitle && (
+              {/* Habits section header */}
+              <View
+                ref={dailyTrackerTargetRef}
+                collapsable={false}
+                style={styles.sectionHeader}
+              >
+                <View>
+                  <Text style={styles.sectionTitle}>
+                    {habitList.length > 0
+                      ? `${sectionTitle}'S DAILY TRACKER`
+                      : "YOUR DAILY TRACKER"}
+                  </Text>
+                  {/* {sectionSubtitle && (
                         <Text style={styles.sectionSubtitle}>{sectionSubtitle}</Text>
                       )} */}
-                    </View>
-                    <ProgressPill
-                      label={`${completedHabit}/${habitList.length}`}
-                    />
-                  </View>
-                )}
-              </>
+                </View>
+                {habitList.length > 0 ? (
+                  <ProgressPill label={`${completedHabit}/${habitList.length}`} />
+                ) : null}
+              </View>
             </>
           }
           renderItem={({ item }) => (
@@ -445,25 +532,12 @@ export default function HomeScreen() {
         }}
       />
 
-      <ActionModal
+      <HomeWalkthroughOverlay
         visible={showTutorial}
-        onClose={() => void dismissTutorial()}
-        eyebrow={`Getting started ${tutorialStep + 1}/${APP_TUTORIAL_STEPS.length}`}
-        title={APP_TUTORIAL_STEPS[tutorialStep].title}
-        body={APP_TUTORIAL_STEPS[tutorialStep].body}
-        iconName={APP_TUTORIAL_STEPS[tutorialStep].iconName}
-        primaryAction={{
-          label:
-            tutorialStep === APP_TUTORIAL_STEPS.length - 1
-              ? "Start exploring"
-              : "Next",
-          onPress: () => void advanceTutorial(),
-        }}
-        secondaryAction={{
-          label: "Skip tutorial",
-          variant: "outline",
-          onPress: () => void dismissTutorial(),
-        }}
+        stepIndex={tutorialStep}
+        steps={walkthroughSteps}
+        onNext={() => void advanceTutorial()}
+        onSkip={() => void dismissTutorial()}
       />
     </ScreenView>
   );
@@ -516,69 +590,80 @@ const styling = (theme: any, spacing: any, svaTypography: any) =>
       marginTop: spacing.md,
     },
     dashboardBanner: {
-      minHeight: 92,
+      minHeight: 88,
       marginTop: spacing.sm,
       marginBottom: spacing.lg,
-      borderRadius: 22,
+      borderRadius: 20,
       overflow: "hidden",
       borderWidth: 1,
-      borderColor: "rgba(235,203,139,0.16)",
-      backgroundColor: theme.cardRaised || "#262A22",
+      borderColor: "rgba(235,203,139,0.14)",
+      backgroundColor: theme.surface,
       shadowColor: "#000",
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.16,
-      shadowRadius: 14,
-      elevation: 6,
-      justifyContent: "center",
-      position: "relative",
+      shadowOffset: { width: 0, height: 5 },
+      shadowOpacity: 0.12,
+      shadowRadius: 10,
+      elevation: 4,
     },
-    dashboardBannerGlow: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: "rgba(235,203,139,0.04)",
+    dashboardBannerPressed: {
+      opacity: 0.9,
+      transform: [{ scale: 0.99 }],
     },
     dashboardBannerInner: {
       paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm + 2,
+      paddingVertical: spacing.sm,
       flexDirection: "row",
       alignItems: "center",
-      minHeight: 92,
+      minHeight: 88,
+      gap: spacing.md,
     },
     dashboardBannerIconWrap: {
-      width: 50,
-      height: 50,
+      width: 42,
+      height: 42,
       borderRadius: 14,
       justifyContent: "center",
       alignItems: "center",
       backgroundColor: "rgba(235,203,139,0.12)",
       borderWidth: 1,
       borderColor: "rgba(235,203,139,0.18)",
-      marginRight: spacing.md,
+      flexShrink: 0,
+    },
+    dashboardBannerCopy: {
+      flex: 1,
+      minWidth: 0,
+    },
+    dashboardBannerEyebrow: {
+      ...svaTypography.textStyle.authTinyLabel,
+      color: theme.warning,
+      fontSize: 9,
+      lineHeight: 12,
+      letterSpacing: 1.3,
+      marginBottom: 2,
     },
     dashboardBannerTitle: {
       ...svaTypography.textStyle.title,
-      flex: 1,
-      minWidth: 0,
-      fontSize: 15,
-      lineHeight: 19,
+      fontSize: 14,
+      lineHeight: 18,
       fontWeight: "700",
       color: theme.textPrimary,
-      letterSpacing: 0.1,
-      paddingVertical: 2,
+      letterSpacing: 0,
     },
-    dashboardBannerClose: {
-      width: 34,
-      height: 34,
-      borderRadius: 17,
+    dashboardBannerSubtitle: {
+      ...svaTypography.textStyle.caption,
+      color: theme.textSecondary,
+      fontSize: 11,
+      lineHeight: 15,
+      marginTop: 2,
+    },
+    dashboardBannerArrow: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
       alignItems: "center",
       justifyContent: "center",
-      marginLeft: spacing.md,
-      backgroundColor: "rgba(255,255,255,0.04)",
+      backgroundColor: "rgba(255,255,255,0.045)",
       borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.08)",
-      marginTop: 1,
-    },
-    dashboardBannerClosePressed: {
-      opacity: 0.86,
+      borderColor: "rgba(255,255,255,0.07)",
+      flexShrink: 0,
     },
     greetingTitle: {
       ...svaTypography.textStyle.heading2,

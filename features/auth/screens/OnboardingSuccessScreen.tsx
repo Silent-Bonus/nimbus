@@ -91,7 +91,6 @@ export const OnboardingSuccessScreen = () => {
       })
       .catch(() => setJourneyError("Your journey plan is still being prepared."))
       .finally(() => setJourneyLoading(false));
-    void SecureStore.deleteItemAsync(StoreKey.TUTORIAL_PENDING_KEY);
   }, []);
 
   const handleActivate = async () => {

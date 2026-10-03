@@ -23,16 +23,17 @@ export const HabitDetailScreen = () => {
   const navigation = useNavigation();
   const { newTheme, spacing, svaTypography } = useContext(ThemeContext);
 
-  const { id, date } = useLocalSearchParams<{
+  const { id, date, description: routeDescription } = useLocalSearchParams<{
     id: string | string[];
     date?: string | string[];
+    description?: string | string[];
   }>();
   const [habit, setHabit] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [error, setError] = useState("");
 
-  const styles = styling(newTheme, spacing);
+  const styles = styling(newTheme, spacing, svaTypography);
 
   useEffect(() => {
     navigation.setOptions({
@@ -91,6 +92,12 @@ export const HabitDetailScreen = () => {
   }, [id, date]);
 
   const habitId = Array.isArray(id) ? id[0] : id;
+  const habitDescription =
+    typeof habit?.description === "string" && habit.description.trim()
+      ? habit.description.trim()
+      : Array.isArray(routeDescription)
+        ? routeDescription[0]?.trim()
+        : routeDescription?.trim();
 
   if (loading) {
     return (
@@ -165,6 +172,13 @@ export const HabitDetailScreen = () => {
               }
             />
 
+            {!!habitDescription && (
+              <View style={styles.descriptionCard}>
+                <Text style={styles.descriptionLabel}>ABOUT THIS HABIT</Text>
+                <Text style={styles.descriptionText}>{habitDescription}</Text>
+              </View>
+            )}
+
             {/* Top details card */}
             <HabitDetailsPanel
               reminderTime={formatReminderTime(habit?.reminder_time)}
@@ -237,7 +251,7 @@ export const HabitDetailScreen = () => {
   );
 };
 
-const styling = (newTheme: any, spacing: any) =>
+const styling = (newTheme: any, spacing: any, svaTypography: any) =>
   StyleSheet.create({
     gestureContainer: {
       flex: 1,
@@ -250,6 +264,26 @@ const styling = (newTheme: any, spacing: any) =>
     },
     sectionWrapper: {
       paddingTop: spacing.sm,
+    },
+    descriptionCard: {
+      backgroundColor: newTheme.surface,
+      borderRadius: spacing.lg,
+      borderWidth: 1,
+      borderColor: newTheme.borderMuted ?? "rgba(255,255,255,0.06)",
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+      marginBottom: spacing.md,
+    },
+    descriptionLabel: {
+      ...svaTypography.textStyle.authTinyLabel,
+      color: newTheme.textSecondary,
+      letterSpacing: 1.4,
+      marginBottom: spacing.xs,
+    },
+    descriptionText: {
+      ...svaTypography.textStyle.authBody,
+      color: newTheme.textPrimary,
+      lineHeight: 21,
     },
     header: {
       color: newTheme.textPrimary,

@@ -80,11 +80,12 @@ export const ProtocolTemplateDetailScreen: React.FC = () => {
   const category = template?.category || manifest.category;
   const image = template?.image ? { uri: template.image } : manifest.image;
   const context = template?.context || manifest.context;
-  const benefits = template?.benefits.length ? template.benefits : manifest.benefits;
+  const benefits = template?.benefits?.length
+    ? template.benefits
+    : manifest.benefits;
   const level = template?.level || "—";
   const rating = template?.rating == null ? "—" : template.rating.toFixed(1);
   const reviewCount = template?.review_count ?? 0;
-  const xpReward = template?.xp_reward ?? manifest.xp_reward;
 
   // The shared premium modal is intentionally not opened when this screen is
   // entered. Keep the previous screen-entry gate documented here so it can be
@@ -140,7 +141,6 @@ export const ProtocolTemplateDetailScreen: React.FC = () => {
               value: rating,
               hint: `${reviewCount} reviews`,
             },
-            { label: "XP Reward", value: `${xpReward}` },
           ]}
         />
 
