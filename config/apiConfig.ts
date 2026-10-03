@@ -17,6 +17,7 @@ export const API_URL = BASE_URL;
 // Define API endpoints
 export const API_ENDPOINTS = {
   login: `${BASE_URL}/api/v1/auth/login/`,
+  refreshToken: `${BASE_URL}/api/v1/auth/token/refresh/`,
   register: `${BASE_URL}/api/v1/auth/register/`,
   logout: `${BASE_URL}/api/v1/auth/logout/`,
 

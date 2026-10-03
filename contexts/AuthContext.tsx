@@ -36,6 +36,7 @@ import {
   getFreshAuthTokenOrClearSession,
   setAuthSessionTestModeEnabled,
   touchAuthSessionActivity,
+  refreshAccessTokenOrClearSession,
 } from "@/services/authSessionService";
 
 export async function clearAuthAndOnboarding() {
@@ -63,6 +64,7 @@ function isAuthEndpoint(url?: string) {
 
 interface AuthProps {
   authState?: { token: string | null; authenticated: boolean | null };
+  authReady?: boolean;
   onRegister?: (
     username: string,
     fullName: string,
@@ -146,6 +148,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     token: string | null;
     authenticated: boolean | null;
   }>({ token: null, authenticated: null });
+  const [authReady, setAuthReady] = useState(false);
 
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
@@ -244,7 +247,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const loadToken = async () => {
       try {
-        const token = await getFreshAuthTokenOrClearSession();
+        const token = await refreshAccessTokenOrClearSession();
         const ob = await SecureStore.getItemAsync(StoreKey.ONBOARDING_DONE_KEY);
 
         if (token) {
@@ -268,6 +271,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         setAuthState({ token: null, authenticated: false });
         clearUserProfileSync();
         setOnboardingDone(null);
+      } finally {
+        setAuthReady(true);
       }
     };
 
@@ -515,6 +520,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     onLogout: _logout,
     userProfile,
     authState,
+    authReady,
     authSessionTestMode,
     setAuthSessionTestMode,
     resetToPublic,

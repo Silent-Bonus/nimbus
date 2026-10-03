@@ -3,6 +3,7 @@ import axios from "axios";
 import * as SecureStore from "expo-secure-store";
 
 import { StoreKey } from "@/constants/Constant";
+import { API_ENDPOINTS } from "@/config/apiConfig";
 import { clearStoredBodyVitalsContext } from "@/features/self-care/services/body-vitals/storage";
 import { setStoredUser } from "@/services/storageService";
 
@@ -88,4 +89,35 @@ export async function getFreshAuthTokenOrClearSession(): Promise<string | null> 
   }
 
   return token;
+}
+
+/** Exchange the persisted refresh token for a fresh access token at startup. */
+export async function refreshAccessTokenOrClearSession(): Promise<string | null> {
+  const refresh = await SecureStore.getItemAsync(StoreKey.REFRESH_TOKEN);
+  if (!refresh) {
+    await clearAuthStorage();
+    return null;
+  }
+
+  try {
+    // Use a bare Axios request so startup does not depend on authenticated
+    // interceptors or a possibly expired access-token header.
+    const response = await axios.post<{
+      success: boolean;
+      data?: { access?: string; refresh?: string };
+    }>(API_ENDPOINTS.refreshToken, { refresh });
+    const access = response.data?.success ? response.data.data?.access : null;
+    if (!access) throw new Error("Refresh response did not include an access token");
+
+    await SecureStore.setItemAsync(StoreKey.TOKEN_KEY, access);
+    const rotatedRefresh = response.data.data?.refresh;
+    if (rotatedRefresh) {
+      await SecureStore.setItemAsync(StoreKey.REFRESH_TOKEN, rotatedRefresh);
+    }
+    await touchAuthSessionActivity();
+    return access;
+  } catch {
+    await clearAuthStorage();
+    return null;
+  }
 }
