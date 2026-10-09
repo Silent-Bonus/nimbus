@@ -39,7 +39,7 @@ import {
   pauseWellnessSession,
   resumeWellnessSession,
 } from "@/features/self-care/services/wellnessSessionService";
-import type { ColorSet, Spacing, TypographyTokens } from "@/theme/types";
+import type { ColorSet, Spacing } from "@/theme/types";
 
 type SoundscapePlayerParams = {
   soundscapeSlug?: string | string[];
@@ -820,8 +820,12 @@ function SoundscapePlayerContent({
       return;
     }
 
-    void completeSession();
-  }, [completeSession, playbackStatus]);
+    void completeSession().finally(() => {
+      // A naturally finished track should not leave the global floating timer
+      // or player visible after playback has ended.
+      meditationSession.dismissSession();
+    });
+  }, [completeSession, meditationSession, playbackStatus]);
 
   // Navigating away while a session is active should leave the server-side
   // session paused unless the handler already performed an explicit exit flow.

@@ -118,6 +118,7 @@ export default function MeditationPlayerScreen() {
   >("idle");
   const pauseSessionRef = useRef<(() => Promise<void>) | null>(null);
   const resumeSessionRef = useRef<(() => Promise<void>) | null>(null);
+  const dismissSessionRef = useRef<(() => void) | null>(null);
   const completeSessionRef = useRef<(() => Promise<void>) | null>(null);
   const sessionCreatePromiseRef = useRef<Promise<string | null> | null>(null);
   const completionInFlightRef = useRef(false);
@@ -317,6 +318,10 @@ export default function MeditationPlayerScreen() {
     resumeSessionRef.current = resumeSession;
   }, [resumeSession]);
 
+  useEffect(() => {
+    dismissSessionRef.current = meditationSession.dismissSession;
+  }, [meditationSession.dismissSession]);
+
   const startPlayback = useCallback(
     async (sound: Audio.Sound) => {
       // A completed session should never restart from the player screen.
@@ -413,7 +418,13 @@ export default function MeditationPlayerScreen() {
       playbackPositionRef.current = status.positionMillis;
 
       if (status.didJustFinish) {
-        void completeSessionRef.current?.();
+        void (async () => {
+          await completeSessionRef.current?.();
+          // Natural completion must stop the global elapsed-time ticker and
+          // remove the floating player; explicit Stop already does this via
+          // MeditationSessionProvider.stopSession().
+          dismissSessionRef.current?.();
+        })();
       }
     },
     []
