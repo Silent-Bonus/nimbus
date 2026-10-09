@@ -605,7 +605,7 @@ export const OnboardingQuestionsScreen = () => {
             <Text style={styles.submittingSubtitle}>
               {questionSet === "profile"
                 ? "Preparing your Dosha questions."
-                : "We&apos;re creating your Dosha profile."}
+                : "We're creating your Dosha profile."}
             </Text>
           </View>
         </View>

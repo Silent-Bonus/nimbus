@@ -13,7 +13,8 @@
       "bundleIdentifier": "com.silentBonus.app",
       "buildNumber": "1.0.0",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": ["audio"]
       }
     },
     "android": {
@@ -31,6 +32,13 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission":
+            "Allow SVA to use your location to personalize your clinical experience."
+        }
+      ],
       [
         "expo-splash-screen",
         {

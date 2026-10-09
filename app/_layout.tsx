@@ -1,6 +1,6 @@
 // app/_layout.tsx
 import React, { useEffect, useRef } from "react";
-import { Stack } from "expo-router";
+import { Stack, usePathname } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
@@ -61,6 +61,8 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
+  const pathname = usePathname();
+
   return (
     <AuthProvider>
       <HideSplashWhenReady />
@@ -80,7 +82,11 @@ function RootLayoutNav() {
                 <Stack.Screen name="(auth)" />
               </Stack>
 
-              <FloatingMeditationControl />
+              {/* The full player owns its transport controls. Show the
+                  floating player only after the user leaves that screen. */}
+              {!pathname.includes("/meditation/player") && (
+                <FloatingMeditationControl />
+              )}
               <NimbusToastHost />
               {/* </HabitContext.Provider> */}
             </MeditationSessionProvider>

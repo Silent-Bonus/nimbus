@@ -10,6 +10,7 @@ export const StoreKey = {
   ONBOARDING_DONE_KEY: "onboarding-done",
   TUTORIAL_PENDING_KEY: "tutorial-pending-v1",
   DOSHA_ASSESSMENT_RESULT_KEY: "dosha-assessment-result-v1",
+  DEVICE_ID_KEY: "device-id-v1",
   THEME_KEY: "theme",
 } as const;
 

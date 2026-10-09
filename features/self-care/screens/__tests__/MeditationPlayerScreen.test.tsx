@@ -264,7 +264,7 @@ describe("MeditationPlayerScreen", () => {
     ).toBeTruthy();
   });
 
-  it("creates a session on play, pauses it on pause, resumes it on play again, and pauses before back", async () => {
+  it("creates a session on play, pauses/resumes in place, and keeps playing on back", async () => {
     const tree = await renderScreen();
 
     const playButton = tree.root.findByProps({
@@ -324,7 +324,9 @@ describe("MeditationPlayerScreen", () => {
       await Promise.resolve();
     });
 
-    expect(mockPauseWellnessSessionFn).toHaveBeenCalledTimes(2);
+    // Leaving while playing keeps the native sound and active session alive
+    // for the global floating player.
+    expect(mockPauseWellnessSessionFn).toHaveBeenCalledTimes(1);
     expect(mockBack).toHaveBeenCalledTimes(1);
   });
 

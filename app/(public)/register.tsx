@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import {
   Pressable,
+  Linking,
   StyleSheet,
   Text,
   View,
@@ -15,6 +16,7 @@ import {
 } from "react-native";
 import { router, Stack } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import * as Location from "expo-location";
 
 import ThemeContext from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -30,6 +32,8 @@ import { SVATypography } from "@/theme/typography";
 const TOTAL_STEPS = 4;
 type Step = 1 | 2 | 3 | 4;
 const DISABLE_OTP_FLOW = false;
+
+const COUNTRY_CODE_PATTERN = /^\+[1-9][0-9]{0,2}$/;
 
 const PASSWORD_REQUIREMENTS = [
   "At least 12 characters",
@@ -75,6 +79,11 @@ function validatePassword(value: string) {
   return "";
 }
 
+function normalizeCountryCode(value: string) {
+  const digits = value.replace(/[^0-9]/g, "").slice(0, 3);
+  return `+${digits}`;
+}
+
 export default function RegistrationScreen() {
   return (
     <>
@@ -108,6 +117,9 @@ function RegistrationFlowInner() {
   const [loading, setLoading] = useState(false);
   const [otpCopiedDestination, setOtpCopiedDestination] = useState("");
   const [showPasswordTooltip, setShowPasswordTooltip] = useState(false);
+  const [locationPermission, setLocationPermission] = useState<
+    "unknown" | "granted" | "denied"
+  >("unknown");
 
   const fullNameRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
@@ -136,6 +148,30 @@ function RegistrationFlowInner() {
       : passwordStrength.label === "STABLE"
         ? svaColors.state.warning
         : svaColors.state.error;
+
+  const requestLocationPermission = useCallback(async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        setLocationPermission("denied");
+        console.log("Location permission was not granted.");
+        return;
+      }
+
+      setLocationPermission("granted");
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      console.log("User location:", {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
+    } catch {
+      setLocationPermission("denied");
+      console.log("Unable to get the user's location.");
+    }
+  }, []);
 
   const otpRecipient = useMemo(() => email.trim(), [email]);
 
@@ -170,7 +206,7 @@ function RegistrationFlowInner() {
     const trimmedCode = countryCode.trim();
     const trimmedMobile = mobile.trim();
 
-    if (!/^\+[0-9]{1,4}$/.test(trimmedCode)) {
+    if (!COUNTRY_CODE_PATTERN.test(trimmedCode)) {
       return "Country code must look like +1.";
     }
     if (!/^[0-9]{10}$/.test(trimmedMobile)) {
@@ -347,6 +383,10 @@ function RegistrationFlowInner() {
   }, [step]);
 
   useEffect(() => {
+    void requestLocationPermission();
+  }, [requestLocationPermission]);
+
+  useEffect(() => {
     if (step !== 4) {
       setShowPasswordTooltip(false);
     }
@@ -454,6 +494,34 @@ function RegistrationFlowInner() {
             />
           </View>
 
+          <View style={styles.locationCard}>
+            <View style={styles.infoIcon}>
+              <Ionicons
+                name="location-outline"
+                size={18}
+                color={svaColors.brand.primary}
+              />
+            </View>
+            <View style={styles.infoCopy}>
+              <Text style={[styles.infoTitle, { color: svaColors.text.primary }]}>
+                Enable Location
+              </Text>
+              <Text style={[styles.infoBody, { color: svaColors.text.secondary }]}>
+                Location helps us personalize your clinical experience.
+              </Text>
+              {locationPermission === "denied" ? (
+                <Pressable
+                  onPress={() => void Linking.openSettings()}
+                  hitSlop={8}
+                >
+                  <Text style={[styles.locationAction, { color: svaColors.brand.primary }]}>
+                    ENABLE IN SETTINGS
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
+          </View>
+
           <View style={styles.buttonGap} />
 
           <SvaAuthButton
@@ -507,12 +575,13 @@ function RegistrationFlowInner() {
                 label="CODE"
                 value={countryCode}
                 onChangeText={(value) => {
-                  setCountryCode(value);
+                  setCountryCode(normalizeCountryCode(value));
                   if (errMsg) setErrMsg("");
                 }}
                 placeholder="+1"
                 keyboardType="phone-pad"
                 maxLength={4}
+                selectTextOnFocus={false}
                 autoCapitalize="none"
                 autoCorrect={false}
                 editable={!loading}
@@ -1056,6 +1125,22 @@ function createStyles(svaColors: any, svaComponents: any) {
     infoBody: {
       ...SVATypography.textStyle.authBody,
       marginTop: 6,
+    },
+    locationCard: {
+      marginTop: 22,
+      borderRadius: 20,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: svaColors.border.default,
+      backgroundColor: svaColors.surface.raised,
+      flexDirection: "row",
+      alignItems: "flex-start",
+      padding: 16,
+      gap: 12,
+    },
+    locationAction: {
+      ...SVATypography.textStyle.authTinyLabel,
+      marginTop: 10,
+      letterSpacing: 1.3,
     },
     otpWrap: {
       marginTop: 28,

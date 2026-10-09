@@ -66,12 +66,12 @@ export const SETTINGS_SECTIONS: SettingsSectionConfig[] = [
         action: "toggle",
         label: "Sound Effects",
       },
-      {
-        id: "navigation",
-        icon: "location-outline",
-        action: "toggle",
-        label: "Location Services",
-      },
+      // {
+      //   id: "navigation",
+      //   icon: "location-outline",
+      //   action: "toggle",
+      //   label: "Location Services",
+      // },
     ],
   },
   {
