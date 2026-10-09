@@ -13,8 +13,12 @@ interface LogoutData {
 }
 
 export interface LoginRequest {
-  username: string;
+  identifier: string;
   password: string;
+  device_id: string;
+  device_name: string;
+  platform: string;
+  app_version: string;
 }
 
 export interface LoginResponse {

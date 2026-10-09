@@ -7,8 +7,11 @@ import {
 } from "react";
 import { useContext, useState } from "react";
 import { AppState } from "react-native";
+import { Platform } from "react-native";
 import { router, useSegments } from "expo-router";
 import * as SecureStore from "expo-secure-store";
+import * as Application from "expo-application";
+import * as Device from "expo-device";
 import axios from "axios";
 
 import { StoreKey } from "@/constants/Constant";
@@ -60,6 +63,31 @@ const AUTH_ENDPOINTS = [
 function isAuthEndpoint(url?: string) {
   if (!url) return false;
   return AUTH_ENDPOINTS.some((endpoint) => url.startsWith(endpoint));
+}
+
+async function getLoginDeviceMetadata() {
+  let deviceId: string | null =
+    Platform.OS === "ios"
+      ? await Application.getIosIdForVendorAsync()
+      : Platform.OS === "android"
+        ? Application.getAndroidId()
+        : null;
+
+  if (!deviceId) {
+    deviceId = await SecureStore.getItemAsync(StoreKey.DEVICE_ID_KEY);
+  }
+
+  if (!deviceId) {
+    deviceId = `${Platform.OS}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    await SecureStore.setItemAsync(StoreKey.DEVICE_ID_KEY, deviceId);
+  }
+
+  return {
+    device_id: deviceId,
+    device_name: Device.modelName ?? Device.deviceName ?? `${Platform.OS} device`,
+    platform: Platform.OS,
+    app_version: Application.nativeApplicationVersion ?? "1.0.0",
+  };
 }
 
 interface AuthProps {
@@ -420,11 +448,14 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const _login = async (userName: string, password: string) => {
     try {
       const request = {
-        username: userName,
+        identifier: userName,
         password: password,
       };
 
-      const result = await login(request);
+      const result = await login({
+        ...request,
+        ...(await getLoginDeviceMetadata()),
+      });
       const { success, message, data } = result;
 
       if (success && data && "email" in data) {
