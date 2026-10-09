@@ -52,7 +52,6 @@ import {
 import type {
   ColorSet,
   Spacing,
-  TypographyTokens,
 } from "@/theme/types";
 
 type MeditationPlayerParams = MeditationRouteParams;
@@ -118,6 +117,7 @@ export default function MeditationPlayerScreen() {
     "idle" | "creating" | "active" | "paused" | "completed"
   >("idle");
   const pauseSessionRef = useRef<(() => Promise<void>) | null>(null);
+  const resumeSessionRef = useRef<(() => Promise<void>) | null>(null);
   const completeSessionRef = useRef<(() => Promise<void>) | null>(null);
   const sessionCreatePromiseRef = useRef<Promise<string | null> | null>(null);
   const completionInFlightRef = useRef(false);
@@ -283,6 +283,7 @@ export default function MeditationPlayerScreen() {
 
     try {
       await pauseWellnessSession(resolvedSessionRef);
+      sessionStatusRef.current = "paused";
       setSessionStatus("paused");
     } catch (error) {
       console.warn("Unable to pause meditation session:", error);
@@ -294,7 +295,7 @@ export default function MeditationPlayerScreen() {
   }, [pauseSession]);
 
   const resumeSession = useCallback(async () => {
-    if (sessionStatus !== "paused") {
+    if (sessionStatusRef.current !== "paused") {
       return;
     }
 
@@ -305,11 +306,16 @@ export default function MeditationPlayerScreen() {
 
     try {
       await resumeWellnessSession(resolvedSessionRef);
+      sessionStatusRef.current = "active";
       setSessionStatus("active");
     } catch (error) {
       console.warn("Unable to resume meditation session:", error);
     }
-  }, [resolveSessionRef, sessionStatus]);
+  }, [resolveSessionRef]);
+
+  useEffect(() => {
+    resumeSessionRef.current = resumeSession;
+  }, [resumeSession]);
 
   const startPlayback = useCallback(
     async (sound: Audio.Sound) => {
@@ -321,7 +327,7 @@ export default function MeditationPlayerScreen() {
       // Resuming an existing paused session skips create and only restarts audio.
       if (sessionStatusRef.current === "paused") {
         await sound.playAsync();
-        void resumeSession();
+        void resumeSessionRef.current?.();
         return;
       }
 
@@ -346,7 +352,6 @@ export default function MeditationPlayerScreen() {
       meditationId,
       meditationSession,
       meditationTitle,
-      resumeSession,
       routeCheckInId,
       routeDate,
       routeSource,
@@ -429,7 +434,9 @@ export default function MeditationPlayerScreen() {
       try {
         await Audio.setAudioModeAsync({
           playsInSilentModeIOS: true,
-          staysActiveInBackground: false,
+          // Keep an active meditation playing while the app is backgrounded
+          // or the phone is locked. Paused sessions remain paused.
+          staysActiveInBackground: true,
           shouldDuckAndroid: true,
           playThroughEarpieceAndroid: false,
         });
@@ -462,14 +469,19 @@ export default function MeditationPlayerScreen() {
 
     return () => {
       active = false;
-      if (!leavingScreenRef.current) {
-        const currentStatus = sessionStatusRef.current;
-        if (currentStatus === "active" || currentStatus === "creating") {
-          void pauseSessionRef.current?.();
-        }
+
+      // Do not pause or unload a running sound when the route is removed.
+      // The registered session controls are intentionally kept alive so the
+      // root floating player can control the same native sound instance.
+      const currentStatus = sessionStatusRef.current;
+      if (
+        currentStatus !== "active" &&
+        currentStatus !== "creating" &&
+        currentStatus !== "paused"
+      ) {
+        void soundRef.current?.unloadAsync();
+        soundRef.current = null;
       }
-      soundRef.current?.unloadAsync();
-      soundRef.current = null;
     };
   }, [handlePlaybackStatusUpdate, playbackSource]);
 
@@ -548,9 +560,8 @@ export default function MeditationPlayerScreen() {
     startPlayback,
   ]);
 
-  useEffect(
-    () =>
-      meditationSession.registerControls({
+  useEffect(() => {
+    const unregister = meditationSession.registerControls({
         onPause: async () => {
           const sound = soundRef.current;
           setPlaybackIntent("pause");
@@ -573,9 +584,21 @@ export default function MeditationPlayerScreen() {
           }
           await completeSession();
         },
-      }),
-    [completeSession, meditationSession, pauseSession, sessionStatus, startPlayback]
-  );
+      });
+
+    return () => {
+      // A running session is intentionally controlled by the floating player
+      // after this screen unmounts. stopSession clears the controls later.
+      if (
+        !leavingScreenRef.current &&
+        sessionStatusRef.current !== "active" &&
+        sessionStatusRef.current !== "creating" &&
+        sessionStatusRef.current !== "paused"
+      ) {
+        unregister();
+      }
+    };
+  }, [completeSession, meditationSession, pauseSession, sessionStatus, startPlayback]);
 
   useEffect(() => {
     if (
@@ -595,16 +618,17 @@ export default function MeditationPlayerScreen() {
     leavingScreenRef.current = true;
 
     const sound = soundRef.current;
-    if (sound && isPlaying) {
-      await sound.pauseAsync();
-    }
-
-    if (sessionStatus !== "idle" && sessionStatus !== "completed") {
-      await pauseSession();
+    if (!isPlaying) {
+      // There is no background player to expose for a paused meditation that
+      // the user is leaving, so remove the stale floating-session state.
+      if (sound && sessionStatus !== "completed") {
+        await sound.pauseAsync().catch(() => {});
+      }
+      meditationSession.dismissSession();
     }
 
     router.back();
-  }, [isPlaying, pauseSession, sessionStatus]);
+  }, [isPlaying, meditationSession, sessionStatus]);
 
   const handleShare = useCallback(async () => {
     await Share.share({
