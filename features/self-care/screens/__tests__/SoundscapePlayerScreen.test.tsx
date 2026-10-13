@@ -15,7 +15,7 @@ import SoundscapePlayerScreen from "../SoundscapePlayerScreen";
 const mockBack = jest.fn();
 const mockSetOptions = jest.fn();
 const mockSetAudioModeAsync = jest.fn();
-const mockCreateAsync = jest.fn();
+const mockCreateAudioPlayer = jest.fn();
 const mockCreateWellnessSession = jest.fn();
 const mockPauseWellnessSession = jest.fn();
 const mockResumeWellnessSession = jest.fn();
@@ -49,47 +49,49 @@ const cachedSoundscape = toSoundscapeTrack(
 
 let playbackStatusCallback: ((status: any) => void) | null = null;
 const mockSound = {
-  setVolumeAsync: jest.fn(async () => {
-    return {
-      isLoaded: true,
-      isPlaying: true,
-      positionMillis: 15000,
-      durationMillis: 180000,
-    };
-  }),
-  pauseAsync: jest.fn(async () => {
+  volume: 0,
+  isLoaded: true,
+  playing: false,
+  currentTime: 0,
+  duration: 180,
+  currentStatus: {} as any,
+  pause: jest.fn(() => {
+    mockSound.playing = false;
     playbackStatusCallback?.({
       isLoaded: true,
-      isPlaying: false,
-      positionMillis: 15000,
-      durationMillis: 180000,
+      playing: false,
+      currentTime: 15,
+      duration: 180,
     });
   }),
-  playAsync: jest.fn(async () => {
+  play: jest.fn(() => {
+    mockSound.playing = true;
     playbackStatusCallback?.({
       isLoaded: true,
-      isPlaying: true,
-      positionMillis: 15000,
-      durationMillis: 180000,
+      playing: true,
+      currentTime: 15,
+      duration: 180,
     });
   }),
-  setPositionAsync: jest.fn(async (position: number) => {
+  seekTo: jest.fn(async (position: number) => {
     playbackStatusCallback?.({
       isLoaded: true,
-      isPlaying: true,
-      positionMillis: position,
-      durationMillis: 180000,
+      playing: true,
+      currentTime: position,
+      duration: 180,
     });
   }),
-  stopAsync: jest.fn(async () => {
-    playbackStatusCallback?.({
+  remove: jest.fn(),
+  addListener: jest.fn((_event: string, callback: (status: any) => void) => {
+    playbackStatusCallback = callback;
+    callback({
       isLoaded: true,
-      isPlaying: false,
-      positionMillis: 0,
-      durationMillis: 180000,
+      playing: mockSound.playing,
+      currentTime: mockSound.currentTime,
+      duration: mockSound.duration,
     });
+    return { remove: jest.fn() };
   }),
-  unloadAsync: jest.fn(),
 };
 
 jest.mock("expo-router", () => ({
@@ -102,13 +104,9 @@ jest.mock("expo-router", () => ({
   useLocalSearchParams: () => mockParams,
 }));
 
-jest.mock("expo-av", () => ({
-  Audio: {
-    setAudioModeAsync: (...args: any[]) => mockSetAudioModeAsync(...args),
-    Sound: {
-      createAsync: (...args: any[]) => mockCreateAsync(...args),
-    },
-  },
+jest.mock("expo-audio", () => ({
+  createAudioPlayer: (...args: any[]) => mockCreateAudioPlayer(...args),
+  setAudioModeAsync: (...args: any[]) => mockSetAudioModeAsync(...args),
 }));
 
 jest.mock("@/features/self-care/services/wellnessSessionService", () => ({
@@ -215,18 +213,15 @@ describe("SoundscapePlayerScreen", () => {
       },
     });
 
-    mockCreateAsync.mockImplementation(
-      async (source: any, options: any, onPlaybackStatusUpdate: any) => {
-        playbackStatusCallback = onPlaybackStatusUpdate;
-        onPlaybackStatusUpdate({
-          isLoaded: true,
-          isPlaying: Boolean(options?.shouldPlay),
-          positionMillis: 0,
-          durationMillis: 180000,
-        });
-        return { sound: mockSound };
-      }
-    );
+    mockSound.playing = false;
+    mockSound.currentTime = 0;
+    mockSound.currentStatus = {
+      isLoaded: true,
+      playing: false,
+      currentTime: 0,
+      duration: 180,
+    };
+    mockCreateAudioPlayer.mockImplementation(() => mockSound);
   });
 
   afterEach(async () => {
@@ -244,12 +239,12 @@ describe("SoundscapePlayerScreen", () => {
     });
 
     expect(mockSetAudioModeAsync).toHaveBeenCalled();
-    expect(mockCreateAsync).toHaveBeenCalledWith(
+    expect(mockCreateAudioPlayer).toHaveBeenCalledWith(
       resolveSoundscapePlaybackSource("5"),
       expect.objectContaining({
-        shouldPlay: false,
-      }),
-      expect.any(Function)
+        updateInterval: 500,
+        keepAudioSessionActive: true,
+      })
     );
     expect(mockCreateWellnessSession).not.toHaveBeenCalled();
 
@@ -289,7 +284,7 @@ describe("SoundscapePlayerScreen", () => {
         test_mode: true,
       },
     });
-    expect(mockSound.playAsync).toHaveBeenCalledTimes(1);
+    expect(mockSound.play).toHaveBeenCalledTimes(1);
 
     const pauseButton = tree.root.findByProps({
       accessibilityLabel: "Pause soundscape",
@@ -300,7 +295,7 @@ describe("SoundscapePlayerScreen", () => {
     });
 
     expect(mockPauseWellnessSession).toHaveBeenCalledWith(mockSessionRef);
-    expect(mockSound.pauseAsync).toHaveBeenCalledTimes(1);
+    expect(mockSound.pause).toHaveBeenCalledTimes(1);
 
     const resumedPlayButton = tree.root.findByProps({
       accessibilityLabel: "Play soundscape",
@@ -311,7 +306,7 @@ describe("SoundscapePlayerScreen", () => {
     });
 
     expect(mockResumeWellnessSession).toHaveBeenCalledWith(mockSessionRef);
-    expect(mockSound.playAsync).toHaveBeenCalledTimes(2);
+    expect(mockSound.play).toHaveBeenCalledTimes(2);
 
     const finalPauseButton = tree.root.findByProps({
       accessibilityLabel: "Pause soundscape",
@@ -342,8 +337,8 @@ describe("SoundscapePlayerScreen", () => {
       await backButton.props.onPress();
     });
 
-    expect(mockSound.playAsync).toHaveBeenCalledTimes(1);
-    expect(mockSound.pauseAsync).toHaveBeenCalledTimes(1);
+    expect(mockSound.play).toHaveBeenCalledTimes(1);
+    expect(mockSound.pause).toHaveBeenCalledTimes(1);
     expect(mockPauseWellnessSession).toHaveBeenCalledWith(mockSessionRef);
     expect(mockCompleteWellnessSession).not.toHaveBeenCalled();
     expect(mockBack).toHaveBeenCalledTimes(1);
@@ -363,10 +358,10 @@ describe("SoundscapePlayerScreen", () => {
     await act(async () => {
       playbackStatusCallback?.({
         isLoaded: true,
-        isPlaying: false,
+        playing: false,
         didJustFinish: true,
-        positionMillis: 180000,
-        durationMillis: 180000,
+        currentTime: 180,
+        duration: 180,
       });
       await Promise.resolve();
     });
@@ -383,7 +378,7 @@ describe("SoundscapePlayerScreen", () => {
     try {
       const tree = await renderScreen();
 
-      expect(mockSound.setVolumeAsync).toHaveBeenCalledWith(0.68);
+      expect(mockSound.volume).toBe(0.68);
 
       const intensityButton = tree.root.findByProps({
         accessibilityLabel: "Volume MID",
@@ -393,7 +388,7 @@ describe("SoundscapePlayerScreen", () => {
         await intensityButton.props.onPress();
       });
 
-      expect(mockSound.setVolumeAsync).toHaveBeenLastCalledWith(0.9);
+      expect(mockSound.volume).toBe(0.9);
 
       const binauralToggle = tree.root.findByProps({
         accessibilityLabel: "Toggle enhanced atmosphere",
@@ -403,7 +398,7 @@ describe("SoundscapePlayerScreen", () => {
         await binauralToggle.props.onPress();
       });
 
-      expect(mockSound.setVolumeAsync).toHaveBeenLastCalledWith(0.63);
+      expect(mockSound.volume).toBe(0.63);
 
       const timerButton = tree.root.findByProps({
         accessibilityLabel: "Sleep timer OFF",
@@ -426,7 +421,7 @@ describe("SoundscapePlayerScreen", () => {
         await Promise.resolve();
       });
 
-      expect(mockSound.stopAsync).toHaveBeenCalledTimes(1);
+      expect(mockSound.pause).toHaveBeenCalled();
       expect(mockCompleteWellnessSession).not.toHaveBeenCalled();
       expect(
         tree.root.findByProps({

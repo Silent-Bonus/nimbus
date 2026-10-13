@@ -8,7 +8,7 @@ import {
 import { Image } from "expo-image";
 import React, { useContext, useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { Audio } from "expo-av";
+import { createAudioPlayer, type AudioPlayer } from "expo-audio";
 
 import ThemeContext from "@/contexts/ThemeContext";
 
@@ -34,7 +34,7 @@ const HorizontalListCardScroll: React.FC<PropType> = (props) => {
   } = props;
 
   const [currentTrack, setCurrentTrack] = useState<TrackType | null>(null);
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [sound, setSound] = useState<AudioPlayer | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
   // Split data into rows of N items each
@@ -70,7 +70,7 @@ const HorizontalListCardScroll: React.FC<PropType> = (props) => {
   useEffect(() => {
     return sound
       ? () => {
-          sound.unloadAsync();
+          sound.remove();
         }
       : undefined;
   }, [sound]);
@@ -78,8 +78,9 @@ const HorizontalListCardScroll: React.FC<PropType> = (props) => {
   const stopAudio = async () => {
     try {
       if (sound) {
-        await sound.stopAsync();
-        await sound.unloadAsync();
+        sound.pause();
+        await sound.seekTo(0);
+        sound.remove();
       }
     } catch (e) {
       console.warn("Failed to stop audio", e);
@@ -94,36 +95,30 @@ const HorizontalListCardScroll: React.FC<PropType> = (props) => {
     try {
       if (currentTrack?.id === track.id) {
         if (isPlaying) {
-          await sound?.pauseAsync();
+          sound?.pause();
         } else {
-          await sound?.playAsync();
+          sound?.play();
         }
         setIsPlaying(!isPlaying);
         return;
       }
 
       if (sound) {
-        await sound.unloadAsync();
+        sound.remove();
       }
 
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        typeof track.source === "string" ? { uri: track.source } : track.source
+      const newSound = createAudioPlayer(
+        typeof track.source === "string" ? { uri: track.source } : track.source,
+        { updateInterval: 500 }
       );
       setSound(newSound);
       setCurrentTrack(track);
       setIsPlaying(true);
-      await newSound.playAsync();
+      newSound.play();
     } catch (error) {
       console.error("Error playing audio:", error);
     }
   };
-
-  // const onCloseModal = async () => {
-  //   if (isPlaying) {
-  //     await sound?.pauseAsync();
-  //   }
-  //   setCurrentTrack(null);
-  // };
 
   const onCloseModal = async () => {
     await stopAudio();
