@@ -48,12 +48,16 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (error) throw error;
+    if (error) {
+      console.error("[startup] font loading failed", error);
+      throw error;
+    }
   }, [error]);
 
   useEffect(() => {
     if (!loaded || splashHidden.current) return;
     splashHidden.current = true;
+    console.log("[splash] fonts loaded; hiding native splash");
     void SplashScreen.hideAsync().catch(() => undefined);
   }, [loaded]);
 
