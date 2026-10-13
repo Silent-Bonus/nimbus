@@ -96,13 +96,17 @@ export async function getFreshAuthTokenOrClearSession(): Promise<string | null> 
 
 /** Exchange the persisted refresh token for a fresh access token at startup. */
 export async function refreshAccessTokenOrClearSession(): Promise<string | null> {
+  const startedAt = Date.now();
+  console.log("[auth] reading stored refresh token");
   const refresh = await SecureStore.getItemAsync(StoreKey.REFRESH_TOKEN);
   if (!refresh) {
+    console.log("[auth] no refresh token found; continuing as signed out");
     await clearAuthStorage();
     return null;
   }
 
   try {
+    console.log("[auth] startup refresh request started");
     // Use a bare Axios request so startup does not depend on authenticated
     // interceptors or a possibly expired access-token header.
     const response = await axios.post<{
@@ -122,8 +126,15 @@ export async function refreshAccessTokenOrClearSession(): Promise<string | null>
       await SecureStore.setItemAsync(StoreKey.REFRESH_TOKEN, rotatedRefresh);
     }
     await touchAuthSessionActivity();
+    console.log("[auth] startup refresh request succeeded", {
+      durationMs: Date.now() - startedAt,
+    });
     return access;
-  } catch {
+  } catch (error) {
+    console.warn("[auth] startup refresh request failed", {
+      message: error instanceof Error ? error.message : String(error),
+      durationMs: Date.now() - startedAt,
+    });
     await clearAuthStorage();
     return null;
   }
