@@ -24,7 +24,6 @@ import { MeditationSessionProvider } from "@/contexts/MeditationSessionContext";
 import { NimbusAlertProvider } from "@/components/ui/alert/NimbusAlertProvider";
 import { NimbusToastHost } from "@/components/ui/toast/NimbusToast";
 import { FloatingMeditationControl } from "@/components/ui/FloatingMeditationControl";
-import { useAuth } from "@/contexts/AuthContext";
 
 // Register before the first render; Expo Go/fast refresh may already have
 // dismissed the native splash, so never let this promise become unhandled.
@@ -36,6 +35,7 @@ export const unstable_settings = {
 };
 
 export default function RootLayout() {
+  const splashHidden = useRef(false);
   const [loaded, error] = useFonts({
     ...FontAwesome.font,
     Inter_400Regular,
@@ -51,6 +51,12 @@ export default function RootLayout() {
     if (error) throw error;
   }, [error]);
 
+  useEffect(() => {
+    if (!loaded || splashHidden.current) return;
+    splashHidden.current = true;
+    void SplashScreen.hideAsync().catch(() => undefined);
+  }, [loaded]);
+
   if (!loaded) return null;
 
   return (
@@ -59,13 +65,11 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
-
 function RootLayoutNav() {
   const pathname = usePathname();
 
   return (
     <AuthProvider>
-      <HideSplashWhenReady />
       <ThemeProvider>
         <PremiumGateProvider>
           <NimbusAlertProvider>
@@ -95,17 +99,4 @@ function RootLayoutNav() {
       </ThemeProvider>
     </AuthProvider>
   );
-}
-
-function HideSplashWhenReady() {
-  const { authReady } = useAuth();
-  const hidden = useRef(false);
-
-  useEffect(() => {
-    if (!authReady || hidden.current) return;
-    hidden.current = true;
-    void SplashScreen.hideAsync().catch(() => undefined);
-  }, [authReady]);
-
-  return null;
 }
