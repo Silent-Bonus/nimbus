@@ -48,12 +48,9 @@ jest.mock("@expo/vector-icons", () => {
   };
 });
 
-jest.mock("expo-av", () => ({
-  Audio: {
-    Sound: {
-      createAsync: jest.fn(),
-    },
-  },
+jest.mock("expo-audio", () => ({
+  createAudioPlayer: jest.fn(),
+  setAudioModeAsync: jest.fn(),
 }));
 
 jest.mock("expo-image", () => {

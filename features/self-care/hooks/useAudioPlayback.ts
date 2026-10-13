@@ -1,19 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Audio, type AVPlaybackStatus } from "expo-av";
+import {
+  createAudioPlayer,
+  setAudioModeAsync,
+  type AudioPlayer,
+  type AudioSource,
+  type AudioStatus,
+} from "expo-audio";
 
 import { seekMillis } from "@/features/self-care/utils/meditationPlayback";
 
 type UseAudioPlaybackOptions = {
-  source: Parameters<typeof Audio.Sound.createAsync>[0] | null;
+  source: AudioSource | null;
   autoPlay?: boolean;
   progressUpdateIntervalMillis?: number;
 };
 
 const DEFAULT_AUDIO_MODE = {
-  playsInSilentModeIOS: true,
-  staysActiveInBackground: false,
-  shouldDuckAndroid: true,
-  playThroughEarpieceAndroid: false,
+  playsInSilentMode: true,
+  shouldPlayInBackground: false,
+  interruptionMode: "doNotMix" as const,
 };
 
 export function useAudioPlayback({
@@ -21,8 +26,9 @@ export function useAudioPlayback({
   autoPlay = true,
   progressUpdateIntervalMillis = 500,
 }: UseAudioPlaybackOptions) {
-  const soundRef = useRef<Audio.Sound | null>(null);
-  const [playbackStatus, setPlaybackStatus] = useState<AVPlaybackStatus | null>(
+  const soundRef = useRef<AudioPlayer | null>(null);
+  const subscriptionRef = useRef<{ remove: () => void } | null>(null);
+  const [playbackStatus, setPlaybackStatus] = useState<AudioStatus | null>(
     null
   );
   const [isLoading, setIsLoading] = useState(true);
@@ -40,33 +46,40 @@ export function useAudioPlayback({
       }
 
       try {
-        await Audio.setAudioModeAsync(DEFAULT_AUDIO_MODE);
+        await setAudioModeAsync(DEFAULT_AUDIO_MODE);
 
-        const { sound } = await Audio.Sound.createAsync(
-          source,
-          {
-            shouldPlay: autoPlay,
-            progressUpdateIntervalMillis,
-          },
+        const player = createAudioPlayer(source, {
+          updateInterval: progressUpdateIntervalMillis,
+          keepAudioSessionActive: true,
+        });
+        const subscription = player.addListener(
+          "playbackStatusUpdate",
           (status) => {
             if (active) {
               setPlaybackStatus(status);
+              setIsLoading(!status.isLoaded);
             }
           }
         );
 
+        subscriptionRef.current = subscription;
+
         if (!active) {
-          await sound.unloadAsync();
+          subscription.remove();
+          player.remove();
           return;
         }
 
-        soundRef.current = sound;
+        soundRef.current = player;
+        setPlaybackStatus(player.currentStatus);
+        setIsLoading(!player.isLoaded);
+
+        if (autoPlay) {
+          player.play();
+        }
       } catch (error) {
         console.error("Unable to load audio playback", error);
-      } finally {
-        if (active) {
-          setIsLoading(false);
-        }
+        if (active) setIsLoading(false);
       }
     };
 
@@ -74,52 +87,55 @@ export function useAudioPlayback({
 
     return () => {
       active = false;
-      const sound = soundRef.current;
+      subscriptionRef.current?.remove();
+      subscriptionRef.current = null;
+      const player = soundRef.current;
       soundRef.current = null;
-      void sound?.unloadAsync();
+      player?.remove();
     };
   }, [autoPlay, progressUpdateIntervalMillis, source]);
 
-  const isPlaying = playbackStatus?.isLoaded ? playbackStatus.isPlaying : false;
+  const isPlaying = playbackStatus?.isLoaded ? playbackStatus.playing : false;
   const positionMillis = playbackStatus?.isLoaded
-    ? playbackStatus.positionMillis
+    ? playbackStatus.currentTime * 1000
     : 0;
   const durationMillis =
-    playbackStatus?.isLoaded && playbackStatus.durationMillis
-      ? playbackStatus.durationMillis
+    playbackStatus?.isLoaded && playbackStatus.duration
+      ? playbackStatus.duration * 1000
       : 1;
 
   const seekBy = useCallback(
     async (delta: number) => {
-      const sound = soundRef.current;
-      if (!sound || !playbackStatus?.isLoaded) return;
+      const player = soundRef.current;
+      if (!player || !playbackStatus?.isLoaded) return;
 
       const nextPosition = seekMillis(
-        playbackStatus.positionMillis,
+        playbackStatus.currentTime * 1000,
         delta,
-        playbackStatus.durationMillis ?? 0
+        playbackStatus.duration * 1000
       );
 
-      await sound.setPositionAsync(nextPosition);
+      await player.seekTo(nextPosition / 1000);
     },
     [playbackStatus]
   );
 
   const togglePlayPause = useCallback(async () => {
-    const sound = soundRef.current;
-    if (!sound) return;
+    const player = soundRef.current;
+    if (!player) return;
 
     if (isPlaying) {
-      await sound.pauseAsync();
+      player.pause();
     } else {
-      await sound.playAsync();
+      player.play();
     }
   }, [isPlaying]);
 
   const stop = useCallback(async () => {
-    const sound = soundRef.current;
-    if (!sound) return;
-    await sound.stopAsync();
+    const player = soundRef.current;
+    if (!player) return;
+    player.pause();
+    await player.seekTo(0);
   }, []);
 
   return {
