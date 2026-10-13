@@ -6,6 +6,7 @@ import {
   type ProtocolTemplate,
 } from "@/features/tools/data/protocolTemplates";
 import type { ProtocolTemplateApiItem } from "@/features/tools/types/protocolTemplateTypes";
+import type { ProtocolTemplateBlueprint } from "@/features/tools/types/protocolTemplateTypes";
 
 export type ProtocolTemplateCardData = ProtocolTemplateCardItem & {
   id: number;
@@ -32,6 +33,42 @@ export const getProtocolTemplateCategories = (
     new Set(templates.map((template) => template.category).filter(Boolean))
   ) as string[];
 
+/**
+ * The detail endpoint exposes steps as `protocols`, while older fixture data
+ * and the UI card model call them `blueprints`. Normalize both shapes here so
+ * screens do not depend on the backend's naming choice.
+ */
+export const getProtocolTemplateBlueprints = (
+  template?: ProtocolTemplateApiItem | null
+): ProtocolTemplateBlueprint[] => {
+  if (!template) return [];
+
+  const protocols = Array.isArray(template.protocols)
+    ? template.protocols
+    : [];
+
+  if (protocols.length > 0) {
+    return protocols.map((protocol) => ({
+      ...protocol,
+      metric_details: protocol.metric_details ?? {
+        count: null,
+        unit_name: null,
+      },
+      frequency_details: protocol.frequency_details ?? {
+        interval: null,
+        frequency_type: null,
+      },
+      duration_details: protocol.duration_details ?? {
+        all_day: false,
+        start_time: null,
+        end_time: null,
+      },
+    }));
+  }
+
+  return template.blueprints ?? [];
+};
+
 export const toProtocolTemplateCardData = (
   template: ProtocolTemplateApiItem
 ): ProtocolTemplateCardData => ({
@@ -46,7 +83,7 @@ export const toProtocolTemplateCardData = (
     .map((tag) => (typeof tag === "string" ? tag : tag?.name ?? ""))
     .map((tag) => tag.trim())
     .filter(Boolean),
-  blueprints: template.blueprints ?? [],
+  blueprints: getProtocolTemplateBlueprints(template),
   image: template.image ? { uri: template.image } : null,
 });
 

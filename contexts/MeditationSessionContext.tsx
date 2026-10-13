@@ -36,6 +36,7 @@ export type MeditationSessionControls = {
   onPause?: (elapsedSeconds: number) => Promise<void> | void;
   onResume?: () => Promise<void> | void;
   onStop?: (elapsedSeconds: number) => Promise<void> | void;
+  getIsPlaying?: () => boolean | null;
 };
 
 type StartSessionInput = MeditationSessionMetadata & {
@@ -53,6 +54,7 @@ type MeditationSessionContextValue = {
   pauseSession: () => Promise<void>;
   resumeSession: () => Promise<void>;
   stopSession: () => Promise<void>;
+  syncElapsedSeconds: (elapsedSeconds: number) => void;
   dismissSession: () => void;
   registerControls: (controls: MeditationSessionControls | null) => () => void;
 };
@@ -102,6 +104,24 @@ export function MeditationSessionProvider({
     return () => clearInterval(interval);
   }, [status]);
 
+  // Native lock-screen controls can change playback without going through the
+  // React buttons. Poll the registered player so the floating control stays in
+  // sync when the app returns from the background.
+  useEffect(() => {
+    if (!activeSession) {
+      return undefined;
+    }
+
+    const interval = setInterval(() => {
+      const isPlaying = controlsRef.current?.getIsPlaying?.();
+      if (isPlaying === null || isPlaying === undefined) return;
+
+      setStatus(isPlaying ? "running" : "paused");
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [activeSession]);
+
   const startSession = useCallback((input: StartSessionInput) => {
     setActiveSession({
       mode: input.mode,
@@ -120,15 +140,17 @@ export function MeditationSessionProvider({
   const pauseSession = useCallback(async () => {
     if (status !== "running") return;
 
-    await controlsRef.current?.onPause?.(activeSession?.elapsedSeconds ?? 0);
+    // Update the floating control immediately. The registered player may need
+    // to wait for a native playback-status event and/or an API response.
     setStatus("paused");
+    await controlsRef.current?.onPause?.(activeSession?.elapsedSeconds ?? 0);
   }, [activeSession?.elapsedSeconds, status]);
 
   const resumeSession = useCallback(async () => {
     if (status !== "paused") return;
 
-    await controlsRef.current?.onResume?.();
     setStatus("running");
+    await controlsRef.current?.onResume?.();
   }, [status]);
 
   const stopSession = useCallback(async () => {
@@ -138,6 +160,16 @@ export function MeditationSessionProvider({
     setStatus("idle");
     controlsRef.current = null;
   }, [activeSession?.elapsedSeconds]);
+
+  const syncElapsedSeconds = useCallback((elapsedSeconds: number) => {
+    if (!Number.isFinite(elapsedSeconds)) return;
+
+    setActiveSession((session) =>
+      session
+        ? { ...session, elapsedSeconds: Math.max(0, Math.floor(elapsedSeconds)) }
+        : session
+    );
+  }, []);
 
   // Clears the local floating-player state without invoking onStop. This is
   // used when a player screen is dismissed after pausing its server session;
@@ -170,6 +202,7 @@ export function MeditationSessionProvider({
       pauseSession,
       resumeSession,
       stopSession,
+      syncElapsedSeconds,
       dismissSession,
       registerControls,
     }),
@@ -181,6 +214,7 @@ export function MeditationSessionProvider({
       startSession,
       status,
       stopSession,
+      syncElapsedSeconds,
       dismissSession,
     ]
   );

@@ -42,14 +42,25 @@ export interface WellnessSessionMetadata extends Record<string, unknown> {
   test_mode?: boolean;
 }
 
-export interface WellnessSessionRequest {
+export type WellnessSessionRequest = {
   activity_type: WellnessSessionActivityType;
-  content_type: WellnessSessionContentType;
-  content_object_id: number;
-  content_object_type_id?: number;
   source: WellnessSessionSource;
   metadata: WellnessSessionMetadata;
-}
+} &
+  (
+    | {
+        content_slug: string;
+        content_type?: never;
+        content_object_id?: never;
+        content_object_type_id?: never;
+      }
+    | {
+        content_type: WellnessSessionContentType;
+        content_object_id: number;
+        content_object_type_id?: number;
+        content_slug?: never;
+      }
+  );
 
 export interface WellnessSessionFeedbackRequest {
   mood_label_before: WellnessMoodLabel;
@@ -121,6 +132,10 @@ export type WellnessSessionPauseResumeResponse = WellnessSessionCreateResponse;
 export type WellnessSessionFeedbackResponse = WellnessSessionCreateResponse;
 
 export interface WellnessSessionCompleteRequest {
+  duration_seconds: number;
+}
+
+export interface WellnessSessionPauseRequest {
   duration_seconds: number;
 }
 

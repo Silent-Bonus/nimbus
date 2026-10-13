@@ -27,6 +27,7 @@ import type { ProtocolTemplateApiItem } from "@/features/tools/types/protocolTem
 import {
   getProtocolTemplateById,
   getProtocolTemplateIdParam,
+  getProtocolTemplateBlueprints,
 } from "@/features/tools/utils/protocolTemplateUtils";
 import {
   PROTOCOL_TEMPLATES,
@@ -101,7 +102,7 @@ export const ProtocolTemplateProtocolsScreen: React.FC = () => {
   return (
     <ScreenView bgColor={svaColors.bg.base} style={styles.screen}>
       <FlatList
-        data={template?.blueprints ?? []}
+        data={getProtocolTemplateBlueprints(template)}
         keyExtractor={(item, index) =>
           `${template?.id ?? manifest.id}-${item.name}-${index}`
         }

@@ -15,6 +15,7 @@ export type ProtocolTemplateDurationDetails = {
 };
 
 export type ProtocolTemplateBlueprint = {
+  id?: number;
   name: string;
   description: string;
   habit_type: number | string | null;
@@ -23,7 +24,12 @@ export type ProtocolTemplateBlueprint = {
   metric_details: ProtocolTemplateMetricDetails;
   frequency_details: ProtocolTemplateFrequencyDetails;
   duration_details: ProtocolTemplateDurationDetails;
+  position?: number;
+  phase?: string | null;
+  notes?: string | null;
 };
+
+export type ProtocolTemplateProtocol = ProtocolTemplateBlueprint;
 
 export type ProtocolTemplateSection = {
   title: string;
@@ -42,7 +48,7 @@ export type ProtocolTemplateApiItem = {
   level: string | null;
   xp_reward?: number;
   tags?: (string | { id?: number; name?: string | null })[];
-  protocols?: unknown[];
+  protocols?: ProtocolTemplateProtocol[];
   blueprints?: ProtocolTemplateBlueprint[];
   image?: string | null;
   sections?: ProtocolTemplateSection[];

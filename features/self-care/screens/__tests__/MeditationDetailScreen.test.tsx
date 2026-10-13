@@ -346,6 +346,7 @@ describe("MeditationDetailScreen", () => {
       pathname: ROUTES.AUTH.SELF_CARE_MEDITATION_PLAYER,
       params: expect.objectContaining({
         ...buildMeditationRouteParams(expectedTemplate),
+        meditationSlug: "relaxing-meditation",
       }),
     });
     expect(mockPush).toHaveBeenCalledTimes(1);

@@ -221,10 +221,18 @@ export default function MeditationDetailScreen() {
     hasLaunchedMeditationRef.current = true;
     setIsStartingMeditation(true);
 
+    // Preserve the slug used for the detail request even when the detail
+    // response only returns the numeric content id.
+    const resolvedMeditationSlug =
+      meditation.slug ??
+      meditationSlug ??
+      (Number.isFinite(Number(meditationId)) ? undefined : meditationId);
+
     router.push({
       pathname: ROUTES.AUTH.SELF_CARE_MEDITATION_PLAYER,
       params: {
         ...buildMeditationRouteParams(meditation),
+        meditationSlug: resolvedMeditationSlug,
         source: routedSource,
         checkInId: routedCheckInId,
         date: routedDate,
@@ -234,6 +242,8 @@ export default function MeditationDetailScreen() {
   }, [
     isStartingMeditation,
     meditation,
+    meditationId,
+    meditationSlug,
     routedCheckInId,
     routedDate,
     routedSource,

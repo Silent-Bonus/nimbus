@@ -13,6 +13,7 @@ import type {
   WellnessSessionFeedbackResponse,
   WellnessSessionListResponse,
   WellnessSessionPauseResumeResponse,
+  WellnessSessionPauseRequest,
   WellnessSessionRequest,
   WellnessSummaryResponse,
 } from "@/features/self-care/types/wellnessSessionTypes";
@@ -66,11 +67,14 @@ export const getWellnessSessionByRef = async (
 };
 
 export const pauseWellnessSession = async (
-  sessionRef: string
+  sessionRef: string,
+  data?: WellnessSessionPauseRequest
 ): Promise<WellnessSessionPauseResumeResponse> => {
   try {
     const response: AxiosResponse<WellnessSessionPauseResumeResponse> =
-      await axios.post(API_ENDPOINTS.pauseWellnessSession(sessionRef));
+      data
+        ? await axios.post(API_ENDPOINTS.pauseWellnessSession(sessionRef), data)
+        : await axios.post(API_ENDPOINTS.pauseWellnessSession(sessionRef));
     return response.data;
   } catch (error: any) {
     throw error.response ? error.response.data : error.message;

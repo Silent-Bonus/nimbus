@@ -15,7 +15,12 @@ import {
   Text,
   View,
 } from "react-native";
-import { Audio, AVPlaybackStatus } from "expo-av";
+import {
+  createAudioPlayer,
+  setAudioModeAsync,
+  type AudioPlayer,
+  type AudioStatus,
+} from "expo-audio";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -107,7 +112,8 @@ export default function MeditationPlayerScreen() {
 
   // Refs hold mutable playback/session state that must stay readable inside
   // async callbacks without forcing the audio instance to be recreated.
-  const soundRef = useRef<Audio.Sound | null>(null);
+  const soundRef = useRef<AudioPlayer | null>(null);
+  const playbackSubscriptionRef = useRef<{ remove: () => void } | null>(null);
   const pendingPlayOnReadyRef = useRef(false);
   const playbackPositionRef = useRef(0);
   const playbackIntentRef = useRef<"play" | "pause" | null>(null);
@@ -120,10 +126,11 @@ export default function MeditationPlayerScreen() {
   const resumeSessionRef = useRef<(() => Promise<void>) | null>(null);
   const dismissSessionRef = useRef<(() => void) | null>(null);
   const completeSessionRef = useRef<(() => Promise<void>) | null>(null);
+  const releaseAudioRef = useRef<(() => void) | null>(null);
   const sessionCreatePromiseRef = useRef<Promise<string | null> | null>(null);
   const completionInFlightRef = useRef(false);
   const leavingScreenRef = useRef(false);
-  const [playbackStatus, setPlaybackStatus] = useState<AVPlaybackStatus | null>(
+  const [playbackStatus, setPlaybackStatus] = useState<AudioStatus | null>(
     null
   );
   const [isLoading, setIsLoading] = useState(true);
@@ -150,21 +157,21 @@ export default function MeditationPlayerScreen() {
   // The player shows optimistic play/pause state immediately on tap, then
   // falls back to the native audio status once Expo confirms the transition.
   const isActuallyPlaying =
-    playbackStatus?.isLoaded ? playbackStatus.isPlaying : false;
+    playbackStatus?.isLoaded ? playbackStatus.playing : false;
   const isPlaying =
     playbackIntent === "play"
       ? true
       : playbackIntent === "pause"
         ? false
-        : isActuallyPlaying ||
-          sessionStatus === "creating" ||
-          sessionStatus === "active";
+        : playbackStatus?.isLoaded
+          ? isActuallyPlaying
+          : sessionStatus === "creating" || sessionStatus === "active";
   const positionMillis = playbackStatus?.isLoaded
-    ? playbackStatus.positionMillis
+    ? playbackStatus.currentTime * 1000
     : 0;
   const durationMillis =
-    playbackStatus?.isLoaded && playbackStatus.durationMillis
-      ? playbackStatus.durationMillis
+    playbackStatus?.isLoaded && playbackStatus.duration
+      ? playbackStatus.duration * 1000
       : 1;
   const progress = Math.min(positionMillis / durationMillis, 1);
 
@@ -227,11 +234,17 @@ export default function MeditationPlayerScreen() {
   }, [sessionRef]);
 
   const ensureSessionStarted = useCallback(() => {
+    const contentSlug = template.slug?.trim();
+
     if (
       sessionStatus !== "idle" ||
       sessionCreatePromiseRef.current ||
-      !Number.isFinite(Number(template.id))
+      !Number.isFinite(Number(template.id)) ||
+      !contentSlug
     ) {
+      if (!contentSlug) {
+        console.warn("Unable to start meditation session: content slug is missing.");
+      }
       return;
     }
 
@@ -239,8 +252,7 @@ export default function MeditationPlayerScreen() {
 
     const promise = createWellnessSession({
       activity_type: "meditation",
-      content_type: "wellness_content.wellnesscontent",
-      content_object_id: Number(template.id),
+      content_slug: contentSlug,
       source: "manual",
       metadata: {
         entry_surface: "player_screen",
@@ -264,7 +276,7 @@ export default function MeditationPlayerScreen() {
       });
 
     sessionCreatePromiseRef.current = promise;
-  }, [sessionStatus, template.id]);
+  }, [sessionStatus, template.id, template.slug]);
 
   // Pausing/resuming the backend session is kept separate from audio control so
   // the screen can pause on navigation changes and resume only when playback restarts.
@@ -283,7 +295,12 @@ export default function MeditationPlayerScreen() {
     }
 
     try {
-      await pauseWellnessSession(resolvedSessionRef);
+      await pauseWellnessSession(resolvedSessionRef, {
+        duration_seconds: Math.max(
+          0,
+          Math.round(playbackPositionRef.current / 1000)
+        ),
+      });
       sessionStatusRef.current = "paused";
       setSessionStatus("paused");
     } catch (error) {
@@ -323,7 +340,7 @@ export default function MeditationPlayerScreen() {
   }, [meditationSession.dismissSession]);
 
   const startPlayback = useCallback(
-    async (sound: Audio.Sound) => {
+    async (sound: AudioPlayer) => {
       // A completed session should never restart from the player screen.
       if (sessionStatusRef.current === "completed") {
         return;
@@ -331,7 +348,7 @@ export default function MeditationPlayerScreen() {
 
       // Resuming an existing paused session skips create and only restarts audio.
       if (sessionStatusRef.current === "paused") {
-        await sound.playAsync();
+        sound.play();
         void resumeSessionRef.current?.();
         return;
       }
@@ -339,7 +356,7 @@ export default function MeditationPlayerScreen() {
       // First-time play starts the session request and audio in parallel so the
       // button responds immediately instead of waiting for the API round trip.
       ensureSessionStarted();
-      await sound.playAsync();
+      sound.play();
       meditationSession.startSession({
         mode: "meditation",
         source: routeSource === "daily-checkin" ? "daily-checkin" : "meditation",
@@ -396,12 +413,15 @@ export default function MeditationPlayerScreen() {
   }, [completeSession]);
 
   const handlePlaybackStatusUpdate = useCallback(
-    (status: AVPlaybackStatus) => {
+    (status: AudioStatus) => {
       setPlaybackStatus(status);
 
       if (!status.isLoaded) {
+        setIsLoading(true);
         return;
       }
+
+      setIsLoading(false);
 
       const playbackIntent = playbackIntentRef.current;
 
@@ -409,13 +429,13 @@ export default function MeditationPlayerScreen() {
       // so future UI state is driven by the native playback status again.
       if (status.didJustFinish) {
         setPlaybackIntent(null);
-      } else if (status.isPlaying && playbackIntent === "play") {
+      } else if (status.playing && playbackIntent === "play") {
         setPlaybackIntent(null);
-      } else if (!status.isPlaying && playbackIntent === "pause") {
+      } else if (!status.playing && playbackIntent === "pause") {
         setPlaybackIntent(null);
       }
 
-      playbackPositionRef.current = status.positionMillis;
+      playbackPositionRef.current = status.currentTime * 1000;
 
       if (status.didJustFinish) {
         void (async () => {
@@ -424,6 +444,7 @@ export default function MeditationPlayerScreen() {
           // remove the floating player; explicit Stop already does this via
           // MeditationSessionProvider.stopSession().
           dismissSessionRef.current?.();
+          releaseAudioRef.current?.();
         })();
       }
     },
@@ -443,36 +464,54 @@ export default function MeditationPlayerScreen() {
       }
 
       try {
-        await Audio.setAudioModeAsync({
-          playsInSilentModeIOS: true,
+        await setAudioModeAsync({
+          playsInSilentMode: true,
           // Keep an active meditation playing while the app is backgrounded
           // or the phone is locked. Paused sessions remain paused.
-          staysActiveInBackground: true,
-          shouldDuckAndroid: true,
-          playThroughEarpieceAndroid: false,
+          shouldPlayInBackground: true,
+          interruptionMode: "doNotMix",
         });
 
-        const { sound } = await Audio.Sound.createAsync(
-          playbackSource,
-          {
-            shouldPlay: false,
-            progressUpdateIntervalMillis: 500,
-          },
+        const sound = createAudioPlayer(playbackSource, {
+          updateInterval: 500,
+          keepAudioSessionActive: true,
+        });
+        sound.setActiveForLockScreen(true, {
+          title: meditationTitle,
+          artist: "SVA Meditation",
+          albumTitle: "Meditation",
+        });
+
+        const subscription = sound.addListener(
+          "playbackStatusUpdate",
           handlePlaybackStatusUpdate
         );
 
+        const release = () => {
+          subscription.remove();
+          sound.clearLockScreenControls();
+          sound.remove();
+          if (soundRef.current === sound) {
+            soundRef.current = null;
+          }
+          if (playbackSubscriptionRef.current === subscription) {
+            playbackSubscriptionRef.current = null;
+          }
+        };
+        releaseAudioRef.current = release;
+        playbackSubscriptionRef.current = subscription;
+
         if (!active) {
-          await sound.unloadAsync();
+          release();
           return;
         }
 
         soundRef.current = sound;
+        setIsLoading(!sound.isLoaded);
       } catch (error) {
         console.error("Unable to load meditation audio", error);
       } finally {
-        if (active) {
-          setIsLoading(false);
-        }
+        if (active && soundRef.current?.isLoaded) setIsLoading(false);
       }
     };
 
@@ -490,11 +529,10 @@ export default function MeditationPlayerScreen() {
         currentStatus !== "creating" &&
         currentStatus !== "paused"
       ) {
-        void soundRef.current?.unloadAsync();
-        soundRef.current = null;
+        releaseAudioRef.current?.();
       }
     };
-  }, [handlePlaybackStatusUpdate, playbackSource]);
+  }, [handlePlaybackStatusUpdate, meditationTitle, playbackSource]);
 
   useEffect(() => {
     if (isLoading || !pendingPlayOnReadyRef.current) {
@@ -520,11 +558,11 @@ export default function MeditationPlayerScreen() {
       if (!sound || !playbackStatus?.isLoaded) return;
 
       const nextPosition = seekMillis(
-        playbackStatus.positionMillis,
+        playbackStatus.currentTime * 1000,
         delta,
-        playbackStatus.durationMillis ?? 0
+        playbackStatus.duration * 1000
       );
-      await sound.setPositionAsync(nextPosition);
+      await sound.seekTo(nextPosition / 1000);
     },
     [playbackStatus]
   );
@@ -536,6 +574,10 @@ export default function MeditationPlayerScreen() {
     // Pause uses the current sound immediately, then updates the backend
     // session in the background.
     if (isPlaying) {
+      // Set this before awaiting the session callback. The native player can
+      // report its next status on a later tick, while the screen must switch
+      // to the play icon immediately after the tap.
+      setPlaybackIntent("pause");
       await meditationSession.pauseSession();
       return;
     }
@@ -577,7 +619,7 @@ export default function MeditationPlayerScreen() {
           const sound = soundRef.current;
           setPlaybackIntent("pause");
           if (sound) {
-            await sound.pauseAsync();
+            sound.pause();
           }
           await pauseSession();
         },
@@ -591,10 +633,12 @@ export default function MeditationPlayerScreen() {
         onStop: async () => {
           const sound = soundRef.current;
           if (sound) {
-            await sound.pauseAsync().catch(() => {});
+            sound.pause();
           }
           await completeSession();
+          releaseAudioRef.current?.();
         },
+        getIsPlaying: () => soundRef.current?.playing ?? null,
       });
 
     return () => {
@@ -628,12 +672,17 @@ export default function MeditationPlayerScreen() {
   const handleBack = useCallback(async () => {
     leavingScreenRef.current = true;
 
+    // The floating player is owned by the root layout and survives this
+    // screen. Transfer the native audio position before navigating away so its
+    // timer continues from the real meditation position instead of 00:00.
+    meditationSession.syncElapsedSeconds(playbackPositionRef.current / 1000);
+
     const sound = soundRef.current;
     if (!isPlaying) {
       // There is no background player to expose for a paused meditation that
       // the user is leaving, so remove the stale floating-session state.
       if (sound && sessionStatus !== "completed") {
-        await sound.pauseAsync().catch(() => {});
+        sound.pause();
       }
       meditationSession.dismissSession();
     }
@@ -721,7 +770,7 @@ export default function MeditationPlayerScreen() {
                 {formatPlaybackRemaining(
                   positionMillis,
                   playbackStatus?.isLoaded
-                    ? playbackStatus.durationMillis ?? 0
+                    ? playbackStatus.duration * 1000
                     : 0
                 )}
               </Text>
