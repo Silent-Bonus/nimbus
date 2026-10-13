@@ -846,7 +846,7 @@ function SoundscapePlayerContent({
   useEffect(() => {
     if (!currentSound || isLoading) return;
 
-    void currentSound.setVolumeAsync(playbackVolume);
+    currentSound.volume = playbackVolume;
   }, [currentSound, isLoading, playbackVolume]);
 
   // The sleep timer counts down from the moment the user selects a preset. When
@@ -857,7 +857,8 @@ function SoundscapePlayerContent({
 
     const timeout = setTimeout(() => {
       if (currentSound) {
-        void currentSound.stopAsync();
+        currentSound.pause();
+        void currentSound.seekTo(0);
       }
       void pauseSessionRef.current?.();
       setTimerIndex(0);
@@ -936,7 +937,8 @@ function SoundscapePlayerContent({
         },
         onStop: async () => {
           if (currentSound) {
-            await currentSound.stopAsync().catch(() => {});
+            currentSound.pause();
+            await currentSound.seekTo(0);
           }
           await completeSession();
         },

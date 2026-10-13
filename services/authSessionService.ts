@@ -9,6 +9,9 @@ import { setStoredUser } from "@/services/storageService";
 
 export const AUTH_SESSION_DEFAULT_TIMEOUT_MS = 15 * 24 * 60 * 60 * 1000;
 export const AUTH_SESSION_TEST_TIMEOUT_MS = 15 * 60 * 1000;
+// Startup must never be blocked by a refresh request. If the API is slow or
+// temporarily unavailable, the app can still open and let the user sign in.
+export const AUTH_REFRESH_REQUEST_TIMEOUT_MS = 10_000;
 
 const TEST_MODE_KEY = StoreKey.AUTH_SESSION_TEST_MODE_KEY;
 
@@ -105,7 +108,11 @@ export async function refreshAccessTokenOrClearSession(): Promise<string | null>
     const response = await axios.post<{
       success: boolean;
       data?: { access?: string; refresh?: string };
-    }>(API_ENDPOINTS.refreshToken, { refresh });
+    }>(API_ENDPOINTS.refreshToken, {
+      refresh,
+    }, {
+      timeout: AUTH_REFRESH_REQUEST_TIMEOUT_MS,
+    });
     const access = response.data?.success ? response.data.data?.access : null;
     if (!access) throw new Error("Refresh response did not include an access token");
 
