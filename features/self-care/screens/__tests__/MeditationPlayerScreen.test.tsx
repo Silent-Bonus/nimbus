@@ -14,7 +14,7 @@ const mockBack = jest.fn();
 const mockSetOptions = jest.fn();
 const mockShare = jest.fn();
 const mockSetAudioModeAsync = jest.fn();
-const mockCreateAsync = jest.fn();
+const mockCreateAudioPlayer = jest.fn();
 const mockCreateWellnessSessionFn = jest.fn();
 const mockPauseWellnessSessionFn = jest.fn();
 const mockResumeWellnessSessionFn = jest.fn();
@@ -22,6 +22,7 @@ const mockCompleteWellnessSessionFn = jest.fn();
 
 let mockParams = {
   meditationId: "1",
+  meditationSlug: "relaxing-meditation",
   meditationTitle: "Relaxing Meditation",
   meditationDescription:
     "A gentle practice to release tension and find inner calm.",
@@ -36,31 +37,49 @@ const mockSessionRef = "c90e8cea-42af-47d2-a4b5-62e8e7bb027c";
 
 let playbackStatusCallback: ((status: any) => void) | null = null;
 const mockSound = {
-  pauseAsync: jest.fn(async () => {
+  playing: false,
+  isLoaded: true,
+  currentTime: 15,
+  duration: 180,
+  pause: jest.fn(() => {
+    mockSound.playing = false;
     playbackStatusCallback?.({
       isLoaded: true,
-      isPlaying: false,
-      positionMillis: 15000,
-      durationMillis: 180000,
+      playing: false,
+      currentTime: 15,
+      duration: 180,
     });
   }),
-  playAsync: jest.fn(async () => {
+  play: jest.fn(() => {
+    mockSound.playing = true;
     playbackStatusCallback?.({
       isLoaded: true,
-      isPlaying: true,
-      positionMillis: 15000,
-      durationMillis: 180000,
+      playing: true,
+      currentTime: 15,
+      duration: 180,
     });
   }),
-  setPositionAsync: jest.fn(async (position: number) => {
+  seekTo: jest.fn(async (position: number) => {
     playbackStatusCallback?.({
       isLoaded: true,
-      isPlaying: true,
-      positionMillis: position,
-      durationMillis: 180000,
+      playing: true,
+      currentTime: position,
+      duration: 180,
     });
   }),
-  unloadAsync: jest.fn(),
+  setActiveForLockScreen: jest.fn(),
+  clearLockScreenControls: jest.fn(),
+  remove: jest.fn(),
+  addListener: jest.fn((_event: string, callback: (status: any) => void) => {
+    playbackStatusCallback = callback;
+    callback({
+      isLoaded: mockSound.isLoaded,
+      playing: mockSound.playing,
+      currentTime: 0,
+      duration: 180,
+    });
+    return { remove: jest.fn() };
+  }),
 };
 
 jest.mock("expo-router", () => ({
@@ -74,13 +93,9 @@ jest.mock("expo-router", () => ({
   useLocalSearchParams: () => mockParams,
 }));
 
-jest.mock("expo-av", () => ({
-  Audio: {
-    setAudioModeAsync: (...args: any[]) => mockSetAudioModeAsync(...args),
-    Sound: {
-      createAsync: (...args: any[]) => mockCreateAsync(...args),
-    },
-  },
+jest.mock("expo-audio", () => ({
+  createAudioPlayer: (...args: any[]) => mockCreateAudioPlayer(...args),
+  setAudioModeAsync: (...args: any[]) => mockSetAudioModeAsync(...args),
 }));
 
 jest.mock("react-native-safe-area-context", () => ({
@@ -163,6 +178,7 @@ describe("MeditationPlayerScreen", () => {
     jest.clearAllMocks();
     mockParams = {
       meditationId: "1",
+      meditationSlug: "relaxing-meditation",
       meditationTitle: "Relaxing Meditation",
       meditationDescription:
         "A gentle practice to release tension and find inner calm.",
@@ -203,18 +219,10 @@ describe("MeditationPlayerScreen", () => {
       },
     } as any);
 
-    mockCreateAsync.mockImplementation(
-      async (source: any, options: any, onPlaybackStatusUpdate: any) => {
-        playbackStatusCallback = onPlaybackStatusUpdate;
-        onPlaybackStatusUpdate({
-          isLoaded: true,
-          isPlaying: Boolean(options?.shouldPlay),
-          positionMillis: 0,
-          durationMillis: 180000,
-        });
-        return { sound: mockSound };
-      }
-    );
+    mockSound.playing = false;
+    mockSound.isLoaded = true;
+    mockSound.currentTime = 0;
+    mockCreateAudioPlayer.mockImplementation(() => mockSound);
 
     jest.spyOn(Share, "share").mockImplementation(mockShare);
     mockShare.mockResolvedValue({ action: "sharedAction" } as any);
@@ -236,15 +244,15 @@ describe("MeditationPlayerScreen", () => {
     });
 
     expect(mockSetAudioModeAsync).toHaveBeenCalled();
-    expect(mockCreateAsync).toHaveBeenCalledWith(
+    expect(mockCreateAudioPlayer).toHaveBeenCalledWith(
       resolveMeditationPlaybackSource(
         "1",
         "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
       ),
       expect.objectContaining({
-        shouldPlay: false,
-      }),
-      expect.any(Function)
+        updateInterval: 500,
+        keepAudioSessionActive: true,
+      })
     );
     expect(mockCreateWellnessSessionFn).not.toHaveBeenCalled();
 
@@ -279,15 +287,14 @@ describe("MeditationPlayerScreen", () => {
 
     expect(mockCreateWellnessSessionFn).toHaveBeenCalledWith({
       activity_type: "meditation",
-      content_type: "wellness_content.wellnesscontent",
-      content_object_id: 1,
+      content_slug: "relaxing-meditation",
       source: "manual",
       metadata: {
         entry_surface: "player_screen",
         test_mode: true,
       },
     });
-    expect(mockSound.playAsync).toHaveBeenCalledTimes(1);
+    expect(mockSound.play).toHaveBeenCalledTimes(1);
 
     const pauseButton = tree.root.findByProps({
       accessibilityLabel: "Pause meditation",
@@ -302,8 +309,10 @@ describe("MeditationPlayerScreen", () => {
       await Promise.resolve();
     });
 
-    expect(mockPauseWellnessSessionFn).toHaveBeenCalledWith(mockSessionRef);
-    expect(mockSound.pauseAsync).toHaveBeenCalledTimes(1);
+    expect(mockPauseWellnessSessionFn).toHaveBeenCalledWith(mockSessionRef, {
+      duration_seconds: 15,
+    });
+    expect(mockSound.pause).toHaveBeenCalledTimes(1);
 
     const resumedPlayButton = tree.root.findByProps({
       accessibilityLabel: "Play meditation",
@@ -316,7 +325,7 @@ describe("MeditationPlayerScreen", () => {
     });
 
     expect(mockResumeWellnessSessionFn).toHaveBeenCalledWith(mockSessionRef);
-    expect(mockSound.playAsync).toHaveBeenCalledTimes(2);
+    expect(mockSound.play).toHaveBeenCalledTimes(2);
 
     await act(async () => {
       await backButton.props.onPress();
@@ -331,7 +340,7 @@ describe("MeditationPlayerScreen", () => {
   });
 
   it("switches to pause immediately on the first play tap before the status callback catches up", async () => {
-    mockSound.playAsync.mockImplementationOnce(async () => undefined);
+    mockSound.play.mockImplementationOnce(() => undefined);
 
     const tree = await renderScreen();
 
@@ -351,8 +360,7 @@ describe("MeditationPlayerScreen", () => {
     ).toBeTruthy();
     expect(mockCreateWellnessSessionFn).toHaveBeenCalledWith({
       activity_type: "meditation",
-      content_type: "wellness_content.wellnesscontent",
-      content_object_id: 1,
+      content_slug: "relaxing-meditation",
       source: "manual",
       metadata: {
         entry_surface: "player_screen",
@@ -374,27 +382,12 @@ describe("MeditationPlayerScreen", () => {
       await Promise.resolve();
     });
 
-    expect(mockCreateAsync).toHaveBeenCalledTimes(1);
+    expect(mockCreateAudioPlayer).toHaveBeenCalledTimes(1);
   });
 
   it("queues an early play tap while audio is still loading", async () => {
-    let resolveAudioLoad: (() => void) | undefined;
-
-    mockCreateAsync.mockImplementationOnce(
-      (source: any, options: any, onPlaybackStatusUpdate: any) =>
-        new Promise((resolve) => {
-          playbackStatusCallback = onPlaybackStatusUpdate;
-          resolveAudioLoad = () => {
-            onPlaybackStatusUpdate({
-              isLoaded: true,
-              isPlaying: Boolean(options?.shouldPlay),
-              positionMillis: 0,
-              durationMillis: 180000,
-            });
-            resolve({ sound: mockSound });
-          };
-        })
-    );
+    const originalLoaded = mockSound.isLoaded;
+    mockSound.isLoaded = false;
 
     const tree = await renderScreen();
 
@@ -408,16 +401,22 @@ describe("MeditationPlayerScreen", () => {
     });
 
     await act(async () => {
-      resolveAudioLoad?.();
+      mockSound.isLoaded = true;
+      playbackStatusCallback?.({
+        isLoaded: true,
+        playing: false,
+        currentTime: 0,
+        duration: 180,
+      });
       await Promise.resolve();
       await Promise.resolve();
     });
 
-    expect(mockSound.playAsync).toHaveBeenCalledTimes(1);
+    expect(mockSound.play).toHaveBeenCalledTimes(1);
+    mockSound.isLoaded = originalLoaded;
     expect(mockCreateWellnessSessionFn).toHaveBeenCalledWith({
       activity_type: "meditation",
-      content_type: "wellness_content.wellnesscontent",
-      content_object_id: 1,
+      content_slug: "relaxing-meditation",
       source: "manual",
       metadata: {
         entry_surface: "player_screen",
@@ -442,9 +441,9 @@ describe("MeditationPlayerScreen", () => {
     await act(async () => {
       playbackStatusCallback?.({
         isLoaded: true,
-        isPlaying: false,
-        positionMillis: 205000,
-        durationMillis: 205000,
+        playing: false,
+        currentTime: 205,
+        duration: 205,
         didJustFinish: true,
       });
       await Promise.resolve();
@@ -482,8 +481,8 @@ describe("MeditationPlayerScreen", () => {
       await libraryButton.props.onPress();
     });
 
-    expect(mockSound.setPositionAsync).toHaveBeenCalledWith(0);
-    expect(mockSound.setPositionAsync).toHaveBeenCalledWith(15000);
+    expect(mockSound.seekTo).toHaveBeenCalledWith(0);
+    expect(mockSound.seekTo).toHaveBeenCalledWith(15);
     expect(mockShare).toHaveBeenCalledWith({
       message:
         "Relaxing Meditation · A gentle practice to release tension and find inner calm.",

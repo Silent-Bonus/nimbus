@@ -2,13 +2,11 @@ import React, { useContext, useMemo } from "react";
 import {
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 
 import ThemeContext from "@/contexts/ThemeContext";
 import { SVATypography } from "@/theme/typography";
@@ -113,23 +111,9 @@ export default function ActionModal({
         />
 
         <View style={styles.cardShell} pointerEvents="box-none">
-          <LinearGradient
-            colors={[
-              svaColors.brand.primary,
-              svaColors.surface.raised,
-              svaColors.surface.base,
-            ]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.cardBorder}
-          >
+          <View style={styles.cardBorder}>
             <View style={styles.card}>
-              <ScrollView
-                bounces={false}
-                showsVerticalScrollIndicator={false}
-                style={styles.contentScroll}
-                contentContainerStyle={styles.contentScrollContent}
-              >
+              <View style={styles.content}>
                 <View style={styles.handleRow}>
                   <View style={styles.handle} />
                 </View>
@@ -173,7 +157,7 @@ export default function ActionModal({
                     {!!body && <Text style={styles.body}>{body}</Text>}
                   </View>
                 </View>
-              </ScrollView>
+              </View>
 
               <View style={styles.footer}>
                 {secondaryAction ? (
@@ -206,7 +190,7 @@ export default function ActionModal({
                 />
               </View>
             </View>
-          </LinearGradient>
+          </View>
         </View>
       </View>
     </Modal>
@@ -235,27 +219,22 @@ function createStyles(
     },
     cardBorder: {
       borderRadius: 32,
-      padding: 1.5,
+      padding: 1,
+      backgroundColor: colors.border.subtle,
       shadowColor: colors.shadow.default,
-      shadowOpacity: 0.28,
-      shadowRadius: 24,
-      shadowOffset: { width: 0, height: 12 },
-      elevation: 12,
+      shadowOpacity: 0.2,
+      shadowRadius: 14,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 8,
     },
     card: {
       borderRadius: 31,
-      maxHeight: "86%",
       overflow: "hidden",
       backgroundColor: colors.bg.base,
       borderWidth: 1,
       borderColor: colors.border.subtle,
     },
-    contentScroll: {
-      flexGrow: 0,
-      flexShrink: 1,
-      maxHeight: "100%",
-    },
-    contentScrollContent: {
+    content: {
       paddingTop: spacing.xs,
       paddingHorizontal: spacing.lg,
       paddingBottom: spacing.sm,

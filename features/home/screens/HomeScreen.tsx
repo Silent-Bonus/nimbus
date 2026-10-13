@@ -526,10 +526,6 @@ export default function HomeScreen() {
           label: "Update",
           onPress: () => router.push(PROFILE_UPDATE_ROUTE),
         }}
-        secondaryAction={{
-          label: "Not now",
-          variant: "outline",
-        }}
       />
 
       <HomeWalkthroughOverlay

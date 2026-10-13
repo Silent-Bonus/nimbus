@@ -360,6 +360,7 @@ const RecipeDetailScreen: React.FC = () => {
                   onPress: onShare,
                 },
               ]}
+              titleNumberOfLines={4}
               titleStyle={styles.headerTitle}
               subtitleStyle={styles.headerSubtitle}
               containerStyle={styles.header}

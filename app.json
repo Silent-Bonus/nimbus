@@ -14,7 +14,9 @@
       "buildNumber": "1.0.0",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "UIBackgroundModes": ["audio"]
+        "UIBackgroundModes": [
+          "audio"
+        ]
       }
     },
     "android": {
@@ -35,8 +37,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission":
-            "Allow SVA to use your location to personalize your clinical experience."
+          "locationWhenInUsePermission": "Allow SVA to use your location to personalize your clinical experience."
         }
       ],
       [
@@ -55,7 +56,13 @@
           "supportsPictureInPicture": true
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-audio",
+        {
+          "enableBackgroundPlayback": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
