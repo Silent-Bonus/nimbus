@@ -274,9 +274,17 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const loadToken = async () => {
+      const startedAt = Date.now();
+      console.log("[auth] startup bootstrap started");
+
       try {
+        console.log("[auth] refreshing access token");
         const token = await refreshAccessTokenOrClearSession();
         const ob = await SecureStore.getItemAsync(StoreKey.ONBOARDING_DONE_KEY);
+        console.log("[auth] refresh completed", {
+          authenticated: Boolean(token),
+          durationMs: Date.now() - startedAt,
+        });
 
         if (token) {
           axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
@@ -294,13 +302,20 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
         setAuthState({ token: null, authenticated: false });
         clearUserProfileSync();
         setOnboardingDone(null);
-      } catch {
+      } catch (error) {
+        console.error("[auth] startup bootstrap failed", {
+          message: error instanceof Error ? error.message : String(error),
+          durationMs: Date.now() - startedAt,
+        });
         delete axios.defaults.headers.common["Authorization"];
         setAuthState({ token: null, authenticated: false });
         clearUserProfileSync();
         setOnboardingDone(null);
       } finally {
         setAuthReady(true);
+        console.log("[auth] authReady=true", {
+          durationMs: Date.now() - startedAt,
+        });
       }
     };
 
