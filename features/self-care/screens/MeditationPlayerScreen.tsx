@@ -686,10 +686,11 @@ export default function MeditationPlayerScreen() {
           await completeSession();
           releaseAudioRef.current?.();
         },
-        onTakeover: () => {
+        onTakeover: async () => {
           const sound = soundRef.current;
+          const resolvedSessionRef = await resolveSessionRef();
           const handoff = {
-            sessionRef,
+            sessionRef: resolvedSessionRef,
             elapsedSeconds: playbackPositionRef.current / 1000,
             wasPlaying: Boolean(sound?.playing),
           };
@@ -717,7 +718,7 @@ export default function MeditationPlayerScreen() {
     completeSession,
     meditationSession,
     pauseSession,
-    sessionRef,
+    resolveSessionRef,
     sessionStatus,
     startPlayback,
   ]);

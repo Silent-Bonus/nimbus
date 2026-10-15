@@ -185,6 +185,13 @@ export function MeditationSessionProvider({
       // Reopening the same meditation transfers the existing session/audio
       // position to the new player instead of creating a duplicate session.
       const handoff = await controlsRef.current?.onTakeover?.();
+      if (handoff && !handoff.sessionRef) {
+        // Do not adopt a session that never received a backend reference. The
+        // old player is released through stopSession, and the new player can
+        // create a clean session normally.
+        await stopSession();
+        return null;
+      }
       const result = handoff ?? {
         elapsedSeconds: activeSession.elapsedSeconds,
         wasPlaying: status === "running",
