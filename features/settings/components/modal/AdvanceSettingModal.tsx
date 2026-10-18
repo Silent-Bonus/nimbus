@@ -14,6 +14,7 @@ import SettingsBottomSheet from "./SettingsBottomSheet";
 import PreferenceDetailModal from "./PreferenceDetailModal";
 import {
   formatAdvancedValue,
+  mergeAdvancedSettings,
   type AdvancedSettingDisplayItem,
   type AdvancedSettingSection,
   type AdvancedSettingsPatch,
@@ -252,11 +253,17 @@ export default function AdvancedSettingsModal({
 
     try {
       const cached = (await loadUserFromStorage?.()) as
-        | { settings?: AdvancedSettingsState | null }
+        | {
+            settings?: AdvancedSettingsState | null;
+            vitals_context?: { inputs?: AdvancedSettingsState | null } | null;
+          }
         | null
         | undefined;
 
-      const nextSettings = cached?.settings ?? {};
+      const nextSettings = mergeAdvancedSettings(
+        cached?.settings,
+        cached?.vitals_context?.inputs
+      );
       setMerged(
         flattenSections().map((item) => ({
           ...item,
@@ -288,9 +295,10 @@ export default function AdvancedSettingsModal({
       try {
         const saved = await updateProfile?.(payload);
         if (saved?.success) {
-          const nextSettings =
-            (saved?.data?.settings as AdvancedSettingsState | undefined) ??
-            payload;
+          const nextSettings = mergeAdvancedSettings(
+            saved?.data?.settings as AdvancedSettingsState | undefined,
+            payload
+          );
 
           setMerged((current) =>
             current.map((item) => ({

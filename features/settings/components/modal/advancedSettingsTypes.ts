@@ -37,6 +37,29 @@ export type AdvancedSettingsState = Partial<
   Record<AdvancedSettingKey, string | null | undefined>
 >;
 
+export function normalizeAdvancedTime(value?: string | null) {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+
+  return /^\d{2}:\d{2}/.test(trimmed) ? trimmed.slice(0, 5) : trimmed;
+}
+
+export function mergeAdvancedSettings(
+  settings?: AdvancedSettingsState | null,
+  vitalsInputs?: AdvancedSettingsState | null
+): AdvancedSettingsState {
+  const merged = {
+    ...(settings ?? {}),
+  };
+
+  for (const key of ["start_of_day", "sleep_time"] as const) {
+    const value = merged[key] ?? vitalsInputs?.[key];
+    merged[key] = normalizeAdvancedTime(value);
+  }
+
+  return merged;
+}
+
 const TIME_SETTING_KEYS = new Set<AdvancedSettingKey>([
   "start_of_day",
   "sleep_time",

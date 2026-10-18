@@ -87,7 +87,8 @@ function RootLayoutNav() {
 
               {/* The full player owns its transport controls. Show the
                   floating player only after the user leaves that screen. */}
-              {!pathname.includes("/meditation/player") && (
+              {!pathname.includes("/meditation/player") &&
+                !pathname.includes("/soundscape/player") && (
                 <FloatingMeditationControl />
               )}
               <NimbusToastHost />

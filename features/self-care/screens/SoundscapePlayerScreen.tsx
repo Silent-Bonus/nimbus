@@ -14,6 +14,12 @@ import {
   View,
   useWindowDimensions,
 } from "react-native";
+import {
+  createAudioPlayer,
+  setAudioModeAsync,
+  type AudioPlayer,
+  type AudioStatus,
+} from "expo-audio";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -24,11 +30,12 @@ import ThemeContext from "@/contexts/ThemeContext";
 import { useMeditationSession } from "@/contexts/MeditationSessionContext";
 import {
   buildSoundscapeResonanceLabel,
+  cacheSoundscapeTracks,
   getSoundscapeById,
   resolveSoundscapePlaybackSource,
+  toSoundscapeTrack,
 } from "@/features/self-care/utils/soundscapeLibrary";
 import type { SoundscapeTrack } from "@/features/self-care/types/soundscapeTypes";
-import { useAudioPlayback } from "@/features/self-care/hooks/useAudioPlayback";
 import {
   formatPlaybackRemaining,
   formatPlaybackTime,
@@ -39,6 +46,7 @@ import {
   pauseWellnessSession,
   resumeWellnessSession,
 } from "@/features/self-care/services/wellnessSessionService";
+import { getWellnessContentDetail } from "@/features/self-care/services/selfCareService";
 import type { ColorSet, Spacing } from "@/theme/types";
 
 type SoundscapePlayerParams = {
@@ -64,8 +72,7 @@ export default function SoundscapePlayerScreen() {
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const params = useLocalSearchParams<SoundscapePlayerParams>();
-  const { newTheme: theme, svaTypography, spacing } =
-    useContext(ThemeContext);
+  const { newTheme: theme, svaTypography, spacing } = useContext(ThemeContext);
   const isCompactLayout = windowHeight < 900;
 
   const soundscapeSlug = parseParam(params.soundscapeSlug) ?? "";
@@ -73,10 +80,13 @@ export default function SoundscapePlayerScreen() {
   const routeCheckInId = parseParam(params.checkInId);
   const routeDate = parseParam(params.date);
   const routeAutoStart = parseParam(params.autoStart);
-  const soundscape = useMemo(
+  const cachedSoundscape = useMemo(
     () => getSoundscapeById(soundscapeSlug) ?? null,
     [soundscapeSlug]
   );
+  const [refreshedSoundscape, setRefreshedSoundscape] =
+    useState<SoundscapeTrack | null>(null);
+  const soundscape = refreshedSoundscape ?? cachedSoundscape;
   const styles = useMemo(
     () => styling(theme, svaTypography, spacing, isCompactLayout),
     [theme, svaTypography, spacing, isCompactLayout]
@@ -85,6 +95,40 @@ export default function SoundscapePlayerScreen() {
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
+
+  // List responses may not contain the signed audio URL. Resolve the detail
+  // response here before constructing the native player so it never receives
+  // a null source when the detail screen has not finished refreshing yet.
+  useEffect(() => {
+    let active = true;
+
+    setRefreshedSoundscape(null);
+
+    if (!soundscapeSlug || cachedSoundscape?.source) {
+      return () => {
+        active = false;
+      };
+    }
+
+    const refreshSoundscape = async () => {
+      try {
+        const response = await getWellnessContentDetail(soundscapeSlug);
+        if (!active) return;
+
+        const refreshed = toSoundscapeTrack(response.data, 0);
+        cacheSoundscapeTracks([refreshed]);
+        setRefreshedSoundscape(refreshed);
+      } catch (error) {
+        console.warn("Unable to refresh soundscape audio source:", error);
+      }
+    };
+
+    void refreshSoundscape();
+
+    return () => {
+      active = false;
+    };
+  }, [cachedSoundscape?.source, soundscapeSlug]);
 
   const handleBack = () => {
     router.back();
@@ -111,7 +155,8 @@ export default function SoundscapePlayerScreen() {
               styles.scrollContent,
               {
                 flex: 1,
-                paddingTop: insets.top + (isCompactLayout ? spacing.sm : spacing.md),
+                paddingTop:
+                  insets.top + (isCompactLayout ? spacing.sm : spacing.md),
                 paddingBottom:
                   insets.bottom +
                   spacing.lg +
@@ -129,7 +174,11 @@ export default function SoundscapePlayerScreen() {
                   pressed && styles.buttonPressed,
                 ]}
               >
-                <Ionicons name="arrow-back" size={20} color={theme.textPrimary} />
+                <Ionicons
+                  name="arrow-back"
+                  size={20}
+                  color={theme.textPrimary}
+                />
               </Pressable>
 
               <Text style={styles.topLabel} numberOfLines={1}>
@@ -170,6 +219,7 @@ export default function SoundscapePlayerScreen() {
       routeCheckInId={routeCheckInId}
       routeDate={routeDate}
       routeAutoStart={routeAutoStart}
+      contentSlug={soundscapeSlug}
     />
   );
 }
@@ -413,15 +463,17 @@ const styling = (
     transportRow: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
+      justifyContent: "center",
       gap: spacing.md,
       marginTop: isCompactLayout ? spacing.lg : spacing.xl,
     },
     sideControl: {
-      width: isCompactLayout ? 82 : 88,
+      flex: 1,
+      maxWidth: 112,
       minHeight: isCompactLayout ? 80 : 86,
       borderRadius: isCompactLayout ? 22 : 24,
       backgroundColor: theme.surfaceMuted,
+      padding: 10,
       borderWidth: 1,
       borderColor: theme.borderMuted ?? "rgba(255,255,255,0.05)",
       alignItems: "center",
@@ -438,28 +490,30 @@ const styling = (
     sideControlLabel: {
       ...svaTypography.textStyle.authTinyLabel,
       width: "100%",
-      minHeight: 28,
+      minHeight: 20,
       lineHeight: 14,
       color: theme.textSecondary,
       letterSpacing: 1.1,
       textAlign: "center",
+      includeFontPadding: false,
     },
     sideControlValue: {
       ...svaTypography.textStyle.authTinyLabel,
       fontSize: 12,
-      lineHeight: 16,
-      minHeight: 16,
+      // lineHeight: 16,
+      minHeight: 10,
       color: theme.textPrimary,
       letterSpacing: 0.8,
       textAlign: "center",
+      includeFontPadding: false,
     },
     sideControlLabelActive: {
       color: theme.textPrimary,
     },
     playControl: {
-      width: isCompactLayout ? 88 : 94,
-      height: isCompactLayout ? 88 : 94,
-      borderRadius: isCompactLayout ? 44 : 47,
+      width: isCompactLayout ? 86 : 94,
+      height: isCompactLayout ? 86 : 94,
+      borderRadius: isCompactLayout ? 43 : 47,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: theme.accent,
@@ -570,6 +624,7 @@ type SoundscapePlayerContentProps = {
   routeCheckInId?: string;
   routeDate?: string;
   routeAutoStart?: string;
+  contentSlug: string;
 };
 
 type SoundscapeSessionStatus =
@@ -591,6 +646,7 @@ function SoundscapePlayerContent({
   routeCheckInId,
   routeDate,
   routeAutoStart,
+  contentSlug,
 }: SoundscapePlayerContentProps) {
   // Display-only labels are derived once from the cached soundscape so the
   // transport and header sections can stay presentation-focused.
@@ -603,13 +659,12 @@ function SoundscapePlayerContent({
     [soundscape]
   );
   const source = useMemo(
-    () => resolveSoundscapePlaybackSource(soundscape.slug ?? soundscape.id),
-    [soundscape.id, soundscape.slug]
+    () =>
+      soundscape.source ??
+      resolveSoundscapePlaybackSource(soundscape.slug ?? soundscape.id),
+    [soundscape.id, soundscape.slug, soundscape.source]
   );
-  const soundscapeContentObjectId = useMemo(() => {
-    const numericId = Number(soundscape.id);
-    return Number.isFinite(numericId) ? numericId : null;
-  }, [soundscape.id]);
+  const soundscapeSlug = soundscape.slug?.trim() || contentSlug.trim();
 
   // Player controls manage three local behaviors: the atmosphere toggle, the
   // sleep timer, and the coarse playback volume preset.
@@ -628,21 +683,41 @@ function SoundscapePlayerContent({
   const completionInFlightRef = useRef(false);
   const leavingScreenRef = useRef(false);
   const hasAutoStartedRef = useRef(false);
-
-  const {
-    soundRef,
-    playbackStatus,
-    isLoading,
-    isPlaying,
-    positionMillis,
-    durationMillis,
-    togglePlayPause,
-  } = useAudioPlayback({
-    source,
-    autoPlay: false,
-    progressUpdateIntervalMillis: 500,
-  });
+  const soundRef = useRef<AudioPlayer | null>(null);
+  const playbackSubscriptionRef = useRef<{ remove: () => void } | null>(null);
+  const releaseAudioRef = useRef<(() => void) | null>(null);
+  const loadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playbackPositionRef = useRef(0);
+  const pendingPlayOnReadyRef = useRef(false);
+  const adoptedSessionRef = useRef(false);
+  const pendingHandoffPositionRef = useRef<number | null>(null);
+  const handoffWasPlayingRef = useRef(false);
+  const pendingNativePlayRef = useRef(false);
+  const pendingSessionStartRef = useRef(false);
+  const startSharedSessionRef = useRef<(() => void) | null>(null);
+  const prepareForContentRef = useRef(meditationSession.prepareForContent);
+  const completeSessionRef = useRef<(() => Promise<void>) | null>(null);
+  const dismissSessionRef = useRef<(() => void) | null>(null);
+  const [playbackStatus, setPlaybackStatus] = useState<AudioStatus | null>(
+    null
+  );
   const currentSound = soundRef.current;
+  const isPlaying =
+    soundRef.current?.playing ??
+    (playbackStatus?.isLoaded
+      ? playbackStatus.playing
+      : sessionStatus === "active" || sessionStatus === "creating");
+  const positionMillis = playbackStatus?.isLoaded
+    ? playbackStatus.currentTime * 1000
+    : playbackPositionRef.current;
+  const fallbackDurationMillis = useMemo(() => {
+    const minutes = Number.parseFloat(soundscape.durationLabel);
+    return Number.isFinite(minutes) && minutes > 0 ? minutes * 60 * 1000 : 1;
+  }, [soundscape.durationLabel]);
+  const durationMillis =
+    playbackStatus?.isLoaded && playbackStatus.duration
+      ? playbackStatus.duration * 1000
+      : fallbackDurationMillis;
 
   // Opening a different soundscape resets the local session bookkeeping while
   // reusing the same shared player implementation.
@@ -654,11 +729,182 @@ function SoundscapePlayerContent({
     completionInFlightRef.current = false;
     leavingScreenRef.current = false;
     hasAutoStartedRef.current = false;
+    adoptedSessionRef.current = false;
+    pendingHandoffPositionRef.current = null;
+    handoffWasPlayingRef.current = false;
   }, [soundscape.id]);
+
+  useEffect(() => {
+    prepareForContentRef.current = meditationSession.prepareForContent;
+  }, [meditationSession.prepareForContent]);
 
   useEffect(() => {
     sessionStatusRef.current = sessionStatus;
   }, [sessionStatus]);
+
+  const handlePlaybackStatusUpdate = useCallback((status: AudioStatus) => {
+    setPlaybackStatus(status);
+
+    const playerReady =
+      status.isLoaded ||
+      soundRef.current?.isLoaded === true ||
+      status.playing ||
+      status.duration > 0;
+
+    if (!playerReady) {
+      return;
+    }
+
+    playbackPositionRef.current = status.currentTime * 1000;
+
+    // `createAudioPlayer` returns before a remote URL is loaded. Native
+    // implementations can drop play() calls made during that window, so
+    // replay the user's request as soon as the source is ready.
+    if (status.isLoaded && pendingNativePlayRef.current && soundRef.current) {
+      pendingNativePlayRef.current = false;
+      soundRef.current.play();
+    }
+
+    if (status.playing && pendingSessionStartRef.current) {
+      pendingSessionStartRef.current = false;
+      startSharedSessionRef.current?.();
+    }
+
+    if (pendingHandoffPositionRef.current !== null && soundRef.current) {
+      const handoffPosition = pendingHandoffPositionRef.current;
+      pendingHandoffPositionRef.current = null;
+      void soundRef.current.seekTo(handoffPosition);
+      if (handoffWasPlayingRef.current) {
+        soundRef.current.play();
+      }
+    }
+
+    if (status.didJustFinish && !soundRef.current?.loop) {
+      void (async () => {
+        await completeSessionRef.current?.();
+        dismissSessionRef.current?.();
+        releaseAudioRef.current?.();
+      })();
+    }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const load = async () => {
+      try {
+        if (!source) {
+          console.warn("Soundscape audio source is missing", {
+            soundscapeId: soundscape.id,
+          });
+          return;
+        }
+
+        const handoff = await prepareForContentRef.current(soundscape.id);
+        if (!active) return;
+
+        if (handoff) {
+          adoptedSessionRef.current = true;
+          handoffWasPlayingRef.current = handoff.wasPlaying;
+          pendingHandoffPositionRef.current = handoff.elapsedSeconds * 1000;
+          playbackPositionRef.current = handoff.elapsedSeconds * 1000;
+          setSessionRef(handoff.sessionRef ?? null);
+          sessionStatusRef.current = handoff.wasPlaying ? "active" : "paused";
+          setSessionStatus(handoff.wasPlaying ? "active" : "paused");
+        }
+
+        await setAudioModeAsync({
+          playsInSilentMode: true,
+          shouldPlayInBackground: true,
+          interruptionMode: "doNotMix",
+        });
+
+        const sound = createAudioPlayer(source, {
+          updateInterval: 500,
+          keepAudioSessionActive: true,
+          // Signed S3 URLs can be slow to stream through the native player.
+          // Download the file first so play() is reliable on iOS and Android.
+          downloadFirst: true,
+        });
+        sound.setActiveForLockScreen(
+          true,
+          {
+            title: soundscape.title,
+            artist: "SVA Soundscapes",
+            albumTitle: "Soundscapes",
+          },
+          {
+            showSeekForward: true,
+            showSeekBackward: true,
+          }
+        );
+
+        const subscription = sound.addListener(
+          "playbackStatusUpdate",
+          handlePlaybackStatusUpdate
+        );
+
+        let released = false;
+        const release = () => {
+          if (released) return;
+          released = true;
+          if (loadTimeoutRef.current) {
+            clearTimeout(loadTimeoutRef.current);
+            loadTimeoutRef.current = null;
+          }
+          subscription.remove();
+          sound.clearLockScreenControls();
+          sound.remove();
+          if (soundRef.current === sound) soundRef.current = null;
+          if (playbackSubscriptionRef.current === subscription) {
+            playbackSubscriptionRef.current = null;
+          }
+        };
+
+        releaseAudioRef.current = release;
+        playbackSubscriptionRef.current = subscription;
+
+        if (!active) {
+          release();
+          return;
+        }
+
+        soundRef.current = sound;
+        setPlaybackStatus(sound.currentStatus);
+        if (!sound.isLoaded) {
+          loadTimeoutRef.current = setTimeout(() => {
+            if (active && !sound.isLoaded) {
+              console.warn("Soundscape audio did not finish loading in time", {
+                source,
+              });
+            }
+          }, 12000);
+        }
+
+        if (handoff && sound.isLoaded) {
+          pendingHandoffPositionRef.current = null;
+          await sound.seekTo(handoff.elapsedSeconds);
+          if (handoff.wasPlaying) sound.play();
+        }
+      } catch (error) {
+        console.error("Unable to load soundscape playback", error);
+      }
+    };
+
+    void load();
+
+    return () => {
+      active = false;
+      const currentStatus = sessionStatusRef.current;
+      if (
+        currentStatus !== "active" &&
+        currentStatus !== "creating" &&
+        currentStatus !== "paused"
+      ) {
+        releaseAudioRef.current?.();
+      }
+    };
+  }, [handlePlaybackStatusUpdate, soundscape.id, soundscape.title, source]);
 
   // The atmosphere toggle only changes UI energy and output gain right now; it
   // does not synthesize true binaural processing.
@@ -671,7 +917,9 @@ function SoundscapePlayerContent({
 
   const progress = Math.min(positionMillis / durationMillis, 1);
   const timerLabel =
-    timerOptions[timerIndex] === null ? "OFF" : `${timerOptions[timerIndex]} MIN`;
+    timerOptions[timerIndex] === null
+      ? "OFF"
+      : `${timerOptions[timerIndex]} MIN`;
   const intensityLabel = ["LOW", "MID", "HIGH"][intensityIndex];
 
   // Timer and volume controls cycle through a fixed set of presets instead of
@@ -707,8 +955,13 @@ function SoundscapePlayerContent({
     if (
       sessionStatus !== "idle" ||
       sessionCreatePromiseRef.current ||
-      soundscapeContentObjectId === null
+      !soundscapeSlug
     ) {
+      if (!soundscapeSlug) {
+        console.warn(
+          "Unable to start soundscape session: content slug is missing."
+        );
+      }
       return;
     }
 
@@ -718,11 +971,10 @@ function SoundscapePlayerContent({
 
     const promise = createWellnessSession({
       activity_type: "soundscape",
-      content_type: "wellness_content.wellnesscontent",
-      content_object_id: soundscapeContentObjectId,
+      content_slug: soundscapeSlug,
       source: "manual",
       metadata: {
-        entry_surface: "session_screen",
+        entry_surface: "player_screen",
         test_mode: true,
       },
     })
@@ -743,10 +995,14 @@ function SoundscapePlayerContent({
       });
 
     sessionCreatePromiseRef.current = promise;
-  }, [sessionStatus, soundscapeContentObjectId]);
+  }, [sessionStatus, soundscapeSlug]);
 
   const pauseSession = useCallback(async () => {
-    if (sessionStatus === "idle" || sessionStatus === "completed") {
+    if (
+      sessionStatus === "idle" ||
+      sessionStatus === "paused" ||
+      sessionStatus === "completed"
+    ) {
       return;
     }
 
@@ -756,12 +1012,19 @@ function SoundscapePlayerContent({
     }
 
     try {
-      await pauseWellnessSession(resolvedSessionRef);
+      await pauseWellnessSession(resolvedSessionRef, {
+        duration_seconds: Math.max(
+          0,
+          Math.round(playbackPositionRef.current / 1000)
+        ),
+      });
+      meditationSession.syncElapsedSeconds(playbackPositionRef.current / 1000);
+      sessionStatusRef.current = "paused";
       setSessionStatus("paused");
     } catch (error) {
       console.warn("Unable to pause soundscape session:", error);
     }
-  }, [resolveSessionRef, sessionStatus]);
+  }, [meditationSession, resolveSessionRef, sessionStatus]);
 
   useEffect(() => {
     pauseSessionRef.current = pauseSession;
@@ -781,6 +1044,7 @@ function SoundscapePlayerContent({
 
     try {
       await resumeWellnessSession(resolvedSessionRef);
+      sessionStatusRef.current = "active";
       setSessionStatus("active");
     } catch (error) {
       console.warn("Unable to resume soundscape session:", error);
@@ -801,34 +1065,94 @@ function SoundscapePlayerContent({
       }
 
       await completeWellnessSession(resolvedSessionRef, {
-        duration_seconds: Math.max(1, Math.round(durationMillis / 1000)),
+        duration_seconds: Math.max(
+          0,
+          Math.round(playbackPositionRef.current / 1000)
+        ),
       });
+      sessionStatusRef.current = "completed";
       setSessionStatus("completed");
     } catch (error) {
       console.warn("Unable to complete soundscape session:", error);
     } finally {
       completionInFlightRef.current = false;
     }
-  }, [durationMillis, resolveSessionRef, sessionStatus]);
+  }, [resolveSessionRef, sessionStatus]);
 
   useEffect(() => {
-    if (!playbackStatus?.isLoaded) {
+    completeSessionRef.current = completeSession;
+    dismissSessionRef.current = meditationSession.dismissSession;
+  }, [completeSession, meditationSession.dismissSession]);
+
+  const startPlayback = useCallback(async () => {
+    const sound = soundRef.current;
+    if (!sound || sessionStatusRef.current === "completed") return;
+
+    const playWhenReady = () => {
+      if (sound.isLoaded) {
+        sound.play();
+      } else {
+        pendingNativePlayRef.current = true;
+      }
+    };
+
+    if (sessionStatusRef.current === "paused") {
+      playWhenReady();
+      await resumeSession();
       return;
     }
 
-    if (!("didJustFinish" in playbackStatus) || !playbackStatus.didJustFinish) {
+    if (adoptedSessionRef.current) {
+      playWhenReady();
       return;
     }
 
-    void completeSession().finally(() => {
-      // A naturally finished track should not leave the global floating timer
-      // or player visible after playback has ended.
-      meditationSession.dismissSession();
+    pendingSessionStartRef.current = true;
+    playWhenReady();
+
+    // Some native implementations update `playing` synchronously while
+    // others only report it through playbackStatusUpdate. Support both.
+    if (sound.playing) {
+      pendingSessionStartRef.current = false;
+      startSharedSessionRef.current?.();
+    }
+  }, [resumeSession]);
+
+  const startSharedSession = useCallback(() => {
+    if (sessionStatusRef.current !== "idle") return;
+
+    ensureSessionStarted();
+    meditationSession.startSession({
+      mode: "soundscape",
+      source: routeSource === "daily-checkin" ? "daily-checkin" : "soundscape",
+      title: soundscape.title,
+      contentId: soundscape.id,
+      checkInId: routeCheckInId,
+      date: routeDate,
     });
-  }, [completeSession, meditationSession, playbackStatus]);
+    sessionStatusRef.current = "active";
+    setSessionStatus("active");
+  }, [
+    ensureSessionStarted,
+    meditationSession,
+    routeCheckInId,
+    routeDate,
+    routeSource,
+    soundscape.id,
+    soundscape.title,
+  ]);
 
-  // Navigating away while a session is active should leave the server-side
-  // session paused unless the handler already performed an explicit exit flow.
+  useEffect(() => {
+    startSharedSessionRef.current = startSharedSession;
+    return () => {
+      if (startSharedSessionRef.current === startSharedSession) {
+        startSharedSessionRef.current = null;
+      }
+    };
+  }, [startSharedSession]);
+
+  // If navigation removes the route without going through Back, keep the
+  // native player and global session alive just like the meditation player.
   useEffect(() => {
     return () => {
       if (leavingScreenRef.current) {
@@ -844,19 +1168,24 @@ function SoundscapePlayerContent({
 
   // Volume preset changes apply immediately to the currently loaded sound.
   useEffect(() => {
-    if (!currentSound || isLoading) return;
+    if (!currentSound) return;
 
     currentSound.volume = playbackVolume;
-  }, [currentSound, isLoading, playbackVolume]);
+  }, [currentSound, playbackVolume]);
 
-  // The sleep timer counts down from the moment the user selects a preset. When
-  // it elapses, playback stops, the session is paused, and the control resets.
+  // A selected sleep timer loops the soundscape until the timer expires. This
+  // keeps short tracks playing continuously instead of completing early.
   useEffect(() => {
     const selectedMinutes = timerOptions[timerIndex];
+    if (currentSound) {
+      currentSound.loop = selectedMinutes !== null;
+    }
+
     if (!selectedMinutes) return undefined;
 
     const timeout = setTimeout(() => {
       if (currentSound) {
+        currentSound.loop = false;
         currentSound.pause();
         void currentSound.seekTo(0);
       }
@@ -870,12 +1199,18 @@ function SoundscapePlayerContent({
   // Play/pause coordinates local audio state with the wellness session state so
   // pause/resume actions stay reflected in analytics and completion flows.
   const handlePlayPause = useCallback(async () => {
-    if (isLoading || sessionStatus === "completed") {
+    if (sessionStatus === "completed") {
       return;
     }
 
     if (isPlaying) {
+      soundRef.current?.pause();
       await meditationSession.pauseSession();
+      return;
+    }
+
+    if (!soundRef.current) {
+      pendingPlayOnReadyRef.current = true;
       return;
     }
 
@@ -884,84 +1219,77 @@ function SoundscapePlayerContent({
       return;
     }
 
-    ensureSessionStarted();
-    await togglePlayPause();
-    meditationSession.startSession({
-      mode: "soundscape",
-      source: routeSource === "daily-checkin" ? "daily-checkin" : "soundscape",
-      title: soundscape.title,
-      contentId: soundscape.id,
-      checkInId: routeCheckInId,
-      date: routeDate,
+    await startPlayback();
+  }, [isPlaying, meditationSession, sessionStatus, startPlayback]);
+
+  useEffect(() => {
+    if (!pendingPlayOnReadyRef.current || !soundRef.current) {
+      return;
+    }
+
+    pendingPlayOnReadyRef.current = false;
+    void startPlayback();
+  }, [startPlayback]);
+
+  useEffect(() => {
+    const unregister = meditationSession.registerControls({
+      onPause: async () => {
+        if (soundRef.current?.playing) {
+          soundRef.current.pause();
+        }
+        await pauseSession();
+      },
+      onResume: async () => {
+        if (sessionStatus === "completed") return;
+        await startPlayback();
+      },
+      onStop: async () => {
+        if (soundRef.current) {
+          soundRef.current.pause();
+          await soundRef.current.seekTo(0);
+        }
+        await completeSession();
+        releaseAudioRef.current?.();
+      },
+      onTakeover: async () => {
+        const sound = soundRef.current;
+        const resolvedSessionRef = await resolveSessionRef();
+        const handoff = {
+          sessionRef: resolvedSessionRef,
+          elapsedSeconds: playbackPositionRef.current / 1000,
+          wasPlaying: Boolean(sound?.playing),
+        };
+
+        sound?.pause();
+        releaseAudioRef.current?.();
+        return handoff;
+      },
+      getIsPlaying: () => soundRef.current?.playing ?? null,
     });
-    setSessionStatus((current) =>
-      current === "completed" ? current : "active"
-    );
+
+    return () => {
+      if (
+        !leavingScreenRef.current &&
+        sessionStatusRef.current !== "active" &&
+        sessionStatusRef.current !== "creating" &&
+        sessionStatusRef.current !== "paused"
+      ) {
+        unregister();
+      }
+    };
   }, [
-    ensureSessionStarted,
-    isLoading,
-    isPlaying,
+    completeSession,
     meditationSession,
-    routeCheckInId,
-    routeDate,
-    routeSource,
+    pauseSession,
+    resolveSessionRef,
     sessionStatus,
-    soundscape.id,
-    soundscape.title,
-    togglePlayPause,
+    startPlayback,
   ]);
-
-  useEffect(
-    () =>
-      meditationSession.registerControls({
-        onPause: async () => {
-          if (isPlaying) {
-            await togglePlayPause();
-          }
-          await pauseSession();
-        },
-        onResume: async () => {
-          if (isLoading || sessionStatus === "completed") return;
-
-          if (sessionStatus === "paused") {
-            await togglePlayPause();
-            await resumeSession();
-            return;
-          }
-
-          ensureSessionStarted();
-          await togglePlayPause();
-          setSessionStatus((current) =>
-            current === "completed" ? current : "active"
-          );
-        },
-        onStop: async () => {
-          if (currentSound) {
-            currentSound.pause();
-            await currentSound.seekTo(0);
-          }
-          await completeSession();
-        },
-      }),
-    [
-      completeSession,
-      currentSound,
-      ensureSessionStarted,
-      isLoading,
-      isPlaying,
-      meditationSession,
-      pauseSession,
-      resumeSession,
-      sessionStatus,
-      togglePlayPause,
-    ]
-  );
 
   useEffect(() => {
     if (
       routeAutoStart !== "true" ||
       hasAutoStartedRef.current ||
-      isLoading ||
       sessionStatus === "completed"
     ) {
       return;
@@ -969,7 +1297,7 @@ function SoundscapePlayerContent({
 
     hasAutoStartedRef.current = true;
     void handlePlayPause();
-  }, [handlePlayPause, isLoading, routeAutoStart, sessionStatus]);
+  }, [handlePlayPause, routeAutoStart, sessionStatus]);
 
   // Back navigation pauses both audio and session state before leaving the
   // screen so the user can resume later without marking the session complete.
@@ -977,26 +1305,18 @@ function SoundscapePlayerContent({
     leavingScreenRef.current = true;
 
     if (isPlaying) {
-      await togglePlayPause();
+      soundRef.current?.pause();
     }
 
     if (sessionStatus !== "idle" && sessionStatus !== "completed") {
       await pauseSession();
+    } else if (sessionStatus === "idle") {
+      releaseAudioRef.current?.();
     }
 
-    // The audio hook unloads its sound when this screen unmounts. Clear the
-    // global floating-player state as well, otherwise it remains visible with
-    // no registered audio controls behind it.
-    meditationSession.dismissSession();
+    meditationSession.syncElapsedSeconds(playbackPositionRef.current / 1000);
     await onBack();
-  }, [
-    isPlaying,
-    meditationSession,
-    onBack,
-    pauseSession,
-    sessionStatus,
-    togglePlayPause,
-  ]);
+  }, [isPlaying, meditationSession, onBack, pauseSession, sessionStatus]);
 
   return (
     <ScreenView
@@ -1018,9 +1338,12 @@ function SoundscapePlayerContent({
           contentContainerStyle={[
             styles.scrollContent,
             {
-              paddingTop: insets.top + (isCompactLayout ? spacing.sm : spacing.md),
+              paddingTop:
+                insets.top + (isCompactLayout ? spacing.sm : spacing.md),
               paddingBottom:
-                insets.bottom + spacing.lg + (isCompactLayout ? spacing.md : spacing.xl),
+                insets.bottom +
+                spacing.lg +
+                (isCompactLayout ? spacing.md : spacing.xl),
             },
           ]}
         >
@@ -1076,17 +1399,6 @@ function SoundscapePlayerContent({
               <View style={styles.orbCore} />
               <View style={styles.orbCoreHalo} />
             </View>
-
-            {isLoading ? (
-              <View style={styles.loadingPill}>
-                <Ionicons
-                  name="musical-notes"
-                  size={14}
-                  color={theme.buttonPrimaryText}
-                />
-                <Text style={styles.loadingText}>Preparing soundscape</Text>
-              </View>
-            ) : null}
           </View>
 
           <Pressable
@@ -1149,13 +1461,11 @@ function SoundscapePlayerContent({
               accessibilityLabel={
                 isPlaying ? "Pause soundscape" : "Play soundscape"
               }
-              disabled={isLoading}
               onPress={() => void handlePlayPause()}
               style={({ pressed }) => [
                 styles.playControl,
-                pressed && !isLoading && styles.playControlPressed,
+                pressed && styles.playControlPressed,
                 isPlaying && styles.playControlActive,
-                isLoading && styles.playControlDisabled,
               ]}
             >
               <Ionicons
@@ -1178,7 +1488,9 @@ function SoundscapePlayerContent({
               <Ionicons
                 name="bar-chart-outline"
                 size={22}
-                color={intensityIndex > 0 ? theme.textPrimary : theme.textSecondary}
+                color={
+                  intensityIndex > 0 ? theme.textPrimary : theme.textSecondary
+                }
               />
               <Text
                 style={[
@@ -1199,7 +1511,9 @@ function SoundscapePlayerContent({
             </View>
 
             <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+              <View
+                style={[styles.progressFill, { width: `${progress * 100}%` }]}
+              />
               <View
                 style={[
                   styles.progressDot,

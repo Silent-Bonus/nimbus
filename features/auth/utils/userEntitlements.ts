@@ -80,7 +80,9 @@ function normalizeSettings(raw: unknown): UserSettings | null {
     height_unit: toStringOrNull(raw.height_unit),
     liquid_unit: toStringOrNull(raw.liquid_unit),
     weather_unit: toStringOrNull(raw.weather_unit),
+    start_of_day: toStringOrNull(raw.start_of_day),
     start_of_week: toStringOrNull(raw.start_of_week),
+    sleep_time: toStringOrNull(raw.sleep_time),
     location: toStringOrNull(raw.location),
   };
 }
