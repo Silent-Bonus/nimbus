@@ -23,19 +23,19 @@ const WORKOUT_EASY_5 = require("../../../assets/images/workout/squats/1/squats-f
 const WORKOUT_EASY_6 = require("../../../assets/images/workout/squats/1/squats-frame-6.png");
 const WORKOUT_EASY_7 = require("../../../assets/images/workout/squats/1/squats-frame-7.png");
 
-const WORKOUT_MEDIUM_1 = require("../../../assets/images/workout/squats/2/squats-goblet-0.png");
-const WORKOUT_MEDIUM_2 = require("../../../assets/images/workout/squats/2/squats-goblet-1.png");
-const WORKOUT_MEDIUM_3 = require("../../../assets/images/workout/squats/2/squats-goblet-2.png");
-const WORKOUT_MEDIUM_4 = require("../../../assets/images/workout/squats/2/squats-goblet-3.png");
-const WORKOUT_MEDIUM_5 = require("../../../assets/images/workout/squats/2/squats-goblet-4.png");
-const WORKOUT_MEDIUM_6 = require("../../../assets/images/workout/squats/2/squats-goblet-5.png");
+const WORKOUT_MEDIUM_1 = require("../../../assets/images/mt.jpg");
+const WORKOUT_MEDIUM_2 = require("../../../assets/images/mt.jpg");
+const WORKOUT_MEDIUM_3 = require("../../../assets/images/mt.jpg");
+const WORKOUT_MEDIUM_4 = require("../../../assets/images/mt.jpg");
+const WORKOUT_MEDIUM_5 = require("../../../assets/images/mt.jpg");
+const WORKOUT_MEDIUM_6 = require("../../../assets/images/mt.jpg");
 
-const WORKOUT_HARD_1 = require("../../../assets/images/workout/squats/3/pistol-sqauts-1.png");
-const WORKOUT_HARD_2 = require("../../../assets/images/workout/squats/3/pistol-sqauts-2.png");
-const WORKOUT_HARD_3 = require("../../../assets/images/workout/squats/3/pistol-sqauts-3.png");
-const WORKOUT_HARD_4 = require("../../../assets/images/workout/squats/3/pistol-sqauts-4.png");
-const WORKOUT_HARD_5 = require("../../../assets/images/workout/squats/3/pistol-sqauts-5.png");
-const WORKOUT_HARD_6 = require("../../../assets/images/workout/squats/3/pistol-sqauts-6.png");
+const WORKOUT_HARD_1 = require("../../../assets/images/mt.jpg");
+const WORKOUT_HARD_2 = require("../../../assets/images/mt.jpg");
+const WORKOUT_HARD_3 = require("../../../assets/images/mt.jpg");
+const WORKOUT_HARD_4 = require("../../../assets/images/mt.jpg");
+const WORKOUT_HARD_5 = require("../../../assets/images/mt.jpg");
+const WORKOUT_HARD_6 = require("../../../assets/images/mt.jpg");
 
 const createGuide = (
   level: WorkoutGuideLevel,
