@@ -269,7 +269,9 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const loadUserFromStorage = useCallback(async (): Promise<User | null> => {
-    return await getStoredUser();
+    const profile = await getStoredUser();
+    console.log("[Auth] complete user profile from storage", profile);
+    return profile;
   }, []);
 
   useEffect(() => {
@@ -294,6 +296,14 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
           if (cachedProfile) {
             await publishUserProfileSync(cachedProfile);
           }
+
+          // Refresh the profile on every authenticated app launch so changes
+          // made in Advanced Settings or elsewhere are not limited to stale
+          // locally cached data.
+          const refreshedProfile = await _fetchUserProfile();
+          console.log("[auth] startup user profile refresh completed", {
+            refreshed: Boolean(refreshedProfile),
+          });
           setOnboardingDone(ob === "true");
           return;
         }
@@ -533,6 +543,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       const { success, data } = response;
 
       if (success && data) {
+        console.log("[Auth] complete user profile from API", data);
         return await syncAndPublishUserProfile(data);
       }
 
@@ -546,9 +557,19 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const updateProfile = useCallback(async (payload: any): Promise<any> => {
     try {
       const res = await saveUpdateUser(payload); // flat JSON profile PATCH
+      console.log("[Auth] complete saved user profile from API", res?.data);
+      console.log("[Auth] profile update response settings", {
+        start_of_day: res?.data?.settings?.start_of_day,
+        sleep_time: res?.data?.settings?.sleep_time,
+      });
       // if your API shape is { success, data: { user }, message }
       if (res?.success && res?.data) {
-        await syncAndPublishUserProfile(res.data); // keep app + storage in sync
+        const normalizedProfile = await syncAndPublishUserProfile(res.data);
+        console.log("[Auth] complete normalized saved user profile", normalizedProfile);
+        console.log("[Auth] normalized saved profile settings", {
+          start_of_day: normalizedProfile?.settings?.start_of_day,
+          sleep_time: normalizedProfile?.settings?.sleep_time,
+        });
       }
       return res; // caller decides what to do
     } catch (err: any) {

@@ -130,6 +130,10 @@ export default function MeditationPlayerScreen() {
   const sessionCreatePromiseRef = useRef<Promise<string | null> | null>(null);
   const completionInFlightRef = useRef(false);
   const leavingScreenRef = useRef(false);
+  const adoptedSessionRef = useRef(false);
+  const pendingHandoffPositionRef = useRef<number | null>(null);
+  const handoffWasPlayingRef = useRef(false);
+  const prepareForContentRef = useRef(meditationSession.prepareForContent);
   const [playbackStatus, setPlaybackStatus] = useState<AudioStatus | null>(
     null
   );
@@ -204,7 +208,14 @@ export default function MeditationPlayerScreen() {
     hasCompletedSessionRef.current = false;
     playbackPositionRef.current = 0;
     hasAutoStartedRef.current = false;
+    adoptedSessionRef.current = false;
+    pendingHandoffPositionRef.current = null;
+    handoffWasPlayingRef.current = false;
   }, [meditationId]);
+
+  useEffect(() => {
+    prepareForContentRef.current = meditationSession.prepareForContent;
+  }, [meditationSession.prepareForContent]);
 
   useEffect(() => {
     sessionStatusRef.current = sessionStatus;
@@ -353,6 +364,13 @@ export default function MeditationPlayerScreen() {
         return;
       }
 
+      // A same-content session transferred from another player already owns
+      // the backend session. Reuse it instead of creating a duplicate.
+      if (adoptedSessionRef.current) {
+        sound.play();
+        return;
+      }
+
       // First-time play starts the session request and audio in parallel so the
       // button responds immediately instead of waiting for the API round trip.
       ensureSessionStarted();
@@ -437,6 +455,15 @@ export default function MeditationPlayerScreen() {
 
       playbackPositionRef.current = status.currentTime * 1000;
 
+      if (pendingHandoffPositionRef.current !== null && soundRef.current) {
+        const handoffPosition = pendingHandoffPositionRef.current;
+        pendingHandoffPositionRef.current = null;
+        void soundRef.current.seekTo(handoffPosition);
+        if (handoffWasPlayingRef.current) {
+          soundRef.current.play();
+        }
+      }
+
       if (status.didJustFinish) {
         void (async () => {
           await completeSessionRef.current?.();
@@ -464,6 +491,19 @@ export default function MeditationPlayerScreen() {
       }
 
       try {
+        const handoff = await prepareForContentRef.current(meditationId);
+        if (!active) return;
+
+        if (handoff) {
+          adoptedSessionRef.current = true;
+          handoffWasPlayingRef.current = handoff.wasPlaying;
+          pendingHandoffPositionRef.current = handoff.elapsedSeconds;
+          playbackPositionRef.current = handoff.elapsedSeconds * 1000;
+          setSessionRef(handoff.sessionRef ?? null);
+          sessionStatusRef.current = handoff.wasPlaying ? "active" : "paused";
+          setSessionStatus(handoff.wasPlaying ? "active" : "paused");
+        }
+
         await setAudioModeAsync({
           playsInSilentMode: true,
           // Keep an active meditation playing while the app is backgrounded
@@ -508,6 +548,14 @@ export default function MeditationPlayerScreen() {
 
         soundRef.current = sound;
         setIsLoading(!sound.isLoaded);
+
+        if (handoff && sound.isLoaded) {
+          pendingHandoffPositionRef.current = null;
+          await sound.seekTo(handoff.elapsedSeconds);
+          if (handoff.wasPlaying) {
+            sound.play();
+          }
+        }
       } catch (error) {
         console.error("Unable to load meditation audio", error);
       } finally {
@@ -532,7 +580,7 @@ export default function MeditationPlayerScreen() {
         releaseAudioRef.current?.();
       }
     };
-  }, [handlePlaybackStatusUpdate, meditationTitle, playbackSource]);
+  }, [handlePlaybackStatusUpdate, meditationId, meditationTitle, playbackSource]);
 
   useEffect(() => {
     if (isLoading || !pendingPlayOnReadyRef.current) {
@@ -638,6 +686,19 @@ export default function MeditationPlayerScreen() {
           await completeSession();
           releaseAudioRef.current?.();
         },
+        onTakeover: async () => {
+          const sound = soundRef.current;
+          const resolvedSessionRef = await resolveSessionRef();
+          const handoff = {
+            sessionRef: resolvedSessionRef,
+            elapsedSeconds: playbackPositionRef.current / 1000,
+            wasPlaying: Boolean(sound?.playing),
+          };
+
+          sound?.pause();
+          releaseAudioRef.current?.();
+          return handoff;
+        },
         getIsPlaying: () => soundRef.current?.playing ?? null,
       });
 
@@ -653,7 +714,14 @@ export default function MeditationPlayerScreen() {
         unregister();
       }
     };
-  }, [completeSession, meditationSession, pauseSession, sessionStatus, startPlayback]);
+  }, [
+    completeSession,
+    meditationSession,
+    pauseSession,
+    resolveSessionRef,
+    sessionStatus,
+    startPlayback,
+  ]);
 
   useEffect(() => {
     if (
@@ -678,13 +746,11 @@ export default function MeditationPlayerScreen() {
     meditationSession.syncElapsedSeconds(playbackPositionRef.current / 1000);
 
     const sound = soundRef.current;
-    if (!isPlaying) {
-      // There is no background player to expose for a paused meditation that
-      // the user is leaving, so remove the stale floating-session state.
-      if (sound && sessionStatus !== "completed") {
-        sound.pause();
-      }
-      meditationSession.dismissSession();
+    if (!isPlaying && sessionStatus === "idle") {
+      // No session was started, so this player has nothing to preserve when
+      // the user leaves it.
+      sound?.pause();
+      releaseAudioRef.current?.();
     }
 
     router.back();

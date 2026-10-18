@@ -24,6 +24,7 @@ import ThemeContext from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   formatAdvancedValue,
+  mergeAdvancedSettings,
   type AdvancedSettingDisplayItem,
   type AdvancedSettingSection,
   type AdvancedSettingsPatch,
@@ -246,11 +247,21 @@ export const AdvancedSettingsScreen = () => {
   const refreshSettings = useCallback(async () => {
     try {
       const cached = (await loadUserFromStorage?.()) as
-        | { settings?: AdvancedSettingsState | null }
+        | {
+            settings?: AdvancedSettingsState | null;
+            vitals_context?: { inputs?: AdvancedSettingsState | null } | null;
+          }
         | null
         | undefined;
 
-      const nextSettings = cached?.settings ?? {};
+      const nextSettings = mergeAdvancedSettings(
+        cached?.settings,
+        cached?.vitals_context?.inputs
+      );
+      console.log("[AdvancedSettings] loaded profile settings", {
+        start_of_day: nextSettings.start_of_day,
+        sleep_time: nextSettings.sleep_time,
+      });
       setMerged(
         flattenSections().map((item) => ({
           ...item,
@@ -285,11 +296,25 @@ export const AdvancedSettingsScreen = () => {
   const handleSaveSetting = useCallback(
     async (payload: AdvancedSettingsPatch) => {
       try {
+        console.log("[AdvancedSettings] saving settings payload", {
+          start_of_day: payload.start_of_day,
+          sleep_time: payload.sleep_time,
+        });
         const saved = await updateProfile?.(payload);
         if (saved?.success) {
-          const nextSettings =
-            (saved?.data?.settings as AdvancedSettingsState | undefined) ??
-            payload;
+          console.log("[AdvancedSettings] API returned profile settings", {
+            start_of_day: saved?.data?.settings?.start_of_day,
+            sleep_time: saved?.data?.settings?.sleep_time,
+          });
+          const nextSettings = mergeAdvancedSettings(
+            saved?.data?.settings as AdvancedSettingsState | undefined,
+            payload
+          );
+
+          console.log("[AdvancedSettings] applying saved settings", {
+            start_of_day: nextSettings.start_of_day,
+            sleep_time: nextSettings.sleep_time,
+          });
 
           setMerged((current) =>
             current.map((item) => ({

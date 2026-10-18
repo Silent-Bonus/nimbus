@@ -52,9 +52,12 @@ const mockSound = {
   volume: 0,
   isLoaded: true,
   playing: false,
+  loop: false,
   currentTime: 0,
   duration: 180,
   currentStatus: {} as any,
+  setActiveForLockScreen: jest.fn(),
+  clearLockScreenControls: jest.fn(),
   pause: jest.fn(() => {
     mockSound.playing = false;
     playbackStatusCallback?.({
@@ -238,7 +241,11 @@ describe("SoundscapePlayerScreen", () => {
       headerShown: false,
     });
 
-    expect(mockSetAudioModeAsync).toHaveBeenCalled();
+    expect(mockSetAudioModeAsync).toHaveBeenCalledWith({
+      playsInSilentMode: true,
+      shouldPlayInBackground: true,
+      interruptionMode: "doNotMix",
+    });
     expect(mockCreateAudioPlayer).toHaveBeenCalledWith(
       resolveSoundscapePlaybackSource("5"),
       expect.objectContaining({
@@ -246,12 +253,24 @@ describe("SoundscapePlayerScreen", () => {
         keepAudioSessionActive: true,
       })
     );
+    expect(mockSound.setActiveForLockScreen).toHaveBeenCalledWith(
+      true,
+      expect.objectContaining({
+        title: cachedSoundscape.title,
+        artist: "SVA Soundscapes",
+      }),
+      {
+        showSeekForward: true,
+        showSeekBackward: true,
+      }
+    );
     expect(mockCreateWellnessSession).not.toHaveBeenCalled();
 
     expect(hasText(tree, "NOW PLAYING")).toBe(true);
     expect(hasText(tree, "SVA LABORATORY SOUNDSCAPE")).toBe(true);
     expect(hasText(tree, "528Hz: DNA Integrity")).toBe(true);
     expect(hasText(tree, "ENHANCED ATMOSPHERE")).toBe(true);
+    expect(hasText(tree, "Preparing soundscape")).toBe(false);
     expect(hasText(tree, "OFF")).toBe(true);
     expect(hasText(tree, "MID")).toBe(true);
     expect(hasText(tree, "RESONATING AT 528.00 HZ")).toBe(true);
@@ -276,11 +295,10 @@ describe("SoundscapePlayerScreen", () => {
 
     expect(mockCreateWellnessSession).toHaveBeenCalledWith({
       activity_type: "soundscape",
-      content_type: "wellness_content.wellnesscontent",
-      content_object_id: expect.any(Number),
+      content_slug: cachedSoundscape.slug,
       source: "manual",
       metadata: {
-        entry_surface: "session_screen",
+        entry_surface: "player_screen",
         test_mode: true,
       },
     });
@@ -294,7 +312,9 @@ describe("SoundscapePlayerScreen", () => {
       await pauseButton.props.onPress();
     });
 
-    expect(mockPauseWellnessSession).toHaveBeenCalledWith(mockSessionRef);
+    expect(mockPauseWellnessSession).toHaveBeenCalledWith(mockSessionRef, {
+      duration_seconds: 15,
+    });
     expect(mockSound.pause).toHaveBeenCalledTimes(1);
 
     const resumedPlayButton = tree.root.findByProps({
@@ -339,8 +359,11 @@ describe("SoundscapePlayerScreen", () => {
 
     expect(mockSound.play).toHaveBeenCalledTimes(1);
     expect(mockSound.pause).toHaveBeenCalledTimes(1);
-    expect(mockPauseWellnessSession).toHaveBeenCalledWith(mockSessionRef);
+    expect(mockPauseWellnessSession).toHaveBeenCalledWith(mockSessionRef, {
+      duration_seconds: 15,
+    });
     expect(mockCompleteWellnessSession).not.toHaveBeenCalled();
+    expect(mockSound.clearLockScreenControls).not.toHaveBeenCalled();
     expect(mockBack).toHaveBeenCalledTimes(1);
   });
 
@@ -409,6 +432,7 @@ describe("SoundscapePlayerScreen", () => {
       });
 
       expect(hasText(tree, "10 MIN")).toBe(true);
+    expect(mockSound.loop).toBe(true);
 
       expect(
         tree.root.findByProps({
@@ -421,6 +445,7 @@ describe("SoundscapePlayerScreen", () => {
         await Promise.resolve();
       });
 
+      expect(mockSound.loop).toBe(false);
       expect(mockSound.pause).toHaveBeenCalled();
       expect(mockCompleteWellnessSession).not.toHaveBeenCalled();
       expect(

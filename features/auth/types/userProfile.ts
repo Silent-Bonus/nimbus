@@ -31,7 +31,9 @@ export type UserSettings = {
   height_unit?: string | null;
   liquid_unit?: string | null;
   weather_unit?: string | null;
+  start_of_day?: string | null;
   start_of_week?: string | null;
+  sleep_time?: string | null;
   location?: string | null;
 };
 

@@ -36,7 +36,14 @@ export type MeditationSessionControls = {
   onPause?: (elapsedSeconds: number) => Promise<void> | void;
   onResume?: () => Promise<void> | void;
   onStop?: (elapsedSeconds: number) => Promise<void> | void;
+  onTakeover?: () => Promise<MeditationSessionHandoff> | MeditationSessionHandoff;
   getIsPlaying?: () => boolean | null;
+};
+
+export type MeditationSessionHandoff = {
+  sessionRef?: string | null;
+  elapsedSeconds: number;
+  wasPlaying: boolean;
 };
 
 type StartSessionInput = MeditationSessionMetadata & {
@@ -54,6 +61,9 @@ type MeditationSessionContextValue = {
   pauseSession: () => Promise<void>;
   resumeSession: () => Promise<void>;
   stopSession: () => Promise<void>;
+  prepareForContent: (
+    contentId: string
+  ) => Promise<MeditationSessionHandoff | null>;
   syncElapsedSeconds: (elapsedSeconds: number) => void;
   dismissSession: () => void;
   registerControls: (controls: MeditationSessionControls | null) => () => void;
@@ -161,6 +171,41 @@ export function MeditationSessionProvider({
     controlsRef.current = null;
   }, [activeSession?.elapsedSeconds]);
 
+  const prepareForContent = useCallback(
+    async (contentId: string): Promise<MeditationSessionHandoff | null> => {
+      if (!activeSession) return null;
+
+      if (activeSession.contentId !== contentId) {
+        // A different meditation replaces the current one. The registered
+        // player completes the old backend session and releases its audio.
+        await stopSession();
+        return null;
+      }
+
+      // Reopening the same meditation transfers the existing session/audio
+      // position to the new player instead of creating a duplicate session.
+      const handoff = await controlsRef.current?.onTakeover?.();
+      if (handoff && !handoff.sessionRef) {
+        // Do not adopt a session that never received a backend reference. The
+        // old player is released through stopSession, and the new player can
+        // create a clean session normally.
+        await stopSession();
+        return null;
+      }
+      const result = handoff ?? {
+        elapsedSeconds: activeSession.elapsedSeconds,
+        wasPlaying: status === "running",
+      };
+
+      setActiveSession((session) =>
+        session
+          ? { ...session, elapsedSeconds: Math.max(0, Math.floor(result.elapsedSeconds)) }
+          : session
+      );
+      setStatus(result.wasPlaying ? "running" : "paused");
+      return result;
+    }, [activeSession, status, stopSession]);
+
   const syncElapsedSeconds = useCallback((elapsedSeconds: number) => {
     if (!Number.isFinite(elapsedSeconds)) return;
 
@@ -202,6 +247,7 @@ export function MeditationSessionProvider({
       pauseSession,
       resumeSession,
       stopSession,
+      prepareForContent,
       syncElapsedSeconds,
       dismissSession,
       registerControls,
@@ -214,6 +260,7 @@ export function MeditationSessionProvider({
       startSession,
       status,
       stopSession,
+      prepareForContent,
       syncElapsedSeconds,
       dismissSession,
     ]
