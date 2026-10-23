@@ -17,7 +17,6 @@ import type {
 } from "@/features/self-care/types/bodyVitals";
 import {
   DEFAULT_BANNER,
-  DEFAULT_BODY_SHAPE,
   DEFAULT_DIET_GOAL,
   DEFAULT_FORMULA_VERSIONS,
   DEFAULT_MEASUREMENTS,
@@ -151,12 +150,10 @@ function normalizeBodyShape(raw: unknown): BodyVitalsBodyShape {
   const source = isRecord(raw) ? raw : {};
 
   return {
-    code: toStringOrNull(source.code) ?? DEFAULT_BODY_SHAPE.code,
-    label: toStringOrNull(source.label) ?? DEFAULT_BODY_SHAPE.label,
-    confidence: toNumber(source.confidence) ?? DEFAULT_BODY_SHAPE.confidence,
-    movement_strategy:
-      toStringOrNull(source.movement_strategy) ??
-      DEFAULT_BODY_SHAPE.movement_strategy,
+    code: toStringOrNull(source.code),
+    label: toStringOrNull(source.label),
+    confidence: toNumber(source.confidence),
+    movement_strategy: toStringOrNull(source.movement_strategy),
     measurements: normalizeMeasurements(source.measurements),
   };
 }

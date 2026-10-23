@@ -1,6 +1,5 @@
 import type {
   BodyVitalsBanner,
-  BodyVitalsBodyShape,
   BodyVitalsDietGoal,
   BodyVitalsFormulaVersions,
   BodyVitalsMeasurements,
@@ -32,15 +31,6 @@ export const DEFAULT_DIET_GOAL: BodyVitalsDietGoal = {
   fats_goal: 65,
   fiber_goal: 27,
   tip: "Use balanced carbs and fats, and keep fiber high enough to support satiety and digestion.",
-};
-
-export const DEFAULT_BODY_SHAPE: BodyVitalsBodyShape = {
-  code: "pear_hourglass_hybrid",
-  label: "Pear / Hourglass Hybrid",
-  confidence: 0.86,
-  movement_strategy:
-    "Blend glute activation with core work and balanced upper-body volume.",
-  measurements: DEFAULT_MEASUREMENTS,
 };
 
 export const DEFAULT_BANNER: BodyVitalsBanner = {

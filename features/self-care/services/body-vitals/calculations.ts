@@ -25,10 +25,7 @@ import type {
   BodyVitalsProfilePatchPayload,
   BodyVitalsProteinGoal,
 } from "@/features/self-care/types/bodyVitals";
-import {
-  DEFAULT_BODY_SHAPE,
-  DEFAULT_DIET_GOAL,
-} from "./defaults";
+import { DEFAULT_DIET_GOAL } from "./defaults";
 import {
   getStoredBodyVitalsContext,
   resolveBodyVitalsFormState,
@@ -206,22 +203,22 @@ function resolveFallbackResults(savedContext: BodyVitalsContext | null | undefin
         outputs?.body_shape?.code ??
         profile?.body_shape_code ??
         savedSummary?.body_shape_code ??
-        DEFAULT_BODY_SHAPE.code,
+        null,
       label:
         outputs?.body_shape?.label ??
         profile?.body_shape_label ??
         savedSummary?.body_shape_label ??
-        DEFAULT_BODY_SHAPE.label,
+        null,
       confidence:
         outputs?.body_shape?.confidence ??
         profile?.body_shape_confidence ??
         savedSummary?.body_shape_confidence ??
-        DEFAULT_BODY_SHAPE.confidence,
+        null,
       movement_strategy:
         outputs?.body_shape?.movement_strategy ??
         profile?.movement_strategy ??
         savedSummary?.movement_strategy ??
-        DEFAULT_BODY_SHAPE.movement_strategy,
+        null,
       measurements: outputs?.body_shape?.measurements ?? null,
     },
     metabolic_insight:
@@ -324,14 +321,13 @@ function normalizeBodyShape(raw: unknown, fallback: BodyVitalsCalculationResults
   const source = isRecord(raw) ? raw : {};
 
   return {
-    code: toStringOrNull(source.code) ?? fallback?.code ?? DEFAULT_BODY_SHAPE.code,
-    label: toStringOrNull(source.label) ?? fallback?.label ?? DEFAULT_BODY_SHAPE.label,
-    confidence:
-      toNumber(source.confidence) ?? fallback?.confidence ?? DEFAULT_BODY_SHAPE.confidence,
+    code: toStringOrNull(source.code) ?? fallback?.code ?? null,
+    label: toStringOrNull(source.label) ?? fallback?.label ?? null,
+    confidence: toNumber(source.confidence) ?? fallback?.confidence ?? null,
     movement_strategy:
       toStringOrNull(source.movement_strategy) ??
       fallback?.movement_strategy ??
-      DEFAULT_BODY_SHAPE.movement_strategy,
+      null,
     measurements: isRecord(source.measurements)
       ? {
           bust_cm: toNumber(source.measurements.bust_cm),
