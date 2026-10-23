@@ -39,6 +39,10 @@ export function BodyVitalsTrendChart({
   );
   const min = values.length ? Math.min(...values) : 0;
   const max = values.length ? Math.max(...values) : 0;
+  const hasSingleSnapshot = timeline.length === 1;
+  const displayPoints: (BodyVitalsTrendTimelinePoint | null)[] = hasSingleSnapshot
+    ? [null, ...timeline, null, null]
+    : timeline;
 
   return (
     <View style={styles.card}>
@@ -50,7 +54,19 @@ export function BodyVitalsTrendChart({
       </View>
 
       <View style={styles.chartRow}>
-        {timeline.map((point) => {
+        {displayPoints.map((point, index) => {
+          if (!point) {
+            return (
+              <View key={`placeholder-${metricKey}-${index}`} style={styles.barColumn}>
+                <Text style={styles.placeholderValue}>—</Text>
+                <View style={[styles.track, styles.placeholderTrack]}>
+                  <View style={styles.placeholderBar} />
+                </View>
+                <Text style={styles.placeholderDate}>Awaiting</Text>
+              </View>
+            );
+          }
+
           const value = point[metricKey];
           const barHeight = getBodyVitalsTrendBarHeight(value, min, max);
 
@@ -77,6 +93,11 @@ export function BodyVitalsTrendChart({
           );
         })}
       </View>
+      {hasSingleSnapshot ? (
+        <Text style={styles.chartHint}>
+          One saved snapshot so far. More bars will appear as you record new vitals.
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -143,5 +164,32 @@ const styling = (
       ...t.caption,
       color: theme.textSecondary,
       textAlign: "center",
+    },
+    placeholderValue: {
+      ...t.caption,
+      color: theme.textSecondary,
+      minHeight: 18,
+      opacity: 0.45,
+    },
+    placeholderTrack: {
+      opacity: 0.55,
+    },
+    placeholderBar: {
+      width: "100%",
+      height: "22%",
+      borderRadius: 999,
+      backgroundColor: theme.divider,
+    },
+    placeholderDate: {
+      ...t.caption,
+      color: theme.textSecondary,
+      textAlign: "center",
+      opacity: 0.45,
+    },
+    chartHint: {
+      ...t.caption,
+      color: theme.textSecondary,
+      textAlign: "center",
+      opacity: 0.78,
     },
   });
