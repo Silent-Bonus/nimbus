@@ -285,14 +285,13 @@ export default function BodyVitalScreen() {
 
           <PremiumBanner
             visible={Boolean(bannerMessage)}
+            eyebrow="Somatic wisdom"
             title="Your somatic profile"
             message={bannerMessage}
-            icon="sparkles-outline"
-            variant="info"
+            icon="body-outline"
+            variant="success"
             layout="compact"
             titleNumberOfLines={2}
-            titleFontSize={30}
-            messageFontSize={17}
             messageNumberOfLines={2}
             style={styles.bannerCard}
           />
