@@ -18,12 +18,10 @@ import type {
 import {
   DEFAULT_BANNER,
   DEFAULT_BODY_SHAPE,
-  DEFAULT_CALORIE_GOAL,
   DEFAULT_DIET_GOAL,
   DEFAULT_FORMULA_VERSIONS,
   DEFAULT_MEASUREMENTS,
   DEFAULT_PROFILE_COMPLETION_FIELDS,
-  DEFAULT_PROTEIN_GOAL,
 } from "./defaults";
 
 // Normalizes the backend vitals context into one shape that legacy and new UI
@@ -94,18 +92,14 @@ function normalizeProteinGoal(raw: unknown): BodyVitalsProteinGoal {
   const source = isRecord(raw) ? raw : {};
 
   return {
-    total_requirement:
-      toNumber(source.total_requirement) ?? DEFAULT_PROTEIN_GOAL.total_requirement,
-    meal_one: toNumber(source.meal_one) ?? DEFAULT_PROTEIN_GOAL.meal_one,
-    meal_two: toNumber(source.meal_two) ?? DEFAULT_PROTEIN_GOAL.meal_two,
-    meal_three: toNumber(source.meal_three) ?? DEFAULT_PROTEIN_GOAL.meal_three,
-    unit: toStringOrNull(source.unit) ?? DEFAULT_PROTEIN_GOAL.unit,
-    protein_target_g:
-      toNumber(source.protein_target_g) ?? DEFAULT_PROTEIN_GOAL.protein_target_g,
-    protein_per_meal_g:
-      toNumber(source.protein_per_meal_g) ??
-      DEFAULT_PROTEIN_GOAL.protein_per_meal_g,
-    tip: toStringOrNull(source.tip) ?? DEFAULT_PROTEIN_GOAL.tip,
+    total_requirement: toNumber(source.total_requirement),
+    meal_one: toNumber(source.meal_one),
+    meal_two: toNumber(source.meal_two),
+    meal_three: toNumber(source.meal_three),
+    unit: toStringOrNull(source.unit),
+    protein_target_g: toNumber(source.protein_target_g),
+    protein_per_meal_g: toNumber(source.protein_per_meal_g),
+    tip: toStringOrNull(source.tip),
   };
 }
 
@@ -115,19 +109,19 @@ function normalizeCalorieGoal(raw: unknown): BodyVitalsCalorieGoal {
     toNumber(source.total_calorie) ??
     toNumber(source.optimal_burn_calories) ??
     toNumber(source.burn) ??
-    DEFAULT_CALORIE_GOAL.total_calorie;
+    null;
   const maintenanceCalories =
     toNumber(source.maintenance_calories) ??
     toNumber(source.maintaince) ??
-    DEFAULT_CALORIE_GOAL.maintenance_calories;
+    null;
   const optimalBurnCalories =
     toNumber(source.optimal_burn_calories) ??
     toNumber(source.burn) ??
-    DEFAULT_CALORIE_GOAL.optimal_burn_calories;
+    null;
   const buildCalories =
     toNumber(source.build_calories) ??
     toNumber(source.build) ??
-    DEFAULT_CALORIE_GOAL.build_calories;
+    null;
 
   return {
     total_calorie: totalCalorie,
@@ -137,8 +131,8 @@ function normalizeCalorieGoal(raw: unknown): BodyVitalsCalorieGoal {
     maintaince: maintenanceCalories,
     burn: optimalBurnCalories,
     build: buildCalories,
-    unit: toStringOrNull(source.unit) ?? DEFAULT_CALORIE_GOAL.unit,
-    tip: toStringOrNull(source.tip) ?? DEFAULT_CALORIE_GOAL.tip,
+    unit: toStringOrNull(source.unit),
+    tip: toStringOrNull(source.tip),
   };
 }
 

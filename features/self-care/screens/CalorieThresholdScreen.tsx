@@ -121,8 +121,12 @@ export default function CalorieThresholdScreen() {
             />
 
             <Text style={styles.heroValue}>
-              {calorieData.totalCalorie}
-              <Text style={styles.heroUnit}> {calorieData.unit}</Text>
+              {calorieData.totalCalorie == null
+                ? "Not available yet"
+                : calorieData.totalCalorie}
+              {calorieData.totalCalorie == null ? null : (
+                <Text style={styles.heroUnit}> {calorieData.unit}</Text>
+              )}
             </Text>
             <Text style={styles.heroCaption}>TOTAL CALORIES</Text>
           </View>
@@ -162,8 +166,10 @@ export default function CalorieThresholdScreen() {
                   tier.highlight && styles.cardCaloriesHighlight,
                 ]}
               >
-                {tier.calories}
-                <Text style={styles.cardCaloriesUnit}> {calorieData.unit}</Text>
+                {tier.calories == null ? "Not available yet" : tier.calories}
+                {tier.calories == null ? null : (
+                  <Text style={styles.cardCaloriesUnit}> {calorieData.unit}</Text>
+                )}
               </Text>
             </View>
           ))}

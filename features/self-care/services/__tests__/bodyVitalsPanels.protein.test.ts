@@ -1,5 +1,4 @@
 import {
-  FALLBACK_PROTEIN_PANEL_DATA,
   buildProteinPanelMealSlots,
   buildProteinPanelRouteParams,
   resolveProteinPanelDataFromContext,
@@ -32,10 +31,14 @@ describe("bodyVitals panels: protein", () => {
     });
   });
 
-  it("falls back to the mock protein data when the API payload is missing", () => {
-    expect(resolveProteinPanelDataFromContext(null)).toEqual(
-      FALLBACK_PROTEIN_PANEL_DATA
-    );
+  it("returns an unavailable state when no backend values exist", () => {
+    expect(resolveProteinPanelDataFromContext(null)).toMatchObject({
+      totalRequirement: null,
+      mealOne: null,
+      mealTwo: null,
+      mealThree: null,
+      source: "unavailable",
+    });
   });
 
   it("builds route params and meal slots from the resolved data", () => {
