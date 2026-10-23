@@ -1,5 +1,4 @@
 import {
-  FALLBACK_CALORIE_PANEL_DATA,
   buildCaloriePanelRouteParams,
   buildCaloriePanelTiers,
   resolveCaloriePanelDataFromContext,
@@ -34,10 +33,14 @@ describe("bodyVitals panels: calorie", () => {
     });
   });
 
-  it("falls back to mock calorie data when no saved values exist", () => {
-    expect(resolveCaloriePanelDataFromContext(null)).toEqual(
-      FALLBACK_CALORIE_PANEL_DATA
-    );
+  it("returns an unavailable state when no backend values exist", () => {
+    expect(resolveCaloriePanelDataFromContext(null)).toMatchObject({
+      totalCalorie: null,
+      maintenanceCalories: null,
+      optimalBurnCalories: null,
+      buildCalories: null,
+      source: "unavailable",
+    });
   });
 
   it("builds route params and tiers from the resolved calorie data", () => {

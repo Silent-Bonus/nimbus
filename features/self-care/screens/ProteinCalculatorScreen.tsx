@@ -94,8 +94,12 @@ export const ProteinCalculatorScreen = () => {
             />
 
             <Text style={styles.heroValue}>
-              {proteinPanelData.totalRequirement}
-              <Text style={styles.heroUnit}> {proteinPanelData.unit}</Text>
+              {proteinPanelData.totalRequirement == null
+                ? "Not available yet"
+                : proteinPanelData.totalRequirement}
+              {proteinPanelData.totalRequirement == null ? null : (
+                <Text style={styles.heroUnit}> {proteinPanelData.unit}</Text>
+              )}
             </Text>
             <Text style={styles.heroCaption}>TOTAL REQUIREMENT</Text>
           </View>
@@ -118,8 +122,10 @@ export const ProteinCalculatorScreen = () => {
 
               <View style={styles.slotAmountColumn}>
                 <Text style={styles.slotAmount}>
-                  {slot.grams}
-                  <Text style={styles.slotUnit}> {proteinPanelData.unit}</Text>
+                  {slot.grams == null ? "Not available yet" : slot.grams}
+                  {slot.grams == null ? null : (
+                    <Text style={styles.slotUnit}> {proteinPanelData.unit}</Text>
+                  )}
                 </Text>
                 <Text style={styles.slotAmountLabel}>Protein</Text>
               </View>

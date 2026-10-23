@@ -74,11 +74,11 @@ export default function ToolsLandingScreen() {
           <View style={styles.sectionStack}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Open Meal Planner"
-              onPress={() => router.push(ROUTES.AUTH.TOOLS_MEAL_PLANNER as never)}
+              accessibilityLabel="Open Scribble"
+              onPress={() => router.push(ROUTES.AUTH.TOOLS_SCRIBBLE_LIST as never)}
               style={({ pressed }) => [
-                styles.mealPlannerCard,
-                pressed && styles.mealPlannerPressed,
+                styles.scribbleCard,
+                pressed && styles.scribblePressed,
               ]}
             >
               <LinearGradient
@@ -87,21 +87,21 @@ export default function ToolsLandingScreen() {
                 end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFill}
               />
-              <View style={styles.mealPlannerIcon}>
+              <View style={styles.scribbleIcon}>
                 <MaterialCommunityIcons
-                  name="calendar-heart"
+                  name="pencil-outline"
                   size={23}
                   color={theme.accent}
                 />
               </View>
-              <View style={styles.mealPlannerCopy}>
-                <Text style={styles.mealPlannerEyebrow}>YOUR WEEK, WELL FED</Text>
-                <Text style={styles.mealPlannerTitle}>Meal planner</Text>
-                <Text style={styles.mealPlannerDescription} numberOfLines={2}>
-                  Bring your recipes together and make a plan that works for you.
+              <View style={styles.scribbleCopy}>
+                <Text style={styles.scribbleEyebrow}>MAKE SPACE FOR THOUGHTS</Text>
+                <Text style={styles.scribbleTitle}>Scribble</Text>
+                <Text style={styles.scribbleDescription} numberOfLines={2}>
+                  Capture your thoughts, ideas, and reflections in one place.
                 </Text>
               </View>
-              <View style={styles.mealPlannerArrow}>
+              <View style={styles.scribbleArrow}>
                 <Ionicons name="arrow-forward" size={17} color={theme.background} />
               </View>
             </Pressable>
@@ -140,7 +140,7 @@ const makeStyles = (
     sectionStack: {
       gap: spacing.md,
     },
-    mealPlannerCard: {
+    scribbleCard: {
       position: "relative",
       flexDirection: "row",
       alignItems: "center",
@@ -158,11 +158,11 @@ const makeStyles = (
       shadowOffset: { width: 0, height: 7 },
       elevation: 6,
     },
-    mealPlannerPressed: {
+    scribblePressed: {
       transform: [{ scale: 0.985 }],
       borderColor: theme.accent,
     },
-    mealPlannerIcon: {
+    scribbleIcon: {
       width: 48,
       height: 48,
       borderRadius: 16,
@@ -172,11 +172,11 @@ const makeStyles = (
       borderWidth: 1,
       borderColor: "rgba(163,190,140,0.2)",
     },
-    mealPlannerCopy: {
+    scribbleCopy: {
       flex: 1,
       minWidth: 0,
     },
-    mealPlannerEyebrow: {
+    scribbleEyebrow: {
       fontFamily: fonts.mono,
       fontSize: 9,
       lineHeight: 12,
@@ -184,21 +184,21 @@ const makeStyles = (
       textTransform: "uppercase",
       color: theme.accent,
     },
-    mealPlannerTitle: {
+    scribbleTitle: {
       marginTop: 3,
       fontFamily: fonts.serif,
       fontSize: 24,
       lineHeight: 28,
       color: theme.textPrimary,
     },
-    mealPlannerDescription: {
+    scribbleDescription: {
       marginTop: 4,
       fontFamily: fonts.action,
       fontSize: 11,
       lineHeight: 16,
       color: theme.textSecondary,
     },
-    mealPlannerArrow: {
+    scribbleArrow: {
       width: 30,
       height: 30,
       borderRadius: 15,

@@ -20,12 +20,6 @@ export const SELF_CARE_SECTIONS: SelfCareSectionConfig[] = [
         navigationMode: "navigate",
       },
       {
-        label: "Affirmation",
-        description: "Reframe your inner voice",
-        icon: "cards-heart-outline",
-        route: ROUTES.AUTH.SELF_CARE_AFFIRMATION,
-      },
-      {
         label: "Breath Work",
         description: "Regulate your rhythm",
         icon: "weather-windy",
@@ -44,10 +38,10 @@ export const SELF_CARE_SECTIONS: SelfCareSectionConfig[] = [
         route: ROUTES.AUTH.SELF_CARE_VITALS,
       },
       {
-        label: "Workout",
-        description: "Build your physical edge",
-        icon: "dumbbell",
-        route: ROUTES.AUTH.SELF_CARE_WORKOUT,
+        label: "Meal Planner",
+        description: "Nourish your body with intention",
+        icon: "silverware-fork-knife",
+        route: ROUTES.AUTH.TOOLS_MEAL_PLANNER,
       },
     ],
   },
@@ -56,10 +50,10 @@ export const SELF_CARE_SECTIONS: SelfCareSectionConfig[] = [
     title: "Soul",
     actions: [
       {
-        label: "Scribble",
-        description: "Give your thoughts a space",
-        icon: "pencil-outline",
-        route: ROUTES.AUTH.TOOLS_SCRIBBLE_LIST,
+        label: "Affirmation",
+        description: "Reframe your inner voice",
+        icon: "cards-heart-outline",
+        route: ROUTES.AUTH.SELF_CARE_AFFIRMATION,
       },
       {
         label: "Soundscape",

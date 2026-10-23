@@ -87,7 +87,9 @@ function makeStyles(
   pressable: boolean,
   compact: boolean
 ) {
-  const titleStyle = svaTypography.textStyle.displayMedium;
+  const titleStyle = compact
+    ? svaTypography.textStyle.authTitle
+    : svaTypography.textStyle.displayMedium;
   const eyebrowStyle = svaTypography.textStyle.authTinyLabel;
   const messageStyle = svaTypography.textStyle.body;
   const metaStyle = svaTypography.textStyle.caption;
@@ -166,12 +168,12 @@ function makeStyles(
       ...titleStyle,
       color: theme.textPrimary,
       fontSize: compact
-        ? Math.max(titleStyle.fontSize - 6, 16)
+        ? Math.max(titleStyle.fontSize - 2, 18)
         : Math.max(titleStyle.fontSize - 2, 20),
       lineHeight: compact
         ? titleStyle.lineHeight
-          ? Math.max(titleStyle.lineHeight - 8, 20)
-          : 20
+          ? Math.max(titleStyle.lineHeight - 2, 22)
+          : 22
         : titleStyle.lineHeight
           ? Math.max(titleStyle.lineHeight - 2, 24)
           : 26,
@@ -182,7 +184,7 @@ function makeStyles(
       color: theme.textPrimary,
       opacity: compact ? 0.78 : 0.92,
       fontSize: compact
-        ? Math.max(messageStyle.fontSize - 1, 13)
+        ? Math.max(messageStyle.fontSize - 1, 14)
         : messageStyle.fontSize,
       lineHeight: compact
         ? messageStyle.lineHeight

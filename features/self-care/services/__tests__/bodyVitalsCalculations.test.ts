@@ -269,15 +269,15 @@ describe("bodyVitals calculations", () => {
         recalculated_modules: ["body_shape"],
         reused_modules: ["protein", "calories", "diet"],
         results: {
-          bmr: 1419,
+          bmr: null,
           protein_goal: expect.objectContaining({
-            protein_target_g: 108,
-            protein_per_meal_g: 27,
+            protein_target_g: null,
+            protein_per_meal_g: null,
           }),
           calorie_goal: expect.objectContaining({
-            maintenance_calories: 2199,
-            optimal_burn_calories: 1949,
-            build_calories: 2449,
+            maintenance_calories: null,
+            optimal_burn_calories: null,
+            build_calories: null,
           }),
           diet_goal: expect.objectContaining({
             carbs_goal: 233,

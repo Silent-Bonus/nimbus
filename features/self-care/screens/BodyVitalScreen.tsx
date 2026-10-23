@@ -159,7 +159,10 @@ export default function BodyVitalScreen() {
       {
         key: "protein",
         label: "Protein Intake",
-        value: `${proteinPanelData.totalRequirement} ${proteinPanelData.unit} / Day`,
+        value:
+          proteinPanelData.totalRequirement == null
+            ? "Not available yet"
+            : `${proteinPanelData.totalRequirement} ${proteinPanelData.unit} / Day`,
         icon: "flash" as const,
         accent: newTheme.chart4 ?? newTheme.error,
         route: ROUTES.AUTH.SELF_CARE_PROTEIN,
@@ -167,7 +170,10 @@ export default function BodyVitalScreen() {
       {
         key: "calorie",
         label: "Calorie Intake",
-        value: `${caloriePanelData.totalCalorie} ${caloriePanelData.unit} / Day`,
+        value:
+          caloriePanelData.totalCalorie == null
+            ? "Not available yet"
+            : `${caloriePanelData.totalCalorie} ${caloriePanelData.unit} / Day`,
         icon: "flame" as const,
         accent: newTheme.chart3 ?? newTheme.warning,
         route: ROUTES.AUTH.SELF_CARE_CALORIE_THRESHOLD,
@@ -285,14 +291,13 @@ export default function BodyVitalScreen() {
 
           <PremiumBanner
             visible={Boolean(bannerMessage)}
+            eyebrow="Somatic wisdom"
             title="Your somatic profile"
             message={bannerMessage}
-            icon="sparkles-outline"
-            variant="info"
+            icon="body-outline"
+            variant="success"
             layout="compact"
             titleNumberOfLines={2}
-            titleFontSize={30}
-            messageFontSize={17}
             messageNumberOfLines={2}
             style={styles.bannerCard}
           />
@@ -408,7 +413,7 @@ export default function BodyVitalScreen() {
               <View style={styles.bmrPill}>
                 <Text style={styles.bmrPillLabel}>BMR</Text>
                 <Text style={styles.bmrPillValue}>
-                  {typeof bmrValue === "number" ? `${bmrValue} kcal` : "N/A"}
+                  {typeof bmrValue === "number" ? `${bmrValue} kcal` : "Not available yet"}
                 </Text>
               </View>
             </View>

@@ -25,13 +25,7 @@ import type {
   BodyVitalsProfilePatchPayload,
   BodyVitalsProteinGoal,
 } from "@/features/self-care/types/bodyVitals";
-import {
-  DEFAULT_BODY_SHAPE,
-  DEFAULT_BMR,
-  DEFAULT_CALORIE_GOAL,
-  DEFAULT_DIET_GOAL,
-  DEFAULT_PROTEIN_GOAL,
-} from "./defaults";
+import { DEFAULT_DIET_GOAL } from "./defaults";
 import {
   getStoredBodyVitalsContext,
   resolveBodyVitalsFormState,
@@ -115,54 +109,54 @@ function resolveFallbackResults(savedContext: BodyVitalsContext | null | undefin
     outputs?.calorie_goal?.maintenance_calories ??
     profile?.calorie_goal?.maintenance_calories ??
     savedSummary?.maintenance_calories ??
-    DEFAULT_CALORIE_GOAL.maintenance_calories;
+    null;
   const optimalBurnCalories =
     outputs?.calorie_goal?.optimal_burn_calories ??
     profile?.calorie_goal?.optimal_burn_calories ??
     savedSummary?.optimal_burn_calories ??
-    DEFAULT_CALORIE_GOAL.optimal_burn_calories;
+    null;
   const buildCalories =
     outputs?.calorie_goal?.build_calories ??
     profile?.calorie_goal?.build_calories ??
-    DEFAULT_CALORIE_GOAL.build_calories;
+    null;
 
   return {
-    bmr: outputs?.bmr ?? profile?.bmr ?? savedSummary?.bmr ?? DEFAULT_BMR,
+    bmr: outputs?.bmr ?? profile?.bmr ?? savedSummary?.bmr ?? null,
     protein_goal: {
       total_requirement:
         outputs?.protein_goal?.total_requirement ??
         profile?.protein_goal?.total_requirement ??
-        DEFAULT_PROTEIN_GOAL.total_requirement,
+        null,
       meal_one:
         outputs?.protein_goal?.meal_one ??
         profile?.protein_goal?.meal_one ??
-        DEFAULT_PROTEIN_GOAL.meal_one,
+        null,
       meal_two:
         outputs?.protein_goal?.meal_two ??
         profile?.protein_goal?.meal_two ??
-        DEFAULT_PROTEIN_GOAL.meal_two,
+        null,
       meal_three:
         outputs?.protein_goal?.meal_three ??
         profile?.protein_goal?.meal_three ??
-        DEFAULT_PROTEIN_GOAL.meal_three,
+        null,
       unit:
         outputs?.protein_goal?.unit ??
         profile?.protein_goal?.unit ??
-        DEFAULT_PROTEIN_GOAL.unit,
+        null,
       protein_target_g:
         outputs?.protein_goal?.protein_target_g ??
         profile?.protein_goal?.protein_target_g ??
         savedSummary?.protein_target_g ??
-        DEFAULT_PROTEIN_GOAL.protein_target_g,
+        null,
       protein_per_meal_g:
         outputs?.protein_goal?.protein_per_meal_g ??
         profile?.protein_goal?.protein_per_meal_g ??
         savedSummary?.protein_per_meal_g ??
-        DEFAULT_PROTEIN_GOAL.protein_per_meal_g,
+        null,
       tip:
         outputs?.protein_goal?.tip ??
         profile?.protein_goal?.tip ??
-        DEFAULT_PROTEIN_GOAL.tip,
+        null,
     },
     calorie_goal: {
       total_calorie:
@@ -180,11 +174,11 @@ function resolveFallbackResults(savedContext: BodyVitalsContext | null | undefin
       unit:
         outputs?.calorie_goal?.unit ??
         profile?.calorie_goal?.unit ??
-        DEFAULT_CALORIE_GOAL.unit,
+        null,
       tip:
         outputs?.calorie_goal?.tip ??
         profile?.calorie_goal?.tip ??
-        DEFAULT_CALORIE_GOAL.tip,
+        null,
     },
     diet_goal: {
       carbs_goal:
@@ -209,22 +203,22 @@ function resolveFallbackResults(savedContext: BodyVitalsContext | null | undefin
         outputs?.body_shape?.code ??
         profile?.body_shape_code ??
         savedSummary?.body_shape_code ??
-        DEFAULT_BODY_SHAPE.code,
+        null,
       label:
         outputs?.body_shape?.label ??
         profile?.body_shape_label ??
         savedSummary?.body_shape_label ??
-        DEFAULT_BODY_SHAPE.label,
+        null,
       confidence:
         outputs?.body_shape?.confidence ??
         profile?.body_shape_confidence ??
         savedSummary?.body_shape_confidence ??
-        DEFAULT_BODY_SHAPE.confidence,
+        null,
       movement_strategy:
         outputs?.body_shape?.movement_strategy ??
         profile?.movement_strategy ??
         savedSummary?.movement_strategy ??
-        DEFAULT_BODY_SHAPE.movement_strategy,
+        null,
       measurements: outputs?.body_shape?.measurements ?? null,
     },
     metabolic_insight:
@@ -245,28 +239,24 @@ function normalizeProteinGoal(
   return {
     total_requirement:
       toNumber(source.total_requirement) ??
-      fallback?.total_requirement ??
-      DEFAULT_PROTEIN_GOAL.total_requirement,
+      fallback?.total_requirement ?? null,
     meal_one:
-      toNumber(source.meal_one) ?? fallback?.meal_one ?? DEFAULT_PROTEIN_GOAL.meal_one,
+      toNumber(source.meal_one) ?? fallback?.meal_one ?? null,
     meal_two:
-      toNumber(source.meal_two) ?? fallback?.meal_two ?? DEFAULT_PROTEIN_GOAL.meal_two,
+      toNumber(source.meal_two) ?? fallback?.meal_two ?? null,
     meal_three:
       toNumber(source.meal_three) ??
-      fallback?.meal_three ??
-      DEFAULT_PROTEIN_GOAL.meal_three,
-    unit: toStringOrNull(source.unit) ?? fallback?.unit ?? DEFAULT_PROTEIN_GOAL.unit,
+      fallback?.meal_three ?? null,
+    unit: toStringOrNull(source.unit) ?? fallback?.unit ?? null,
     protein_target_g:
       toNumber(source.protein_target_g) ??
       data?.protein_target_g ??
-      fallback?.protein_target_g ??
-      DEFAULT_PROTEIN_GOAL.protein_target_g,
+      fallback?.protein_target_g ?? null,
     protein_per_meal_g:
       toNumber(source.protein_per_meal_g) ??
       data?.protein_per_meal_g ??
-      fallback?.protein_per_meal_g ??
-      DEFAULT_PROTEIN_GOAL.protein_per_meal_g,
-    tip: toStringOrNull(source.tip) ?? fallback?.tip ?? DEFAULT_PROTEIN_GOAL.tip,
+      fallback?.protein_per_meal_g ?? null,
+    tip: toStringOrNull(source.tip) ?? fallback?.tip ?? null,
   };
 }
 
@@ -281,19 +271,19 @@ function normalizeCalorieGoal(
     data?.maintenance_calories ??
     fallback?.maintenance_calories ??
     fallback?.maintaince ??
-    DEFAULT_CALORIE_GOAL.maintenance_calories;
+    null;
   const optimalBurnCalories =
     toNumber(source.optimal_burn_calories) ??
     data?.optimal_burn_calories ??
     fallback?.optimal_burn_calories ??
     fallback?.burn ??
-    DEFAULT_CALORIE_GOAL.optimal_burn_calories;
+    null;
   const buildCalories =
     toNumber(source.build_calories) ??
     data?.build_calories ??
     fallback?.build_calories ??
     fallback?.build ??
-    DEFAULT_CALORIE_GOAL.build_calories;
+    null;
 
   return {
     total_calorie:
@@ -305,8 +295,8 @@ function normalizeCalorieGoal(
     maintaince: maintenanceCalories,
     burn: optimalBurnCalories,
     build: buildCalories,
-    unit: toStringOrNull(source.unit) ?? fallback?.unit ?? DEFAULT_CALORIE_GOAL.unit,
-    tip: toStringOrNull(source.tip) ?? fallback?.tip ?? DEFAULT_CALORIE_GOAL.tip,
+    unit: toStringOrNull(source.unit) ?? fallback?.unit ?? null,
+    tip: toStringOrNull(source.tip) ?? fallback?.tip ?? null,
   };
 }
 
@@ -331,14 +321,13 @@ function normalizeBodyShape(raw: unknown, fallback: BodyVitalsCalculationResults
   const source = isRecord(raw) ? raw : {};
 
   return {
-    code: toStringOrNull(source.code) ?? fallback?.code ?? DEFAULT_BODY_SHAPE.code,
-    label: toStringOrNull(source.label) ?? fallback?.label ?? DEFAULT_BODY_SHAPE.label,
-    confidence:
-      toNumber(source.confidence) ?? fallback?.confidence ?? DEFAULT_BODY_SHAPE.confidence,
+    code: toStringOrNull(source.code) ?? fallback?.code ?? null,
+    label: toStringOrNull(source.label) ?? fallback?.label ?? null,
+    confidence: toNumber(source.confidence) ?? fallback?.confidence ?? null,
     movement_strategy:
       toStringOrNull(source.movement_strategy) ??
       fallback?.movement_strategy ??
-      DEFAULT_BODY_SHAPE.movement_strategy,
+      null,
     measurements: isRecord(source.measurements)
       ? {
           bust_cm: toNumber(source.measurements.bust_cm),
@@ -511,7 +500,7 @@ export function normalizeBodyVitalsCalculationResponse(
       toNumber(resultSource?.bmr) ??
       data?.bmr ??
       fallbackResults.bmr ??
-      DEFAULT_BMR,
+      null,
     protein_goal: normalizeProteinGoal(
       resultSource?.protein_goal,
       fallbackResults.protein_goal,
@@ -600,7 +589,7 @@ export function mergeBodyVitalsCalculationResponses(
         ...calorieResponse.data.reused_modules,
       ]).filter((module) => !recalculatedModules.includes(module)),
       results: {
-        bmr: calorieResults.bmr ?? proteinResults.bmr ?? DEFAULT_BMR,
+        bmr: calorieResults.bmr ?? proteinResults.bmr ?? null,
         protein_goal: proteinResults.protein_goal ?? calorieResults.protein_goal ?? null,
         calorie_goal: calorieResults.calorie_goal ?? proteinResults.calorie_goal ?? null,
         diet_goal: calorieResults.diet_goal ?? proteinResults.diet_goal ?? null,
