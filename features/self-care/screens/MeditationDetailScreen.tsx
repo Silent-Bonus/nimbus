@@ -415,24 +415,6 @@ export default function MeditationDetailScreen() {
             ) : null}
           </View>
 
-          {meditation.guidance ? (
-            <View style={styles.guidanceCard}>
-              <View style={styles.cardHeaderRow}>
-                <Text style={styles.cardLabel}>GUIDANCE</Text>
-                <View style={styles.miniPill}>
-                  <Ionicons
-                    name="sparkles-outline"
-                    size={14}
-                    color={theme.textSecondary}
-                  />
-                  <Text style={styles.miniPillText}>Practice cues</Text>
-                </View>
-              </View>
-
-              <Text style={styles.sectionBodyText}>{meditation.guidance}</Text>
-            </View>
-          ) : null}
-
           {meditation.instructor ? (
             <View style={styles.instructorCard}>
               <View style={styles.cardHeaderRow}>
@@ -691,20 +673,6 @@ const styling = (
       elevation: 5,
     },
     descriptionCard: {
-      borderRadius: 28,
-      backgroundColor: theme.surface,
-      borderWidth: 1,
-      borderColor: theme.borderMuted ?? "rgba(255,255,255,0.05)",
-      paddingHorizontal: 18,
-      paddingVertical: 18,
-      marginBottom: spacing.lg,
-      shadowColor: theme.shadow,
-      shadowOpacity: 0.18,
-      shadowRadius: 16,
-      shadowOffset: { width: 0, height: 10 },
-      elevation: 5,
-    },
-    guidanceCard: {
       borderRadius: 28,
       backgroundColor: theme.surface,
       borderWidth: 1,

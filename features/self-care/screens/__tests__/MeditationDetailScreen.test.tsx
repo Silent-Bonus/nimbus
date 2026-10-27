@@ -279,7 +279,7 @@ describe("MeditationDetailScreen", () => {
     expect(hasText(tree, "Meditation Prelude")).toBe(true);
     expect(hasText(tree, "Relaxing Meditation")).toBe(true);
     expect(hasText(tree, "ABOUT THIS SESSION")).toBe(true);
-    expect(hasText(tree, "GUIDANCE")).toBe(true);
+    expect(hasText(tree, "GUIDANCE")).toBe(false);
     expect(hasText(tree, "INSTRUCTOR")).toBe(true);
     expect(hasText(tree, "BENEFITS")).toBe(true);
     expect(hasText(tree, "SCIENTIFIC SYNTHESIS")).toBe(true);

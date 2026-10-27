@@ -111,6 +111,7 @@ export default function BodyArchitectureScreen() {
     [savedVitalsContext]
   );
   const activeShapeResult = calculatedShape ?? savedShapeResult;
+  const hasShapeResult = Boolean(activeShapeResult?.rawShape);
   const movementStrategy = resolveResultStrategy(
     calculatedShape,
     savedShape,
@@ -288,7 +289,7 @@ export default function BodyArchitectureScreen() {
           <Text style={styles.profileLabel}>CURRENT PROFILE</Text>
           <Text style={styles.profileTitle}>
             {formatLabelForHero(
-              activeShapeResult?.label ?? "Awaiting Calculation"
+              hasShapeResult ? activeShapeResult?.label ?? "" : "Awaiting Calculation"
             )}
           </Text>
         </View>
@@ -375,14 +376,21 @@ export default function BodyArchitectureScreen() {
           />
 
           <Text style={styles.resultEyebrow}>
-            {calculatedShape ? "CALCULATED SHAPE" : "CURRENT SHAPE"}
+            {calculatedShape
+              ? "CALCULATED SHAPE"
+              : hasShapeResult
+                ? "CURRENT SHAPE"
+                : "NO PROFILE YET"}
           </Text>
           <Text style={styles.resultTitle}>
-            {activeShapeResult?.label ?? "Awaiting Calculation"}
+            {hasShapeResult
+              ? activeShapeResult?.label
+              : "Your blueprint is not ready"}
           </Text>
           <Text style={styles.resultDescription}>
-            {activeShapeResult?.description ??
-              "Add your measurements and calculate your body shape to unlock your current silhouette reading."}
+            {hasShapeResult
+              ? activeShapeResult?.description
+              : "Add bust, waist, high-hip, and low-hip measurements, then calculate to unlock your personalized body blueprint."}
           </Text>
 
           <View style={styles.statRow}>

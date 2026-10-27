@@ -15,10 +15,7 @@ import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { ProgressBar } from "react-native-paper";
 import { StatusBar } from "expo-status-bar";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ThemeContext from "@/contexts/ThemeContext";
 import AppHeader from "@/components/layout/AppHeader";
@@ -407,12 +404,11 @@ export default function ReflectionEntryScreen() {
     <ScreenView bgColor={theme.background} style={styles.screen}>
       <StatusBar style="light" translucent backgroundColor="transparent" />
 
-      <SafeAreaView style={styles.safeArea}>
-        <KeyboardAvoidingView
-          style={styles.keyboard}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
-          <View style={styles.root}>
+      <KeyboardAvoidingView
+        style={styles.keyboard}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <View style={styles.root}>
             <AppHeader
               title={journalTitle}
               subtitle="Follow the prompt, then complete the reflection."
@@ -557,9 +553,8 @@ export default function ReflectionEntryScreen() {
                 </Pressable>
               </ScrollView>
             )}
-          </View>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+        </View>
+      </KeyboardAvoidingView>
     </ScreenView>
   );
 }
@@ -572,9 +567,6 @@ const styling = (theme: any, spacing: any, svaTypography: any) =>
         Platform.OS === "ios"
           ? spacing["xxl"] + spacing["xxl"] * 0.4
           : spacing.xl,
-    },
-    safeArea: {
-      flex: 1,
     },
     keyboard: {
       flex: 1,

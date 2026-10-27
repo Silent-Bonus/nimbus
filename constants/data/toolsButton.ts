@@ -33,9 +33,9 @@ export const buttons: NavigationButtonType[] = [
   },
   {
     id: 4,
-    label: "Meal Planner",
+    label: "Scribble",
     action: "navigate",
-    screen: ROUTES.AUTH.TOOLS_MEAL_PLANNER,
-    iconName: "calendar-heart",
+    screen: ROUTES.AUTH.TOOLS_SCRIBBLE_LIST,
+    iconName: "pencil-outline",
   },
 ];
