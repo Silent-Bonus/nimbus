@@ -49,7 +49,9 @@ export default function BreathWorkDetailScreen() {
   const params = useLocalSearchParams<BreathWorkDetailParams>();
   const { newTheme: theme, spacing, svaTypography } = useContext(ThemeContext);
   const { breathworkId, breathworkSlug } = parseBreathWorkRouteParams(params);
-  const detailIdentifier = breathworkId || breathworkSlug;
+  // Slugs are the stable public identifier for wellness content. Keep the ID
+  // as a fallback for older deep links that do not include a slug.
+  const detailIdentifier = breathworkSlug || breathworkId;
   const [detail, setDetail] = useState<BreathWorkDetail | null>(() =>
     detailIdentifier
       ? getCachedBreathWorkDetail(detailIdentifier) ?? null
