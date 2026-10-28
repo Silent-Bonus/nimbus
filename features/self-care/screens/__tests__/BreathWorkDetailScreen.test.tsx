@@ -13,6 +13,7 @@ import {
 import {
   getWellnessContentDetail,
 } from "../../services/selfCareService";
+import type { BreathWorkRouteParams } from "../../utils/breathworkPlayback";
 import BreathWorkDetailScreen from "../BreathWorkDetailScreen";
 
 const mockBack = jest.fn();
@@ -21,7 +22,7 @@ const mockAddListener = jest.fn(() => jest.fn());
 const mockPush = jest.fn();
 const mockSelection = jest.fn();
 
-let mockParams = {
+let mockParams: BreathWorkRouteParams = {
   breathworkId: "1",
 };
 
@@ -274,6 +275,17 @@ describe("BreathWorkDetailScreen", () => {
       )
     ).toBe(true);
     expect(hasText(tree, "Open Breath Work")).toBe(true);
+  });
+
+  it("uses the breathwork slug when both route identifiers are available", async () => {
+    mockParams = {
+      breathworkId: "1",
+      breathworkSlug: apiDetail.slug,
+    };
+
+    await renderScreen();
+
+    expect(mockGetWellnessContentDetail).toHaveBeenCalledWith(apiDetail.slug);
   });
 
   it("opens the breath session screen when the start button is pressed", async () => {
