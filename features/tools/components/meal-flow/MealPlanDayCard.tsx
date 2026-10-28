@@ -150,11 +150,14 @@ export function MealPlanDayCard({
                     </TouchableOpacity>
                   )}
                   {!meal.isPlanned && onAddMeal && (
-                    <Ionicons
-                      name="chevron-forward"
-                      size={18}
-                      color={svaColors.text.secondary}
-                    />
+                    <View style={styles.addAction}>
+                      <Text style={styles.addActionText}>Add</Text>
+                      <Ionicons
+                        name="arrow-forward"
+                        size={15}
+                        color={svaColors.brand.primary}
+                      />
+                    </View>
                   )}
                 </Pressable>
               ))
@@ -326,6 +329,23 @@ const styling = (
       borderColor: theme.border.default,
       justifyContent: "center",
       alignItems: "center",
+    },
+    addAction: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.xs,
+      paddingHorizontal: spacing.sm,
+      paddingVertical: spacing.xs + 2,
+      borderRadius: tokens.radius.chip,
+      backgroundColor: theme.bg.subtle,
+      borderWidth: tokens.border.hairline,
+      borderColor: theme.border.default,
+    },
+    addActionText: {
+      ...(svaTypography?.textStyle.authTinyLabel ?? svaTypography.textStyle.caption),
+      color: theme.brand.primary,
+      letterSpacing: 0.6,
+      textTransform: "uppercase",
     },
     emptyState: {
       flexDirection: "row",

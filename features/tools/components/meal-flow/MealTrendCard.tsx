@@ -78,23 +78,7 @@ export function MealTrendCard({
           <Text style={styles.eyebrow}>{eyebrow.toUpperCase()}</Text>
         </View>
         <Text style={styles.title}>{title}</Text>
-        {caption ? (
-          <Text style={styles.caption} numberOfLines={2}>
-            {caption}
-          </Text>
-        ) : null}
-      </View>
-
-      <View style={styles.summaryBand}>
-        {metrics.map((metric) => (
-          <View key={`${metric.key}-summary`} style={styles.summaryItem}>
-            <Text style={styles.summaryValue}>
-              {Math.round(metric.averageValue)}
-              <Text style={styles.summaryUnit}>{metric.unit}</Text>
-            </Text>
-            <Text style={styles.summaryLabel}>{metric.label}</Text>
-          </View>
-        ))}
+        {caption ? <Text style={styles.caption}>{caption}</Text> : null}
       </View>
 
       <View style={styles.grid}>
@@ -109,10 +93,11 @@ export function MealTrendCard({
 
             <View style={styles.metricValueBlock}>
               <Text style={styles.metricValue}>
-                {Math.round(metric.averageValue)}
-                <Text style={styles.metricUnit}>{metric.unit}</Text>
+                {metric.hitRate}%
               </Text>
-              <Text style={styles.metricMeta}>{metric.hitRate}% hit rate</Text>
+              <Text style={styles.metricMeta}>
+                {Math.round(metric.averageValue)}{metric.unit}
+              </Text>
             </View>
 
             <View style={styles.directionChip}>
@@ -140,11 +125,11 @@ const styling = (
 ) =>
   StyleSheet.create({
     card: {
-      paddingHorizontal: spacing.md,
-      paddingTop: spacing.md,
-      paddingBottom: spacing.md,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.lg,
+      paddingBottom: spacing.lg,
       marginBottom: spacing.xl,
-      gap: spacing.md,
+      gap: spacing.lg,
       overflow: "hidden",
     },
     header: {
@@ -175,43 +160,11 @@ const styling = (
     caption: {
       ...(svaTypography?.textStyle.body ?? svaTypography.textStyle.body),
       color: theme.text.secondary,
-      maxWidth: "94%",
-    },
-    summaryBand: {
-      flexDirection: "row",
-      gap: spacing.xs,
-      padding: spacing.sm,
-      borderRadius: tokens.radius.card,
-      backgroundColor: theme.surface.base,
-      borderWidth: tokens.border.hairline,
-      borderColor: theme.border.default,
-    },
-    summaryItem: {
-      flex: 1,
-      minHeight: 58,
-      justifyContent: "center",
-      alignItems: "center",
-      borderRadius: tokens.radius.card,
-      backgroundColor: theme.bg.subtle,
-      paddingHorizontal: spacing.xs,
-      gap: spacing.xs - 1,
-    },
-    summaryValue: {
-      ...(svaTypography?.textStyle.heading2 ?? svaTypography.textStyle.title),
-      color: theme.text.primary,
-    },
-    summaryUnit: {
-      ...(svaTypography?.textStyle.caption ?? svaTypography.textStyle.caption),
-      color: theme.text.secondary,
-    },
-    summaryLabel: {
-      ...(svaTypography?.textStyle.authTinyLabel ?? svaTypography.textStyle.authTinyLabel),
-      color: theme.text.secondary,
-      letterSpacing: 0.9,
-      textTransform: "uppercase",
+      maxWidth: "100%",
+      lineHeight: 22,
     },
     grid: {
-      gap: spacing.xs,
+      gap: spacing.sm,
     },
     metricCard: {
       flexDirection: "row",
@@ -221,8 +174,8 @@ const styling = (
       borderWidth: tokens.border.hairline,
       borderColor: theme.border.default,
       backgroundColor: theme.surface.base,
-      paddingHorizontal: spacing.sm + 4,
-      paddingVertical: spacing.sm + 2,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm + 4,
       gap: spacing.sm,
     },
     metricLabelRow: {
@@ -267,12 +220,9 @@ const styling = (
       ...(svaTypography?.textStyle.heading2 ?? svaTypography.textStyle.title),
       color: theme.text.primary,
     },
-    metricUnit: {
-      ...(svaTypography?.textStyle.caption ?? svaTypography.textStyle.caption),
-      color: theme.text.secondary,
-    },
     metricMeta: {
       ...(svaTypography?.textStyle.caption ?? svaTypography.textStyle.caption),
       color: theme.text.secondary,
+      marginTop: 2,
     },
   });

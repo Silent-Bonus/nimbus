@@ -24,6 +24,23 @@ export type MealPlannerUiMealType =
   | "Dinner"
   | "Snack";
 
+export type MealPlannerRouteMode = "day" | "week";
+
+export type MealPlannerRouteSource =
+  | "recipe-details"
+  | "nourish-plan"
+  | "nourish-horizon";
+
+export type MealPlannerRouteParams = {
+  date?: string | string[];
+  type?: string | string[];
+  mode?: MealPlannerRouteMode | string[];
+  source?: MealPlannerRouteSource | string[];
+  recipeId?: string | string[];
+  recipeTitle?: string | string[];
+  foodName?: string | string[];
+};
+
 export type NutritionMetricKey =
   | "calories"
   | "protein"

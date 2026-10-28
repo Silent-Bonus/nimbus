@@ -22,14 +22,17 @@ import { FilterPill } from "@/features/self-care/components/workout/FilterPill";
 import { searchRecipes } from "@/features/tools/services/recipeService";
 import {
   bulkUpdateMealPlan,
+  getMealPlanRange,
   getDailyMealPlan,
 } from "@/features/tools/services/mealPlannerService";
 import type {
   BulkMealUpdatePayload,
   DayPlan,
+  Meal,
   MealPlannerApiMealType,
   MealPlannerDayDraft,
   MealPlannerDraftEntry,
+  MealPlannerRouteParams,
   MealPlannerUiMealType,
   MealPlannerWeeklyPlanStore,
 } from "@/features/tools/types/mealPlannerTypes";
@@ -52,13 +55,13 @@ import { addDays } from "date-fns";
 import AppHeader from "@/components/layout/AppHeader";
 import {
   MealCardSurface,
-  MealPlannerModeTabs,
   MealPlannerReviewList,
   MealPlannerStageActionCard,
   MealFlowSection,
   MealPlannerSearchDropdown,
 } from "@/features/tools/components/meal-flow";
 import { MealTypeRecipeRail } from "@/features/tools/components/recipe";
+import { buildWeeklyMealPlanPayload } from "@/features/tools/utils/mealPlannerPayload";
 import type {
   Spacing,
   TypographyTokens,
@@ -66,13 +69,16 @@ import type {
   SvaTokens,
 } from "@/theme/types";
 
+const hasPlannedMeal = (meal: Meal | Meal[] | null | undefined) =>
+  Array.isArray(meal) ? meal.some(Boolean) : Boolean(meal);
+
 export const MealCreationScreen = () => {
   const { svaColors, spacing, svaTypography, tokens } = useContext(ThemeContext);
   const styles = useMemo(
     () => styling(svaColors, spacing, svaTypography, tokens),
     [svaColors, spacing, svaTypography, tokens]
   );
-  const params = useLocalSearchParams();
+  const params = useLocalSearchParams<MealPlannerRouteParams>();
   const toast = useNimbusToast();
   const parentDate = Array.isArray(params.date) ? params.date[0] : params.date;
   const hasParentDate = typeof parentDate === "string" && parentDate.length > 0;
@@ -82,6 +88,7 @@ export const MealCreationScreen = () => {
     : params.source;
   const isRecipeDetailsFlow = sourceParam === "recipe-details";
   const isDayOnlyFlow = modeParam === "day" && hasParentDate;
+  const isWeeklyFlow = modeParam === "week";
   const initialMealType = normalizeMealTypeParam(params.type);
   const initialFoodName =
     typeof params.foodName === "string"
@@ -97,9 +104,7 @@ export const MealCreationScreen = () => {
   const isRecipePresetFlow = Boolean(initialFoodName.trim() && initialRecipeId);
 
   /* --- UI State --- */
-  const [activeTab, setActiveTab] = useState<"day" | "week">(
-    params.type || params.foodName ? "day" : "day"
-  );
+  const activeTab = isWeeklyFlow ? ("week" as const) : ("day" as const);
   const [showReview, setShowReview] = useState(false);
   const [isRangePickerVisible, setIsRangePickerVisible] = useState(false);
 
@@ -113,6 +118,12 @@ export const MealCreationScreen = () => {
   const tenDaysLater = useMemo(() => {
     const d = new Date(todayAtMidnight);
     d.setDate(d.getDate() + 10);
+    return d;
+  }, [todayAtMidnight]);
+
+  const fourteenDaysLater = useMemo(() => {
+    const d = new Date(todayAtMidnight);
+    d.setDate(d.getDate() + 14);
     return d;
   }, [todayAtMidnight]);
 
@@ -161,6 +172,11 @@ export const MealCreationScreen = () => {
   const [bulkFoodSearch, setBulkFoodSearch] = useState("");
   const [bulkSelectedRecipe, setBulkSelectedRecipe] = useState<any>(null);
   const [weeklyPlan, setWeeklyPlan] = useState<MealPlannerWeeklyPlanStore>({});
+  const [existingWeeklyPlans, setExistingWeeklyPlans] = useState<DayPlan[]>([]);
+  const [existingWeeklyPlansLoading, setExistingWeeklyPlansLoading] =
+    useState(false);
+  const [existingWeeklyPlansError, setExistingWeeklyPlansError] =
+    useState(false);
 
   /* --- Search State --- */
   const [recipeResults, setRecipeResults] = useState<any[]>([]);
@@ -181,6 +197,91 @@ export const MealCreationScreen = () => {
       rangeString: toFriendlyRange(startDate, lastDate),
     };
   }, [startDate]);
+
+  const existingPlansByDate = useMemo(
+    () =>
+      new Map(
+        existingWeeklyPlans.map((plan) => [toApiDate(new Date(plan.date)), plan])
+      ),
+    [existingWeeklyPlans]
+  );
+
+  const existingRangeMeals = useMemo(
+    () =>
+      weekDates
+        .map((date) => {
+          const dateKey = toApiDate(date);
+          if (!selectedWeekdays.includes(dateKey)) {
+            return null;
+          }
+
+          const plan = existingPlansByDate.get(toApiDate(date));
+          if (!plan) {
+            return null;
+          }
+
+          const meals = WEEKLY_MEAL_TYPES.map((slot) => {
+            const meal = plan.meals?.[slot];
+            return hasPlannedMeal(meal)
+              ? { label: apiMealTypeToLabel(slot), name: getMealName(meal) }
+              : null;
+          }).filter(
+            (value): value is { label: string; name: string } => Boolean(value)
+          );
+
+          return meals.length > 0
+            ? { dateLabel: toFriendlyDate(date), meals }
+            : null;
+        })
+        .filter(
+          (
+            value
+          ): value is {
+            dateLabel: string;
+            meals: { label: string; name: string }[];
+          } =>
+            Boolean(value)
+        ),
+    [existingPlansByDate, selectedWeekdays, weekDates]
+  );
+
+  useEffect(() => {
+    if (!isWeeklyFlow) {
+      return;
+    }
+
+    let active = true;
+    setExistingWeeklyPlansLoading(true);
+    setExistingWeeklyPlansError(false);
+
+    const loadExistingWeeklyPlans = async () => {
+      try {
+        const response = await getMealPlanRange(startDate, weekDates[6]);
+        const plans =
+          response.success && Array.isArray(response.data) ? response.data : [];
+
+        if (active) {
+          setExistingWeeklyPlans(plans);
+        }
+      } catch (error) {
+        console.error("Unable to load selected meal-plan range:", error);
+        if (active) {
+          setExistingWeeklyPlans([]);
+          setExistingWeeklyPlansError(true);
+        }
+      } finally {
+        if (active) {
+          setExistingWeeklyPlansLoading(false);
+        }
+      }
+    };
+
+    void loadExistingWeeklyPlans();
+
+    return () => {
+      active = false;
+    };
+  }, [isWeeklyFlow, startDate, weekDates]);
 
   const dayDraftKey = useMemo(() => toApiDate(dayDate), [dayDate]);
   const dayPlanDraft = useMemo<MealPlannerDayDraft>(
@@ -321,32 +422,15 @@ export const MealCreationScreen = () => {
 
   const handleSaveFinal = async () => {
     try {
-      const payload: BulkMealUpdatePayload = {};
+      const payload = buildWeeklyMealPlanPayload(
+        weekDates,
+        existingWeeklyPlans,
+        weeklyPlan
+      );
 
-      Object.entries(weeklyPlan).forEach(([date, meals]) => {
-        payload[date] = {};
-        Object.entries(meals).forEach(([type, entry]) => {
-          if (entry) {
-            if (entry.recipeId) {
-              payload[date][type] = {
-                recipe_id: entry.recipeId,
-              };
-            } else {
-              payload[date][type] = {
-                name: entry.foodName,
-                calories: entry.calories || 0,
-                protein: entry.protein,
-                carbohydrates: entry.carbohydrates,
-                fats: entry.fats,
-                fiber: entry.fiber,
-              };
-            }
-          } else {
-            // Explicitly support clearing slots
-            payload[date][type] = null;
-          }
-        });
-      });
+      if (Object.keys(payload).length === 0) {
+        return;
+      }
 
       console.log(
         "Submitting bulk plan to API:",
@@ -526,7 +610,7 @@ export const MealCreationScreen = () => {
               label="Select Date"
               title="Meal Date"
               minimumDate={todayAtMidnight}
-              maximumDate={tenDaysLater}
+              maximumDate={isRecipeDetailsFlow ? fourteenDaysLater : tenDaysLater}
             />
           </MealFlowSection>
 
@@ -723,18 +807,10 @@ export const MealCreationScreen = () => {
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.formPadding}
     >
-      <MealFlowSection title="Step 1: Which days are we planning for?">
-        <MealCardSurface tone="accent" radius={12} style={styles.infoBanner}>
-          <Ionicons
-            name="information-circle"
-            size={18}
-            color={svaColors.brand.primary}
-          />
-          <Text style={styles.infoBannerText}>
-            You can set your plan's start date up to 10 days in advance.
-          </Text>
-        </MealCardSurface>
-
+      <MealFlowSection
+        title="Step 1: Shape your week"
+        description="Choose one or more days, then add a meal once to create an easy, repeatable rhythm."
+      >
         <TouchableOpacity activeOpacity={0.8} onPress={() => setIsRangePickerVisible(true)}>
           <MealCardSurface tone="surface" radius={24} style={styles.rangePanel}>
             <View style={styles.rangePanelHeader}>
@@ -779,32 +855,43 @@ export const MealCreationScreen = () => {
             const dateStr = toApiDate(date);
             const isSelected = selectedWeekdays.includes(dateStr);
             const dayPlan = weeklyPlan[dateStr] || {};
-            const plannedCount = Object.keys(dayPlan).length;
+            const existingPlan = existingPlansByDate.get(dateStr);
+            const plannedSlots = new Set(
+              WEEKLY_MEAL_TYPES.filter((slot) =>
+                hasPlannedMeal(existingPlan?.meals?.[slot])
+              ).concat(
+                Object.entries(dayPlan)
+                  .filter(([, entry]) => Boolean(entry))
+                  .map(([slot]) => slot as MealPlannerApiMealType)
+              )
+            );
+            const plannedCount = plannedSlots.size;
 
             return (
-              <TouchableOpacity
-                key={dateStr}
-                onPress={() => toggleWeekday(date)}
-                style={[styles.dayTile, isSelected && styles.dayTileActive]}
-              >
-                <Text
-                  style={[
-                    styles.dayTileNumber,
-                    isSelected && styles.dayTileTextActive,
-                  ]}
+              <View key={dateStr} style={styles.dayTileWrap}>
+                <TouchableOpacity
+                  onPress={() => toggleWeekday(date)}
+                  style={[styles.dayTile, isSelected && styles.dayTileActive]}
                 >
-                  {date.getDate()}
-                </Text>
-                <Text
-                  style={[
-                    styles.dayTileLabel,
-                    isSelected && styles.dayTileTextActive,
-                  ]}
-                >
-                  {formatDay(date).charAt(0)}
-                </Text>
+                  <Text
+                    style={[
+                      styles.dayTileNumber,
+                      isSelected && styles.dayTileTextActive,
+                    ]}
+                  >
+                    {date.getDate()}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.dayTileLabel,
+                      isSelected && styles.dayTileTextActive,
+                    ]}
+                  >
+                    {formatDay(date).charAt(0)}
+                  </Text>
+                </TouchableOpacity>
 
-                {plannedCount > 0 && !isSelected && (
+                {plannedCount > 0 && (
                   <View style={styles.plannedIndicators}>
                     {Array.from({ length: Math.min(plannedCount, 4) }).map(
                       (_, i) => (
@@ -813,45 +900,68 @@ export const MealCreationScreen = () => {
                     )}
                   </View>
                 )}
-              </TouchableOpacity>
+              </View>
             );
           })}
         </View>
+
+        {selectedWeekdays.length > 0 && existingWeeklyPlansLoading ? (
+          <View style={styles.existingPlansStatus}>
+            <ActivityIndicator size="small" color={svaColors.brand.primary} />
+            <Text style={styles.existingPlansStatusText}>
+              Checking meals already planned...
+            </Text>
+          </View>
+        ) : selectedWeekdays.length > 0 && existingWeeklyPlansError ? (
+          <Text style={styles.existingPlansStatusText}>
+            We could not check existing meals for this date range.
+          </Text>
+        ) : selectedWeekdays.length > 0 && existingRangeMeals.length > 0 ? (
+          <MealCardSurface tone="surface" radius={20} style={styles.existingPlansCard}>
+            <Text style={styles.existingPlansTitle}>Already planned for this day</Text>
+            {existingRangeMeals.map((day) => (
+              <View key={day.dateLabel} style={styles.existingPlanDay}>
+                <Text style={styles.existingPlanDate}>{day.dateLabel}</Text>
+                {day.meals.map((meal) => (
+                  <View key={`${day.dateLabel}-${meal.label}`} style={styles.existingPlanMealRow}>
+                    <Text style={styles.existingPlanMealLabel}>{meal.label}</Text>
+                    <Text style={styles.existingPlanMealName} numberOfLines={2}>
+                      {meal.name}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ))}
+          </MealCardSurface>
+        ) : null}
       </MealFlowSection>
 
-      <MealFlowSection title="Step 2: Which meal is this?">
+      <MealFlowSection
+        title="Step 2: Choose your meal moment"
+        description="Select a meal slot to explore recipes curated for that part of your day."
+      >
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           style={styles.chipRow}
         >
-          {DAY_MEAL_TYPES.map(
-            (type) => {
-              const alreadyPlanned = weekDates.filter(
-                (d) => weeklyPlan[toApiDate(d)]?.[mealTypeToApiKey(type)]
-              ).length;
-
-              return (
-                <View key={type} style={{ alignItems: "center" }}>
-                  <FilterPill
-                    label={type}
-                    isActive={bulkMealType === type}
-                    onPress={() => setBulkMealType(type)}
-                    style={styles.chip}
-                  />
-                  {alreadyPlanned > 0 && (
-                    <Text style={styles.plannedCountText}>
-                      {alreadyPlanned}/7 days
-                    </Text>
-                  )}
-                </View>
-              );
-            }
-          )}
+          {DAY_MEAL_TYPES.map((type) => (
+            <FilterPill
+              key={type}
+              label={type}
+              isActive={bulkMealType === type}
+              onPress={() => setBulkMealType(type)}
+              style={styles.chip}
+            />
+          ))}
         </ScrollView>
+
       </MealFlowSection>
 
-      <MealFlowSection title="Step 3: What are you eating?">
+      <MealFlowSection
+        title="Step 3: Find your recipe"
+        description="Browse the suggestions below or search the library for something specific."
+      >
         <View
           style={[
             styles.searchBar,
@@ -886,6 +996,11 @@ export const MealCreationScreen = () => {
             }}
           />
         </View>
+        <MealTypeRecipeRail
+          mealType={bulkMealType}
+          searchQuery={bulkFoodSearch}
+          onSelectRecipe={handleSelectRecipe}
+        />
         <MealPlannerSearchDropdown
           query={searchQuery}
           results={recipeResults}
@@ -920,6 +1035,8 @@ export const MealCreationScreen = () => {
             subtitle={
               showReview
                 ? "Check your weekly balance."
+                : isWeeklyFlow
+                ? "Build your week one meal at a time."
                 : isDayOnlyFlow
                 ? "Choose a recipe for your plan."
                 : isRecipePresetFlow
@@ -929,16 +1046,15 @@ export const MealCreationScreen = () => {
             onBack={() => (showReview ? setShowReview(false) : router.back())}
           />
 
-          {!showReview && !isDayOnlyFlow && !isRecipeDetailsFlow && (
-            <MealPlannerModeTabs
-              activeTab={activeTab}
-              onChange={setActiveTab}
-            />
-          )}
-
           <View style={{ flex: 1 }}>
             {showReview
-              ? <MealPlannerReviewList weekDates={weekDates} weeklyPlan={weeklyPlan} />
+              ? (
+                <MealPlannerReviewList
+                  weekDates={weekDates}
+                  weeklyPlan={weeklyPlan}
+                  existingPlans={existingWeeklyPlans}
+                />
+              )
               : isDayOnlyFlow || isRecipeDetailsFlow || activeTab === "day"
               ? renderDayForm()
               : renderWeekForm()}
@@ -955,7 +1071,10 @@ export const MealCreationScreen = () => {
                   Object.keys(weeklyPlan).length > 0 ? "primary" : "secondary"
                 }
                 onPress={() => setShowReview(true)}
-                disabled={Object.keys(weeklyPlan).length === 0}
+                disabled={
+                  Object.keys(weeklyPlan).length === 0 ||
+                  existingWeeklyPlansLoading
+                }
                 style={{ marginBottom: 12 }}
               />
             )}
@@ -964,7 +1083,11 @@ export const MealCreationScreen = () => {
               label={
                 showReview
                   ? "Confirm & Sync"
-                  : isDayOnlyFlow || isRecipeDetailsFlow || activeTab === "day"
+                  : isRecipeDetailsFlow
+                  ? "Add to Meal Plan"
+                  : isDayOnlyFlow
+                  ? "Add Recipe"
+                  : activeTab === "day"
                   ? "Save Day Plan"
                   : "Add to Plan"
               }
@@ -1246,6 +1369,10 @@ const styling = (
       justifyContent: "space-between",
       marginTop: spacing.md,
     },
+    dayTileWrap: {
+      alignItems: "center",
+      minHeight: 78,
+    },
     dayTile: {
       width: 44,
       height: 64,
@@ -1255,7 +1382,6 @@ const styling = (
       borderColor: theme.border.default,
       justifyContent: "center",
       alignItems: "center",
-      position: "relative",
     },
     dayTileActive: {
       backgroundColor: theme.brand.primary,
@@ -1275,8 +1401,8 @@ const styling = (
     },
     plannedIndicators: {
       flexDirection: "row",
-      position: "absolute",
-      bottom: 6,
+      minHeight: 6,
+      marginTop: spacing.xs,
       gap: 2,
     },
     plannedDot: {
@@ -1285,9 +1411,53 @@ const styling = (
       borderRadius: 2,
       backgroundColor: theme.brand.primary,
     },
-    plannedCountText: {
+    existingPlansStatus: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.sm,
+      marginTop: spacing.md,
+    },
+    existingPlansStatusText: {
+      ...svaTypography?.textStyle.caption,
+      color: theme.text.secondary,
+      marginTop: spacing.md,
+    },
+    existingPlansCard: {
+      marginTop: spacing.md,
+      padding: spacing.md,
+      gap: spacing.sm,
+    },
+    existingPlansTitle: {
+      ...svaTypography?.textStyle.bodyMedium,
+      color: theme.text.primary,
+    },
+    existingPlanDay: {
+      gap: spacing.xs,
+    },
+    existingPlanDate: {
       ...svaTypography?.textStyle.authTinyLabel,
       color: theme.text.secondary,
-      marginTop: 4,
+      letterSpacing: 0.8,
+      textTransform: "uppercase",
+    },
+    existingPlanMealRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: spacing.sm,
+      paddingTop: spacing.xs,
+      borderTopWidth: tokens.border.hairline,
+      borderTopColor: theme.border.default,
+    },
+    existingPlanMealLabel: {
+      width: 62,
+      ...(svaTypography?.textStyle.authTinyLabel ?? svaTypography.textStyle.caption),
+      color: theme.brand.primary,
+      letterSpacing: 0.5,
+      textTransform: "uppercase",
+    },
+    existingPlanMealName: {
+      ...svaTypography?.textStyle.caption,
+      color: theme.text.primary,
+      flex: 1,
     },
   });

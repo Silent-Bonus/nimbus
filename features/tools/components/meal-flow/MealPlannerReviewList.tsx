@@ -3,10 +3,12 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import ThemeContext from "@/contexts/ThemeContext";
 import type {
+  DayPlan,
+  Meal,
   MealPlannerWeeklyPlanStore,
   MealPlannerApiMealType,
 } from "@/features/tools/types/mealPlannerTypes";
-import { apiMealTypeToLabel } from "@/features/tools/utils/mealPlannerUtils";
+import { apiMealTypeToLabel, getMealName } from "@/features/tools/utils/mealPlannerUtils";
 import { toApiDate, toFriendlyDate } from "@/utils/date-time";
 import type {
   Spacing,
@@ -23,9 +25,13 @@ const REVIEW_MEAL_TYPES: readonly MealPlannerApiMealType[] = [
   "snack",
 ];
 
+const hasPlannedMeal = (meal: Meal | Meal[] | null | undefined) =>
+  Array.isArray(meal) ? meal.some(Boolean) : Boolean(meal);
+
 export type MealPlannerReviewListProps = {
   weekDates: readonly Date[];
   weeklyPlan: MealPlannerWeeklyPlanStore;
+  existingPlans?: readonly DayPlan[];
 };
 
 /**
@@ -34,12 +40,21 @@ export type MealPlannerReviewListProps = {
 export function MealPlannerReviewList({
   weekDates,
   weeklyPlan,
+  existingPlans = [],
 }: MealPlannerReviewListProps) {
   const { svaColors, spacing, svaTypography, tokens } =
     useContext(ThemeContext);
   const styles = useMemo(
     () => styling(svaColors, spacing, svaTypography, tokens),
     [svaColors, spacing, svaTypography, tokens]
+  );
+
+  const existingPlansByDate = useMemo(
+    () =>
+      new Map(
+        existingPlans.map((plan) => [toApiDate(new Date(plan.date)), plan])
+      ),
+    [existingPlans]
   );
 
   return (
@@ -51,6 +66,22 @@ export function MealPlannerReviewList({
       {weekDates.map((date) => {
         const dateKey = toApiDate(date);
         const dayPlan = weeklyPlan[dateKey] ?? {};
+        const existingPlan = existingPlansByDate.get(dateKey);
+        const mergedMeals = REVIEW_MEAL_TYPES.reduce<Record<string, string>>(
+          (result, mealType) => {
+            const draftMeal = dayPlan[mealType];
+            const existingMeal = existingPlan?.meals?.[mealType];
+
+            if (draftMeal?.foodName) {
+              result[mealType] = draftMeal.foodName;
+            } else if (hasPlannedMeal(existingMeal)) {
+              result[mealType] = getMealName(existingMeal);
+            }
+
+            return result;
+          },
+          {}
+        );
 
         return (
           <MealCardSurface
@@ -61,7 +92,7 @@ export function MealPlannerReviewList({
           >
             <View style={styles.dayHeader}>
               <Text style={styles.dayDate}>{toFriendlyDate(date)}</Text>
-              <Text style={styles.dayStatus}>{Object.keys(dayPlan).length}/4 meals</Text>
+              <Text style={styles.dayStatus}>{Object.keys(mergedMeals).length}/4 meals</Text>
             </View>
 
             {REVIEW_MEAL_TYPES.map((mealType) => (
@@ -70,10 +101,10 @@ export function MealPlannerReviewList({
                 <Text
                   style={[
                     styles.mealFood,
-                    !dayPlan[mealType] && styles.mealFoodMuted,
+                    !mergedMeals[mealType] && styles.mealFoodMuted,
                   ]}
                 >
-                  {dayPlan[mealType]?.foodName || "Not planned"}
+                  {mergedMeals[mealType] || "Not planned"}
                 </Text>
               </View>
             ))}
