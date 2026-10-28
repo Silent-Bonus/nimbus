@@ -57,11 +57,7 @@ export default function BreathWorkDetailScreen() {
       ? getCachedBreathWorkDetail(detailIdentifier) ?? null
       : null
   );
-  const heroMeta = detail
-    ? `${detail.durationLabel} · ${(
-        detail.category ?? detail.styleLabel
-      ).toUpperCase()}`
-    : "";
+  const heroMeta = detail ? `${detail.durationLabel}` : "";
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isStartingBreathWork, setIsStartingBreathWork] = useState(false);
