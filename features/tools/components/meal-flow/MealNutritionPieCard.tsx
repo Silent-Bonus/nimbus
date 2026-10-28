@@ -1,5 +1,11 @@
 import React, { useContext, useMemo } from "react";
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 import Svg, { Circle } from "react-native-svg";
 
 import ThemeContext from "@/contexts/ThemeContext";
@@ -44,7 +50,9 @@ const clamp = (value: number, min = 0, max = Number.POSITIVE_INFINITY) =>
   Math.min(Math.max(value, min), max);
 
 const formatMetricSummary = (metric: MealNutritionPieMetric) =>
-  `${Math.round(metric.consumed)}${metric.unit} / ${Math.round(metric.goal)}${metric.unit}`;
+  `${Math.round(metric.consumed)}${metric.unit} / ${Math.round(metric.goal)}${
+    metric.unit
+  }`;
 
 export function MealNutritionPieCard({
   title,
@@ -131,11 +139,15 @@ export function MealNutritionPieCard({
                     strokeDasharray={metric.strokeDasharray}
                     strokeDashoffset={metric.strokeDashoffset}
                     rotation={-90}
-                    origin={`${METRIC_CHART_SIZE / 2}, ${METRIC_CHART_SIZE / 2}`}
+                    origin={`${METRIC_CHART_SIZE / 2}, ${
+                      METRIC_CHART_SIZE / 2
+                    }`}
                   />
                 </Svg>
                 <View style={styles.metricChartCenter}>
-                  <Text style={styles.centerValue}>{metric.progressPercent}%</Text>
+                  <Text style={styles.centerValue}>
+                    {metric.progressPercent}%
+                  </Text>
                 </View>
               </View>
             </View>
@@ -144,17 +156,17 @@ export function MealNutritionPieCard({
               <View style={styles.metricHeaderRow}>
                 <View style={styles.legendLabelRow}>
                   <View
-                    style={[styles.legendDot, { backgroundColor: metric.color }]}
+                    style={[
+                      styles.legendDot,
+                      { backgroundColor: metric.color },
+                    ]}
                   />
                   <Text style={styles.legendLabel}>{metric.label}</Text>
                 </View>
-                <View style={styles.metricProgressPill}>
-                  <Text style={[styles.metricProgressText, { color: metric.color }]}>
-                    {metric.progressPercent}%
-                  </Text>
-                </View>
               </View>
-              <Text style={styles.legendValue}>{formatMetricSummary(metric)}</Text>
+              <Text style={styles.legendValue}>
+                {formatMetricSummary(metric)}
+              </Text>
               <Text style={styles.metricSubtext}>
                 {metric.remaining > 0
                   ? `${Math.round(metric.remaining)}${metric.unit} remaining`
@@ -194,7 +206,8 @@ const styling = (
       gap: spacing.xs + 2,
     },
     status: {
-      ...(svaTypography?.textStyle.authTinyLabel ?? svaTypography.textStyle.authTinyLabel),
+      ...(svaTypography?.textStyle.authTinyLabel ??
+        svaTypography.textStyle.authTinyLabel),
       color: theme.text.secondary,
       letterSpacing: 1.6,
       textTransform: "uppercase",
@@ -210,7 +223,8 @@ const styling = (
       maxWidth: "96%",
     },
     centerValue: {
-      ...(svaTypography?.textStyle.heading1 ?? svaTypography.textStyle.heading2),
+      ...(svaTypography?.textStyle.heading1 ??
+        svaTypography.textStyle.heading2),
       color: theme.text.primary,
       fontSize: 12,
       lineHeight: 14,
@@ -273,29 +287,15 @@ const styling = (
       borderRadius: 99,
     },
     legendLabel: {
-      ...(svaTypography?.textStyle.authTinyLabel ?? svaTypography.textStyle.authTinyLabel),
+      ...(svaTypography?.textStyle.authTinyLabel ??
+        svaTypography.textStyle.authTinyLabel),
       color: theme.text.secondary,
       letterSpacing: 1.1,
       textTransform: "uppercase",
     },
-    metricProgressPill: {
-      minWidth: 48,
-      paddingHorizontal: spacing.sm + 2,
-      paddingVertical: spacing.xs + 1,
-      borderRadius: tokens.radius.chip,
-      backgroundColor: theme.surface.base,
-      borderWidth: tokens.border.hairline,
-      borderColor: theme.border.default,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    metricProgressText: {
-      ...(svaTypography?.textStyle.authTinyLabel ?? svaTypography.textStyle.authTinyLabel),
-      letterSpacing: 0.8,
-      textTransform: "uppercase",
-    },
     legendValue: {
-      ...(svaTypography?.textStyle.bodyMedium ?? svaTypography.textStyle.bodyMedium),
+      ...(svaTypography?.textStyle.bodyMedium ??
+        svaTypography.textStyle.bodyMedium),
       color: theme.text.primary,
     },
     metricSubtext: {

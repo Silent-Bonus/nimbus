@@ -308,45 +308,6 @@ export const BreathWorkScreen = () => {
               selected={item.id === activeItem?.id}
             />
           )}
-          ListFooterComponent={
-            activeItem ? (
-              <View
-                style={[
-                  styles.quoteCard,
-                  { borderColor: activeItem.palette.accent },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.quoteIconWrap,
-                    {
-                      backgroundColor: activeItem.palette.tagBg,
-                      borderColor: activeItem.palette.accent,
-                    },
-                  ]}
-                >
-                  <MaterialCommunityIcons
-                    name="repeat"
-                    size={18}
-                    color={activeItem.palette.tagText}
-                  />
-                </View>
-
-                {/* <Text
-                  style={[
-                    styles.quoteText,
-                    { color: activeItem.palette.text },
-                  ]}
-                >
-                  {`"${quoteCopy}"`}
-                </Text> */}
-
-                <Text style={styles.quoteMeta} numberOfLines={1}>
-                  {activeItem.title}
-                </Text>
-              </View>
-            ) : null
-          }
           ListEmptyComponent={
             isLoading ? (
               <View style={styles.loadingState}>
@@ -474,55 +435,6 @@ const styling = (
       letterSpacing: 1,
       color: theme.textSecondary,
       textTransform: "uppercase",
-    },
-    quoteCard: {
-      marginTop: spacing.xl,
-      borderRadius: 28,
-      backgroundColor: theme.surfaceMuted,
-      borderWidth: 1,
-      borderColor: theme.borderMuted ?? "rgba(255,255,255,0.05)",
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.xl,
-      alignItems: "center",
-      justifyContent: "center",
-      shadowColor: theme.shadow,
-      shadowOpacity: 0.14,
-      shadowRadius: 16,
-      shadowOffset: { width: 0, height: 10 },
-      elevation: 4,
-    },
-    quoteIconWrap: {
-      width: 42,
-      height: 42,
-      borderRadius: 14,
-      alignItems: "center",
-      justifyContent: "center",
-      marginBottom: spacing.md,
-      borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.08)",
-    },
-    quoteText: {
-      fontFamily:
-        svaTypography?.textStyle.authTitle.fontFamily ??
-        "CormorantGaramond_500Medium",
-      fontSize: 22,
-      lineHeight: 30,
-      color: theme.textPrimary,
-      textAlign: "center",
-      fontStyle: "italic",
-      letterSpacing: -0.2,
-    },
-    quoteMeta: {
-      marginTop: spacing.sm,
-      fontFamily:
-        svaTypography?.textStyle.authTinyLabel.fontFamily ??
-        "Inter_600SemiBold",
-      fontSize: 10,
-      lineHeight: 12,
-      letterSpacing: 1.4,
-      color: theme.textSecondary,
-      textTransform: "uppercase",
-      textAlign: "center",
     },
     emptyState: {
       alignItems: "center",

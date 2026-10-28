@@ -298,6 +298,7 @@ export const MealWeeklyViewScreen = () => {
                         date: toApiDate(day.date),
                         type: mealType,
                         mode: "day",
+                        source: "nourish-horizon",
                       },
                     });
                   }}

@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 
 import ThemeContext from "@/contexts/ThemeContext";
 import { ScreenView } from "@/components/ui/theme-components/ScreenView";
@@ -184,12 +185,16 @@ export const MealPlannerScreen = () => {
   const handleAddMeal = (type: MealPlannerScreenMealSlotKey) => {
     router.push({
       pathname: ROUTES.AUTH.TOOLS_MEAL_CREATION,
-      params: { type, date: toApiDate(new Date()) },
+      // A slot opened from today's planner must stay tied to that date. The
+      // day mode also prevents the general meal form from allowing the date
+      // to drift away from the slot the user selected.
+      params: {
+        type,
+        date: toApiDate(new Date()),
+        mode: "day",
+        source: "nourish-plan",
+      },
     });
-  };
-
-  const handleWeeklyView = () => {
-    router.push(ROUTES.AUTH.TOOLS_MEAL_WEEKLY);
   };
 
   const handleOpenRecipeSearch = (data: Meal | Meal[] | null | undefined) => {
@@ -202,6 +207,17 @@ export const MealPlannerScreen = () => {
     router.push({
       pathname: ROUTES.AUTH.TOOLS_RECIPE,
       params: { query },
+    });
+  };
+
+  const handleOpenHorizon = () => {
+    router.push(ROUTES.AUTH.TOOLS_MEAL_WEEKLY);
+  };
+
+  const handleOpenWeeklyCreation = () => {
+    router.push({
+      pathname: ROUTES.AUTH.TOOLS_MEAL_CREATION,
+      params: { mode: "week", source: "nourish-plan" },
     });
   };
 
@@ -342,7 +358,8 @@ export const MealPlannerScreen = () => {
       )}g protein, ${Math.round(
         dashboardData.trends.last_7_days.avg_fiber
       )}g fiber. Direction: calories ${dashboardData.trends.direction.calories}, protein ${dashboardData.trends.direction.protein}, fiber ${dashboardData.trends.direction.fiber}.`,
-      trendsPanelCaption: `Week ending ${dashboardData.range.end_date}: protein is holding at ${dashboardData.adherence.goal_hit_rate.protein}% goal hits, while fiber trails at ${dashboardData.adherence.goal_hit_rate.fiber}%.`,
+      trendsPanelCaption:
+        "A clear view of your calories, protein, and fiber consistency.",
       insightsCaption: `Signals generated from ${dashboardData.range.label.toLowerCase()} of meal tracking.`,
       trendMetrics,
     };
@@ -460,7 +477,7 @@ export const MealPlannerScreen = () => {
           rightActions={[
             {
               icon: "calendar-outline",
-              onPress: handleWeeklyView,
+              onPress: handleOpenHorizon,
             },
           ]}
         />
@@ -502,10 +519,35 @@ export const MealPlannerScreen = () => {
                 </View>
               </MealCardSurface>
 
+              <TouchableOpacity
+                activeOpacity={0.82}
+                onPress={handleOpenWeeklyCreation}
+                style={styles.weeklyPlannerButton}
+              >
+                <View style={styles.weeklyPlannerIcon}>
+                  <Ionicons
+                    name="calendar-outline"
+                    size={20}
+                    color={svaColors.brand.primary}
+                  />
+                </View>
+                <View style={styles.weeklyPlannerCopy}>
+                  <Text style={styles.weeklyPlannerTitle}>Plan your week</Text>
+                  <Text style={styles.weeklyPlannerSubtitle}>
+                    Add recipes across multiple days and meal slots.
+                  </Text>
+                </View>
+                <Ionicons
+                  name="arrow-forward"
+                  size={18}
+                  color={svaColors.text.secondary}
+                />
+              </TouchableOpacity>
+
               <MealNutritionPieCard
                 title="Today’s Nutrition"
-                statusLabel={dashboardData.range.label}
-                caption={dashboardUi.trendsCaption}
+                statusLabel="Today"
+                caption="Your intake so far compared with today’s nutrition goals."
                 metrics={dashboardUi.nutritionMetrics}
               />
 
@@ -605,6 +647,39 @@ const styling = (
       paddingBottom: spacing.lg,
       marginBottom: spacing.xl,
       gap: spacing.lg,
+    },
+    weeklyPlannerButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: spacing.md,
+      minHeight: 76,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm + 2,
+      marginBottom: spacing.xl,
+      borderRadius: 24,
+      backgroundColor: theme.surface.raised,
+      borderWidth: tokens.border.hairline,
+      borderColor: theme.border.default,
+    },
+    weeklyPlannerIcon: {
+      width: 42,
+      height: 42,
+      borderRadius: 21,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.bg.subtle,
+    },
+    weeklyPlannerCopy: {
+      flex: 1,
+      gap: spacing.xs,
+    },
+    weeklyPlannerTitle: {
+      ...(svaTypography?.textStyle.bodyMedium ?? svaTypography.textStyle.bodyMedium),
+      color: theme.text.primary,
+    },
+    weeklyPlannerSubtitle: {
+      ...(svaTypography?.textStyle.caption ?? svaTypography.textStyle.caption),
+      color: theme.text.secondary,
     },
     dashboardLoaderCard: {
       minHeight: 148,

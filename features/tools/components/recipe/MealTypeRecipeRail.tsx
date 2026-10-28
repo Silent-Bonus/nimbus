@@ -51,7 +51,9 @@ export function MealTypeRecipeRail({
       try {
         const mealSlot = normalizeMealSlot(mealType);
         const response = await getRecipeList(
-          query ? { search: query } : { meal_slot: mealSlot }
+          query
+            ? { search: query, meal_slot: mealSlot }
+            : { meal_slot: mealSlot }
         );
         const matchingRecipes = (response.success ? response.data : []).filter(
           (recipe) =>

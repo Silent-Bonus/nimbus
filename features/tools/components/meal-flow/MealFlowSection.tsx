@@ -62,13 +62,14 @@ const styling = (
       marginBottom: spacing.xl,
     },
     title: {
-      ...(svaTypography?.textStyle.bodyMedium ?? svaTypography.textStyle.bodyMedium),
+      ...(svaTypography?.textStyle.title ?? svaTypography.textStyle.bodyMedium),
       color: theme.text.primary,
-      marginBottom: spacing.md,
+      marginBottom: spacing.xs,
     },
     description: {
       ...(svaTypography?.textStyle.caption ?? svaTypography.textStyle.caption),
       color: theme.text.secondary,
-      marginBottom: spacing.sm,
+      lineHeight: 20,
+      marginBottom: spacing.md,
     },
   });

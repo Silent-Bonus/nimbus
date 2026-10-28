@@ -57,7 +57,6 @@ export default function ReflectionEntryScreen() {
 
   const journalTitle =
     parseReflectionRouteParam(params.journalTitle) ?? "Guided Reflection";
-  const journalDescription = parseReflectionRouteParam(params.journalDescription) ?? "";
   const journalTemplateId = useMemo(() => {
     const rawId = parseReflectionRouteParam(params.journalId)?.trim();
     return rawId || null;
@@ -471,12 +470,6 @@ export default function ReflectionEntryScreen() {
                     {currentStep?.text ?? "This reflection step is unavailable."}
                   </Text>
 
-                  {!!journalDescription && resolvedStepNumber === 1 && (
-                    <Text style={styles.promptContext} numberOfLines={2}>
-                      {journalDescription}
-                    </Text>
-                  )}
-
                   <View style={styles.fieldBlock}>
                     <Text style={styles.fieldLabel}>WRITE YOUR REFLECTION</Text>
                     {isReviewingSavedStep ? (
@@ -651,11 +644,6 @@ const styling = (theme: any, spacing: any, svaTypography: any) =>
       lineHeight: 34,
       letterSpacing: -0.8,
       color: theme.textPrimary,
-    },
-    promptContext: {
-      marginTop: 10,
-      ...svaTypography.textStyle.body,
-      color: theme.textSecondary,
     },
     fieldBlock: {
       marginTop: 18,
